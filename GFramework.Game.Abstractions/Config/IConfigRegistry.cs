@@ -14,7 +14,10 @@ public interface IConfigRegistry : IUtility
     /// <summary>
     ///     获取当前已注册配置表数量。
     /// </summary>
-    int Count { get; }
+    int Count
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取所有已注册配置表名称。
@@ -47,13 +50,13 @@ public interface IConfigRegistry : IUtility
 
     /// <summary>
     ///     尝试获取指定名称的配置表。
-    ///     当名称存在但类型不匹配时返回 <c>false</c>，避免消费端将类型错误误判为加载成功。
+    ///     当名称存在但类型不匹配时返回 <see langword="false" />，避免消费端将类型错误误判为加载成功。
     /// </summary>
     /// <typeparam name="TKey">配置表主键类型。</typeparam>
     /// <typeparam name="TValue">配置项值类型。</typeparam>
     /// <param name="name">配置表名称。</param>
     /// <param name="table">匹配的强类型配置表；未找到或类型不匹配时返回空。</param>
-    /// <returns>找到且类型匹配时返回 <c>true</c>，否则返回 <c>false</c>。</returns>
+    /// <returns>找到且类型匹配时返回 <see langword="true" />，否则返回 <see langword="false" />。</returns>
     bool TryGetTable<TKey, TValue>(string name, out IConfigTable<TKey, TValue>? table)
         where TKey : notnull;
 
@@ -63,21 +66,21 @@ public interface IConfigRegistry : IUtility
     /// </summary>
     /// <param name="name">配置表名称。</param>
     /// <param name="table">匹配的原始配置表；未找到时返回空。</param>
-    /// <returns>找到配置表时返回 <c>true</c>，否则返回 <c>false</c>。</returns>
+    /// <returns>找到配置表时返回 <see langword="true" />，否则返回 <see langword="false" />。</returns>
     bool TryGetTable(string name, out IConfigTable? table);
 
     /// <summary>
     ///     检查指定名称的配置表是否存在。
     /// </summary>
     /// <param name="name">配置表名称。</param>
-    /// <returns>存在时返回 <c>true</c>，否则返回 <c>false</c>。</returns>
+    /// <returns>存在时返回 <see langword="true" />，否则返回 <see langword="false" />。</returns>
     bool HasTable(string name);
 
     /// <summary>
     ///     移除指定名称的配置表。
     /// </summary>
     /// <param name="name">配置表名称。</param>
-    /// <returns>移除成功时返回 <c>true</c>，否则返回 <c>false</c>。</returns>
+    /// <returns>移除成功时返回 <see langword="true" />，否则返回 <see langword="false" />。</returns>
     bool RemoveTable(string name);
 
     /// <summary>

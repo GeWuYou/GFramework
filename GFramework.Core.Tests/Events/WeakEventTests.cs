@@ -199,10 +199,14 @@ public sealed class WeakEventTests
 
     private sealed class EventListener
     {
-        public int ReceivedCount { get; private set; }
+        public int ReceivedCount
+        {
+            get; private set;
+        }
 
         public void OnEvent(TestEvent e)
         {
+            _ = e;
             ReceivedCount++;
         }
     }

@@ -39,7 +39,7 @@ public sealed class GeneratedRequestPipelineBenchmarkRegistry :
         new GFramework.Cqrs.CqrsRequestInvokerDescriptorEntry(
             typeof(RequestPipelineBenchmarks.BenchmarkRequest),
             typeof(RequestPipelineBenchmarks.BenchmarkResponse),
-            Descriptor)
+            Descriptor),
     ];
 
     /// <summary>
@@ -50,9 +50,7 @@ public sealed class GeneratedRequestPipelineBenchmarkRegistry :
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(logger);
 
-        services.AddSingleton(
-            typeof(IRequestHandler<RequestPipelineBenchmarks.BenchmarkRequest, RequestPipelineBenchmarks.BenchmarkResponse>),
-            typeof(RequestPipelineBenchmarks.BenchmarkRequestHandler));
+        services.AddSingleton<IRequestHandler<RequestPipelineBenchmarks.BenchmarkRequest, RequestPipelineBenchmarks.BenchmarkResponse>, RequestPipelineBenchmarks.BenchmarkRequestHandler>();
         logger.LogDebug("Registered generated request pipeline benchmark handler.");
     }
 

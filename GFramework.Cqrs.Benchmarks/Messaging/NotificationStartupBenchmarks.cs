@@ -80,7 +80,7 @@ public class NotificationStartupBenchmarks
     ///     在每次 cold-start 迭代前清空 dispatcher 静态缓存，确保每组 benchmark 都重新命中首次绑定路径。
     /// </summary>
     [IterationSetup]
-    public void ResetColdStartCaches()
+    public static void ResetColdStartCaches()
     {
         BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
     }
@@ -133,11 +133,14 @@ public class NotificationStartupBenchmarks
     /// <returns>代表首次 publish 完成的任务。</returns>
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("ColdStart")]
-    public async Task ColdStart_MediatR()
+    public static async Task ColdStart_MediatR()
     {
-        using var serviceProvider = CreateMediatRServiceProvider();
-        var publisher = serviceProvider.GetRequiredService<IPublisher>();
-        await publisher.Publish(Notification, CancellationToken.None).ConfigureAwait(false);
+        var serviceProvider = CreateMediatRServiceProvider();
+        await using (serviceProvider.ConfigureAwait(false))
+        {
+            var publisher = serviceProvider.GetRequiredService<IPublisher>();
+            await publisher.Publish(Notification, CancellationToken.None).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -146,11 +149,14 @@ public class NotificationStartupBenchmarks
     /// <returns>代表首次 publish 完成的值任务。</returns>
     [Benchmark]
     [BenchmarkCategory("ColdStart")]
-    public async ValueTask ColdStart_GFrameworkCqrs()
+    public static async ValueTask ColdStart_GFrameworkCqrs()
     {
-        using var container = CreateGFrameworkContainer();
-        var runtime = CreateGFrameworkRuntime(container);
-        await runtime.PublishAsync(Notification, CancellationToken.None).ConfigureAwait(false);
+        var container = CreateGFrameworkContainer();
+        await using (container.ConfigureAwait(false))
+        {
+            var runtime = CreateGFrameworkRuntime(container);
+            await runtime.PublishAsync(Notification, CancellationToken.None).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -159,11 +165,14 @@ public class NotificationStartupBenchmarks
     /// <returns>代表首次 publish 完成的值任务。</returns>
     [Benchmark]
     [BenchmarkCategory("ColdStart")]
-    public async ValueTask ColdStart_Mediator()
+    public static async ValueTask ColdStart_Mediator()
     {
-        using var serviceProvider = CreateMediatorServiceProvider();
-        var mediator = serviceProvider.GetRequiredService<GeneratedMediator>();
-        await mediator.Publish(Notification, CancellationToken.None).ConfigureAwait(false);
+        var serviceProvider = CreateMediatorServiceProvider();
+        await using (serviceProvider.ConfigureAwait(false))
+        {
+            var mediator = serviceProvider.GetRequiredService<GeneratedMediator>();
+            await mediator.Publish(Notification, CancellationToken.None).ConfigureAwait(false);
+        }
     }
 
     /// <summary>

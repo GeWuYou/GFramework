@@ -7,13 +7,13 @@ using Microsoft.CodeAnalysis;
 namespace GFramework.SourceGenerators.Tests.Config;
 
 /// <summary>
-///     验证 schema 配置生成器对对象 / 数组 <c>enum</c> 文档输出的快照行为。
+///     验证 schema 配置生成器对对象 / 数组 <see langword="enum" /> 文档输出的快照行为。
 /// </summary>
 [TestFixture]
 public class SchemaConfigGeneratorEnumTests
 {
     /// <summary>
-    ///     验证对象 <c>enum</c> 文档输出与快照保持一致。
+    ///     验证对象 <see langword="enum" /> 文档输出与快照保持一致。
     /// </summary>
     [Test]
     public Task Snapshot_Should_Preserve_Object_Enum_Documentation()
@@ -58,7 +58,7 @@ public class SchemaConfigGeneratorEnumTests
     }
 
     /// <summary>
-    ///     验证数组项 <c>enum</c> 文档回退输出与快照保持一致。
+    ///     验证数组项 <see langword="enum" /> 文档回退输出与快照保持一致。
     /// </summary>
     [Test]
     public Task Snapshot_Should_Preserve_Array_Item_Enum_Documentation_Fallback()
@@ -95,7 +95,7 @@ public class SchemaConfigGeneratorEnumTests
     }
 
     /// <summary>
-    ///     验证对象数组项 <c>enum</c> 文档回退输出与快照保持一致。
+    ///     验证对象数组项 <see langword="enum" /> 文档回退输出与快照保持一致。
     /// </summary>
     [Test]
     public Task Snapshot_Should_Preserve_Array_Object_Item_Enum_Documentation_Fallback()

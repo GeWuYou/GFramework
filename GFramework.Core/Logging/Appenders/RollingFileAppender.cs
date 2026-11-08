@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using GFramework.Core.Abstractions.Logging;
@@ -69,7 +70,8 @@ public sealed class RollingFileAppender : ILogAppender, IDisposable
     /// </summary>
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         lock (_lock)
         {
@@ -84,6 +86,8 @@ public sealed class RollingFileAppender : ILogAppender, IDisposable
     ///     追加日志条目到文件
     /// </summary>
     /// <param name="entry">日志条目</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1513",
+        Justification = "Preserve the established short ObjectName RollingFileAppender; the ThrowIf instance overload reports the qualified runtime type.")]
     public void Append(LogEntry entry)
     {
         if (_disposed)
@@ -182,7 +186,7 @@ public sealed class RollingFileAppender : ILogAppender, IDisposable
         var fileNameWithoutExt = Path.GetFileNameWithoutExtension(_baseFilePath);
         var extension = Path.GetExtension(_baseFilePath);
 
-        var rolledFileName = $"{fileNameWithoutExt}.{index}{extension}";
+        var rolledFileName = string.Create(CultureInfo.InvariantCulture, $"{fileNameWithoutExt}.{index}{extension}");
 
         return string.IsNullOrEmpty(directory)
             ? rolledFileName
@@ -208,7 +212,7 @@ public sealed class RollingFileAppender : ILogAppender, IDisposable
     {
         _writer = new StreamWriter(_baseFilePath, append: true, Encoding.UTF8)
         {
-            AutoFlush = true
+            AutoFlush = true,
         };
 
         // 获取当前文件大小

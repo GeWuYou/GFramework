@@ -11,5 +11,11 @@ internal sealed class Greeter(ILogger<Greeter> logger)
 {
     /// <summary>输出一条问候日志。</summary>
     /// <param name="who">问候对象。</param>
-    public void Greet(string who) => logger.LogInformation("Hello {Who}", who);
+    public void Greet(string who)
+    {
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation("Hello {Who}", who);
+        }
+    }
 }

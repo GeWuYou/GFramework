@@ -7,6 +7,4 @@ namespace GFramework.Core.SourceGenerators.Abstractions.Architectures;
 ///     标记架构模块类型，Source Generator 会根据注册特性生成 <c>Install</c> 方法。
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-public sealed class AutoRegisterModuleAttribute : Attribute
-{
-}
+public sealed class AutoRegisterModuleAttribute : Attribute;

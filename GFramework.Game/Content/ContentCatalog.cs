@@ -32,11 +32,17 @@ public sealed class ContentCatalog
     }
 
     /// <summary>Gets the exact content set and effective load sequence.</summary>
-    public ContentSnapshot Snapshot { get; }
+    public ContentSnapshot Snapshot
+    {
+        get;
+    }
     /// <summary>Gets package declarations for diagnostics and explicit save compatibility decisions.</summary>
-    public IReadOnlyList<ContentPack> Packages { get; }
+    public IReadOnlyList<ContentPack> Packages
+    {
+        get;
+    }
     /// <summary>Gets registered table names in stable order.</summary>
-    public IReadOnlyCollection<string> TableNames => _tables.Keys.OrderBy(static key => key, StringComparer.Ordinal).ToArray();
+    public IReadOnlyCollection<string> TableNames => [.. _tables.Keys.Order(StringComparer.Ordinal)];
 
     /// <summary>Checks whether a game or save reference resolves in this session.</summary>
     /// <param name="reference">A stable table and row identity.</param>
@@ -66,7 +72,7 @@ public sealed class ContentCatalog
     public IReadOnlyList<ContentSource> GetSources(ContentReference reference)
     {
         ArgumentNullException.ThrowIfNull(reference);
-        return _sources.TryGetValue(reference, out var sources) ? sources : Array.Empty<ContentSource>();
+        return _sources.TryGetValue(reference, out var sources) ? sources : [];
     }
 
     /// <summary>Finds the last operation supplying a field; array elements inherit the array's source.</summary>
@@ -80,9 +86,11 @@ public sealed class ContentCatalog
         var current = fieldPath;
         while (true)
         {
-            if (_fieldSources.TryGetValue((reference, current), out var source)) return source;
+            if (_fieldSources.TryGetValue((reference, current), out var source))
+                return source;
             var separator = Math.Max(current.LastIndexOf('.'), current.LastIndexOf('['));
-            if (separator < 0) return null;
+            if (separator < 0)
+                return null;
             current = current[..separator];
         }
     }

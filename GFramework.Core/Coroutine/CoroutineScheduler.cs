@@ -3,6 +3,7 @@
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Coroutine.Instructions;
 using Microsoft.Extensions.Logging;
@@ -27,16 +28,16 @@ public sealed partial class CoroutineScheduler : IDisposable
     private readonly List<CoroutineSlot?> _slots;
     private readonly List<ulong> _generations;
     private readonly Stack<int> _freeSlots = new();
-    private readonly Dictionary<CoroutineHandle, CoroutineSlot> _active = new();
+    private readonly Dictionary<CoroutineHandle, CoroutineSlot> _active = [];
     private readonly LinkedList<CoroutineSlot>[,] _queues = new LinkedList<CoroutineSlot>[3, 5];
     private readonly List<CoroutineHandle> _updateSnapshot;
     private readonly Queue<CoroutineHandle> _prewarm = new();
     private readonly Queue<CoroutineHandle> _terminations = new();
     private readonly ConcurrentQueue<CoroutineHandle> _pendingKills = new();
-    private readonly Dictionary<CoroutineHandle, CoroutineResult> _results = new();
+    private readonly Dictionary<CoroutineHandle, CoroutineResult> _results = [];
     private readonly Queue<CoroutineHandle> _resultOrder = new();
-    private readonly Dictionary<CoroutineHandle, TaskCompletionSource<CoroutineResult>> _resultSources = new();
-    private readonly Dictionary<CoroutineHandle, TaskCompletionSource<CoroutineCompletionStatus>> _statusSources = new();
+    private readonly Dictionary<CoroutineHandle, TaskCompletionSource<CoroutineResult>> _resultSources = [];
+    private readonly Dictionary<CoroutineHandle, TaskCompletionSource<CoroutineCompletionStatus>> _statusSources = [];
     private readonly CoroutineStatistics? _statistics;
     private bool _updating;
     private bool _prewarming;
@@ -63,8 +64,8 @@ public sealed partial class CoroutineScheduler : IDisposable
         _realtimeTimeSource = realtimeTimeSource ?? timeSource;
         _logger = logger ?? NullLogger.Instance;
         ExecutionStage = executionStage;
-        _supportedStages = supportedStages == null ? new HashSet<CoroutineExecutionStage> { executionStage }
-            : new HashSet<CoroutineExecutionStage>(supportedStages);
+        _supportedStages = supportedStages == null ? [executionStage]
+            : [.. supportedStages];
         if (!_supportedStages.Contains(executionStage))
         {
             throw new ArgumentException("The default phase must be supported.", nameof(supportedStages));
@@ -89,17 +90,35 @@ public sealed partial class CoroutineScheduler : IDisposable
     }
 
     /// <summary>Stable owner identity used by host-side handle routing.</summary>
-    public long SchedulerId { get; }
+    public long SchedulerId
+    {
+        get;
+    }
     /// <summary>Whether the runtime is closed to new work and host advancement; retained outcomes remain readable.</summary>
-    public bool IsDisposed { get; private set; }
+    public bool IsDisposed
+    {
+        get; private set;
+    }
     /// <summary>Default initial and parameterless-update phase.</summary>
-    public CoroutineExecutionStage ExecutionStage { get; }
+    public CoroutineExecutionStage ExecutionStage
+    {
+        get;
+    }
     /// <summary>Scaled delta from the most recent host advancement.</summary>
-    public double DeltaTime { get; private set; }
+    public double DeltaTime
+    {
+        get; private set;
+    }
     /// <summary>Unscaled delta from the most recent host advancement.</summary>
-    public double RealtimeDeltaTime { get; private set; }
+    public double RealtimeDeltaTime
+    {
+        get; private set;
+    }
     /// <summary>Independent task container; one root failure never cancels other roots.</summary>
-    public CoroutineScope RootScope { get; }
+    public CoroutineScope RootScope
+    {
+        get;
+    }
     /// <summary>Number of live tasks, including parents joining their children.</summary>
     public int ActiveCoroutineCount => _active.Count;
     /// <summary>Retained slot storage capacity, governed by concurrent peak demand rather than lifetime starts.</summary>
@@ -137,6 +156,8 @@ public sealed partial class CoroutineScheduler : IDisposable
     /// <param name="ignorePause">Whether host pause leaves this task running.</param>
     /// <param name="childFailurePolicy">Failure behavior for the task's owned children.</param>
     /// <returns>A generation-bearing identity, or default for null/already-cancelled input.</returns>
+    [SuppressMessage("Design", "CA1068:CancellationToken parameters must come last",
+        Justification = "Preserve the published positional parameter order; reordering would break source and binary consumers.")]
     public CoroutineHandle Run(IEnumerator<IYieldInstruction>? coroutine, string? tag = null,
         CoroutinePriority priority = CoroutinePriority.Normal, string? group = null,
         CancellationToken cancellationToken = default, CoroutineExecutionStage? stage = null,
@@ -153,6 +174,8 @@ public sealed partial class CoroutineScheduler : IDisposable
     /// <param name="ignorePause">Whether host pause leaves this task running.</param>
     /// <param name="childFailurePolicy">Failure behavior for owned children.</param>
     /// <returns>The new flow's identity, including synchronous failures.</returns>
+    [SuppressMessage("Design", "CA1068:CancellationToken parameters must come last",
+        Justification = "Preserve the published positional parameter order; reordering would break source and binary consumers.")]
     public CoroutineHandle Run(Func<CoroutineContext, IEnumerator<IYieldInstruction>> factory, string? tag = null,
         CoroutinePriority priority = CoroutinePriority.Normal, string? group = null,
         CancellationToken cancellationToken = default, CoroutineExecutionStage? stage = null,
@@ -231,7 +254,7 @@ public sealed partial class CoroutineScheduler : IDisposable
     }
 
     /// <summary>Returns an allocating diagnostic snapshot of all active tasks.</summary>
-    public IReadOnlyList<CoroutineSnapshot> GetActiveSnapshots() => _active.Values.Select(CreateSnapshot).ToArray();
+    public IReadOnlyList<CoroutineSnapshot> GetActiveSnapshots() => [.. _active.Values.Select(CreateSnapshot)];
 
     /// <summary>Reads an exact live generation's current phase, ownership and wait state.</summary>
     public bool TryGetSnapshot(CoroutineHandle handle, out CoroutineSnapshot snapshot)
@@ -246,9 +269,9 @@ public sealed partial class CoroutineScheduler : IDisposable
     }
 
     /// <summary>Sets the task's own pause request; descendants inherit it without losing their independent requests.</summary>
-    public bool Pause(CoroutineHandle handle) => SetPaused(handle, true);
+    public bool Pause(CoroutineHandle handle) => SetPaused(handle, paused: true);
     /// <summary>Clears only the task's own pause request.</summary>
-    public bool Resume(CoroutineHandle handle) => SetPaused(handle, false);
+    public bool Resume(CoroutineHandle handle) => SetPaused(handle, paused: false);
 
     /// <summary>Cancels a task and its owned descendants; executing user code unwinds before disposal.</summary>
     public bool Kill(CoroutineHandle handle)

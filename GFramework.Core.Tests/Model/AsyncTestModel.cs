@@ -15,7 +15,10 @@ public sealed class AsyncTestModel : AbstractModel, IAsyncInitializable
     /// <summary>
     ///     获取模型是否已初始化的标志
     /// </summary>
-    public bool Initialized { get; private set; }
+    public bool Initialized
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     异步初始化方法，模拟异步初始化过程
@@ -23,7 +26,7 @@ public sealed class AsyncTestModel : AbstractModel, IAsyncInitializable
     /// <returns>表示异步操作的Task</returns>
     public async Task InitializeAsync(global::System.Threading.CancellationToken cancellationToken = default)
     {
-        await Task.Delay(10).ConfigureAwait(false);
+        await Task.Delay(10, cancellationToken).ConfigureAwait(false);
         Initialized = true;
     }
 
@@ -31,7 +34,7 @@ public sealed class AsyncTestModel : AbstractModel, IAsyncInitializable
     ///     同步初始化方法，该方法不应该被调用
     /// </summary>
     /// <exception cref="InvalidOperationException">当该方法被调用时抛出异常</exception>
-    public void Init()
+    public static void Init()
     {
         // sync OnInitialize 不应该被调用
         throw new InvalidOperationException("Sync OnInitialize should not be called");

@@ -78,7 +78,7 @@ public class ResultTests
     public void Failure_WithNullException_Should_Throw_ArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => Result.Failure((Exception)null!));
+        Assert.Throws<ArgumentNullException>(() => { _ = Result.Failure((Exception)null!); });
     }
 
     /// <summary>
@@ -88,8 +88,8 @@ public class ResultTests
     public void Failure_WithNullOrEmptyMessage_Should_Throw_ArgumentException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => Result.Failure(string.Empty));
-        Assert.Throws<ArgumentException>(() => Result.Failure(""));
+        Assert.Throws<ArgumentException>(() => { _ = Result.Failure(string.Empty); });
+        Assert.Throws<ArgumentException>(() => { _ = Result.Failure(""); });
     }
 
     /// <summary>
@@ -440,7 +440,7 @@ public class ResultTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(result.Equals(default(Result)), Is.True);
+            Assert.That(result.Equals(default), Is.True);
             Assert.That(result.GetHashCode(), Is.EqualTo(0));
             Assert.That(result.ToString(), Is.EqualTo("Fail(null)"));
         });

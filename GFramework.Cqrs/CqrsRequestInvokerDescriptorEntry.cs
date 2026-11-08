@@ -30,15 +30,24 @@ public sealed record CqrsRequestInvokerDescriptorEntry
     /// <summary>
     ///     获取请求运行时类型。
     /// </summary>
-    public Type RequestType { get; }
+    public Type RequestType
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取响应运行时类型。
     /// </summary>
-    public Type ResponseType { get; }
+    public Type ResponseType
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取对应的 generated request invoker 描述符。
     /// </summary>
-    public CqrsRequestInvokerDescriptor Descriptor { get; }
+    public CqrsRequestInvokerDescriptor Descriptor
+    {
+        get;
+    }
 }

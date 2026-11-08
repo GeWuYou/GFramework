@@ -190,11 +190,11 @@ public class ResourceManagerTests
         for (var i = 0; i < threadCount; i++)
         {
             var index = i;
-            tasks[i] = Task.Run(() =>
+            tasks[i] = Task.Run(async () =>
             {
                 try
                 {
-                    resources[index] = _resourceManager.Load<TestResource>("test/resource1.txt");
+                    resources[index] = await _resourceManager.LoadAsync<TestResource>("test/resource1.txt").ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -237,13 +237,13 @@ public class ResourceManagerTests
         var tasks = new Task[threadCount];
         var exceptions = new List<Exception>();
 
-        tasks[0] = Task.Run(() =>
+        tasks[0] = Task.Run(async () =>
         {
             try
             {
                 for (var i = 0; i < 100; i++)
                 {
-                    _resourceManager.Load<TestResource>("test/resource1.txt");
+                    await _resourceManager.LoadAsync<TestResource>("test/resource1.txt").ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -255,13 +255,13 @@ public class ResourceManagerTests
             }
         });
 
-        tasks[1] = Task.Run(() =>
+        tasks[1] = Task.Run(async () =>
         {
             try
             {
                 for (var i = 0; i < 100; i++)
                 {
-                    _resourceManager.Load<TestResource>("test/resource2.txt");
+                    await _resourceManager.LoadAsync<TestResource>("test/resource2.txt").ConfigureAwait(false);
                 }
             }
             catch (Exception ex)

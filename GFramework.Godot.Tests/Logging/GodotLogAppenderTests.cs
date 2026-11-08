@@ -24,19 +24,19 @@ public sealed class GodotLogAppenderTests
         var appender = new GodotLogAppender(new GodotLoggerOptions
         {
             Mode = GodotLoggerMode.Release,
-            ReleaseOutputTemplate = "{timestamp:yyyyMMdd}|{level:u3}|{category}|{message}{properties}"
+            ReleaseOutputTemplate = "{timestamp:yyyyMMdd}|{level:u3}|{category}|{message}{properties}",
         });
         var entry = new LogEntry(
             new DateTime(2026, 5, 3, 4, 5, 6, DateTimeKind.Utc),
             LogLevel.Information,
             "Game.Services.Inventory",
             "Ready",
-            null,
+Exception: null,
             new Dictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["   "] = "ignored",
                 ["Scene"] = "Boot",
-                ["Score"] = 12.5m
+                ["Score"] = 12.5m,
             });
 
         var result = appender.Render(entry);
@@ -58,7 +58,7 @@ public sealed class GodotLogAppenderTests
         var options = new GodotLoggerOptions
         {
             Mode = GodotLoggerMode.Release,
-            ReleaseOutputTemplate = "[release] {message}"
+            ReleaseOutputTemplate = "[release] {message}",
         };
         var appender = new GodotLogAppender(() => options);
         var entry = new LogEntry(
@@ -66,15 +66,15 @@ public sealed class GodotLogAppenderTests
             LogLevel.Warning,
             "Game",
             "Reloaded",
-            null,
-            null);
+Exception: null,
+Properties: null);
 
         var releaseResult = appender.Render(entry);
 
         options = new GodotLoggerOptions
         {
             Mode = GodotLoggerMode.Debug,
-            DebugOutputTemplate = "[debug] {message}"
+            DebugOutputTemplate = "[debug] {message}",
         };
 
         var debugResult = appender.Render(entry);

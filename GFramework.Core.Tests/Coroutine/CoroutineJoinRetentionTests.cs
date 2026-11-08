@@ -23,7 +23,10 @@ public sealed class CoroutineJoinRetentionTests
         CoroutineHandle firstCompletedSibling = default;
         scheduler.OnCoroutineFinished += (_, args) =>
         {
-            if (!firstCompletedSibling.IsValid) { firstCompletedSibling = args.Handle; }
+            if (!firstCompletedSibling.IsValid)
+            {
+                firstCompletedSibling = args.Handle;
+            }
         };
         var parent = scheduler.Run(context => context.WhenAll(CreateChildren(() => release)));
         Assert.That(scheduler.TryGetResult(firstCompletedSibling, out _), Is.False,
@@ -71,7 +74,10 @@ public sealed class CoroutineJoinRetentionTests
     {
         var scheduler = Create();
         var failureReference = StartAndCancelOperation(scheduler, out var retainedIterator);
-        for (var index = 0; index < FastChildCount + 2; index++) { scheduler.Run(Complete()); }
+        for (var index = 0; index < FastChildCount + 2; index++)
+        {
+            scheduler.Run(Complete());
+        }
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
@@ -90,14 +96,17 @@ public sealed class CoroutineJoinRetentionTests
         var child = new IntrinsicallyCancelledCoroutine();
         scheduler.OnCoroutineFinished += (_, _) =>
         {
-            if (producedCallbacks) { return; }
+            if (producedCallbacks)
+            {
+                return;
+            }
             producedCallbacks = true;
             for (var index = 0; index < FastChildCount; index++)
             {
-                scheduler.Run(new IntrinsicallyCancelledCoroutine());
+                scheduler.Run(new IntrinsicallyCancelledCoroutine(), cancellationToken: global::System.Threading.CancellationToken.None);
             }
         };
-        var parent = scheduler.Run(context => context.WhenAll(new[] { child }));
+        var parent = scheduler.Run(context => context.WhenAll([child]), cancellationToken: global::System.Threading.CancellationToken.None);
         AdvanceUntilCompleted(scheduler, parent);
         Assert.That(Result(scheduler, parent).Status, Is.EqualTo(CoroutineCompletionStatus.Cancelled));
         Assert.That(child.MoveCount, Is.Zero);
@@ -108,11 +117,17 @@ public sealed class CoroutineJoinRetentionTests
     private sealed class IntrinsicallyCancelledCoroutine : IEnumerator<IYieldInstruction>, ICoroutineCancellationSource
     {
         /// <inheritdoc />
-        public CancellationToken CancellationToken => new(true);
+        public CancellationToken CancellationToken => new(canceled: true);
         /// <summary>How often user code was advanced; pre-cancelled lifetimes must remain unstarted.</summary>
-        public int MoveCount { get; private set; }
+        public int MoveCount
+        {
+            get; private set;
+        }
         /// <summary>How often transferred resources were released.</summary>
-        public int DisposeCount { get; private set; }
+        public int DisposeCount
+        {
+            get; private set;
+        }
         /// <inheritdoc />
         public IYieldInstruction Current => throw new InvalidOperationException("An unstarted iterator has no current item.");
         /// <inheritdoc />
@@ -138,7 +153,7 @@ public sealed class CoroutineJoinRetentionTests
         IEnumerator<IYieldInstruction>? operation = null;
         var parent = scheduler.Run(context =>
         {
-            operation = context.WhenAll(new[] { WaitForGate(() => false), Complete(failure) });
+            operation = context.WhenAll([WaitForGate(() => false), Complete(failure)]);
             return operation;
         }, childFailurePolicy: CoroutineFailurePolicy.Supervisor);
         scheduler.Kill(parent);
@@ -151,7 +166,10 @@ public sealed class CoroutineJoinRetentionTests
         var children = new IEnumerator<IYieldInstruction>[FastChildCount + 2];
         children[0] = WaitForGate(released);
         children[1] = Complete(failure);
-        for (var index = 2; index < children.Length; index++) { children[index] = Complete(); }
+        for (var index = 2; index < children.Length; index++)
+        {
+            children[index] = Complete();
+        }
         return children;
     }
 
@@ -171,10 +189,16 @@ public sealed class CoroutineJoinRetentionTests
     }
 
     private static CoroutineScheduler Create() => new(new FakeTimeSource());
-    private static IEnumerator<IYieldInstruction> WaitForGate(Func<bool> released) { yield return new WaitUntil(released); }
+    private static IEnumerator<IYieldInstruction> WaitForGate(Func<bool> released)
+    {
+        yield return new WaitUntil(released);
+    }
     private static IEnumerator<IYieldInstruction> Complete(Exception? failure = null)
     {
-        if (failure != null) { throw failure; }
+        if (failure != null)
+        {
+            throw failure;
+        }
         yield break;
     }
 }

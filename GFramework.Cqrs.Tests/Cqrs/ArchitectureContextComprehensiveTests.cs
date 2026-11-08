@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Architectures;
 using GFramework.Core.Environment;
@@ -120,7 +121,7 @@ public sealed class ArchitectureContextComprehensiveTests
             results.Add(item);
         }
 
-        Assert.That(results, Is.EqualTo(new[] { 1, 2, 3, 4, 5 }));
+        Assert.That(results, Is.EqualTo([1, 2, 3, 4, 5]));
     }
 
     /// <summary>
@@ -227,7 +228,7 @@ public sealed class ArchitectureContextComprehensiveTests
         // 流应该在100ms后被取消（TaskCanceledException 继承自 OperationCanceledException）
         await Assert.CatchAsync<OperationCanceledException>(async () =>
         {
-            await foreach (var item in stream.ConfigureAwait(false))
+            await foreach (var item in stream.ConfigureAwait(false).WithCancellation(cts.Token))
             {
                 results.Add(item);
             }
@@ -257,7 +258,7 @@ public sealed class ArchitectureContextComprehensiveTests
 
         // 验证所有结果都正确返回
         Assert.That(results.Length, Is.EqualTo(requestCount));
-        Assert.That(results.OrderBy(x => x), Is.EqualTo(Enumerable.Range(0, requestCount)));
+        Assert.That(results.Order(), Is.EqualTo(Enumerable.Range(0, requestCount)));
     }
 
     /// <summary>
@@ -302,7 +303,7 @@ public sealed class ArchitectureContextComprehensiveTests
         {
             new TestOrderedNotification { Order = 1, Message = "First" },
             new TestOrderedNotification { Order = 2, Message = "Second" },
-            new TestOrderedNotification { Order = 3, Message = "Third" }
+            new TestOrderedNotification { Order = 3, Message = "Third" },
         };
 
         foreach (var notification in notifications)
@@ -327,8 +328,8 @@ public sealed class ArchitectureContextComprehensiveTests
     {
         var filterRequest = new TestFilterStreamRequest
         {
-            Values = Enumerable.Range(1, 10).ToArray(),
-            FilterEven = true
+            Values = [.. Enumerable.Range(1, 10)],
+            FilterEven = true,
         };
 
         var stream = _context!.CreateStream(filterRequest);
@@ -340,8 +341,8 @@ public sealed class ArchitectureContextComprehensiveTests
         }
 
         // 验证只返回偶数
-        Assert.That(results.All(x => x % 2 == 0), Is.True);
-        Assert.That(results, Is.EqualTo(new[] { 2, 4, 6, 8, 10 }));
+        Assert.That(results.TrueForAll(x => x % 2 == 0), Is.True);
+        Assert.That(results, Is.EqualTo([2, 4, 6, 8, 10]));
     }
 
     /// <summary>
@@ -377,16 +378,20 @@ public sealed class ArchitectureContextComprehensiveTests
 
         // 验证性能在合理范围内（平均每个请求不超过10ms）
         Assert.That(avgTime, Is.LessThan(10.0));
-        Console.WriteLine($"Average time per request: {avgTime:F2}ms");
+        Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"Average time per request: {avgTime:F2}ms"));
     }
 
     #region ArchitectureContext CQRS Test Helpers
 
     private sealed record TestLongRunningRequest : IRequest<string>
     {
-        public int DelayMs { get; init; }
+        public int DelayMs
+        {
+            get; init;
+        }
     }
 
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class TestLongRunningRequestHandler : IRequestHandler<TestLongRunningRequest, string>
     {
         public async ValueTask<string> Handle(TestLongRunningRequest request, CancellationToken cancellationToken)
@@ -399,9 +404,13 @@ public sealed class ArchitectureContextComprehensiveTests
 
     private sealed record TestLongStreamRequest : IStreamRequest<int>
     {
-        public int ItemCount { get; init; }
+        public int ItemCount
+        {
+            get; init;
+        }
     }
 
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class TestLongStreamRequestHandler : IStreamRequestHandler<TestLongStreamRequest, int>
     {
         public async IAsyncEnumerable<int> Handle(
@@ -419,6 +428,7 @@ public sealed class ArchitectureContextComprehensiveTests
 
     private sealed record TestFaultyRequest : IRequest<string>;
 
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class TestFaultyRequestHandler : IRequestHandler<TestFaultyRequest, string>
     {
         public ValueTask<string> Handle(TestFaultyRequest request, CancellationToken cancellationToken)
@@ -429,15 +439,22 @@ public sealed class ArchitectureContextComprehensiveTests
 
     private sealed class SharedData
     {
-        public int Value { get; set; }
+        public int Value
+        {
+            get; set;
+        }
     }
 
     private sealed record TestModifyDataRequest : IRequest<Unit>
     {
         public SharedData Data { get; init; } = null!;
-        public int Value { get; init; }
+        public int Value
+        {
+            get; init;
+        }
     }
 
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class TestModifyDataRequestHandler : IRequestHandler<TestModifyDataRequest, Unit>
     {
         public ValueTask<Unit> Handle(TestModifyDataRequest request, CancellationToken cancellationToken)
@@ -450,9 +467,10 @@ public sealed class ArchitectureContextComprehensiveTests
     private sealed record TestCachingRequest : IRequest<string>
     {
         public string Key { get; init; } = string.Empty;
-        public IDictionary<string, string> Cache { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
+        public Dictionary<string, string> Cache { get; init; } = new(StringComparer.Ordinal);
     }
 
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class TestCachingRequestHandler : IRequestHandler<TestCachingRequest, string>
     {
         public ValueTask<string> Handle(TestCachingRequest request, CancellationToken cancellationToken)
@@ -470,13 +488,16 @@ public sealed class ArchitectureContextComprehensiveTests
 
     private sealed record TestOrderedNotification : INotification
     {
-        public int Order { get; init; }
+        public int Order
+        {
+            get; init;
+        }
         public string Message { get; init; } = string.Empty;
     }
 
     private sealed class TestOrderedNotificationHandler : INotificationHandler<TestOrderedNotification>
     {
-        public static ICollection<string> ReceivedMessages { get; set; } = new List<string>();
+        public static List<string> ReceivedMessages { get; set; } = [];
 
         public ValueTask Handle(TestOrderedNotification notification, CancellationToken cancellationToken)
         {
@@ -488,7 +509,10 @@ public sealed class ArchitectureContextComprehensiveTests
     // 额外的通知处理器用于验证多处理器通知分发场景。
     private sealed class TestNotificationHandler2 : INotificationHandler<TestNotification>
     {
-        public static string? LastReceivedMessage { get; set; }
+        public static string? LastReceivedMessage
+        {
+            get; set;
+        }
 
         public ValueTask Handle(TestNotification notification, CancellationToken cancellationToken)
         {
@@ -499,7 +523,10 @@ public sealed class ArchitectureContextComprehensiveTests
 
     private sealed class TestNotificationHandler3 : INotificationHandler<TestNotification>
     {
-        public static string? LastReceivedMessage { get; set; }
+        public static string? LastReceivedMessage
+        {
+            get; set;
+        }
 
         public ValueTask Handle(TestNotification notification, CancellationToken cancellationToken)
         {
@@ -511,9 +538,13 @@ public sealed class ArchitectureContextComprehensiveTests
     private sealed record TestFilterStreamRequest : IStreamRequest<int>
     {
         public int[] Values { get; init; } = [];
-        public bool FilterEven { get; init; }
+        public bool FilterEven
+        {
+            get; init;
+        }
     }
 
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class TestFilterStreamRequestHandler : IStreamRequestHandler<TestFilterStreamRequest, int>
     {
         public async IAsyncEnumerable<int> Handle(
@@ -538,6 +569,7 @@ public sealed class ArchitectureContextComprehensiveTests
         public string Name { get; init; } = string.Empty;
     }
 
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class TestValidatedRequestHandler : IRequestHandler<TestValidatedRequest, Unit>
     {
         public ValueTask<Unit> Handle(TestValidatedRequest request, CancellationToken cancellationToken)
@@ -557,18 +589,30 @@ public sealed class ArchitectureContextComprehensiveTests
 
     private sealed record TestRequest : IRequest<int>
     {
-        public int Value { get; init; }
+        public int Value
+        {
+            get; init;
+        }
     }
 
     private sealed record TestCommand : IRequest<Unit>
     {
-        public bool ShouldExecute { get; init; }
-        public bool Executed { get; set; }
+        public bool ShouldExecute
+        {
+            get; init;
+        }
+        public bool Executed
+        {
+            get; set;
+        }
     }
 
     private sealed record TestCommandWithResult : IRequest<int>
     {
-        public int ResultValue { get; init; }
+        public int ResultValue
+        {
+            get; init;
+        }
     }
 
     private sealed record TestQuery : IRequest<string>
@@ -586,6 +630,7 @@ public sealed class ArchitectureContextComprehensiveTests
         public int[] Values { get; init; } = [];
     }
 
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class TestRequestHandler : IRequestHandler<TestRequest, int>
     {
         public ValueTask<int> Handle(TestRequest request, CancellationToken cancellationToken)
@@ -594,6 +639,7 @@ public sealed class ArchitectureContextComprehensiveTests
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class TestCommandHandler : IRequestHandler<TestCommand, Unit>
     {
         public ValueTask<Unit> Handle(TestCommand request, CancellationToken cancellationToken)
@@ -607,6 +653,7 @@ public sealed class ArchitectureContextComprehensiveTests
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class TestCommandWithResultHandler : IRequestHandler<TestCommandWithResult, int>
     {
         public ValueTask<int> Handle(TestCommandWithResult request, CancellationToken cancellationToken)
@@ -615,6 +662,7 @@ public sealed class ArchitectureContextComprehensiveTests
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class TestQueryHandler : IRequestHandler<TestQuery, string>
     {
         public ValueTask<string> Handle(TestQuery request, CancellationToken cancellationToken)
@@ -625,7 +673,10 @@ public sealed class ArchitectureContextComprehensiveTests
 
     private sealed class TestNotificationHandler : INotificationHandler<TestNotification>
     {
-        public static string? LastReceivedMessage { get; set; }
+        public static string? LastReceivedMessage
+        {
+            get; set;
+        }
 
         public ValueTask Handle(TestNotification notification, CancellationToken cancellationToken)
         {
@@ -634,6 +685,7 @@ public sealed class ArchitectureContextComprehensiveTests
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class TestStreamRequestHandler : IStreamRequestHandler<TestStreamRequest, int>
     {
         public async IAsyncEnumerable<int> Handle(

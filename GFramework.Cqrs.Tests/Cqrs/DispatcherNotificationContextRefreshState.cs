@@ -25,7 +25,7 @@ internal static class DispatcherNotificationContextRefreshState
         {
             lock (SyncRoot)
             {
-                return _handlerSnapshots.ToArray();
+                return [.. _handlerSnapshots];
             }
         }
     }

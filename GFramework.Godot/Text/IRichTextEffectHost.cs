@@ -13,7 +13,10 @@ internal interface IRichTextEffectHost
     /// <summary>
     ///     获取或设置宿主是否启用 BBCode 解析。
     /// </summary>
-    bool BbcodeEnabled { get; set; }
+    bool BbcodeEnabled
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     使用给定的配置和动画开关重建宿主上的自定义富文本效果。

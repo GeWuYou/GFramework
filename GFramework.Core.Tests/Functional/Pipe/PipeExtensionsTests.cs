@@ -75,8 +75,8 @@ public class PipeExtensionsTests
 
         // Act
         var result = value
-            .Tap(x => log.Add($"Step 1: {x}"))
-            .Tap(x => log.Add($"Step 2: {x}"));
+            .Tap(x => log.Add(string.Create(CultureInfo.InvariantCulture, $"Step 1: {x}")))
+            .Tap(x => log.Add(string.Create(CultureInfo.InvariantCulture, $"Step 2: {x}")));
 
         // Assert
         Assert.That(result, Is.EqualTo(10));
@@ -176,7 +176,7 @@ public class PipeExtensionsTests
         {
             Original = s,
             Upper = s.ToUpperInvariant(),
-            Length = s.Length
+            s.Length,
         });
 
         // Assert
@@ -197,8 +197,9 @@ public class PipeExtensionsTests
         // Act
         var result = value.PipeIf(
             x => x > 0,
-            x => $"Positive: {x}",
-            x => $"Non-positive: {x}"
+            x => string.Create(CultureInfo.InvariantCulture, $"Positive: {x}"),
+            x => string.Create(CultureInfo.InvariantCulture, $"Non-positive: {x}"
+)
         );
 
         // Assert
@@ -217,8 +218,9 @@ public class PipeExtensionsTests
         // Act
         var result = value.PipeIf(
             x => x > 0,
-            x => $"Positive: {x}",
-            x => $"Non-positive: {x}"
+            x => string.Create(CultureInfo.InvariantCulture, $"Positive: {x}"),
+            x => string.Create(CultureInfo.InvariantCulture, $"Non-positive: {x}"
+)
         );
 
         // Assert
@@ -279,7 +281,7 @@ public class PipeExtensionsTests
         // Act
         var result = value
             .PipeIf(x => x > 5, x => x * 2, x => x + 10)
-            .PipeIf(x => x > 15, x => $"Large: {x}", x => $"Small: {x}");
+            .PipeIf(x => x > 15, x => string.Create(CultureInfo.InvariantCulture, $"Large: {x}"), x => string.Create(CultureInfo.InvariantCulture, $"Small: {x}"));
 
         // Assert
         Assert.That(result, Is.EqualTo("Large: 20"));

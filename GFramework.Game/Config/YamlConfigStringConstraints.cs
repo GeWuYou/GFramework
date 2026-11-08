@@ -43,25 +43,40 @@ internal sealed class YamlConfigStringConstraints
     /// <summary>
     ///     获取最小长度约束。
     /// </summary>
-    public int? MinLength { get; }
+    public int? MinLength
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取最大长度约束。
     /// </summary>
-    public int? MaxLength { get; }
+    public int? MaxLength
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取正则模式约束原文。
     /// </summary>
-    public string? Pattern { get; }
+    public string? Pattern
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取已编译的正则表达式。
     /// </summary>
-    public Regex? PatternRegex { get; }
+    public Regex? PatternRegex
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取字符串 format 约束。
     /// </summary>
-    public YamlConfigStringFormatConstraint? FormatConstraint { get; }
+    public YamlConfigStringFormatConstraint? FormatConstraint
+    {
+        get;
+    }
 }

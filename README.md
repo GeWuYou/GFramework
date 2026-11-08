@@ -72,7 +72,7 @@
 ## 包选择
 
 - `GeWuYou.GFramework`
-  当前直接聚合 `GFramework.Core` 与 `GFramework.Game`；不自动包含 `Cqrs`、`Godot` 或任何 Source Generator。
+  当前直接聚合 `GFramework.Core`、`GFramework.Game`、`GFramework.Cqrs` 与 `GFramework.Cqrs.Abstractions`；不自动包含 `Godot` 或任何 Source Generator。
 - `GeWuYou.GFramework.Core`
   架构采用的起步包，不依赖 CQRS。需要 request / notification / stream 消息模型的项目按需追加 `Cqrs`、`Game`、`Godot` 和 Source Generators；消息契约项目可直接引用 `Cqrs.Abstractions`。
 - `GeWuYou.GFramework.*.Abstractions`

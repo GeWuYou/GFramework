@@ -12,14 +12,14 @@ namespace GFramework.Godot.Logging;
 /// </summary>
 public sealed class GodotLoggerOptions
 {
-    private static readonly IReadOnlyDictionary<LogLevel, string> DefaultColors = new Dictionary<LogLevel, string>
+    private static readonly Dictionary<LogLevel, string> DefaultColors = new()
     {
         [LogLevel.Trace] = "gray",
         [LogLevel.Debug] = "cyan",
         [LogLevel.Information] = "white",
         [LogLevel.Warning] = "orange",
         [LogLevel.Error] = "red",
-        [LogLevel.Critical] = "deep_pink"
+        [LogLevel.Critical] = "deep_pink",
     };
 
     /// <summary>
@@ -41,7 +41,10 @@ public sealed class GodotLoggerOptions
     ///     Gets or sets the BBCode-capable template used by <see cref="GodotLoggerMode.Debug"/>.
     /// </summary>
 #pragma warning disable MA0016 // Keep configuration mutable for object initializer and serializer scenarios.
-    public string DebugOutputTemplate { get; set; } =
+    public string DebugOutputTemplate
+    {
+        get; set;
+    } =
         "[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] [color={color}][{level:u3}][/color] [{category:l16}] {message}{properties}";
 #pragma warning restore MA0016
 
@@ -49,7 +52,10 @@ public sealed class GodotLoggerOptions
     ///     Gets or sets the plain text template used by <see cref="GodotLoggerMode.Release"/>.
     /// </summary>
 #pragma warning disable MA0016 // Keep configuration mutable for object initializer and serializer scenarios.
-    public string ReleaseOutputTemplate { get; set; } =
+    public string ReleaseOutputTemplate
+    {
+        get; set;
+    } =
         "[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{level:u3}] [{category:l16}] {message}{properties}";
 #pragma warning restore MA0016
 
@@ -74,7 +80,7 @@ public sealed class GodotLoggerOptions
             ReleaseMinLevel = minLevel,
             DebugOutputTemplate = "[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] {level:padded} [{category}] {message}{properties}",
             ReleaseOutputTemplate = "[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] {level:padded} [{category}] {message}{properties}",
-            Colors = new Dictionary<LogLevel, string>(DefaultColors)
+            Colors = new Dictionary<LogLevel, string>(DefaultColors),
         };
     }
 
@@ -127,7 +133,7 @@ public sealed class GodotLoggerOptions
             ReleaseMinLevel = Max(ReleaseMinLevel, minLevel),
             DebugOutputTemplate = DebugOutputTemplate,
             ReleaseOutputTemplate = ReleaseOutputTemplate,
-            Colors = CopyColorsWithDefaults(Colors)
+            Colors = CopyColorsWithDefaults(Colors),
         };
     }
 
@@ -155,7 +161,7 @@ public sealed class GodotLoggerOptions
             ReleaseOutputTemplate = string.IsNullOrWhiteSpace(ReleaseOutputTemplate)
                 ? defaults.ReleaseOutputTemplate
                 : ReleaseOutputTemplate,
-            Colors = CopyColorsWithDefaults(Colors)
+            Colors = CopyColorsWithDefaults(Colors),
         };
     }
 

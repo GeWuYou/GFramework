@@ -1340,9 +1340,9 @@ public class ContextGetGeneratorTests
         {
             TestState =
             {
-                Sources = { source }
+                Sources = { source },
             },
-            DisabledDiagnostics = { "GF_Common_Trace_001" }
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
         };
     }
 
@@ -1355,7 +1355,7 @@ public class ContextGetGeneratorTests
     {
         return content
             .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace("\r", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
             .Replace("\n", Environment.NewLine, StringComparison.Ordinal);
     }
 }

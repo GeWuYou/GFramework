@@ -19,7 +19,10 @@ public class TestContextAware : ContextAwareBase
     /// <summary>
     ///     获取一个值，指示上下文就绪回调是否已经触发。
     /// </summary>
-    public bool OnContextReadyCalled { get; private set; }
+    public bool OnContextReadyCalled
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     在上下文完成绑定后记录回调已被触发，供断言使用。

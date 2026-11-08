@@ -8,18 +8,13 @@ namespace GFramework.Core.Architectures;
 /// <summary>
 /// 作用域上下文提供者，用于多架构实例场景
 /// </summary>
-public sealed class ScopedContextProvider : IArchitectureContextProvider
+/// <remarks>
+/// 初始化作用域上下文提供者
+/// </remarks>
+/// <param name="context">要绑定的架构上下文实例</param>
+public sealed class ScopedContextProvider(IArchitectureContext context) : IArchitectureContextProvider
 {
-    private readonly IArchitectureContext _context;
-
-    /// <summary>
-    /// 初始化作用域上下文提供者
-    /// </summary>
-    /// <param name="context">要绑定的架构上下文实例</param>
-    public ScopedContextProvider(IArchitectureContext context)
-    {
-        _context = context;
-    }
+    private readonly IArchitectureContext _context = context;
 
     /// <summary>
     /// 获取当前的架构上下文

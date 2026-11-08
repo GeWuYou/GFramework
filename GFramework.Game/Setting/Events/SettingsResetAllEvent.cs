@@ -14,7 +14,7 @@ public class SettingsResetAllEvent(IEnumerable<ISettingsSection> newSettings) : 
     /// <summary>
     ///     获取重置后的所有设置
     /// </summary>
-    public IReadOnlyCollection<ISettingsSection> NewSettings { get; } = newSettings.ToList();
+    public IReadOnlyCollection<ISettingsSection> NewSettings { get; } = [.. newSettings];
 
     /// <summary>
     ///     获取设置类型，固定返回 ISettingsSection

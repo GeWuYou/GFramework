@@ -23,14 +23,14 @@ public partial class DodgeApp
         {
             CheckLocalizationContinuation();
             GD.Print("DODGE_LOCALIZATION_RESULT PASS continue");
-            FinishSmoke(true);
+            FinishSmoke(passed: true);
             return;
         }
         await CheckLocalizedSettingsAsync().ConfigureAwait(true);
         await CheckLocalizedDialogsAsync().ConfigureAwait(true);
         GD.Print("DODGE_LOCALIZATION_NEXT " + _smokeId);
         GD.Print("DODGE_LOCALIZATION_RESULT PASS seed");
-        FinishSmoke(true);
+        FinishSmoke(passed: true);
     }
 
     /// <summary>Checks the actual native cache coordinates rather than just the declared font dictionary.</summary>
@@ -106,13 +106,13 @@ public partial class DodgeApp
         await confirm.ConfigureAwait(true);
 
         var recover = _ui.ShowDialogAsync(DodgeRoutes.Recover, () => Text.Get("recovery_question") + "\n\n" +
-            string.Join("\n", Enumerable.Repeat(Text.Get("issue_missing_content", ("id", "moon:crater"), ("table", "arenas")), 20)),
+            string.Join('\n', Enumerable.Repeat(Text.Get("issue_missing_content", ("id", "moon:crater"), ("table", "arenas")), 20)),
             _lifetime.Token);
         await UntilAsync(() => HasView("recover")).ConfigureAwait(true);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var scroll = (ScrollContainer)FindNative("RecoveryDetails", "ScrollContainer");
         scroll.ScrollVertical = 120;
-        handles = _ui.Snapshot.Views.Select(static view => view.Handle).ToArray();
+        handles = [.. _ui.Snapshot.Views.Select(static view => view.Handle)];
         await SetLanguageAsync("zh-CN").ConfigureAwait(true);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         Require(_ui.Snapshot.Views.Select(static view => view.Handle).SequenceEqual(handles) && scroll.ScrollVertical > 0,

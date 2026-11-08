@@ -14,7 +14,7 @@ public class LocalizationTableTests
         // Arrange
         var data = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["test.key"] = "Test Value"
+            ["test.key"] = "Test Value",
         };
         var table = new LocalizationTable("test", "eng", data);
 
@@ -31,7 +31,7 @@ public class LocalizationTableTests
         // Arrange
         var fallbackData = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["test.key"] = "Fallback Value"
+            ["test.key"] = "Fallback Value",
         };
         var fallbackTable = new LocalizationTable("test", "eng", fallbackData);
 
@@ -51,7 +51,7 @@ public class LocalizationTableTests
         // Arrange
         var data = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["test.key"] = "Test Value"
+            ["test.key"] = "Test Value",
         };
         var table = new LocalizationTable("test", "eng", data);
 
@@ -68,13 +68,13 @@ public class LocalizationTableTests
         // Arrange
         var data = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["test.key"] = "Original Value"
+            ["test.key"] = "Original Value",
         };
         var table = new LocalizationTable("test", "eng", data);
 
         var overrides = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["test.key"] = "Override Value"
+            ["test.key"] = "Override Value",
         };
 
         // Act

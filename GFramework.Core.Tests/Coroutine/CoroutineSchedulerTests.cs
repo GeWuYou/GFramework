@@ -52,7 +52,7 @@ public class CoroutineSchedulerTests
     /// <summary>
     ///     测试用的简单事件类
     /// </summary>
-    private class TestEvent
+    private sealed class TestEvent
     {
         public string Data { get; set; } = string.Empty;
     }
@@ -116,7 +116,7 @@ public class CoroutineSchedulerTests
     public void Update_Should_Advance_Time_And_Update_Coroutines()
     {
         var coroutine = CreateSimpleCoroutine();
-        var handle = _scheduler.Run(coroutine);
+        _scheduler.Run(coroutine);
 
         _scheduler.Update();
 
@@ -398,9 +398,11 @@ public class CoroutineSchedulerTests
     public void Scheduler_Should_Expand_Capacity_When_Slots_Full()
     {
         var coroutines = new List<IEnumerator<IYieldInstruction>>();
-        for (var i = 0; i < 10; i++) coroutines.Add(CreateYieldingCoroutine(new Delay(1.0)));
+        for (var i = 0; i < 10; i++)
+            coroutines.Add(CreateYieldingCoroutine(new Delay(1.0)));
 
-        foreach (var coroutine in coroutines) _scheduler.Run(coroutine);
+        foreach (var coroutine in coroutines)
+            _scheduler.Run(coroutine);
 
         Assert.That(_scheduler.ActiveCoroutineCount, Is.EqualTo(10));
     }
@@ -533,7 +535,7 @@ public class CoroutineSchedulerTests
     /// <summary>
     ///     创建简单的立即完成协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateSimpleCoroutine()
+    private static IEnumerator<IYieldInstruction> CreateSimpleCoroutine()
     {
         yield break;
     }
@@ -541,7 +543,7 @@ public class CoroutineSchedulerTests
     /// <summary>
     ///     创建带等待指令的协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateYieldingCoroutine(IYieldInstruction yieldInstruction)
+    private static IEnumerator<IYieldInstruction> CreateYieldingCoroutine(IYieldInstruction yieldInstruction)
     {
         yield return yieldInstruction;
     }
@@ -549,7 +551,7 @@ public class CoroutineSchedulerTests
     /// <summary>
     ///     创建带等待指令和回调的协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateYieldingCoroutine(IYieldInstruction yieldInstruction,
+    private static IEnumerator<IYieldInstruction> CreateYieldingCoroutine(IYieldInstruction yieldInstruction,
         Action? onComplete = null)
     {
         yield return yieldInstruction;
@@ -559,7 +561,7 @@ public class CoroutineSchedulerTests
     /// <summary>
     ///     创建立即完成并执行回调的协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateImmediateCoroutine(Action? onComplete = null)
+    private static IEnumerator<IYieldInstruction> CreateImmediateCoroutine(Action? onComplete = null)
     {
         onComplete?.Invoke();
         yield return new WaitUntil(() => true);
@@ -568,7 +570,7 @@ public class CoroutineSchedulerTests
     /// <summary>
     ///     创建计数协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateCountingCoroutine(Action? onExecute = null)
+    private static IEnumerator<IYieldInstruction> CreateCountingCoroutine(Action? onExecute = null)
     {
         yield return new WaitOneFrame();
         onExecute?.Invoke();
@@ -579,7 +581,7 @@ public class CoroutineSchedulerTests
     /// <summary>
     ///     创建延迟协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateDelayedCoroutine(Action callback, double delay)
+    private static IEnumerator<IYieldInstruction> CreateDelayedCoroutine(Action callback, double delay)
     {
         yield return new Delay(delay);
         callback();
@@ -588,7 +590,7 @@ public class CoroutineSchedulerTests
     /// <summary>
     ///     创建等待另一个协程的协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateWaitForCoroutine(IEnumerator<IYieldInstruction> targetCoroutine)
+    private static IEnumerator<IYieldInstruction> CreateWaitForCoroutine(IEnumerator<IYieldInstruction> targetCoroutine)
     {
         yield return new WaitForCoroutine(targetCoroutine);
     }
@@ -596,7 +598,7 @@ public class CoroutineSchedulerTests
     /// <summary>
     ///     创建等待事件的协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateWaitForEventCoroutine<TEvent>(IEventBus eventBus,
+    private static IEnumerator<IYieldInstruction> CreateWaitForEventCoroutine<TEvent>(IEventBus eventBus,
         Action<TEvent>? callback = null)
     {
         var waitForEvent = new WaitForEvent<TEvent>(eventBus);
@@ -607,7 +609,7 @@ public class CoroutineSchedulerTests
     /// <summary>
     ///     创建抛出异常的协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateExceptionCoroutine()
+    private static IEnumerator<IYieldInstruction> CreateExceptionCoroutine()
     {
         yield return new WaitOneFrame();
         throw new InvalidOperationException("Test exception");

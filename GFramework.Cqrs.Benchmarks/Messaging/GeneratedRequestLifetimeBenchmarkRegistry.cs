@@ -39,7 +39,7 @@ public sealed class GeneratedRequestLifetimeBenchmarkRegistry :
         new GFramework.Cqrs.CqrsRequestInvokerDescriptorEntry(
             typeof(RequestLifetimeBenchmarks.BenchmarkRequest),
             typeof(RequestLifetimeBenchmarks.BenchmarkResponse),
-            Descriptor)
+            Descriptor),
     ];
 
     /// <summary>

@@ -12,9 +12,13 @@ public sealed class ContentLoadException : Exception
     public ContentLoadException(ContentLoadDiagnostic diagnostic, Exception? innerException = null)
         : base(diagnostic?.Detail, innerException)
     {
-        if (diagnostic is null) throw new ArgumentNullException(nameof(diagnostic));
+        if (diagnostic is null)
+            throw new ArgumentNullException(nameof(diagnostic));
         Diagnostic = diagnostic;
     }
     /// <summary>Gets the structured failure details.</summary>
-    public ContentLoadDiagnostic Diagnostic { get; }
+    public ContentLoadDiagnostic Diagnostic
+    {
+        get;
+    }
 }

@@ -11,5 +11,8 @@ public sealed class TestService : IService
     /// <summary>
     ///     获取或设置优先级
     /// </summary>
-    public int Priority { get; set; }
+    public int Priority
+    {
+        get; set;
+    }
 }

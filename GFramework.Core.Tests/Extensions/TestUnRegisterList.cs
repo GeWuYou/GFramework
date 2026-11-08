@@ -14,5 +14,5 @@ public class TestUnRegisterList : IUnRegisterList
     /// <summary>
     ///     获取当前测试收集到的注销项列表，供断言扩展方法是否正确追加和清空元素。
     /// </summary>
-    public IList<IUnRegister> UnregisterList { get; } = new List<IUnRegister>();
+    public IList<IUnRegister> UnregisterList { get; } = [];
 }

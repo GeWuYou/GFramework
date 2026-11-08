@@ -30,7 +30,10 @@ internal sealed class HarmonyPatchScope : IModPatchService, IGameModServiceScope
         _owner = engine.CreateOwner(ownerId);
     }
     /// <inheritdoc />
-    public string OwnerId { get; }
+    public string OwnerId
+    {
+        get;
+    }
     /// <inheritdoc />
     public object? GetService(Type serviceType)
     {
@@ -44,7 +47,10 @@ internal sealed class HarmonyPatchScope : IModPatchService, IGameModServiceScope
         lock (_gate)
         {
             RequireUsable();
-            try { _engine.PatchAll(_owner, assembly); }
+            try
+            {
+                _engine.PatchAll(_owner, assembly);
+            }
             catch { RollBackFailedApplication(); throw; }
         }
     }
@@ -56,7 +62,10 @@ internal sealed class HarmonyPatchScope : IModPatchService, IGameModServiceScope
         lock (_gate)
         {
             RequireUsable();
-            try { return _engine.Patch(_owner, original, prefix, postfix, transpiler, finalizer); }
+            try
+            {
+                return _engine.Patch(_owner, original, prefix, postfix, transpiler, finalizer);
+            }
             catch { RollBackFailedApplication(); throw; }
         }
     }
@@ -65,7 +74,8 @@ internal sealed class HarmonyPatchScope : IModPatchService, IGameModServiceScope
     {
         lock (_gate)
         {
-            if (!_closed) _engine.UnpatchAll(_owner, OwnerId);
+            if (!_closed)
+                _engine.UnpatchAll(_owner, OwnerId);
         }
     }
     /// <inheritdoc />
@@ -81,7 +91,8 @@ internal sealed class HarmonyPatchScope : IModPatchService, IGameModServiceScope
     {
         lock (_gate)
         {
-            if (_closed) return ValueTask.CompletedTask;
+            if (_closed)
+                return ValueTask.CompletedTask;
             _engine.UnpatchAll(_owner, OwnerId);
             _closed = true;
             return ValueTask.CompletedTask;
@@ -97,6 +108,7 @@ internal sealed class HarmonyPatchScope : IModPatchService, IGameModServiceScope
     private void RequireUsable()
     {
         ObjectDisposedException.ThrowIf(_closed, this);
-        if (_failed) throw new InvalidOperationException("Patch application failed; repair the mod and restart.");
+        if (_failed)
+            throw new InvalidOperationException("Patch application failed; repair the mod and restart.");
     }
 }

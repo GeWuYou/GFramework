@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Coroutine;
 using GFramework.Core.Coroutine.Instructions;
@@ -76,11 +77,11 @@ public sealed class CoroutinePriorityTests
         // Arrange
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource, enableStatistics: true);
-        var executed = false;
+        var executed = new global::System.Runtime.CompilerServices.StrongBox<bool>(value: false);
 
         IEnumerator<IYieldInstruction> TestCoroutine()
         {
-            executed = true;
+            executed.Value = true;
             yield return new WaitOneFrame();
         }
 
@@ -91,7 +92,7 @@ public sealed class CoroutinePriorityTests
         Assert.That(scheduler.Statistics!.GetCountByPriority(CoroutinePriority.Normal), Is.EqualTo(1));
 
         scheduler.Update();
-        Assert.That(executed, Is.True);
+        Assert.That(executed.Value, Is.True);
     }
 
     [Test]
@@ -107,7 +108,7 @@ public sealed class CoroutinePriorityTests
             yield return new WaitOneFrame(); // 先等待，避免在 Prewarm 时执行
             for (var i = 0; i < 3; i++)
             {
-                executionOrder.Add($"{name}-{i}");
+                executionOrder.Add(string.Create(CultureInfo.InvariantCulture, $"{name}-{i}"));
                 yield return new Delay(0.02); // 等待稍长的时间，确保不会在同一帧完成
             }
         }

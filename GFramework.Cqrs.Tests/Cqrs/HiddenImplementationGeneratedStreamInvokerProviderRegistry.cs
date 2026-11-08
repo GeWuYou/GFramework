@@ -46,8 +46,10 @@ internal sealed class HiddenImplementationGeneratedStreamInvokerProviderRegistry
 
         var implementationType = HiddenImplementationStreamInvokerContainer.HiddenHandlerType;
         services.AddTransient(HandlerContractType, implementationType);
-        logger.LogDebug(
-            $"Registered CQRS handler {implementationType.FullName} as {HandlerContractType.FullName}.");
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Registered CQRS handler {ImplementationType} as {HandlerContract}.", implementationType.FullName, HandlerContractType.FullName);
+        }
     }
 
     /// <summary>

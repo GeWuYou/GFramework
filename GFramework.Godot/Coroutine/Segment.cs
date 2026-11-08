@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Godot.Coroutine;
@@ -26,5 +26,5 @@ public enum Segment
     /// <summary>
     ///     Godot 的延迟调用阶段；表示 idle dispatch，不保证渲染已经结束。
     /// </summary>
-    DeferredProcess
+    DeferredProcess,
 }

@@ -20,7 +20,7 @@ public class WaitForConditionChangeTests
     public void WaitForConditionChange_Should_Not_Be_Done_Initially()
     {
         var condition = false;
-        var wait = new WaitForConditionChange(() => condition, true);
+        var wait = new WaitForConditionChange(() => condition, waitForTransitionTo: true);
 
         Assert.That(wait.IsDone, Is.False);
     }
@@ -32,7 +32,7 @@ public class WaitForConditionChangeTests
     public void WaitForConditionChange_Should_Be_Done_When_Changing_From_False_To_True()
     {
         var condition = false;
-        var wait = new WaitForConditionChange(() => condition, true);
+        var wait = new WaitForConditionChange(() => condition, waitForTransitionTo: true);
 
         // 初始状态记录
         wait.Update(0.1);
@@ -50,7 +50,7 @@ public class WaitForConditionChangeTests
     public void WaitForConditionChange_Should_Be_Done_When_Changing_From_True_To_False()
     {
         var condition = true;
-        var wait = new WaitForConditionChange(() => condition, false);
+        var wait = new WaitForConditionChange(() => condition, waitForTransitionTo: false);
 
         // 初始状态记录
         wait.Update(0.1);
@@ -68,7 +68,7 @@ public class WaitForConditionChangeTests
     public void WaitForConditionChange_Should_Not_Be_Done_When_No_State_Change()
     {
         var condition = false;
-        var wait = new WaitForConditionChange(() => condition, true);
+        var wait = new WaitForConditionChange(() => condition, waitForTransitionTo: true);
 
         // 初始状态记录
         wait.Update(0.1);
@@ -86,7 +86,7 @@ public class WaitForConditionChangeTests
     public void WaitForConditionChange_Should_Only_Respond_To_First_Transition()
     {
         var condition = false;
-        var wait = new WaitForConditionChange(() => condition, true);
+        var wait = new WaitForConditionChange(() => condition, waitForTransitionTo: true);
 
         // 记录初始状态
         wait.Update(0.1);
@@ -111,7 +111,7 @@ public class WaitForConditionChangeTests
     [Test]
     public void WaitForConditionChange_Should_Throw_ArgumentNullException_When_ConditionGetter_Is_Null()
     {
-        Assert.Throws<ArgumentNullException>(() => new WaitForConditionChange(null!, true));
+        Assert.Throws<ArgumentNullException>(() => new WaitForConditionChange(null!, waitForTransitionTo: true));
     }
 
     /// <summary>
@@ -120,7 +120,7 @@ public class WaitForConditionChangeTests
     [Test]
     public void WaitForConditionChange_Should_Implement_IYieldInstruction()
     {
-        var wait = new WaitForConditionChange(() => false, true);
+        var wait = new WaitForConditionChange(() => false, waitForTransitionTo: true);
 
         Assert.That(wait, Is.InstanceOf<IYieldInstruction>());
     }

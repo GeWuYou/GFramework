@@ -17,8 +17,8 @@ public sealed class RichTextEffectPlanTests
     {
         var plan = RichTextEffectPlan.CreateBuiltInDefault();
 
-        Assert.That(plan.Effects.Select(static entry => entry.Key), Is.EqualTo(new[]
-        {
+        Assert.That(plan.Effects.Select(static entry => entry.Key), Is.EqualTo(
+        [
             "green",
             "red",
             "gold",
@@ -26,7 +26,7 @@ public sealed class RichTextEffectPlanTests
             "fade_in",
             "sine",
             "jitter",
-            "fly_in"
-        }));
+            "fly_in",
+        ]));
     }
 }

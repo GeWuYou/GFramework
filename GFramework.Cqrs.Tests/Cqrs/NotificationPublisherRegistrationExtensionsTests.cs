@@ -33,8 +33,8 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
         });
         CqrsTestRuntime.RegisterInfrastructure(container);
         container.Freeze();
-        Assert.That(container.GetAll(typeof(INotificationHandler<TestNotification>)), Has.Count.EqualTo(2));
-        Assert.That(container.GetAll(typeof(INotificationPublisher)), Has.Count.EqualTo(1));
+        Assert.That(container.GetAll<INotificationHandler<TestNotification>>(), Has.Count.EqualTo(2));
+        Assert.That(container.GetAll<INotificationPublisher>(), Has.Count.EqualTo(1));
 
         var context = new ArchitectureContext(container);
         var publishTask = context.PublishAsync(new TestNotification()).AsTask();
@@ -69,8 +69,8 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
         });
         CqrsTestRuntime.RegisterInfrastructure(container);
         container.Freeze();
-        Assert.That(container.GetAll(typeof(INotificationHandler<TestNotification>)), Has.Count.EqualTo(2));
-        Assert.That(container.GetAll(typeof(INotificationPublisher)), Has.Count.EqualTo(1));
+        Assert.That(container.GetAll<INotificationHandler<TestNotification>>(), Has.Count.EqualTo(2));
+        Assert.That(container.GetAll<INotificationPublisher>(), Has.Count.EqualTo(1));
 
         var context = new ArchitectureContext(container);
 
@@ -114,7 +114,7 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
         {
             Assert.That(returnedServices, Is.SameAs(container.GetServicesUnsafe));
             Assert.That(container.HasRegistration(typeof(INotificationPublisher)), Is.True);
-            Assert.That(container.GetAll(typeof(INotificationPublisher)), Has.Count.EqualTo(1));
+            Assert.That(container.GetAll<INotificationPublisher>(), Has.Count.EqualTo(1));
             Assert.That(container.GetRequired<INotificationPublisher>(), Is.TypeOf<TrackingNotificationPublisher>());
             Assert.That(container.GetRequired<INotificationPublisher>(), Is.SameAs(container.GetRequired<INotificationPublisher>()));
         });
@@ -134,8 +134,8 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
         container.Register<INotificationHandler<TestNotification>>(handler);
         CqrsTestRuntime.RegisterInfrastructure(container);
         container.Freeze();
-        Assert.That(container.GetAll(typeof(INotificationHandler<TestNotification>)), Has.Count.EqualTo(1));
-        Assert.That(container.GetAll(typeof(INotificationPublisher)), Has.Count.EqualTo(1));
+        Assert.That(container.GetAll<INotificationHandler<TestNotification>>(), Has.Count.EqualTo(1));
+        Assert.That(container.GetAll<INotificationPublisher>(), Has.Count.EqualTo(1));
 
         var context = new ArchitectureContext(container);
 
@@ -190,7 +190,10 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
         /// <summary>
         ///     获取当前处理器是否至少执行过一次。
         /// </summary>
-        public bool WasInvoked { get; private set; }
+        public bool WasInvoked
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录执行痕迹并立刻完成。
@@ -247,7 +250,10 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
         /// <summary>
         ///     获取探针是否已被自定义 publisher 标记为执行过。
         /// </summary>
-        public bool WasCalled { get; private set; }
+        public bool WasCalled
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录当前自定义 publisher 已接管本次通知发布。

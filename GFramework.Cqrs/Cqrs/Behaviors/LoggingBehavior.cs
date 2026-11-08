@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Globalization;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -27,22 +28,17 @@ namespace GFramework.Cqrs.Cqrs.Behaviors;
 ///     日志基于标准 <see cref="Microsoft.Extensions.Logging.ILogger" />：DI 激活时通过构造函数注入
 ///     <see cref="Microsoft.Extensions.Logging.ILogger{TCategoryName}" />；未注册日志基础设施时回退到空实现。
 /// </remarks>
-public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+/// <remarks>
+///     初始化请求日志行为。
+/// </remarks>
+/// <param name="logger">
+///     当前行为使用的日志器；为 <see langword="null" /> 时回退到
+///     <see cref="NullLogger{TCategoryName}.Instance" />，避免要求宿主必须注册日志基础设施。
+/// </param>
+public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior<TRequest, TResponse>>? logger = null) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {
-    private readonly ILogger _logger;
-
-    /// <summary>
-    ///     初始化请求日志行为。
-    /// </summary>
-    /// <param name="logger">
-    ///     当前行为使用的日志器；为 <see langword="null" /> 时回退到
-    ///     <see cref="NullLogger{TCategoryName}.Instance" />，避免要求宿主必须注册日志基础设施。
-    /// </param>
-    public LoggingBehavior(ILogger<LoggingBehavior<TRequest, TResponse>>? logger = null)
-    {
-        _logger = logger ?? NullLogger<LoggingBehavior<TRequest, TResponse>>.Instance;
-    }
+    private readonly ILogger _logger = logger ?? NullLogger<LoggingBehavior<TRequest, TResponse>>.Instance;
 
     /// <summary>
     ///     执行日志包装后的下一段请求处理逻辑。
@@ -59,26 +55,38 @@ public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
         var requestName = typeof(TRequest).Name;
         var start = Stopwatch.GetTimestamp();
 
-        _logger.LogDebug($"Handling {requestName}");
+        if (_logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Debug))
+        {
+            _logger.LogDebug("Handling {RequestName}", requestName);
+        }
 
         try
         {
             var response = await next(message, cancellationToken).ConfigureAwait(false);
 
             var elapsed = Stopwatch.GetElapsedTime(start);
-            _logger.LogDebug($"Handled {requestName} successfully in {elapsed.TotalMilliseconds} ms");
+            if (_logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Debug))
+            {
+                _logger.LogDebug("Handled {RequestName} successfully in {ElapsedMilliseconds} ms", requestName, elapsed.TotalMilliseconds);
+            }
 
             return response;
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning($"Handling {requestName} was cancelled");
+            if (_logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Warning))
+            {
+                _logger.LogWarning("Handling {RequestName} was cancelled", requestName);
+            }
             throw;
         }
         catch (Exception ex)
         {
             var elapsed = Stopwatch.GetElapsedTime(start);
-            _logger.LogError(ex, $"Error handling {requestName} after {elapsed.TotalMilliseconds} ms");
+            if (_logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Error))
+            {
+                _logger.LogError(ex, "Error handling {RequestName} after {ElapsedMilliseconds} ms", requestName, elapsed.TotalMilliseconds);
+            }
             throw;
         }
     }

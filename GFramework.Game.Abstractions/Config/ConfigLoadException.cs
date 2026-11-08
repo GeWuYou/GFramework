@@ -24,21 +24,19 @@ public sealed class ConfigLoadException : InvalidOperationException
         Exception? innerException = null)
         : base(message, innerException)
     {
-        if (diagnostic == null)
-        {
-            throw new ArgumentNullException(nameof(diagnostic));
-        }
-
         if (string.IsNullOrWhiteSpace(message))
         {
             throw new ArgumentException("Exception message cannot be null or whitespace.", nameof(message));
         }
 
-        Diagnostic = diagnostic;
+        Diagnostic = diagnostic ?? throw new ArgumentNullException(nameof(diagnostic));
     }
 
     /// <summary>
     ///     获取结构化诊断信息。
     /// </summary>
-    public ConfigLoadDiagnostic Diagnostic { get; }
+    public ConfigLoadDiagnostic Diagnostic
+    {
+        get;
+    }
 }

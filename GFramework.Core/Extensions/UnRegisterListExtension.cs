@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Events;
@@ -27,7 +27,8 @@ public static class UnRegisterListExtension
     public static void UnRegisterAll(this IUnRegisterList self)
     {
         // 遍历注销列表中的所有对象并执行注销操作
-        foreach (var unRegister in self.UnregisterList) unRegister.UnRegister();
+        foreach (var unRegister in self.UnregisterList)
+            unRegister.UnRegister();
 
         // 清空注销列表
         self.UnregisterList.Clear();

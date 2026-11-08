@@ -12,21 +12,17 @@ namespace CoroutinePerformance;
 /// <summary>
 ///     Provides compiled examples for the coroutine tutorial without mixing demonstration work into measurements.
 /// </summary>
-internal sealed class CoroutineExamples : IDisposable
+/// <remarks>Declares the phases this host will actually drive.</remarks>
+[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
+internal sealed class CoroutineExamples(ITimeSource timeSource) : IDisposable
 {
     #region Host
-    private readonly CoroutineScheduler _scheduler;
-
-    /// <summary>Declares the phases this host will actually drive.</summary>
-    public CoroutineExamples(ITimeSource timeSource)
-    {
-        _scheduler = new CoroutineScheduler(timeSource, supportedStages: new[]
-        {
+    private readonly CoroutineScheduler _scheduler = new(timeSource, supportedStages:
+        [
             CoroutineExecutionStage.Update,
             CoroutineExecutionStage.FixedUpdate,
-            CoroutineExecutionStage.Deferred
-        });
-    }
+            CoroutineExecutionStage.Deferred,
+        ]);
 
     /// <summary>Starts a flow with owned children and default FailFast behavior.</summary>
     public CoroutineHandle Start() => _scheduler.Run(context => PlaySkill(context));
@@ -45,8 +41,8 @@ internal sealed class CoroutineExamples : IDisposable
     /// <summary>Owns two concurrent steps and waits for them before its final result is available.</summary>
     private static IEnumerator<IYieldInstruction> PlaySkill(CoroutineContext context)
     {
-        context.RunChild(PlayEffect());
-        context.RunChild(ApplyDamage());
+        context.RunChild(PlayEffect(), cancellationToken: global::System.Threading.CancellationToken.None);
+        context.RunChild(ApplyDamage(), cancellationToken: global::System.Threading.CancellationToken.None);
         // Completing this iterator does not detach its children: the parent waits for both to finish.
         yield break;
     }

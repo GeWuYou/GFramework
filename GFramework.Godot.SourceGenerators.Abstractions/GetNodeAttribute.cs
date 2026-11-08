@@ -29,7 +29,10 @@ public sealed class GetNodeAttribute : Attribute
     /// <summary>
     ///     获取或设置节点路径。未设置时将根据字段名推导。
     /// </summary>
-    public string? Path { get; set; }
+    public string? Path
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     获取或设置节点是否必填。默认为 true。

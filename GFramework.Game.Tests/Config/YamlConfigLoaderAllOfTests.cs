@@ -65,7 +65,7 @@ public sealed class YamlConfigLoaderAllOfTests
         {
             try
             {
-                Directory.Delete(_rootPath, true);
+                Directory.Delete(_rootPath, recursive: true);
             }
             catch (Exception)
             {
@@ -578,7 +578,7 @@ public sealed class YamlConfigLoaderAllOfTests
     }
 
     /// <summary>
-    ///     验证 allOf 条目的 <c>required</c> 必须声明为字段名数组。
+    ///     验证 allOf 条目的 <see langword="required" /> 必须声明为字段名数组。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Throw_When_AllOf_Entry_Required_Is_Not_An_Array()
@@ -618,7 +618,7 @@ public sealed class YamlConfigLoaderAllOfTests
     }
 
     /// <summary>
-    ///     验证 allOf 条目的 <c>required</c> 项必须是字符串字段名。
+    ///     验证 allOf 条目的 <see langword="required" /> 项必须是字符串字段名。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Throw_When_AllOf_Entry_Required_Item_Is_Not_A_String()
@@ -658,7 +658,7 @@ public sealed class YamlConfigLoaderAllOfTests
     }
 
     /// <summary>
-    ///     验证 allOf 条目的 <c>required</c> 不允许空白字段名。
+    ///     验证 allOf 条目的 <see langword="required" /> 不允许空白字段名。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Throw_When_AllOf_Entry_Required_Item_Is_Blank()
@@ -871,7 +871,10 @@ public sealed class YamlConfigLoaderAllOfTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置奖励对象。
@@ -892,12 +895,18 @@ public sealed class YamlConfigLoaderAllOfTests
         /// <summary>
         ///     获取或设置掉落物数量。
         /// </summary>
-        public int ItemCount { get; set; }
+        public int ItemCount
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置额外奖励值。
         /// </summary>
-        public int Bonus { get; set; }
+        public int Bonus
+        {
+            get; set;
+        }
     }
 
     /// <summary>
@@ -908,7 +917,10 @@ public sealed class YamlConfigLoaderAllOfTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置标签。

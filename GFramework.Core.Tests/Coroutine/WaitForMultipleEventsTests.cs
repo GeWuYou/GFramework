@@ -135,12 +135,12 @@ namespace GFramework.Core.Tests.Coroutine
         }
 
         // Test event classes
-        private class TestEvent1
+        private sealed class TestEvent1
         {
             public string Data { get; set; } = string.Empty;
         }
 
-        private class TestEvent2
+        private sealed class TestEvent2
         {
             public string Data { get; set; } = string.Empty;
         }

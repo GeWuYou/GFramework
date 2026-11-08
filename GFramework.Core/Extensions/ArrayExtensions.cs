@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -103,7 +103,7 @@ public static class ArrayExtensions
         var dirs = new (int dx, int dy)[]
         {
             (0, -1), (0, 1),
-            (-1, 0), (1, 0)
+            (-1, 0), (1, 0),
         };
 
         foreach (var (dx, dy) in dirs)
@@ -130,7 +130,8 @@ public static class ArrayExtensions
         {
             for (var dy = -1; dy <= 1; dy++)
             {
-                if (dx == 0 && dy == 0) continue;
+                if (dx == 0 && dy == 0)
+                    continue;
 
                 var nx = x + dx;
                 var ny = y + dy;

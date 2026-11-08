@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025 GeWuYou
+// Copyright (c) 2025 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -23,11 +23,17 @@ public interface IVersionedData : IData
     ///     获取数据的版本号
     /// </summary>
     /// <returns>当前数据的版本号，用于标识数据的版本状态</returns>
-    int Version { get; }
+    int Version
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取数据最后修改的时间
     /// </summary>
     /// <returns>DateTime类型的最后修改时间戳</returns>
-    DateTime LastModified { get; }
+    DateTime LastModified
+    {
+        get;
+    }
 }

@@ -25,7 +25,7 @@ public sealed class NumericSuffixFormatRule : INumericFormatRule
         ArgumentNullException.ThrowIfNull(thresholds);
 
         Name = name;
-        _thresholds = thresholds.OrderBy(entry => entry.Divisor).ToArray();
+        _thresholds = [.. thresholds.OrderBy(entry => entry.Divisor)];
 
         if (_thresholds.Length == 0)
         {
@@ -38,19 +38,25 @@ public sealed class NumericSuffixFormatRule : INumericFormatRule
     /// <summary>
     /// 默认国际缩写规则，使用标准的K、M、B、T后缀表示千、百万、十亿、万亿。
     /// </summary>
-    public static NumericSuffixFormatRule InternationalCompact { get; } = new(
+    public static NumericSuffixFormatRule InternationalCompact
+    {
+        get;
+    } = new(
         "compact",
         [
             new NumericSuffixThreshold(1_000m, "K"),
             new NumericSuffixThreshold(1_000_000m, "M"),
             new NumericSuffixThreshold(1_000_000_000m, "B"),
-            new NumericSuffixThreshold(1_000_000_000_000m, "T")
+            new NumericSuffixThreshold(1_000_000_000_000m, "T"),
         ]);
 
     /// <summary>
     /// 获取此格式化规则的名称。
     /// </summary>
-    public string Name { get; }
+    public string Name
+    {
+        get;
+    }
 
     /// <summary>
     /// 尝试将指定的数值按照当前规则进行格式化。
@@ -93,7 +99,7 @@ public sealed class NumericSuffixFormatRule : INumericFormatRule
             float floatValue => TryFormatDouble(floatValue, options, out result),
             double doubleValue => TryFormatDouble(doubleValue, options, out result),
             BigInteger bigIntegerValue => TryFormatBigInteger(bigIntegerValue, options, out result),
-            _ => TryFormatConvertible(boxedValue, options, out result)
+            _ => TryFormatConvertible(boxedValue, options, out result),
         };
     }
 
@@ -137,10 +143,10 @@ public sealed class NumericSuffixFormatRule : INumericFormatRule
         switch (boxedValue)
         {
             case float floatValue when float.IsNaN(floatValue) || float.IsInfinity(floatValue):
-                result = floatValue.ToString(null, provider);
+                result = floatValue.ToString(format: null, provider);
                 return true;
             case double doubleValue when double.IsNaN(doubleValue) || double.IsInfinity(doubleValue):
-                result = doubleValue.ToString(null, provider);
+                result = doubleValue.ToString(format: null, provider);
                 return true;
             default:
                 result = string.Empty;
@@ -204,7 +210,7 @@ public sealed class NumericSuffixFormatRule : INumericFormatRule
         }
 
         var scaledValue = RoundScaledDecimal(absoluteValue, suffixIndex, options, out suffixIndex);
-        result = ComposeResult(value < 0m, FormatDecimalCore(scaledValue, options, false), suffixIndex);
+        result = ComposeResult(value < 0m, FormatDecimalCore(scaledValue, options, useGrouping: false), suffixIndex);
         return true;
     }
 
@@ -226,7 +232,7 @@ public sealed class NumericSuffixFormatRule : INumericFormatRule
         }
 
         var scaledValue = RoundScaledDouble(absoluteValue, suffixIndex, options, out suffixIndex);
-        result = ComposeResult(value < 0d, FormatDoubleCore(scaledValue, options, false), suffixIndex);
+        result = ComposeResult(value < 0d, FormatDoubleCore(scaledValue, options, useGrouping: false), suffixIndex);
         return true;
     }
 

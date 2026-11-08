@@ -32,15 +32,17 @@ public sealed class GameModHostTests
         Assert.That(observed, Is.Empty, "Preparing code must not invoke lifecycle callbacks.");
         await Assert.ThrowsAsync<InvalidOperationException>(() => new ContentCatalogLoader().LoadAsync(plan)).ConfigureAwait(false);
         var catalog = await new ContentCatalogLoader().LoadAsync(plan, host.Admission).ConfigureAwait(false);
-        Assert.That(catalog.Snapshot.Packs.Select(static stamp => stamp.Id), Is.EqualTo(new[] { "base", "alpha", "beta" }));
+        Assert.That(catalog.Snapshot.Packs.Select(static stamp => stamp.Id), Is.EqualTo(["base", "alpha", "beta"]));
         await host.StartAsync().ConfigureAwait(false);
         await host.StartAsync().ConfigureAwait(false);
         await host.StopAsync().ConfigureAwait(false);
         await host.StopAsync().ConfigureAwait(false);
-        Assert.That(observed, Is.EqualTo(new[] { "alpha:init:1", "alpha:start", "beta:init:2", "beta:start",
-            "beta:stop", "beta:dispose", "alpha:stop", "alpha:dispose" }));
+        Assert.That(observed, Is.EqualTo([ "alpha:init:1", "alpha:start", "beta:init:2", "beta:start",
+            "beta:stop", "beta:dispose", "alpha:stop", "alpha:dispose" ]));
         await Assert.ThrowsAsync<InvalidOperationException>(() => new ContentCatalogLoader().LoadAsync(plan, host.Admission)).ConfigureAwait(false);
     }
+
+    private static readonly string[] value = ["alpha"];
 
     /// <summary>Self-contained engine hosts may own a separate IServiceProvider assembly; external mod calls must share it.</summary>
     [Test]
@@ -58,32 +60,32 @@ public sealed class GameModHostTests
         var discoveryType = game.GetType(typeof(ContentPackDiscovery).FullName!, throwOnError: true)!;
         var discovery = Activator.CreateInstance(discoveryType)!;
         var packages = await InvokeResultAsync(discoveryType.GetMethod("DiscoverAsync")!.Invoke(discovery,
-            new object[] { new[] { workspace.Root }, CancellationToken.None })!).ConfigureAwait(false);
-        var profile = Activator.CreateInstance(contracts.GetType(typeof(ContentPackProfile).FullName!, true)!)!;
-        profile.GetType().GetProperty("EnabledPackages")!.SetValue(profile, new[] { "alpha" });
-        var compatibility = Activator.CreateInstance(contracts.GetType(typeof(ContentHostCompatibility).FullName!, true)!)!;
+            [new[] { workspace.Root }, CancellationToken.None])!).ConfigureAwait(false);
+        var profile = Activator.CreateInstance(contracts.GetType(typeof(ContentPackProfile).FullName!, throwOnError: true)!)!;
+        profile.GetType().GetProperty("EnabledPackages")!.SetValue(profile, value);
+        var compatibility = Activator.CreateInstance(contracts.GetType(typeof(ContentHostCompatibility).FullName!, throwOnError: true)!)!;
         compatibility.GetType().GetProperty("GameId")!.SetValue(compatibility, "test");
         compatibility.GetType().GetProperty("CodeApiVersion")!.SetValue(compatibility, "1.0.0");
-        var plan = game.GetType(typeof(ContentPackResolver).FullName!, true)!.GetMethod("Resolve")!.Invoke(null,
-            new[] { packages, profile, compatibility })!;
-        var options = Activator.CreateInstance(game.GetType(typeof(GameModHostOptions).FullName!, true)!)!;
+        var plan = game.GetType(typeof(ContentPackResolver).FullName!, throwOnError: true)!.GetMethod("Resolve")!.Invoke(null,
+            [packages, profile, compatibility])!;
+        var options = Activator.CreateInstance(game.GetType(typeof(GameModHostOptions).FullName!, throwOnError: true)!)!;
         options.GetType().GetProperty("GameId")!.SetValue(options, "test");
         options.GetType().GetProperty("CodeApiVersion")!.SetValue(options, "1.0.0");
         var trust = options.GetType().GetProperty("TrustPolicy")!;
         var stamp = Expression.Parameter(trust.PropertyType.GetGenericArguments()[0], "stamp");
         trust.SetValue(options, Expression.Lambda(trust.PropertyType, Expression.Constant(true), stamp).Compile());
-        var hostType = game.GetType(typeof(GameModHost).FullName!, true)!;
+        var hostType = game.GetType(typeof(GameModHost).FullName!, throwOnError: true)!;
         var host = await InvokeResultAsync(hostType.GetMethod("PrepareAsync")!.Invoke(null,
-            new[] { plan, options, (object)CancellationToken.None })!).ConfigureAwait(false);
+            [plan, options, (object)CancellationToken.None])!).ConfigureAwait(false);
         try
         {
             // BasicMod actually calls context.Services.GetService, so this catches a return-type ABI mismatch.
-            await ((Task)hostType.GetMethod("StartAsync")!.Invoke(host, new object[] { CancellationToken.None })!).ConfigureAwait(false);
+            await ((Task)hostType.GetMethod("StartAsync")!.Invoke(host, [CancellationToken.None])!).ConfigureAwait(false);
             Assert.That(hostType.GetProperty("IsStarted")!.GetValue(host), Is.True);
         }
         finally
         {
-            await ((Task)hostType.GetMethod("StopAsync")!.Invoke(host, new object[] { CancellationToken.None })!).ConfigureAwait(false);
+            await ((Task)hostType.GetMethod("StopAsync")!.Invoke(host, [CancellationToken.None])!).ConfigureAwait(false);
         }
     }
 
@@ -103,7 +105,7 @@ public sealed class GameModHostTests
             ["GFramework.Game.Abstractions"] = typeof(IGameMod).Assembly.Location,
             ["GFramework.Core.Abstractions"] = typeof(GFramework.Core.Abstractions.Events.IUnRegister).Assembly.Location,
             ["System.ComponentModel"] = typeof(IServiceProvider).Assembly.Location,
-            ["netstandard"] = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll")
+            ["netstandard"] = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll"),
         };
         /// <summary>Creates a distinct process-lifetime engine contract context.</summary>
         internal EngineHostContext() : base("EngineHost:" + Guid.NewGuid().ToString("N"), isCollectible: false) { }
@@ -125,8 +127,8 @@ public sealed class GameModHostTests
         await using var cleanup = host.ConfigureAwait(false);
         var error = await Assert.ThrowsAsync<GameModException>(() => host.StartAsync()).ConfigureAwait(false);
         Assert.That(error!.PackId, Is.EqualTo("failing"));
-        Assert.That(observed, Is.EqualTo(new[] { "alpha:init:1", "alpha:start", "failing:init:2",
-            "failing:stop", "failing:dispose", "alpha:stop", "alpha:dispose" }));
+        Assert.That(observed, Is.EqualTo([ "alpha:init:1", "alpha:start", "failing:init:2",
+            "failing:stop", "failing:dispose", "alpha:stop", "alpha:dispose" ]));
         Assert.That(host.IsStarted, Is.False);
         await Assert.ThrowsAsync<InvalidOperationException>(() => host.StartAsync()).ConfigureAwait(false);
     }
@@ -145,7 +147,7 @@ public sealed class GameModHostTests
         await using var cleanup = host.ConfigureAwait(false);
         await host.StartAsync().ConfigureAwait(false);
         await Assert.ThrowsAsync<AggregateException>(() => host.StopAsync()).ConfigureAwait(false);
-        Assert.That(observed.TakeLast(4), Is.EqualTo(new[] { failingId + ":stop", failingId + ":dispose", "alpha:stop", "alpha:dispose" }));
+        Assert.That(observed.TakeLast(4), Is.EqualTo([failingId + ":stop", failingId + ":dispose", "alpha:stop", "alpha:dispose"]));
         var count = observed.Count;
         await host.StopAsync().ConfigureAwait(false);
         Assert.That(observed, Has.Count.EqualTo(count));
@@ -158,11 +160,13 @@ public sealed class GameModHostTests
         using var workspace = new ModWorkspace();
         workspace.AddMod("alpha", "one");
         workspace.AddMod("beta", "two");
-        File.WriteAllText(Path.Combine(workspace.Root, "alpha", "FixtureMod.dll"), "invalid image");
+        await File.WriteAllTextAsync(Path.Combine(workspace.Root, "alpha", "FixtureMod.dll"), "invalid image").ConfigureAwait(false);
         var plan = await workspace.ResolveAsync("alpha", "beta").ConfigureAwait(false);
         var error = await Assert.ThrowsAsync<ContentLoadException>(() => GameModHost.PrepareAsync(plan, new GameModHostOptions
         {
-            GameId = "test", CodeApiVersion = "1.0.0", TrustPolicy = static stamp => string.Equals(stamp.Id, "alpha", StringComparison.Ordinal)
+            GameId = "test",
+            CodeApiVersion = "1.0.0",
+            TrustPolicy = static stamp => string.Equals(stamp.Id, "alpha", StringComparison.Ordinal),
         })).ConfigureAwait(false);
         Assert.That(error!.Diagnostic.Code, Is.EqualTo("CodeNotApproved"));
         Assert.That(error.Diagnostic.PackId, Is.EqualTo("beta"));
@@ -175,8 +179,8 @@ public sealed class GameModHostTests
         using var workspace = new ModWorkspace();
         workspace.AddMod("alpha", "one");
         var plan = await workspace.ResolveAsync("alpha").ConfigureAwait(false);
-        File.AppendAllText(Path.Combine(workspace.Root, "alpha", "FixtureMod.dll"), "edit");
-        var error = await Assert.ThrowsAsync<ContentLoadException>(() => GameModHost.PrepareAsync(plan, Options(new List<string>()))).ConfigureAwait(false);
+        await File.AppendAllTextAsync(Path.Combine(workspace.Root, "alpha", "FixtureMod.dll"), "edit").ConfigureAwait(false);
+        var error = await Assert.ThrowsAsync<ContentLoadException>(() => GameModHost.PrepareAsync(plan, Options([]))).ConfigureAwait(false);
         Assert.That(error!.Diagnostic.Code, Is.EqualTo("PackageChanged"));
     }
 
@@ -185,13 +189,13 @@ public sealed class GameModHostTests
     public async Task MissingCapabilityAndEntrypoint_ArePackageLocalFailures()
     {
         using var workspace = new ModWorkspace();
-        workspace.AddMod("alpha", "one", capabilities: new[] { "harmony" });
+        workspace.AddMod("alpha", "one", capabilities: ["harmony"]);
         var plan = await workspace.ResolveAsync("alpha").ConfigureAwait(false);
-        var error = await Assert.ThrowsAsync<ContentLoadException>(() => GameModHost.PrepareAsync(plan, Options(new List<string>()))).ConfigureAwait(false);
+        var error = await Assert.ThrowsAsync<ContentLoadException>(() => GameModHost.PrepareAsync(plan, Options([]))).ConfigureAwait(false);
         Assert.That(error!.Diagnostic.Code, Is.EqualTo("MissingCodeCapability"));
         workspace.AddMod("alpha", "one", entryType: "FixtureMod.NotThere");
         plan = await workspace.ResolveAsync("alpha").ConfigureAwait(false);
-        error = await Assert.ThrowsAsync<ContentLoadException>(() => GameModHost.PrepareAsync(plan, Options(new List<string>()))).ConfigureAwait(false);
+        error = await Assert.ThrowsAsync<ContentLoadException>(() => GameModHost.PrepareAsync(plan, Options([]))).ConfigureAwait(false);
         Assert.That(error!.Diagnostic.Code, Is.EqualTo("CodeLoadFailed"));
     }
 
@@ -203,7 +207,7 @@ public sealed class GameModHostTests
         workspace.AddMod("alpha", "one");
         var first = await workspace.ResolveAsync("alpha").ConfigureAwait(false);
         var second = await workspace.ResolveAsync("alpha").ConfigureAwait(false);
-        var host = await GameModHost.PrepareAsync(first, Options(new List<string>())).ConfigureAwait(false);
+        var host = await GameModHost.PrepareAsync(first, Options([])).ConfigureAwait(false);
         await using var cleanup = host.ConfigureAwait(false);
         await Assert.ThrowsAsync<InvalidOperationException>(() => new ContentCatalogLoader().LoadAsync(second, host.Admission)).ConfigureAwait(false);
     }
@@ -214,8 +218,8 @@ public sealed class GameModHostTests
     {
         using var workspace = new ModWorkspace();
         workspace.AddMod("alpha", "one");
-        var packages = await new ContentPackDiscovery().DiscoverAsync(new[] { workspace.Root }).ConfigureAwait(false);
-        var profile = new ContentPackProfile { EnabledPackages = new[] { "alpha" } };
+        var packages = await new ContentPackDiscovery().DiscoverAsync([workspace.Root]).ConfigureAwait(false);
+        var profile = new ContentPackProfile { EnabledPackages = ["alpha"] };
         Assert.That(Assert.Throws<ContentLoadException>(() => ContentPackResolver.Resolve(packages, profile,
             new ContentHostCompatibility { GameId = "test" }))!.Diagnostic.Code, Is.EqualTo("CodeApiIncompatible"));
         Assert.That(Assert.Throws<ContentLoadException>(() => ContentPackResolver.Resolve(packages, profile,
@@ -226,8 +230,10 @@ public sealed class GameModHostTests
     /// <summary>Supplies a host observer through standard services while approving exact discovered stamps.</summary>
     private static GameModHostOptions Options(List<string> observed) => new()
     {
-        GameId = "test", CodeApiVersion = "1.0.0", TrustPolicy = static _ => true,
-        Services = new ObserverServices(observed.Add)
+        GameId = "test",
+        CodeApiVersion = "1.0.0",
+        TrustPolicy = static _ => true,
+        Services = new ObserverServices(observed.Add),
     };
 
     /// <summary>Shares only a BCL delegate so fixture-private types never leak into the host contract.</summary>
@@ -240,11 +246,17 @@ public sealed class GameModHostTests
     /// <summary>Owns an isolated installation tree containing actual compiled mod artifacts.</summary>
     private sealed class ModWorkspace : IDisposable
     {
+        private static readonly JsonSerializerOptions _manifestOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        };
+
+
         /// <summary>Creates one mandatory data-only base package.</summary>
         public ModWorkspace()
         {
             Directory.CreateDirectory(Root);
-            WriteManifest("base", null);
+            WriteManifest("base", code: null);
         }
         /// <summary>Gets this test installation root, never a real player profile.</summary>
         public string Root { get; } = Path.Combine(Path.GetTempPath(), "gframework-mod-tests-" + Guid.NewGuid().ToString("N"));
@@ -257,15 +269,16 @@ public sealed class GameModHostTests
                 File.Copy(file, Path.Combine(directory, Path.GetFileName(file)), overwrite: true);
             WriteManifest(id, new ContentCodeEntrypoint
             {
-                AssemblyPath = "FixtureMod.dll", EntryType = entryType,
+                AssemblyPath = "FixtureMod.dll",
+                EntryType = entryType,
                 ApiVersions = new ContentVersionRange { MinimumInclusive = "1.0.0", MaximumExclusive = "2.0.0" },
-                RequiredCapabilities = capabilities ?? Array.Empty<string>()
+                RequiredCapabilities = capabilities ?? [],
             });
         }
         /// <summary>Discovers fresh bytes and applies the requested player order with explicit code support.</summary>
         public async Task<ContentLoadPlan> ResolveAsync(params string[] enabled)
         {
-            var packages = await new ContentPackDiscovery().DiscoverAsync(new[] { Root }).ConfigureAwait(false);
+            var packages = await new ContentPackDiscovery().DiscoverAsync([Root]).ConfigureAwait(false);
             return ContentPackResolver.Resolve(packages,
                 new ContentPackProfile { EnabledPackages = enabled, LoadOrder = enabled },
                 new ContentHostCompatibility { GameId = "test", CodeApiVersion = "1.0.0" });
@@ -276,8 +289,11 @@ public sealed class GameModHostTests
             Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "content-pack.json"), JsonSerializer.Serialize(new ContentPackManifest
             {
-                Id = id, Name = id, GameId = "test", Code = code
-            }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+                Id = id,
+                Name = id,
+                GameId = "test",
+                Code = code,
+            }, _manifestOptions));
         }
         /// <inheritdoc />
         public void Dispose() => Directory.Delete(Root, recursive: true);

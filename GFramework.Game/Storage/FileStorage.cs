@@ -59,7 +59,8 @@ public sealed class FileStorage : IFileStorage, IStorageBackup, IDisposable
     /// </summary>
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
         _disposed = true;
 
         // 只释放内部创建的锁管理器
@@ -127,7 +128,7 @@ public sealed class FileStorage : IFileStorage, IStorageBackup, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         var path = ToPath(key);
-        var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
+        var pathLock = await _lockManager.AcquireLockAsync(path, cancellationToken).ConfigureAwait(false);
         await using var configuredPathLock = pathLock.ConfigureAwait(false);
         return new StorageSnapshot(await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false));
     }
@@ -147,12 +148,13 @@ public sealed class FileStorage : IFileStorage, IStorageBackup, IDisposable
         ArgumentNullException.ThrowIfNull(snapshot);
         cancellationToken.ThrowIfCancellationRequested();
         var path = ToPath(key);
-        var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
+        var pathLock = await _lockManager.AcquireLockAsync(path, cancellationToken).ConfigureAwait(false);
         await using var configuredPathLock = pathLock.ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         // Preserve the original encoding and unknown serialized fields instead of round-tripping through a DTO.
         var bytes = snapshot.ToArray();
-        await AtomicFileWriter.WriteAsync(path, stream => stream.WriteAsync(bytes).AsTask(), _bufferSize)
+        // Admission is cancellable; an accepted atomic replacement is always joined through completion.
+        await AtomicFileWriter.WriteAsync(path, stream => stream.WriteAsync(bytes, CancellationToken.None).AsTask(), _bufferSize)
             .ConfigureAwait(false);
     }
 
@@ -289,7 +291,7 @@ public sealed class FileStorage : IFileStorage, IStorageBackup, IDisposable
             useAsync: true);
         await using var configuredFileStream = fs.ConfigureAwait(false);
 
-        using var sr = new StreamReader(fs, Encoding.UTF8, true, -1, leaveOpen: true);
+        using var sr = new StreamReader(fs, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, -1, leaveOpen: true);
         var content = await sr.ReadToEndAsync().ConfigureAwait(false);
         return _serializer.Deserialize<T>(content);
     }
@@ -327,7 +329,7 @@ public sealed class FileStorage : IFileStorage, IStorageBackup, IDisposable
     {
         var fullPath = string.IsNullOrEmpty(path) ? _rootPath : Path.Combine(_rootPath, path);
         if (!Directory.Exists(fullPath))
-            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+            return Task.FromResult<IReadOnlyList<string>>([]);
 
         var files = Directory.GetFiles(fullPath)
             .Select(Path.GetFileName)

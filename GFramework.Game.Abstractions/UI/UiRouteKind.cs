@@ -11,5 +11,5 @@ public enum UiRouteKind
     /// <summary>A page in navigation history; only the top page is visible.</summary>
     Page,
     /// <summary>An independent view, such as a HUD, popup, or notification.</summary>
-    Window
+    Window,
 }

@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Globalization;
+
 namespace GFramework.Core.Functional.Async;
 
 /// <summary>
@@ -68,13 +70,13 @@ public static class AsyncFunctionalExtensions
                     if (throwOriginal)
                         throw;
 
-                    throw new AggregateException($"操作在 {attempt} 次重试后仍然失败", ex);
+                    throw new AggregateException(string.Create(CultureInfo.InvariantCulture, $"操作在 {attempt} 次重试后仍然失败"), ex);
                 }
             }
         }
 
         // 理论上不可达，仅满足编译器要求
-        throw new AggregateException($"操作在 {maxRetries} 次重试后仍然失败");
+        throw new AggregateException(string.Create(CultureInfo.InvariantCulture, $"操作在 {maxRetries} 次重试后仍然失败"));
     }
 
     /// <summary>

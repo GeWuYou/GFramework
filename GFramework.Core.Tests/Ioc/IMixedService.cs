@@ -11,5 +11,8 @@ public interface IMixedService
     /// <summary>
     ///     获取或设置服务名称。
     /// </summary>
-    string? Name { get; set; }
+    string? Name
+    {
+        get; set;
+    }
 }

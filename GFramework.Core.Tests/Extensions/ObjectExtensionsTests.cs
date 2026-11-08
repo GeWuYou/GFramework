@@ -180,8 +180,10 @@ public class ObjectExtensionsTests
         var executed = false;
 
         obj.SwitchType(
-            (typeof(TestClass), _ => { executed = true; }),
-            (typeof(string), _ => { Assert.Fail("Should not execute"); })
+            (typeof(TestClass), _ => { executed = true; }
+        ),
+            (typeof(string), _ => { Assert.Fail("Should not execute"); }
+        )
         );
 
         Assert.That(executed, Is.True);
@@ -197,8 +199,10 @@ public class ObjectExtensionsTests
         var count = 0;
 
         obj.SwitchType(
-            (typeof(TestClass), _ => { count++; }),
-            (typeof(TestClass), _ => { count++; })
+            (typeof(TestClass), _ => { count++; }
+        ),
+            (typeof(TestClass), _ => { count++; }
+        )
         );
 
         Assert.That(count, Is.EqualTo(1));
@@ -214,8 +218,10 @@ public class ObjectExtensionsTests
         var executed = false;
 
         obj.SwitchType(
-            (typeof(string), _ => { executed = true; }),
-            (typeof(int), _ => { executed = true; })
+            (typeof(string), _ => { executed = true; }
+        ),
+            (typeof(int), _ => { executed = true; }
+        )
         );
 
         Assert.That(executed, Is.False);

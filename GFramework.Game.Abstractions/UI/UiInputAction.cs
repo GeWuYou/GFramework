@@ -22,5 +22,5 @@ public enum UiInputAction
     /// <summary>
     ///     确认当前 UI 操作。
     /// </summary>
-    Confirm = 2
+    Confirm = 2,
 }

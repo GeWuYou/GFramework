@@ -251,7 +251,7 @@ public class OptionTests
     {
         var option = Option<int>.Some(42);
         var result = option.Match(
-            some: value => $"Value: {value}",
+            some: value => string.Create(CultureInfo.InvariantCulture, $"Value: {value}"),
             none: () => "No value"
         );
         Assert.That(result, Is.EqualTo("Value: 42"));
@@ -265,7 +265,7 @@ public class OptionTests
     {
         var option = Option<int>.None;
         var result = option.Match(
-            some: value => $"Value: {value}",
+            some: value => string.Create(CultureInfo.InvariantCulture, $"Value: {value}"),
             none: () => "No value"
         );
         Assert.That(result, Is.EqualTo("No value"));

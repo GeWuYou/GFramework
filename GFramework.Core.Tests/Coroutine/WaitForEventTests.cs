@@ -23,7 +23,7 @@ public class WaitForEventTests
     /// <summary>
     ///     测试用的简单事件类
     /// </summary>
-    private class TestEvent
+    private sealed class TestEvent
     {
         public string Data { get; set; } = string.Empty;
     }

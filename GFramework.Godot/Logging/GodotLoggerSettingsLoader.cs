@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -33,8 +34,9 @@ internal static class GodotLoggerSettingsLoader
         Converters =
         {
             new GodotLogLevelJsonConverter(),
-            new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: true)
-        }
+
+            new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: true),
+        },
     };
 
     /// <summary>
@@ -148,14 +150,23 @@ internal static class GodotLoggerSettingsLoader
 
     private sealed class GodotLoggerSettingsDocument
     {
-        public LoggingDocument? Logging { get; set; }
+        public LoggingDocument? Logging
+        {
+            get; set;
+        }
     }
 
     private sealed class LoggingDocument
     {
-        public GodotLoggerOptions? GodotLogger { get; set; }
+        public GodotLoggerOptions? GodotLogger
+        {
+            get; set;
+        }
 
-        public Dictionary<string, LogLevel>? LogLevel { get; set; }
+        public Dictionary<string, LogLevel>? LogLevel
+        {
+            get; set;
+        }
     }
 
     private sealed class GodotLogLevelJsonConverter : JsonConverter<LogLevel>
@@ -167,7 +178,7 @@ internal static class GodotLoggerSettingsLoader
                 if (!Enum.IsDefined(typeof(LogLevel), numericValue))
                 {
                     throw new JsonException(
-                        $"Unsupported numeric {nameof(LogLevel)} value '{numericValue}'. Expected a defined {nameof(LogLevel)} value.");
+                        string.Create(CultureInfo.InvariantCulture, $"Unsupported numeric {nameof(LogLevel)} value '{numericValue}'. Expected a defined {nameof(LogLevel)} value."));
                 }
 
                 return (LogLevel)numericValue;
@@ -207,7 +218,7 @@ internal static class GodotLoggerSettingsLoader
                 "Warning" or "warning" or "Warn" or "warn" => LogLevel.Warning,
                 "Error" or "error" => LogLevel.Error,
                 "Fatal" or "fatal" or "Critical" or "critical" => LogLevel.Critical,
-                _ => throw new JsonException($"Unsupported log level '{value}'.")
+                _ => throw new JsonException($"Unsupported log level '{value}'."),
             };
         }
     }

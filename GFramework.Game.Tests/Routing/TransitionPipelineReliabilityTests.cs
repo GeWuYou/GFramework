@@ -15,14 +15,14 @@ public class TransitionPipelineReliabilityTests
     [Test]
     public async Task StageHandler_WithDefaultOuterToken_ReceivesTimeoutCancellation()
     {
-        var execute = CreateStageExecution(new Func<CancellationToken, Task>[]
-        {
+        var execute = CreateStageExecution(
+        [
             token =>
             {
                 Assert.That(token.CanBeCanceled, Is.True);
                 return Task.Delay(TimeSpan.FromSeconds(10), token);
-            }
-        }, timeoutMs: 25);
+            },
+        ], timeoutMs: 25);
 
         await Assert.CatchAsync<OperationCanceledException>(() => execute().WaitAsync(TimeSpan.FromSeconds(2)));
     }
@@ -45,23 +45,23 @@ public class TransitionPipelineReliabilityTests
     public async Task AroundHandler_WithContinueOnError_DoesNotSwallowCallerCancellation()
     {
         using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
+        await cancellation.CancelAsync().ConfigureAwait(false);
         var execute = CreateAroundExecution(token => Task.FromCanceled(token),
             outerToken: cancellation.Token, continueOnError: true);
 
-        await Assert.CatchAsync<OperationCanceledException>(execute);
+        await Assert.CatchAsync<OperationCanceledException>(execute).ConfigureAwait(false);
     }
 
     /// <summary>未配置超时时处理器主动取消不能被 ContinueOnError 误判为可忽略的超时。</summary>
     [Test]
     public async Task StageHandler_WithContinueOnError_DoesNotSwallowIndependentCancellation()
     {
-        var execute = CreateStageExecution(new Func<CancellationToken, Task>[]
-        {
-            _ => Task.FromException(new OperationCanceledException("handler canceled independently"))
-        }, continueOnError: true);
+        var execute = CreateStageExecution(
+        [
+            _ => Task.FromException(new OperationCanceledException("handler canceled independently")),
+        ], continueOnError: true);
 
-        await Assert.CatchAsync<OperationCanceledException>(execute);
+        await Assert.CatchAsync<OperationCanceledException>(execute).ConfigureAwait(false);
     }
 
     /// <summary>处理器发生真正异步等待后，后续处理器仍从原宿主同步上下文执行。</summary>
@@ -71,15 +71,15 @@ public class TransitionPipelineReliabilityTests
         var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var host = new MarkerSynchronizationContext();
         SynchronizationContext? observed = null;
-        var execute = CreateStageExecution(new Func<CancellationToken, Task>[]
-        {
+        var execute = CreateStageExecution(
+        [
             _ => pending.Task,
             _ =>
             {
                 observed = SynchronizationContext.Current;
                 return Task.CompletedTask;
-            }
-        });
+            },
+        ]);
         var previous = SynchronizationContext.Current;
         Task operation;
         try
@@ -115,7 +115,7 @@ public class TransitionPipelineReliabilityTests
                 await outerWait.Task.ConfigureAwait(false);
                 outerContinuation = SynchronizationContext.Current;
                 await next().ConfigureAwait(false);
-            }
+            },
         };
         if (includeNextMiddleware)
         {
@@ -166,7 +166,7 @@ public class TransitionPipelineReliabilityTests
             handler.SetupGet(value => value.Priority).Returns(priority++);
             handler.SetupGet(value => value.Phases).Returns(SceneTransitionPhases.BeforeChange);
             handler.Setup(value => value.ShouldHandle(It.IsAny<SceneTransitionEvent>(), It.IsAny<SceneTransitionPhases>()))
-                .Returns(true);
+                .Returns(value: true);
             handler.Setup(value => value.HandleAsync(It.IsAny<SceneTransitionEvent>(), It.IsAny<CancellationToken>()))
                 .Returns((SceneTransitionEvent _, CancellationToken token) => callback(token));
             pipeline.RegisterHandler(handler.Object, new SceneTransitionHandlerOptions(timeoutMs, continueOnError));
@@ -177,11 +177,11 @@ public class TransitionPipelineReliabilityTests
 
     /// <summary>为 Scene 管线创建可控中间件，隔离取消与 ContinueOnError 的交互。</summary>
     private static Func<Task> CreateAroundExecution(Func<CancellationToken, Task> callback,
-        int timeoutMs = 0, CancellationToken outerToken = default, bool continueOnError = false)
+        int timeoutMs = 0, bool continueOnError = false, CancellationToken outerToken = default)
     {
         var pipeline = new SceneTransitionPipeline();
         var handler = new Mock<ISceneAroundTransitionHandler>();
-        handler.Setup(value => value.ShouldHandle(It.IsAny<SceneTransitionEvent>())).Returns(true);
+        handler.Setup(value => value.ShouldHandle(It.IsAny<SceneTransitionEvent>())).Returns(value: true);
         handler.Setup(value => value.HandleAsync(It.IsAny<SceneTransitionEvent>(), It.IsAny<Func<Task>>(),
                 It.IsAny<CancellationToken>()))
             .Returns((SceneTransitionEvent _, Func<Task> _, CancellationToken token) => callback(token));
@@ -200,7 +200,7 @@ public class TransitionPipelineReliabilityTests
         {
             var handler = new Mock<ISceneAroundTransitionHandler>();
             handler.SetupGet(value => value.Priority).Returns(scenePriority++);
-            handler.Setup(value => value.ShouldHandle(It.IsAny<SceneTransitionEvent>())).Returns(true);
+            handler.Setup(value => value.ShouldHandle(It.IsAny<SceneTransitionEvent>())).Returns(value: true);
             handler.Setup(value => value.HandleAsync(It.IsAny<SceneTransitionEvent>(), It.IsAny<Func<Task>>(),
                     It.IsAny<CancellationToken>()))
                 .Returns((SceneTransitionEvent _, Func<Task> next, CancellationToken _) => callback(next));

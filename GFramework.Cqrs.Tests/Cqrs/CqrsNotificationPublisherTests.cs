@@ -282,7 +282,10 @@ internal sealed class CqrsNotificationPublisherTests
         /// <summary>
         ///     获取当前处理器是否已被调用。
         /// </summary>
-        public bool Invoked { get; private set; }
+        public bool Invoked
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     把当前处理器名称追加到调用顺序列表。
@@ -372,12 +375,18 @@ internal sealed class CqrsNotificationPublisherTests
         /// <summary>
         ///     获取当前发布器是否至少执行过一次发布。
         /// </summary>
-        public bool WasCalled { get; private set; }
+        public bool WasCalled
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     获取当前发布器累计执行发布的次数。
         /// </summary>
-        public int PublishCallCount { get; private set; }
+        public int PublishCallCount
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录当前发布器已被调用，并继续按当前顺序执行所有处理器。
@@ -411,7 +420,10 @@ internal sealed class CqrsNotificationPublisherTests
         /// <summary>
         ///     获取当前处理器在执行时观察到的架构上下文。
         /// </summary>
-        public IArchitectureContext? ObservedContext { get; private set; }
+        public IArchitectureContext? ObservedContext
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录当前执行时观察到的架构上下文。
@@ -433,12 +445,16 @@ internal sealed class CqrsNotificationPublisherTests
     private sealed class FakeDispatchServiceProvider : IServiceProvider, IServiceProviderIsService
     {
         private readonly Dictionary<Type, List<object>> _registrations = [];
-        private IEnumerator<INotificationPublisher>? _publisherSequence;
+        private List<INotificationPublisher>.Enumerator _publisherSequence;
+        private bool _hasPublisherSequence;
 
         /// <summary>
         ///     获取或设置每次解析 <see cref="INotificationPublisher" /> 注册集合时触发的回调。
         /// </summary>
-        public Action? OnPublisherResolved { get; set; }
+        public Action? OnPublisherResolved
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     注册指定服务类型的一个或多个实例。
@@ -472,6 +488,7 @@ internal sealed class CqrsNotificationPublisherTests
             ArgumentNullException.ThrowIfNull(secondPublisher);
 
             _publisherSequence = new List<INotificationPublisher> { firstPublisher, secondPublisher }.GetEnumerator();
+            _hasPublisherSequence = true;
         }
 
         /// <inheritdoc />
@@ -520,7 +537,7 @@ internal sealed class CqrsNotificationPublisherTests
             if (elementType == typeof(INotificationPublisher))
             {
                 OnPublisherResolved?.Invoke();
-                if (_publisherSequence is not null)
+                if (_hasPublisherSequence)
                 {
                     var moved = _publisherSequence.MoveNext();
                     if (moved)

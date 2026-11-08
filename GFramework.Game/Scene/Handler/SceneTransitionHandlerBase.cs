@@ -32,7 +32,10 @@ public abstract class SceneTransitionHandlerBase : ISceneTransitionHandler
     /// 获取处理器的执行优先级。
     /// 派生类必须实现此属性以指定优先级。
     /// </summary>
-    public abstract int Priority { get; }
+    public abstract int Priority
+    {
+        get;
+    }
 
     /// <summary>
     /// 判断处理器是否应该处理当前场景过渡事件。

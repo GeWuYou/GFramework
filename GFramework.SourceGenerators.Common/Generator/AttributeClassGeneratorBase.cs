@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.SourceGenerators.Common.Diagnostics;
@@ -16,7 +16,10 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
     /// <summary>
     ///     获取属性的短名称（不包含后缀）
     /// </summary>
-    protected abstract string AttributeShortNameWithoutSuffix { get; }
+    protected abstract string AttributeShortNameWithoutSuffix
+    {
+        get;
+    }
 
     /// <summary>
     ///     初始化增量生成器
@@ -32,10 +35,10 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
                         .SelectMany(a => a.Attributes)
                         .Any(a => a.Name.ToString()
                             .Contains(AttributeShortNameWithoutSuffix)),
-                (ctx, _) =>
+                (ctx, cancellationToken) =>
                 {
                     var cls = (ClassDeclarationSyntax)ctx.Node;
-                    var symbol = ctx.SemanticModel.GetDeclaredSymbol(cls);
+                    var symbol = ctx.SemanticModel.GetDeclaredSymbol(cls, cancellationToken);
                     return (cls, symbol);
                 })
             .Where(x => x.symbol is not null);

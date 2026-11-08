@@ -26,7 +26,10 @@ public sealed class MarkupTestSource
     /// <summary>
     ///     获取移除标记后的源码文本。
     /// </summary>
-    public string Source { get; }
+    public string Source
+    {
+        get;
+    }
 
     /// <summary>
     ///     解析形如 <c>{|#0:identifier|}</c> 的单层标记，并保留去标记后的源码。
@@ -55,7 +58,7 @@ public sealed class MarkupTestSource
             if (index >= markupSource.Length)
                 throw new InvalidOperationException("Unterminated markup marker identifier.");
 
-            var markerId = markupSource.Substring(markerIdStart, index - markerIdStart);
+            var markerId = markupSource[markerIdStart..index];
             if (markerId.Length == 0)
                 throw new InvalidOperationException("Markup marker identifier cannot be empty.");
 

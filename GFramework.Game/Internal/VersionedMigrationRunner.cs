@@ -149,7 +149,7 @@ internal static class VersionedMigrationRunner
         if (currentVersion > targetVersion)
         {
             throw new InvalidOperationException(
-                $"{subjectName} is version {currentVersion}, which is newer than the current runtime version {targetVersion}.");
+                string.Create(CultureInfo.InvariantCulture, $"{subjectName} is version {currentVersion}, which is newer than the current runtime version {targetVersion}."));
         }
     }
 
@@ -169,12 +169,8 @@ internal static class VersionedMigrationRunner
         in MigrationExecutionContext<TData, TMigration> context)
         where TData : class
     {
-        var migration = resolveMigration(currentVersion);
-        if (migration is null)
-        {
-            throw new InvalidOperationException(
-                $"No {context.MigrationKind} is registered for {context.SubjectName} from version {currentVersion}.");
-        }
+        var migration = resolveMigration(currentVersion) ?? throw new InvalidOperationException(
+                string.Create(CultureInfo.InvariantCulture, $"No {context.MigrationKind} is registered for {context.SubjectName} from version {currentVersion}."));
 
         return migration;
     }
@@ -203,7 +199,7 @@ internal static class VersionedMigrationRunner
     {
         var migratedData = context.ApplyMigration(migration, current)
             ?? throw new InvalidOperationException(
-                $"{context.MigrationKind} for {context.SubjectName} from version {currentVersion} returned null.");
+                string.Create(CultureInfo.InvariantCulture, $"{context.MigrationKind} for {context.SubjectName} from version {currentVersion} returned null."));
         var migratedVersion = context.GetVersion(migratedData);
         ValidateMigrationResult(
             currentVersion,
@@ -238,21 +234,21 @@ internal static class VersionedMigrationRunner
         if (declaredTargetVersion != migratedVersion)
         {
             throw new InvalidOperationException(
-                $"{context.MigrationKind} for {context.SubjectName} declared target version {declaredTargetVersion} " +
-                $"but returned version {migratedVersion}.");
+                string.Create(CultureInfo.InvariantCulture, $"{context.MigrationKind} for {context.SubjectName} declared target version {declaredTargetVersion} ") +
+                string.Create(CultureInfo.InvariantCulture, $"but returned version {migratedVersion}."));
         }
 
         if (migratedVersion <= currentVersion)
         {
             throw new InvalidOperationException(
-                $"{context.MigrationKind} for {context.SubjectName} must advance beyond version {currentVersion}.");
+                string.Create(CultureInfo.InvariantCulture, $"{context.MigrationKind} for {context.SubjectName} must advance beyond version {currentVersion}."));
         }
 
         if (migratedVersion > targetVersion)
         {
             throw new InvalidOperationException(
-                $"{context.MigrationKind} for {context.SubjectName} produced version {migratedVersion}, " +
-                $"which exceeds the current runtime version {targetVersion}.");
+                string.Create(CultureInfo.InvariantCulture, $"{context.MigrationKind} for {context.SubjectName} produced version {migratedVersion}, ") +
+                string.Create(CultureInfo.InvariantCulture, $"which exceeds the current runtime version {targetVersion}."));
         }
     }
 }

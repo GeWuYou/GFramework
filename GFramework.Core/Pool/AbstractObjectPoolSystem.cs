@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Diagnostics;
@@ -184,7 +184,7 @@ public abstract class AbstractObjectPoolSystem<TKey, TObject>
                 TotalCreated = 0,
                 TotalAcquired = 0,
                 TotalReleased = 0,
-                TotalDestroyed = 0
+                TotalDestroyed = 0,
             };
         }
 
@@ -196,7 +196,7 @@ public abstract class AbstractObjectPoolSystem<TKey, TObject>
             TotalCreated = poolInfo.TotalCreated,
             TotalAcquired = poolInfo.TotalAcquired,
             TotalReleased = poolInfo.TotalReleased,
-            TotalDestroyed = poolInfo.TotalDestroyed
+            TotalDestroyed = poolInfo.TotalDestroyed,
         };
     }
 
@@ -230,31 +230,49 @@ public abstract class AbstractObjectPoolSystem<TKey, TObject>
         ///     池中保留的最大对象数量。当释放对象时，如果池中对象数已达到此限制，
         ///     对象将被销毁而不是放回池中。设置为 0 表示无限制。
         /// </summary>
-        public int MaxCapacity { get; set; }
+        public int MaxCapacity
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     总共创建的对象数量统计。
         /// </summary>
-        public int TotalCreated { get; set; }
+        public int TotalCreated
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     总共从池中获取的对象数量统计。
         /// </summary>
-        public int TotalAcquired { get; set; }
+        public int TotalAcquired
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     总共归还到池中的对象数量统计。
         /// </summary>
-        public int TotalReleased { get; set; }
+        public int TotalReleased
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     总共销毁的对象数量统计。
         /// </summary>
-        public int TotalDestroyed { get; set; }
+        public int TotalDestroyed
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     当前活跃（正在使用）的对象数量统计。
         /// </summary>
-        public int ActiveCount { get; set; }
+        public int ActiveCount
+        {
+            get; set;
+        }
     }
 }

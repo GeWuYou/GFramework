@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.CodeAnalysis;
@@ -20,6 +20,8 @@ public static class AttributeDataExtensions
         /// <param name="name">要查找的命名参数名称</param>
         /// <param name="defaultValue">当找不到指定参数时返回的默认值</param>
         /// <returns>找到的参数值，如果未找到或类型不匹配则返回默认值</returns>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "C# extension-block members use the implicit attr receiver; marking this member static removes that receiver and breaks both compilation and the extension API.")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "MA0038", Justification = "C# extension-block members use the implicit attr receiver; marking this member static removes that receiver and breaks both compilation and the extension API.")]
         public T? GetNamedArgument<T>(string name,
             T? defaultValue = default)
         {
@@ -36,6 +38,8 @@ public static class AttributeDataExtensions
         /// </summary>
         /// <param name="defaultValue">当没有构造函数参数或第一个参数不是字符串时返回的默认值</param>
         /// <returns>构造函数第一个参数的字符串值，如果不存在则返回默认值</returns>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "C# extension-block members use the implicit attr receiver; marking this member static removes that receiver and breaks both compilation and the extension API.")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "MA0038", Justification = "C# extension-block members use the implicit attr receiver; marking this member static removes that receiver and breaks both compilation and the extension API.")]
         public string GetFirstCtorString(string defaultValue)
         {
             if (attr.ConstructorArguments.Length == 0)

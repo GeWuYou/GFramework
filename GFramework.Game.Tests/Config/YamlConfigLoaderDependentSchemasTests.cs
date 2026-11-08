@@ -54,7 +54,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
         if (!string.IsNullOrEmpty(_rootPath) &&
             Directory.Exists(_rootPath))
         {
-            Directory.Delete(_rootPath, true);
+            Directory.Delete(_rootPath, recursive: true);
         }
     }
 
@@ -389,7 +389,10 @@ public sealed class YamlConfigLoaderDependentSchemasTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置奖励对象。
@@ -410,11 +413,17 @@ public sealed class YamlConfigLoaderDependentSchemasTests
         /// <summary>
         ///     获取或设置掉落物数量。
         /// </summary>
-        public int ItemCount { get; set; }
+        public int ItemCount
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置额外奖励值。
         /// </summary>
-        public int Bonus { get; set; }
+        public int Bonus
+        {
+            get; set;
+        }
     }
 }

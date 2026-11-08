@@ -12,7 +12,7 @@ public sealed class SaveDataBlock
     public int Version { get; set; } = 1;
 
     /// <summary>Gets or sets the complete JSON object, including fields unknown to the current DTO.</summary>
-    public JObject Data { get; set; } = new();
+    public JObject Data { get; set; } = [];
 
     /// <summary>Creates an independent block for pure preparation or caller-owned inspection.</summary>
     /// <returns>A deep copy.</returns>

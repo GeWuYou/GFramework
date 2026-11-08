@@ -15,21 +15,33 @@ namespace GFramework.Game.Modding;
 public sealed class GameModHostOptions
 {
     /// <summary>Gets the host game identity.</summary>
-    public required string GameId { get; init; }
+    public required string GameId
+    {
+        get; init;
+    }
     /// <summary>Gets the running game's explicitly published code API version.</summary>
-    public required string CodeApiVersion { get; init; }
+    public required string CodeApiVersion
+    {
+        get; init;
+    }
     /// <summary>Gets shared, caller-owned game services. The mod host never disposes this provider.</summary>
     public IServiceProvider Services { get; init; } = EmptyModServices.Instance;
     /// <summary>Gets an optional per-mod provider, resolved before shared services; its ownership stays with the game.</summary>
-    public Func<IGameModContext, IServiceProvider>? CreateServices { get; init; }
+    public Func<IGameModContext, IServiceProvider>? CreateServices
+    {
+        get; init;
+    }
     /// <summary>Gets the native host dispatcher; standalone .NET hosts can use InlineGameDispatcher.</summary>
     public IGameDispatcher Dispatcher { get; init; } = new InlineGameDispatcher();
     /// <summary>Gets the exact-stamp approval policy. A missing policy denies all code.</summary>
-    public Func<ContentPackStamp, bool>? TrustPolicy { get; init; }
+    public Func<ContentPackStamp, bool>? TrustPolicy
+    {
+        get; init;
+    }
     /// <summary>Gets host-owned API assemblies shared with all mods; private dependencies remain isolated.</summary>
-    public IReadOnlyList<Assembly> SharedAssemblies { get; init; } = Array.Empty<Assembly>();
+    public IReadOnlyList<Assembly> SharedAssemblies { get; init; } = [];
     /// <summary>Gets optional adapters, such as HarmonyModExtension.</summary>
-    public IReadOnlyList<IGameModExtension> Extensions { get; init; } = Array.Empty<IGameModExtension>();
+    public IReadOnlyList<IGameModExtension> Extensions { get; init; } = [];
     /// <summary>Gets a caller-owned logger factory.</summary>
     public ILoggerFactory LoggerFactory { get; init; } = NullLoggerFactory.Instance;
 }

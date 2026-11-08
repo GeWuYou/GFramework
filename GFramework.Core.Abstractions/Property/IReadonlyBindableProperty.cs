@@ -14,7 +14,10 @@ public interface IReadonlyBindableProperty<out T> : IEvent
     /// <summary>
     ///     获取属性的当前值
     /// </summary>
-    T Value { get; }
+    T Value
+    {
+        get;
+    }
 
     /// <summary>
     ///     注册属性值变更回调，并立即执行一次初始值的回调

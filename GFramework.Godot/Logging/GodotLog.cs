@@ -31,6 +31,7 @@ public static class GodotLog
     private static readonly object ConfigureLock = new();
 #endif
     private static Action<GodotLoggerOptions>? _configure;
+    private static bool _configurationStarted;
 
     private static readonly Lazy<GodotLogConfigurationSource> LazyConfigurationSource = new(
         CreateConfigurationSource,
@@ -41,11 +42,11 @@ public static class GodotLog
         LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>
-    ///     Applies imperative option overrides before the Godot logging pipeline is materialized.
+    ///     Applies imperative option overrides until logging settings are first read, including after logger creation.
     /// </summary>
     /// <param name="configure">The options mutator.</param>
     /// <exception cref="InvalidOperationException">
-    ///     Thrown when the provider or the configuration source has already been materialized.
+    ///     Thrown once configuration-source creation has started.
     /// </exception>
     public static void Configure(Action<GodotLoggerOptions> configure)
     {
@@ -53,10 +54,10 @@ public static class GodotLog
 
         lock (ConfigureLock)
         {
-            if (LazyProvider.IsValueCreated || LazyConfigurationSource.IsValueCreated)
+            if (_configurationStarted)
             {
                 throw new InvalidOperationException(
-                    "GodotLog.Configure must be called before any GodotLog provider or configuration source is materialized.");
+                    "GodotLog.Configure must be called before logging configuration is first read.");
             }
 
             _configure = configure;
@@ -143,6 +144,8 @@ public static class GodotLog
     {
         lock (ConfigureLock)
         {
+            // Publish the boundary while holding the same lock as Configure; Lazy.IsValueCreated alone has a publication gap.
+            _configurationStarted = true;
             return new GodotLogConfigurationSource(_configure);
         }
     }

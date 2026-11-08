@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Godot.SourceGenerators.Tests.Core;
@@ -7,6 +7,8 @@ namespace GFramework.Godot.SourceGenerators.Tests.Core;
 ///     提供源代码生成器测试的通用功能。
 /// </summary>
 /// <typeparam name="TGenerator">要测试的源代码生成器类型，必须具有无参构造函数。</typeparam>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0018",
+    Justification = "The generic test fixture binds TGenerator for its static verification helpers.")]
 public static class GeneratorTest<TGenerator>
     where TGenerator : new()
 {
@@ -23,9 +25,9 @@ public static class GeneratorTest<TGenerator>
         {
             TestState =
             {
-                Sources = { source }
+                Sources = { source },
             },
-            DisabledDiagnostics = { "GF_Common_Trace_001" }
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
         };
 
         foreach (var (filename, content) in generatedSources)
@@ -44,7 +46,7 @@ public static class GeneratorTest<TGenerator>
     {
         return content
             .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace("\r", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
             .Replace("\n", Environment.NewLine, StringComparison.Ordinal);
     }
 }

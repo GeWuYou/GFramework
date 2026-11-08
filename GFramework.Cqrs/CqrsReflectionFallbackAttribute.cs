@@ -65,10 +65,16 @@ public sealed class CqrsReflectionFallbackAttribute : Attribute
     /// <summary>
     ///     获取需要运行时补充反射注册的处理器类型全名集合。
     /// </summary>
-    public IReadOnlyList<string> FallbackHandlerTypeNames { get; }
+    public IReadOnlyList<string> FallbackHandlerTypeNames
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取可直接供运行时补充反射注册的处理器类型集合。
     /// </summary>
-    public IReadOnlyList<Type> FallbackHandlerTypes { get; }
+    public IReadOnlyList<Type> FallbackHandlerTypes
+    {
+        get;
+    }
 }

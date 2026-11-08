@@ -47,7 +47,10 @@ internal sealed class HarmonyEngine
         _patchInfo = harmonyType.GetMethod("GetPatchInfo", [typeof(MethodBase)])!;
     }
     /// <summary>Gets the single Default-ALC engine assembly shared with all code mods.</summary>
-    internal Assembly Assembly { get; }
+    internal Assembly Assembly
+    {
+        get;
+    }
     /// <summary>Creates an owner instance without applying any patches.</summary>
     internal object CreateOwner(string ownerId) => Construct(_harmonyConstructor, [ownerId]);
     /// <summary>Applies explicit assembly annotations in the Default-owned engine.</summary>
@@ -65,7 +68,8 @@ internal sealed class HarmonyEngine
         foreach (var target in ((IEnumerable)Invoke(_allPatchedMethods, owner: null, [])!).Cast<MethodBase>())
         {
             var info = Invoke(_patchInfo, owner: null, [target]);
-            if (info is null) continue;
+            if (info is null)
+                continue;
             AddDiagnostics(result, target, info, ownerId, "Prefix", "Prefixes");
             AddDiagnostics(result, target, info, ownerId, "Postfix", "Postfixes");
             AddDiagnostics(result, target, info, ownerId, "Transpiler", "Transpilers");
@@ -91,10 +95,14 @@ internal sealed class HarmonyEngine
             return existing;
         }
         Assembly engine;
-        if (assemblyPath is not null) engine = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
+        if (assemblyPath is not null)
+            engine = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
         else
         {
-            try { engine = AssemblyLoadContext.Default.LoadFromAssemblyName(new AssemblyName("0Harmony")); }
+            try
+            {
+                engine = AssemblyLoadContext.Default.LoadFromAssemblyName(new AssemblyName("0Harmony"));
+            }
             catch (FileNotFoundException exception)
             {
                 var candidate = Path.Combine(AppContext.BaseDirectory, "0Harmony.dll");
@@ -118,13 +126,17 @@ internal sealed class HarmonyEngine
     /// <summary>Applies only supplied overrides, retaining Harmony attributes when declarations omit them.</summary>
     private object? CreateMethod(ModPatchMethod? declaration)
     {
-        if (declaration is null) return null;
+        if (declaration is null)
+            return null;
         ArgumentNullException.ThrowIfNull(declaration.Before, nameof(declaration));
         ArgumentNullException.ThrowIfNull(declaration.After, nameof(declaration));
         var method = Construct(_methodConstructor, [declaration.Method]);
-        if (declaration.Priority.HasValue) _methodType.GetField("priority")!.SetValue(method, declaration.Priority.Value);
-        if (declaration.Before.Count != 0) _methodType.GetField("before")!.SetValue(method, declaration.Before.ToArray());
-        if (declaration.After.Count != 0) _methodType.GetField("after")!.SetValue(method, declaration.After.ToArray());
+        if (declaration.Priority.HasValue)
+            _methodType.GetField("priority")!.SetValue(method, declaration.Priority.Value);
+        if (declaration.Before.Count != 0)
+            _methodType.GetField("before")!.SetValue(method, declaration.Before.ToArray());
+        if (declaration.After.Count != 0)
+            _methodType.GetField("after")!.SetValue(method, declaration.After.ToArray());
         return method;
     }
     /// <summary>Reads documented public Patch/Patches fields without modifying library internals or caches.</summary>
@@ -134,7 +146,8 @@ internal sealed class HarmonyEngine
         var patches = (IEnumerable)_patchesType.GetField(collection)!.GetValue(info)!;
         foreach (var patch in patches)
         {
-            if (!string.Equals((string?)_patchType.GetField("owner")!.GetValue(patch), ownerId, StringComparison.Ordinal)) continue;
+            if (!string.Equals((string?)_patchType.GetField("owner")!.GetValue(patch), ownerId, StringComparison.Ordinal))
+                continue;
             var patchMethod = (MethodInfo)_patchType.GetProperty("PatchMethod")!.GetValue(patch)!;
             var priority = (int)_patchType.GetField("priority")!.GetValue(patch)!;
             var before = (string[])_patchType.GetField("before")!.GetValue(patch)!;
@@ -149,7 +162,10 @@ internal sealed class HarmonyEngine
     /// <summary>Preserves the actual engine exception and stack instead of exposing reflection wrappers.</summary>
     private static object? Invoke(MethodInfo method, object? owner, object?[] arguments)
     {
-        try { return method.Invoke(owner, arguments); }
+        try
+        {
+            return method.Invoke(owner, arguments);
+        }
         catch (TargetInvocationException exception) when (exception.InnerException is not null)
         {
             ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
@@ -159,7 +175,10 @@ internal sealed class HarmonyEngine
     /// <summary>Constructs only known public engine types while preserving underlying failures.</summary>
     private static object Construct(ConstructorInfo constructor, object?[] arguments)
     {
-        try { return constructor.Invoke(arguments); }
+        try
+        {
+            return constructor.Invoke(arguments);
+        }
         catch (TargetInvocationException exception) when (exception.InnerException is not null)
         {
             ExceptionDispatchInfo.Capture(exception.InnerException).Throw();

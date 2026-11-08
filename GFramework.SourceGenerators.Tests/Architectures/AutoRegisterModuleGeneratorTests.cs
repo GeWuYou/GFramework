@@ -340,15 +340,15 @@ public class AutoRegisterModuleGeneratorTests
                 {
                     ("Common.cs", DeterministicOrderCommonSource),
                     ("GameplayModule.PartA.cs", DeterministicOrderPartASource),
-                    ("GameplayModule.PartB.cs", DeterministicOrderPartBSource)
+                    ("GameplayModule.PartB.cs", DeterministicOrderPartBSource),
                 },
                 GeneratedSources =
                 {
                     (typeof(AutoRegisterModuleGenerator), "TestApp_GameplayModule.AutoRegisterModule.g.cs",
-                        NormalizeLineEndings(DeterministicOrderExpected))
-                }
+                        NormalizeLineEndings(DeterministicOrderExpected)),
+                },
             },
-            DisabledDiagnostics = { "GF_Common_Trace_001" }
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
         };
 
         await test.RunAsync();
@@ -374,7 +374,7 @@ public class AutoRegisterModuleGeneratorTests
     {
         return content
             .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace("\r", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
             .Replace("\n", Environment.NewLine, StringComparison.Ordinal);
     }
 }

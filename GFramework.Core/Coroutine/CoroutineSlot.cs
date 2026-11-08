@@ -19,9 +19,9 @@ internal sealed class CoroutineSlot
     /// <summary>The direct owning flow, if any.</summary>
     internal CoroutineHandle Parent;
     /// <summary>Children joined before successful completion.</summary>
-    internal readonly HashSet<CoroutineHandle> Children = new();
+    internal readonly HashSet<CoroutineHandle> Children = [];
     /// <summary>Non-owning observers waiting for this task.</summary>
-    internal readonly HashSet<CoroutineHandle> Waiters = new();
+    internal readonly HashSet<CoroutineHandle> Waiters = [];
     /// <summary>The dependency installed by the current wait.</summary>
     internal CoroutineHandle WaitTarget;
     /// <summary>Lazily created cancellation source for task factories.</summary>
@@ -30,6 +30,8 @@ internal sealed class CoroutineSlot
     internal CancellationTokenRegistration CancellationRegistration;
     /// <summary>Additional factory-provided lifetimes; allocated only when requested.</summary>
     internal List<CancellationTokenRegistration>? AdditionalCancellationRegistrations;
+    /// <summary>Intrinsic and additional lifetimes checked on the driver thread before any continuation advances.</summary>
+    internal List<CancellationToken>? AdditionalCancellationTokens;
     /// <summary>Token visible to task factories and descendants.</summary>
     internal CancellationToken CancellationToken;
     /// <summary>Intrusive phase/priority queue membership.</summary>

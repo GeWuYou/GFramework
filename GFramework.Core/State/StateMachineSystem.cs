@@ -53,7 +53,8 @@ public class StateMachineSystem : StateMachine, IStateMachineSystem
     /// </summary>
     public virtual void Initialize()
     {
-        foreach (var state in States.Values.OfType<IContextAware>()) state.SetContext(_context);
+        foreach (var state in States.Values.OfType<IContextAware>())
+            state.SetContext(_context);
     }
 
     /// <summary>
@@ -75,11 +76,11 @@ public class StateMachineSystem : StateMachine, IStateMachineSystem
         {
             if (Current is IAsyncState asyncState)
             {
-                await asyncState.OnExitAsync(null).ConfigureAwait(false); // ✅ 正确等待异步清理
+                await asyncState.OnExitAsync(to: null).ConfigureAwait(false); // ✅ 正确等待异步清理
             }
             else
             {
-                Current.OnExit(null);
+                Current.OnExit(to: null);
             }
 
             Current = null;
@@ -115,7 +116,7 @@ public class StateMachineSystem : StateMachine, IStateMachineSystem
         this.SendEvent(new StateChangedEvent
         {
             OldState = old,
-            NewState = Current
+            NewState = Current,
         });
     }
 }

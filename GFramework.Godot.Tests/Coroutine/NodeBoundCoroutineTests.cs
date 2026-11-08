@@ -43,10 +43,10 @@ public sealed class NodeBoundCoroutineTests
         using var cancellation = new CancellationTokenSource();
         var disposed = 0;
         using var scope = _timing.GetSchedulerForTests(Segment.Process).CreateScope(CoroutineFailurePolicy.Supervisor);
-        var wrapper = BindLifetime(Blocked(() => disposed++), cancellation.Token, chained);
+        var wrapper = BindLifetime(Blocked(() => disposed++), chained, cancellation.Token);
         var handle = factoryStart
-            ? scope.Run(_ => wrapper, stage: CoroutineExecutionStage.FixedUpdate)
-            : scope.Run(wrapper, stage: CoroutineExecutionStage.FixedUpdate);
+            ? scope.Run(_ => wrapper, stage: CoroutineExecutionStage.FixedUpdate, cancellationToken: global::System.Threading.CancellationToken.None)
+            : scope.Run(wrapper, stage: CoroutineExecutionStage.FixedUpdate, cancellationToken: global::System.Threading.CancellationToken.None);
         cancellation.Cancel();
         _timing.AdvancePhysicsFrameForTests(paused: true);
         Assert.That(Timing.TryGetCoroutineResult(handle, out var result), Is.True);
@@ -66,12 +66,12 @@ public sealed class NodeBoundCoroutineTests
         CoroutineHandle child = default;
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            var wrapper = BindLifetime(Blocked(() => disposed++), cancellation.Token, chained: true);
-            child = factoryStart ? context.RunChild(_ => wrapper) : context.RunChild(wrapper);
+            var wrapper = BindLifetime(Blocked(() => disposed++), chained: true, token: cancellation.Token);
+            child = factoryStart ? context.RunChild(_ => wrapper, cancellationToken: global::System.Threading.CancellationToken.None) : context.RunChild(wrapper, cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
 
-        var parent = _timing.RunCoroutineOnInstance(Parent, Segment.PhysicsProcess);
+        var parent = _timing.RunCoroutineOnInstance(Parent, Segment.PhysicsProcess, cancellationToken: global::System.Threading.CancellationToken.None);
         cancellation.Cancel();
         _timing.AdvancePhysicsFrameForTests(paused: true);
         Assert.That(Timing.TryGetCoroutineResult(child, out var result), Is.True);
@@ -90,22 +90,22 @@ public sealed class NodeBoundCoroutineTests
         var disposed = 0;
         var continued = false;
         using var scope = _timing.GetSchedulerForTests(Segment.Process).CreateScope(CoroutineFailurePolicy.Supervisor);
-        var composition = BindLifetime(Blocked(() => disposed++), cancellation.Token, chained: false)
+        var composition = BindLifetime(Blocked(() => disposed++), chained: false, token: cancellation.Token)
             .Then(() => continued = true);
         CoroutineHandle handle = default;
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            handle = context.RunChild(composition);
+            handle = context.RunChild(composition, cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
 
         if (childStart)
         {
-            scope.Run(Parent, stage: CoroutineExecutionStage.FixedUpdate);
+            scope.Run(Parent, stage: CoroutineExecutionStage.FixedUpdate, cancellationToken: global::System.Threading.CancellationToken.None);
         }
         else
         {
-            handle = scope.Run(composition, stage: CoroutineExecutionStage.FixedUpdate);
+            handle = scope.Run(composition, stage: CoroutineExecutionStage.FixedUpdate, cancellationToken: global::System.Threading.CancellationToken.None);
         }
         cancellation.Cancel();
         _timing.AdvancePhysicsFrameForTests(paused: true);
@@ -123,7 +123,7 @@ public sealed class NodeBoundCoroutineTests
         var disposed = false;
         var inner = new LifetimeIterator(new List<IYieldInstruction>().GetEnumerator(),
             default, expected, () => disposed = true);
-        var failure = Assert.Throws<InvalidOperationException>(() => new NodeBoundCoroutine(inner, Array.Empty<Node>()));
+        var failure = Assert.Throws<InvalidOperationException>(() => new NodeBoundCoroutine(inner, []));
         Assert.That(failure, Is.SameAs(expected));
         Assert.That(disposed, Is.True);
     }
@@ -133,10 +133,10 @@ public sealed class NodeBoundCoroutineTests
     /// <param name="token">The managed substitute for a native node-exit signal.</param>
     /// <param name="chained">Whether to add a second wrapper lifetime.</param>
     /// <returns>The production wrapper supplied directly to scope or child start APIs.</returns>
-    private static NodeBoundCoroutine BindLifetime(IEnumerator<IYieldInstruction> inner, CancellationToken token, bool chained)
+    private static NodeBoundCoroutine BindLifetime(IEnumerator<IYieldInstruction> inner, bool chained, CancellationToken token)
     {
-        var wrapper = new NodeBoundCoroutine(new LifetimeIterator(inner, token), Array.Empty<Node>());
-        return chained ? new NodeBoundCoroutine(wrapper, Array.Empty<Node>()) : wrapper;
+        var wrapper = new NodeBoundCoroutine(new LifetimeIterator(inner, token), []);
+        return chained ? new NodeBoundCoroutine(wrapper, []) : wrapper;
     }
 
     /// <summary>Stays blocked long enough to distinguish token cancellation from ordinary iterator advancement.</summary>

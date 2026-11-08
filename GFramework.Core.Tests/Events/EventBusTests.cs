@@ -47,13 +47,16 @@ public class EventBusTests
     {
         var count = 0;
 
-        Action<EventBusTestsEvent> handler = @event => { count++; };
-        _eventBus.Register(handler);
+        void handler(EventBusTestsEvent @event)
+        {
+            count++;
+        }
+        _eventBus.Register((Action<EventBusTestsEvent>)handler);
         _eventBus.Send<EventBusTestsEvent>();
         // 验证处理器被调用一次
         Assert.That(count, Is.EqualTo(1));
 
-        _eventBus.UnRegister(handler);
+        _eventBus.UnRegister((Action<EventBusTestsEvent>)handler);
         _eventBus.Send<EventBusTestsEvent>();
         // 验证处理器在注销后不再被调用
         Assert.That(count, Is.EqualTo(1));

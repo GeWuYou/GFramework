@@ -12,27 +12,42 @@ public interface IEventStatistics
     /// <summary>
     ///     获取总事件发布数量
     /// </summary>
-    long TotalPublished { get; }
+    long TotalPublished
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取总事件处理数量（监听器调用次数）
     /// </summary>
-    long TotalHandled { get; }
+    long TotalHandled
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取总事件处理失败数量
     /// </summary>
-    long TotalFailed { get; }
+    long TotalFailed
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取当前活跃的事件类型数量
     /// </summary>
-    int ActiveEventTypes { get; }
+    int ActiveEventTypes
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取当前活跃的监听器总数
     /// </summary>
-    int ActiveListeners { get; }
+    int ActiveListeners
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取指定事件类型的发布次数

@@ -18,33 +18,27 @@ namespace GFramework.Core.Concurrency;
 /// <summary>
 ///     异步锁句柄实现
 /// </summary>
-internal sealed class AsyncLockHandle : IAsyncLockHandle
+internal sealed class AsyncLockHandle(AsyncKeyLockManager manager, string key, AsyncKeyLockManager.LockEntry entry,
+    long acquiredTicks) : IAsyncLockHandle
 {
-    private readonly AsyncKeyLockManager.LockEntry _entry;
-    private readonly string _key;
-    private readonly AsyncKeyLockManager _manager;
+    private readonly AsyncKeyLockManager.LockEntry _entry = entry;
+    private readonly string _key = key;
+    private readonly AsyncKeyLockManager _manager = manager;
     private int _disposed;
 
-    public AsyncLockHandle(AsyncKeyLockManager manager, string key, AsyncKeyLockManager.LockEntry entry,
-        long acquiredTicks)
-    {
-        _manager = manager;
-        _key = key;
-        _entry = entry;
-        Key = key;
-        AcquiredTicks = acquiredTicks;
-    }
-
-    public string Key { get; }
-    public long AcquiredTicks { get; }
+    public string Key { get; } = key;
+    public long AcquiredTicks { get; } = acquiredTicks;
 
     public ValueTask DisposeAsync()
     {
-        Dispose();
+        Release();
         return ValueTask.CompletedTask;
     }
 
-    public void Dispose()
+    public void Dispose() => Release();
+
+    // Both disposal contracts perform the same immediate, idempotent release without async self-dispatch.
+    private void Release()
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 0)
         {

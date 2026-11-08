@@ -42,7 +42,10 @@ public class ArchitectureServices : IArchitectureServices
     ///     获取依赖注入容器。
     ///     该容器用于管理架构中所有服务的生命周期和依赖关系。
     /// </summary>
-    public IIocContainer Container { get; }
+    public IIocContainer Container
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取事件总线实例。

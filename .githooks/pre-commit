@@ -1,30 +1,56 @@
-#!/bin/sh
-# 提交前把暂存的文本文件统一为 LF。
-# 二进制文件按 .gitattributes 的 binary 判定跳过；其余文件将 CRLF 规范为 LF 后重新暂存。
-# 本钩子是最后防线：日常规范化仍以 .gitattributes（* text=auto eol=lf）与 clean 过滤器为准。
-set -eu
+#!/usr/bin/env bash
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
 
-files=$(git diff --cached --name-only --diff-filter=ACM)
-[ -z "$files" ] && exit 0
+# 仅规范暂存快照；绝不读取或重新暂存工作区正文，避免把未完成的局部修改带入提交。
+# 仅按 index 中的属性处理文本换行；已暂存内容不得再次执行可能非幂等的自定义 clean filter。
+set -euo pipefail
 
-changed=""
-for f in $files; do
-    [ -f "$f" ] || continue
-    case "$f" in
-        *.png|*.jpg|*.jpeg|*.gif|*.ico|*.zip|*.dll|*.so|*.pdb) continue ;;
+scratch=$(mktemp -d)
+cleanup() {
+    rm -f -- "$scratch/attributes" "$scratch/blob" "$scratch/no-nul" "$scratch/normalized"
+    rmdir -- "$scratch"
+}
+trap cleanup EXIT
+
+# NUL 分隔避免空格、中文、制表符及换行文件名被拆分或 Git 的展示转义改变。
+git diff --cached --name-only --diff-filter=ACM -z |
+while IFS= read -r -d '' path; do
+    entry=$(git ls-files --stage -- "$path")
+    read -r mode object stage <<< "${entry%%$'\t'*}"
+    [ "$stage" = 0 ] || continue
+    case "$mode" in
+        100644|100755) ;;
+        *) continue ;; # 符号链接和子模块不是需要规范化的普通文本文件。
     esac
-    if git check-attr binary -- "$f" | grep -q "set: binary"; then
+
+    git check-attr --cached -z binary text -- "$path" > "$scratch/attributes"
+    mapfile -d '' -t attributes < "$scratch/attributes"
+    if [ "${#attributes[@]}" -ne 6 ]; then
+        printf 'pre-commit: cannot read staged attributes for %q\n' "$path" >&2
+        exit 1
+    fi
+    if [ "${attributes[2]}" = set ] || [ "${attributes[5]}" = unset ]; then
         continue
     fi
-    if grep -qI -U "$(printf '\r')" "$f" 2>/dev/null; then
-        # 仅替换行尾 CR，文本文件中的 CR 均为行尾；-I 保证误判二进制时不动文件。
-        sed -i 's/\r$//' "$f"
-        changed="$changed $f"
+
+    git cat-file blob "$object" > "$scratch/blob"
+    # 扫描完整 blob；不使用 grep -q 管道，避免提前返回触发生产者 SIGPIPE 或漏掉后置 NUL。
+    LC_ALL=C tr -d '\000' < "$scratch/blob" > "$scratch/no-nul"
+    if cmp -s "$scratch/blob" "$scratch/no-nul"; then
+        :
+    else
+        status=$?
+        [ "$status" -eq 1 ] || exit "$status"
+        continue
+    fi
+
+    # -z 把无 NUL 的文本作为一个记录，只删除 CRLF 中的 CR，不改变孤立 CR 或文件末尾。
+    sed -z 's/\r\n/\n/g' "$scratch/blob" > "$scratch/normalized"
+    normalized=$(git hash-object -w --stdin --no-filters < "$scratch/normalized")
+    if [ "$normalized" != "$object" ]; then
+        # 更新 index 中的对象和原始模式；不调用 git add，也不触碰工作区文件。
+        printf '%s %s\t%s\0' "$mode" "$normalized" "$path" | git update-index -z --index-info
+        printf 'pre-commit: normalized staged content: %q\n' "$path"
     fi
 done
-
-if [ -n "$changed" ]; then
-    git add --renormalize -- $changed
-    echo "pre-commit: 已将以下文件统一为 LF 并重新暂存:$changed"
-fi
-exit 0

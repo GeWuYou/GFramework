@@ -16,22 +16,17 @@ namespace GFramework.Core.Architectures;
 ///     请求/通知/流式分发由可选安装的 CQRS runtime 提供，推荐通过
 ///     <c>GFramework.Cqrs.Extensions</c> 的上下文扩展方法或解析 <c>ICqrsRuntime</c> 服务进入 dispatcher。
 /// </summary>
-public class ArchitectureContext : IArchitectureContext
+/// <remarks>
+///     初始化新的架构上下文，并绑定其依赖容器。
+/// </remarks>
+/// <param name="container">
+///     当前架构使用的 IOC 容器。
+///     框架服务会通过该容器延迟解析，以避免在上下文构造阶段强制拉起整条运行时链路。
+/// </param>
+/// <exception cref="ArgumentNullException"><paramref name="container" /> 为 <see langword="null" />。</exception>
+public class ArchitectureContext(IIocContainer container) : IArchitectureContext
 {
-    private readonly IIocContainer _container;
-
-    /// <summary>
-    ///     初始化新的架构上下文，并绑定其依赖容器。
-    /// </summary>
-    /// <param name="container">
-    ///     当前架构使用的 IOC 容器。
-    ///     框架服务会通过该容器延迟解析，以避免在上下文构造阶段强制拉起整条运行时链路。
-    /// </param>
-    /// <exception cref="ArgumentNullException"><paramref name="container" /> 为 <see langword="null" />。</exception>
-    public ArchitectureContext(IIocContainer container)
-    {
-        _container = container ?? throw new ArgumentNullException(nameof(container));
-    }
+    private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
 
     /// <summary>共享自有标准容器的实例状态使包装上下文遵守同一窗口；自定义容器负责自身访问与释放契约。</summary>
     private void EnsureAvailable()
@@ -222,8 +217,7 @@ public class ArchitectureContext : IArchitectureContext
     public IUnRegister RegisterEvent<TEvent>(Action<TEvent> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
-        var eventBus = GetOrCache<IEventBus>();
-        if (eventBus == null) throw new InvalidOperationException("IEventBus not registered");
+        var eventBus = GetOrCache<IEventBus>() ?? throw new InvalidOperationException("IEventBus not registered");
         return eventBus.Register(handler);
     }
 

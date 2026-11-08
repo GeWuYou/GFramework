@@ -138,16 +138,16 @@ public sealed class LoggerGenerator : TypeAttributeClassGeneratorBase
 
         if (ns is not null)
             sb.AppendLine()
-                .AppendLine($"namespace {ns};");
+.Append("namespace ").Append(ns).Append(';').AppendLine();
 
         sb.AppendLine()
             .AppendLine("/// <summary>")
             .AppendLine("/// 为当前分部类型提供自动生成的日志属性。")
             .AppendLine("/// </summary>")
-            .AppendLine($"partial {typeKind} {className}{generics.Parameters}");
+.Append("partial ").Append(typeKind).Append(' ').Append(className).Append(generics.Parameters).AppendLine();
 
         foreach (var c in generics.Constraints)
-            sb.AppendLine($"    {c}");
+            sb.Append("    ").Append(c).AppendLine();
 
         sb.AppendLine("{")
             .AppendLine("    /// <summary>生成的日志属性底层缓存；首次访问时按当前上下文解析并复用。</summary>")
@@ -157,9 +157,9 @@ public sealed class LoggerGenerator : TypeAttributeClassGeneratorBase
             .AppendLine("    /// 自动生成的日志记录器。")
             .AppendLine("    /// </summary>")
             .AppendLine("    /// <remarks>日志工厂经由当前实例绑定的架构上下文解析；访问未绑定上下文的实例会抛出异常。</remarks>")
-            .AppendLine(
-                $"    {access} ILogger {fieldName} => __gFrameworkLogBacking ??= " +
-                $"Context.GetService<ILoggerFactory>().CreateLogger(\"{logName}\");")
+            .Append("    ").Append(access).Append(" ILogger ").Append(fieldName)
+            .Append(" => __gFrameworkLogBacking ??= ((global::GFramework.Core.Abstractions.Rule.IContextAware)this).GetContext()")
+            .Append(".GetService<ILoggerFactory>().CreateLogger(\"").Append(logName).AppendLine("\");")
             .AppendLine("}");
 
         return sb.ToString();

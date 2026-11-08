@@ -44,6 +44,9 @@ public sealed class BonusScoreMod : IGameMod
     public sealed class BonusState
     {
         /// <summary>Gets or sets the number of bonus awards in this run.</summary>
-        public int Awards { get; set; }
+        public int Awards
+        {
+            get; set;
+        }
     }
 }

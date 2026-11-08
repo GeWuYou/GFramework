@@ -13,5 +13,5 @@ public sealed class ContentCodeEntrypoint
     /// <summary>Gets the game-owned code API versions accepted by this mod.</summary>
     public ContentVersionRange ApiVersions { get; init; } = new();
     /// <summary>Gets explicitly required host extension capability names, such as harmony.</summary>
-    public IReadOnlyList<string> RequiredCapabilities { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> RequiredCapabilities { get; init; } = [];
 }

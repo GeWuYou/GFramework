@@ -5,6 +5,8 @@ using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.Routing;
 using GFramework.Game.Abstractions.Runtime;
 using GFramework.Game.Abstractions.Scene;
+using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Game.Scene;
 
@@ -15,11 +17,11 @@ namespace GFramework.Game.Scene;
 /// </summary>
 public abstract class SceneRouterBase : ISceneRouter
 {
-    private readonly SceneTransitionPipeline _pipeline = new();
+    private readonly SceneTransitionPipeline _pipeline;
     private readonly ISceneFactory _factory;
     private readonly ISceneRoot _root;
     private readonly SceneOperationQueue _operations;
-    private readonly List<IRouteGuard<ISceneBehavior>> _guards = new();
+    private readonly List<IRouteGuard<ISceneBehavior>> _guards = [];
     private readonly Stack<ISceneBehavior> _stack = new();
 
     /// <summary>Creates an idle router; construction does not attach or load scenes.</summary>
@@ -27,12 +29,23 @@ public abstract class SceneRouterBase : ISceneRouter
     /// <param name="root">Attaches and removes scene instances.</param>
     /// <param name="dispatcher">Executes all native callbacks on the host.</param>
     protected SceneRouterBase(ISceneFactory factory, ISceneRoot root, IGameDispatcher dispatcher)
+        : this(factory, root, dispatcher, logger: null)
+    {
+    }
+
+    /// <summary>Creates a navigator whose transition diagnostics use the host-configured logger.</summary>
+    /// <param name="factory">Creates host-owned scene adapters.</param>
+    /// <param name="root">Attaches and removes scene instances.</param>
+    /// <param name="dispatcher">Executes native callbacks on the host.</param>
+    /// <param name="logger">Receives errors retained by ContinueOnError transition policy.</param>
+    protected SceneRouterBase(ISceneFactory factory, ISceneRoot root, IGameDispatcher dispatcher, ILogger? logger)
     {
         ArgumentNullException.ThrowIfNull(factory);
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(dispatcher);
         _factory = factory;
         _root = root;
+        _pipeline = new SceneTransitionPipeline(logger);
         _operations = new SceneOperationQueue(dispatcher);
     }
 
@@ -41,11 +54,14 @@ public abstract class SceneRouterBase : ISceneRouter
     /// <summary>Gets the current scene identifier.</summary>
     public string? CurrentKey => Current?.Key;
     /// <summary>Gets a bottom-to-top snapshot.</summary>
-    public IEnumerable<ISceneBehavior> Stack => _stack.Reverse().ToArray();
+    public IEnumerable<ISceneBehavior> Stack => [.. _stack.Reverse()];
     /// <summary>Gets the number of retained scenes.</summary>
     public int Count => _stack.Count;
     /// <summary>Gets whether a transition is currently executing.</summary>
-    public bool IsTransitioning { get; private set; }
+    public bool IsTransitioning
+    {
+        get; private set;
+    }
 
     /// <inheritdoc />
     public Task<SceneOperationResult> ReplaceAsync(string sceneKey, ISceneEnterParam? param = null,
@@ -59,17 +75,26 @@ public abstract class SceneRouterBase : ISceneRouter
 
     /// <inheritdoc />
     public Task<SceneOperationResult> PopAsync(CancellationToken cancellationToken = default) =>
-        TransitionAsync(null, SceneTransitionType.Pop, null, () => PopCoreAsync(cancellationToken), cancellationToken);
+        TransitionAsync(key: null, SceneTransitionType.Pop, param: null, () => PopCoreAsync(cancellationToken), cancellationToken);
 
     /// <inheritdoc />
     public Task<SceneOperationResult> ClearAsync(CancellationToken cancellationToken = default) =>
-        TransitionAsync(null, SceneTransitionType.Clear, null, () => ClearCoreAsync(cancellationToken), cancellationToken);
+        TransitionAsync(key: null, SceneTransitionType.Clear, param: null, () => ClearCoreAsync(cancellationToken), cancellationToken);
 
     /// <inheritdoc />
-    public Task StopAsync() => _operations.StopAsync(ClearWithoutGuardsAsync);
+    public Task StopAsync() => _operations.StopAsync(CompleteStopAsync);
 
     /// <inheritdoc />
+    [SuppressMessage("Usage", "CA1816", Justification = "DisposeAsync preserves the canonical StopAsync task identity; CompleteStopAsync suppresses finalization only after the shared cleanup succeeds.")]
     public ValueTask DisposeAsync() => new(StopAsync());
+
+    /// <summary>Completes the one admitted shutdown before suppressing finalization; failed or reentrant aliases do not suppress it.</summary>
+    [SuppressMessage("Usage", "CA1816", Justification = "This is the one successful canonical shutdown path shared by StopAsync and DisposeAsync; suppression here preserves alias task identity and never runs on failure or a reentrant no-op.")]
+    private async Task CompleteStopAsync()
+    {
+        await ClearWithoutGuardsAsync().ConfigureAwait(true);
+        GC.SuppressFinalize(this);
+    }
 
     /// <inheritdoc />
     public bool Contains(string sceneKey) => _stack.Any(scene => string.Equals(scene.Key, sceneKey, StringComparison.Ordinal));
@@ -123,7 +148,10 @@ public abstract class SceneRouterBase : ISceneRouter
             {
                 var transition = new SceneTransitionEvent
                 {
-                    FromSceneKey = CurrentKey, ToSceneKey = key, TransitionType = type, EnterParam = param
+                    FromSceneKey = CurrentKey,
+                    ToSceneKey = key,
+                    TransitionType = type,
+                    EnterParam = param,
                 };
                 await _pipeline.ExecuteAroundAsync(transition, async () =>
                 {
@@ -275,7 +303,7 @@ public abstract class SceneRouterBase : ISceneRouter
     {
         if (Current is not { } scene)
             return SceneOperationResult.NoOp;
-        if (!await CanLeaveAsync(new[] { scene }, cancellationToken).ConfigureAwait(true))
+        if (!await CanLeaveAsync([scene], cancellationToken).ConfigureAwait(true))
             return SceneOperationResult.Rejected;
         _stack.Pop();
         var errors = new List<Exception>();
@@ -312,14 +340,20 @@ public abstract class SceneRouterBase : ISceneRouter
         if (entered)
             await AttemptAsync(() => scene.OnExitAsync(CancellationToken.None), errors).ConfigureAwait(true);
         await AttemptAsync(() => scene.OnUnloadAsync(CancellationToken.None), errors).ConfigureAwait(true);
-        try { _root.RemoveScene(scene); }
+        try
+        {
+            _root.RemoveScene(scene);
+        }
         catch (Exception exception) { errors.Add(exception); }
     }
 
     /// <summary>Collects a callback error without skipping later cleanup.</summary>
     private static async Task AttemptAsync(Func<ValueTask> callback, List<Exception> errors)
     {
-        try { await callback().ConfigureAwait(true); }
+        try
+        {
+            await callback().ConfigureAwait(true);
+        }
         catch (Exception exception) { errors.Add(exception); }
     }
 

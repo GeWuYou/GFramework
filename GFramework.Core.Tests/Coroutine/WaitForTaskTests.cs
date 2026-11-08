@@ -93,11 +93,13 @@ public class WaitForTaskTests
         cts.Cancel();
         var task = Task.FromCanceled(cts.Token);
 
-        Task.Delay(100).Wait();
+        Task.Delay(100, cancellationToken: global::System.Threading.CancellationToken.None)
+            .Wait(global::System.Threading.CancellationToken.None);
 
         var wait = new WaitForTask(task);
 
-        Task.Delay(100).Wait();
+        Task.Delay(100, cancellationToken: global::System.Threading.CancellationToken.None)
+            .Wait(global::System.Threading.CancellationToken.None);
 
         Assert.That(wait.IsDone, Is.True);
     }

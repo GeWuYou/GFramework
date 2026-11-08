@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
@@ -16,7 +16,10 @@ public abstract class AbstractGodotModule : IGodotModule
     /// <summary>
     ///     获取模块关联的Godot节点
     /// </summary>
-    public abstract Node Node { get; }
+    public abstract Node Node
+    {
+        get;
+    }
 
     /// <summary>
     ///     安装模块到指定架构中

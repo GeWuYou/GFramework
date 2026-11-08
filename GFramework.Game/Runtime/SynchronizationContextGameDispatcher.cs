@@ -7,16 +7,11 @@ namespace GFramework.Game.Runtime;
 
 /// <summary>Dispatches game operations to an explicitly supplied host synchronization context.</summary>
 /// <remarks>Create this dispatcher on the host thread. Pending callbacks are cancellable; started callbacks always complete before ownership can be released.</remarks>
-public sealed class SynchronizationContextGameDispatcher : IGameDispatcher
+/// <remarks>Creates a dispatcher for a host-owned context.</remarks>
+/// <param name="context">The context that serializes host callbacks.</param>
+public sealed class SynchronizationContextGameDispatcher(SynchronizationContext context) : IGameDispatcher
 {
-    private readonly SynchronizationContext _context;
-
-    /// <summary>Creates a dispatcher for a host-owned context.</summary>
-    /// <param name="context">The context that serializes host callbacks.</param>
-    public SynchronizationContextGameDispatcher(SynchronizationContext context)
-    {
-        _context = context ?? throw new ArgumentNullException(nameof(context));
-    }
+    private readonly SynchronizationContext _context = context ?? throw new ArgumentNullException(nameof(context));
 
     /// <inheritdoc />
     public Task InvokeAsync(Func<Task> callback, CancellationToken cancellationToken = default)
@@ -26,7 +21,7 @@ public sealed class SynchronizationContextGameDispatcher : IGameDispatcher
         if (ReferenceEquals(SynchronizationContext.Current, _context))
             return callback();
 
-        var operation = new PendingOperation(callback, cancellationToken, ExecutionContext.Capture());
+        var operation = new PendingOperation(callback, ExecutionContext.Capture(), cancellationToken);
         try
         {
             _context.Post(static state => ((PendingOperation)state!).Start(), operation);
@@ -49,7 +44,7 @@ public sealed class SynchronizationContextGameDispatcher : IGameDispatcher
         private int _state;
 
         /// <summary>Creates a pending callback and registers cancellation before posting.</summary>
-        public PendingOperation(Func<Task> callback, CancellationToken token, ExecutionContext? executionContext)
+        public PendingOperation(Func<Task> callback, ExecutionContext? executionContext, CancellationToken token)
         {
             _callback = callback;
             _token = token;
@@ -67,8 +62,11 @@ public sealed class SynchronizationContextGameDispatcher : IGameDispatcher
         /// <summary>Disposes the cancellation registration only after the operation has settled.</summary>
         private async Task CompleteAsync()
         {
-            try { await _completion.Task.ConfigureAwait(false); }
-            finally { _registration.Dispose(); }
+            try
+            {
+                await _completion.Task.ConfigureAwait(false);
+            }
+            finally { await _registration.DisposeAsync().ConfigureAwait(false); }
         }
 
         /// <summary>Enters the caller's execution context so queue reentrancy markers propagate.</summary>

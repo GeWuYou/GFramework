@@ -6,20 +6,15 @@ namespace GFramework.Godot.Text.Effects;
 /// <summary>
 ///     为文本提供逐字符淡入效果。
 /// </summary>
+/// <remarks>
+///     初始化淡入效果。
+/// </remarks>
+/// <param name="animatedEffectsEnabled">是否允许动态效果实际生效。</param>
 [GlobalClass]
 [Tool]
-public partial class RichTextFadeInEffect : RichTextEffectBase
+public partial class RichTextFadeInEffect(bool animatedEffectsEnabled = true) : RichTextEffectBase
 {
-    private readonly bool _animatedEffectsEnabled;
-
-    /// <summary>
-    ///     初始化淡入效果。
-    /// </summary>
-    /// <param name="animatedEffectsEnabled">是否允许动态效果实际生效。</param>
-    public RichTextFadeInEffect(bool animatedEffectsEnabled = true)
-    {
-        _animatedEffectsEnabled = animatedEffectsEnabled;
-    }
+    private readonly bool _animatedEffectsEnabled = animatedEffectsEnabled;
 
     /// <summary>
     ///     获取标签名。

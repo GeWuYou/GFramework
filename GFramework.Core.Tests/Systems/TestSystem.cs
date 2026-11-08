@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
@@ -20,12 +20,18 @@ public sealed class TestSystem : ISystem
     /// <summary>
     ///     获取系统是否已初始化的状态
     /// </summary>
-    public bool Initialized { get; private set; }
+    public bool Initialized
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取系统是否已销毁的状态
     /// </summary>
-    public bool DestroyCalled { get; private set; }
+    public bool DestroyCalled
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     设置架构上下文

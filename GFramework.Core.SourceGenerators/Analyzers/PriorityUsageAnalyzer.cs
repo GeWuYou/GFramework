@@ -17,7 +17,7 @@ public sealed class PriorityUsageAnalyzer : DiagnosticAnalyzer
     /// 支持的诊断规则
     /// </summary>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(PriorityDiagnostic.SuggestGetAllByPriority);
+        [PriorityDiagnostic.SuggestGetAllByPriority];
 
     /// <summary>
     /// 初始化分析器

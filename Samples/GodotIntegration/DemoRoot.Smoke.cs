@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using GFramework.Game.Abstractions.Data;
@@ -32,6 +33,7 @@ public partial class DemoRoot
             Require(_dataRootPath.StartsWith("user://runtime_smoke/", StringComparison.Ordinal), "smoke data is not isolated");
 
             await VerifySceneProcessingFlagsAsync().ConfigureAwait(true);
+            await VerifyHistoricalHostContractsAsync().ConfigureAwait(true);
             await VerifyCoroutineRuntimeAsync().ConfigureAwait(true);
             if (_smokeContinue)
             {
@@ -106,38 +108,38 @@ public partial class DemoRoot
     {
         var node = new Node { Name = "ProcessingProbe" };
         _sceneRoot.AddChild(node);
-        node.SetProcess(false);
-        node.SetPhysicsProcess(true);
-        node.SetProcessInput(false);
+        node.SetProcess(enable: false);
+        node.SetPhysicsProcess(enable: true);
+        node.SetProcessInput(enable: false);
         var scene = SceneBehaviorFactory.Create(node, "processing-probe");
         try
         {
-            await scene.OnLoadAsync(null).ConfigureAwait(true);
-            await scene.OnEnterAsync().ConfigureAwait(true);
-            await scene.OnResumeAsync().ConfigureAwait(true);
+            await scene.OnLoadAsync(param: null, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
+            await scene.OnEnterAsync(cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
+            await scene.OnResumeAsync(cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
             RequireProcessingFlags(node, process: false, physics: true, input: false);
 
-            await scene.OnPauseAsync().ConfigureAwait(true);
+            await scene.OnPauseAsync(cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
             RequireProcessingFlags(node, process: false, physics: false, input: false);
-            await scene.OnPauseAsync().ConfigureAwait(true);
-            await scene.OnResumeAsync().ConfigureAwait(true);
+            await scene.OnPauseAsync(cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
+            await scene.OnResumeAsync(cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
             RequireProcessingFlags(node, process: false, physics: true, input: false);
 
             // Repeated resume must preserve a later authored state, rather than
             // replaying an already consumed snapshot or enabling all processing.
-            node.SetProcess(true);
-            node.SetPhysicsProcess(false);
-            node.SetProcessInput(true);
-            await scene.OnResumeAsync().ConfigureAwait(true);
+            node.SetProcess(enable: true);
+            node.SetPhysicsProcess(enable: false);
+            node.SetProcessInput(enable: true);
+            await scene.OnResumeAsync(cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
             RequireProcessingFlags(node, process: true, physics: false, input: true);
-            await scene.OnPauseAsync().ConfigureAwait(true);
-            await scene.OnResumeAsync().ConfigureAwait(true);
+            await scene.OnPauseAsync(cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
+            await scene.OnResumeAsync(cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
             RequireProcessingFlags(node, process: true, physics: false, input: true);
         }
         finally
         {
-            await scene.OnExitAsync().ConfigureAwait(true);
-            await scene.OnUnloadAsync().ConfigureAwait(true);
+            await scene.OnExitAsync(cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
+            await scene.OnUnloadAsync(cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
             RemoveScene(scene);
             await WaitFramesAsync(2).ConfigureAwait(true);
             Require(!GodotObject.IsInstanceValid(node), "native processing probe was not released");
@@ -156,7 +158,7 @@ public partial class DemoRoot
     /// <summary>Confirms a fresh process loaded the prior run's settings and slot through normal startup and menu actions.</summary>
     private async Task VerifyPersistedProcessAsync()
     {
-        var expected = FormattableString.Invariant($"key:{(int)Key.P}");
+        var expected = string.Create(CultureInfo.InvariantCulture, $"key:{(int)Key.P}");
         Require(Preferences.Bindings is not null, "fresh process did not load persisted preferences");
         Require(_bindings.GetBindings("demo_pause").Bindings.Any(binding =>
             string.Equals(binding.Code, expected, StringComparison.Ordinal)), "fresh process did not restore the P binding");
@@ -164,7 +166,7 @@ public partial class DemoRoot
         Require(Scenes.Current?.Original is DemoWorld, "fresh process could not continue the saved slot");
         Require(float.IsFinite(Save.X) && Save.X > 480,
             "fresh process loaded default or invalid gameplay state");
-        Require(!GetTree().Paused && Ui.Snapshot.Views.Count(view => view.Options.Kind == UiRouteKind.Window) == 0, "continued world inherited a stale pause owner");
+        Require(!GetTree().Paused && !Ui.Snapshot.Views.Any(view => view.Options.Kind == UiRouteKind.Window), "continued world inherited a stale pause owner");
     }
 
     /// <summary>Creates the native world and checks movement plus the running node-owned coroutine.</summary>
@@ -194,7 +196,7 @@ public partial class DemoRoot
         InjectKey(Key.Escape, pressed: true);
         InjectKey(Key.Escape, pressed: false);
         await AwaitActionAsync().ConfigureAwait(true);
-        Require(GetTree().Paused && Ui.Snapshot.Views.Count(view => view.Options.Kind == UiRouteKind.Window) == 1, "pause input did not pause the scene tree");
+        Require(GetTree().Paused && Ui.Snapshot.Views.Where(view => view.Options.Kind == UiRouteKind.Window).Take(2).Count() == 1, "pause input did not pause the scene tree");
         var pausedSeconds = world.ActiveSeconds;
         var pausedX = Save.X;
         InjectKey(Key.D, pressed: true);
@@ -203,10 +205,10 @@ public partial class DemoRoot
         Require(world.ActiveSeconds == pausedSeconds && Save.X == pausedX, "world or coroutine advanced while paused");
 
         await ClickAsync("Settings").ConfigureAwait(true);
-        Require(GetTree().Paused && Ui.Snapshot.Views.Count(view => view.Options.Kind == UiRouteKind.Window) == 2, "nested settings did not retain both pause owners");
+        Require(GetTree().Paused && Ui.Snapshot.Views.Where(view => view.Options.Kind == UiRouteKind.Window).Take(3).Count() == 2, "nested settings did not retain both pause owners");
         await VerifyPreferencesAsync().ConfigureAwait(true);
         await ClickAsync("Back").ConfigureAwait(true);
-        Require(GetTree().Paused && Ui.Snapshot.Views.Count(view => view.Options.Kind == UiRouteKind.Window) == 1, "closing settings resumed the lower pause owner");
+        Require(GetTree().Paused && Ui.Snapshot.Views.Where(view => view.Options.Kind == UiRouteKind.Window).Take(2).Count() == 1, "closing settings resumed the lower pause owner");
     }
 
     /// <summary>Persists a slot, unloads the world across native frames, and restores the same saved state.</summary>
@@ -214,12 +216,12 @@ public partial class DemoRoot
     private async Task VerifySaveAndContinueAsync(DemoWorld world)
     {
         await ClickAsync("Save slot 1").ConfigureAwait(true);
-        var loaded = await _saves.LoadAsync(1).ConfigureAwait(true);
+        var loaded = await _saves.LoadAsync(1, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
         Require(!ReferenceEquals(loaded, Save), "slot load reused the in-memory DTO");
         Require(loaded.X == Save.X && loaded.Y == Save.Y && loaded.Collected == Save.Collected,
             "slot reload did not preserve gameplay state");
         await ClickAsync("Return without saving").ConfigureAwait(true);
-        Require(Scenes.Current is null && !GetTree().Paused && Ui.Snapshot.Views.Count(view => view.Options.Kind == UiRouteKind.Window) == 0,
+        Require(Scenes.Current is null && !GetTree().Paused && !Ui.Snapshot.Views.Any(view => view.Options.Kind == UiRouteKind.Window),
             "return to menu left a scene or pause owner active");
         Require(!GodotObject.IsInstanceValid(world), "QueueFree did not release the old world after frame boundaries");
         var stoppedSeconds = world.ActiveSeconds;
@@ -244,11 +246,11 @@ public partial class DemoRoot
         var repository = new UnifiedSettingsDataRepository(_storage ?? throw new InvalidOperationException("Storage was not initialized."), new JsonSerializer(),
             new DataRepositoryOptions { BasePath = _dataRootPath, EnableEvents = false });
         repository.RegisterDataType(_settingsLocation, typeof(DemoPreferences));
-        var preferences = await repository.LoadAsync<DemoPreferences>(_settingsLocation).ConfigureAwait(true);
+        var preferences = await repository.LoadAsync<DemoPreferences>(_settingsLocation, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
         Require(preferences.Bindings is not null, "persisted binding snapshot missing");
         _bindings.ResetAction("demo_pause");
         _bindings.ImportSnapshot(preferences.Bindings!);
-        var expected = FormattableString.Invariant($"key:{(int)Key.P}");
+        var expected = string.Create(CultureInfo.InvariantCulture, $"key:{(int)Key.P}");
         Require(_bindings.GetBindings("demo_pause").Bindings.Any(binding =>
             string.Equals(binding.Code, expected, StringComparison.Ordinal)), "binding snapshot did not restore native InputMap");
     }

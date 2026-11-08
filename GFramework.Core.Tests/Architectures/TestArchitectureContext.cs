@@ -10,6 +10,4 @@ namespace GFramework.Core.Tests.Architectures;
 ///     共享的容器解析与事件总线协作由 <see cref="TestArchitectureContextBase" /> 提供，
 ///     当前类型仅作为默认测试上下文命名入口，供现有测试与派生替身继续复用。
 /// </remarks>
-public class TestArchitectureContext : TestArchitectureContextBase
-{
-}
+public class TestArchitectureContext : TestArchitectureContextBase;

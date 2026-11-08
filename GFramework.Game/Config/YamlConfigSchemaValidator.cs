@@ -14,7 +14,7 @@ namespace GFramework.Game.Config;
 ///     当前共享子集额外支持 <c>multipleOf</c>、<c>uniqueItems</c>、
 ///     <c>contains</c> / <c>minContains</c> / <c>maxContains</c>、
 ///     <c>minProperties</c>、<c>maxProperties</c>、<c>dependentRequired</c>、
-///     <c>dependentSchemas</c>、<c>allOf</c>、object-focused <c>if</c> / <c>then</c> / <c>else</c>
+///     <c>dependentSchemas</c>、<c>allOf</c>、object-focused <c language="json">if</c> / <c>then</c> / <c language="json">else</c>
 ///     与稳定字符串 <c>format</c> 子集，让数值步进、数组去重、数组匹配计数、
 ///     对象属性数量、对象内字段依赖、条件对象子 schema、对象组合约束与条件分支约束
 ///     在运行时与生成器 / 工具侧保持一致。
@@ -231,7 +231,7 @@ internal static partial class YamlConfigSchemaValidator
         ArgumentNullException.ThrowIfNull(yamlPath);
         ArgumentNullException.ThrowIfNull(yamlText);
 
-        YamlStream yamlStream = new();
+        YamlStream yamlStream = [];
         try
         {
             using var reader = new StringReader(yamlText);
@@ -292,7 +292,7 @@ internal static partial class YamlConfigSchemaValidator
             // Preserve a deterministic dependency order so hot-reload bookkeeping and tests
             // do not depend on HashSet enumeration details.
             var orderedReferencedTableNames = referencedTableNames
-                .OrderBy(static name => name, StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)
                 .ToArray();
 
             return new YamlConfigSchema(schemaPath, rootNode, orderedReferencedTableNames);
@@ -579,7 +579,7 @@ internal static partial class YamlConfigSchemaValidator
                 $"Property '{propertyPath}' in schema file '{schemaPath}' uses unsupported type '{typeName}'.",
                 schemaPath: schemaPath,
                 displayPath: GetDiagnosticPath(propertyPath),
-                rawValue: typeName)
+                rawValue: typeName),
         };
     }
 
@@ -1075,7 +1075,7 @@ internal static partial class YamlConfigSchemaValidator
     ///     该阶段除了检查 <c>minProperties</c> / <c>maxProperties</c>，还会复用同一份 sibling 集合处理
     ///     <c>dependentRequired</c>，并在 <c>dependentSchemas</c> 命中时以 focused constraint block 语义
     ///     对整个 <paramref name="mappingNode" /> 做额外试匹配；若声明了 object-focused
-    ///     <c>if</c> / <c>then</c> / <c>else</c>，则先按同样的 focused matcher 判断条件分支，再只对命中的分支追加约束。
+    ///     <c language="json">if</c> / <c>then</c> / <c language="json">else</c>，则先按同样的 focused matcher 判断条件分支，再只对命中的分支追加约束。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
     /// <param name="yamlPath">YAML 文件路径。</param>
@@ -1511,7 +1511,7 @@ internal static partial class YamlConfigSchemaValidator
             ValidateNode(
                 tableName,
                 yamlPath,
-                $"{displayPath}[{itemIndex}]",
+                string.Create(CultureInfo.InvariantCulture, $"{displayPath}[{itemIndex}]"),
                 sequenceNode.Children[itemIndex],
                 schemaNode.ItemNode,
                 references,
@@ -1632,7 +1632,7 @@ internal static partial class YamlConfigSchemaValidator
                 CultureInfo.InvariantCulture,
                 out _),
             YamlConfigSchemaPropertyType.Boolean => bool.TryParse(value, out _),
-            _ => false
+            _ => false,
         };
         if (isValid)
         {
@@ -1676,7 +1676,7 @@ internal static partial class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     解析 <c>enum</c>，并在读取阶段将每个候选值预归一化成与运行时 YAML 相同的稳定比较键。
+    ///     解析 <c language="json">enum</c>，并在读取阶段将每个候选值预归一化成与运行时 YAML 相同的稳定比较键。
     ///     这样对象、数组和标量节点都可以复用同一套匹配逻辑，而不必在每次加载时重新解释 schema 字面量。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
@@ -1686,7 +1686,7 @@ internal static partial class YamlConfigSchemaValidator
     /// <param name="schemaNode">当前节点的已解析 schema 模型。</param>
     /// <param name="keywordName">当前读取的关键字名称。</param>
     /// <returns>归一化后的允许值集合；未声明时返回空。</returns>
-    private static IReadOnlyCollection<YamlConfigAllowedValue>? ParseEnumValues(
+    private static List<YamlConfigAllowedValue>? ParseEnumValues(
         string tableName,
         string schemaPath,
         string propertyPath,
@@ -1722,7 +1722,7 @@ internal static partial class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     读取一个 <c>enum</c> 候选值的展示文本。
+    ///     读取一个 <c language="json">enum</c> 候选值的展示文本。
     ///     这里直接保留原始 JSON 字面量，避免字符串引号、对象字段顺序或数组结构在诊断中被二次格式化后丢失上下文。
     /// </summary>
     /// <param name="element">Schema 中的单个枚举值。</param>
@@ -1733,7 +1733,7 @@ internal static partial class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     解析 <c>const</c>，并把 schema 常量预归一化成与运行时 YAML 相同的稳定比较键。
+    ///     解析 <c language="json">const</c>，并把 schema 常量预归一化成与运行时 YAML 相同的稳定比较键。
     ///     这样运行时只需要复用现有递归比较逻辑，而不必在每次加载时重新解释 JSON 常量。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
@@ -1760,7 +1760,7 @@ internal static partial class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     把 schema 中的 <c>const</c> JSON 值转换成与 YAML 运行时一致的比较键。
+    ///     把 schema 中的 <c language="json">const</c> JSON 值转换成与 YAML 运行时一致的比较键。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
@@ -1821,7 +1821,7 @@ internal static partial class YamlConfigSchemaValidator
                 keywordName,
                 element,
                 schemaNode),
-            _ => throw new InvalidOperationException($"Unsupported schema node type '{schemaNode.NodeType}'.")
+            _ => throw new InvalidOperationException($"Unsupported schema node type '{schemaNode.NodeType}'."),
         };
     }
 
@@ -1884,7 +1884,7 @@ internal static partial class YamlConfigSchemaValidator
 
         objectEntries.Sort(static (left, right) => string.CompareOrdinal(left.Key, right.Key));
         return string.Join(
-            "|",
+'|',
             objectEntries.Select(static entry =>
                 $"{entry.Key.Length.ToString(CultureInfo.InvariantCulture)}:{entry.Key}={entry.Value.Length.ToString(CultureInfo.InvariantCulture)}:{entry.Value}"));
     }
@@ -1924,13 +1924,13 @@ internal static partial class YamlConfigSchemaValidator
 
         return "[" +
                string.Join(
-                   ",",
+',',
                    element.EnumerateArray().Select((item, index) =>
                    {
                        var comparableValue = BuildComparableConstantValue(
                            tableName,
                            schemaPath,
-                           $"{propertyPath}[{index}]",
+                           string.Create(CultureInfo.InvariantCulture, $"{propertyPath}[{index}]"),
                            keywordName,
                            item,
                            schemaNode.ItemNode);
@@ -2653,8 +2653,8 @@ internal static partial class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     校验节点值是否命中声明的 <c>enum</c> 集合。
-    ///     该实现与 <c>const</c> 共享同一套可比较键，保证对象字段顺序、数组顺序和数值归一化语义稳定一致。
+    ///     校验节点值是否命中声明的 <c language="json">enum</c> 集合。
+    ///     该实现与 <c language="json">const</c> 共享同一套可比较键，保证对象字段顺序、数组顺序和数值归一化语义稳定一致。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
     /// <param name="yamlPath">YAML 文件路径。</param>
@@ -2697,7 +2697,7 @@ internal static partial class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     校验节点值是否满足 <c>const</c> 约束。
+    ///     校验节点值是否满足 <c language="json">const</c> 约束。
     ///     该检查复用与 <c>uniqueItems</c> 相同的稳定比较键，保证对象字段顺序、数字字面量和布尔大小写不会造成伪差异。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
@@ -3038,12 +3038,12 @@ internal static partial class YamlConfigSchemaValidator
             throw ConfigLoadExceptionFactory.Create(
                 ConfigLoadFailureKind.ConstraintViolation,
                 tableName,
-                $"Property '{displayPath}' in config file '{yamlPath}' must be at least {constraints.MinLength.Value} characters long, but the current YAML scalar value is '{rawValue}'.",
+                string.Create(CultureInfo.InvariantCulture, $"Property '{displayPath}' in config file '{yamlPath}' must be at least {constraints.MinLength.Value} characters long, but the current YAML scalar value is '{rawValue}'."),
                 yamlPath: yamlPath,
                 schemaPath: schemaNode.SchemaPathHint,
                 displayPath: GetDiagnosticPath(displayPath),
                 rawValue: rawValue,
-                detail: $"Minimum length: {constraints.MinLength.Value}.");
+                detail: string.Create(CultureInfo.InvariantCulture, $"Minimum length: {constraints.MinLength.Value}."));
         }
 
         if (constraints.MaxLength.HasValue && stringLength > constraints.MaxLength.Value)
@@ -3051,12 +3051,12 @@ internal static partial class YamlConfigSchemaValidator
             throw ConfigLoadExceptionFactory.Create(
                 ConfigLoadFailureKind.ConstraintViolation,
                 tableName,
-                $"Property '{displayPath}' in config file '{yamlPath}' must be at most {constraints.MaxLength.Value} characters long, but the current YAML scalar value is '{rawValue}'.",
+                string.Create(CultureInfo.InvariantCulture, $"Property '{displayPath}' in config file '{yamlPath}' must be at most {constraints.MaxLength.Value} characters long, but the current YAML scalar value is '{rawValue}'."),
                 yamlPath: yamlPath,
                 schemaPath: schemaNode.SchemaPathHint,
                 displayPath: GetDiagnosticPath(displayPath),
                 rawValue: rawValue,
-                detail: $"Maximum length: {constraints.MaxLength.Value}.");
+                detail: string.Create(CultureInfo.InvariantCulture, $"Maximum length: {constraints.MaxLength.Value}."));
         }
 
         if (constraints.PatternRegex is not null &&
@@ -3111,7 +3111,7 @@ internal static partial class YamlConfigSchemaValidator
             YamlConfigStringFormatKind.Time => MatchesSupportedTimeFormat(value),
             YamlConfigStringFormatKind.Uri => MatchesSupportedUriFormat(value),
             YamlConfigStringFormatKind.Uuid => Guid.TryParseExact(value, "D", out _),
-            _ => false
+            _ => false,
         };
     }
 
@@ -3264,12 +3264,12 @@ internal static partial class YamlConfigSchemaValidator
             throw ConfigLoadExceptionFactory.Create(
                 ConfigLoadFailureKind.ConstraintViolation,
                 tableName,
-                $"Property '{displayPath}' in config file '{yamlPath}' must contain at least {constraints.MinItems.Value} items, but the current YAML sequence contains {itemCount}.",
+                string.Create(CultureInfo.InvariantCulture, $"Property '{displayPath}' in config file '{yamlPath}' must contain at least {constraints.MinItems.Value} items, but the current YAML sequence contains {itemCount}."),
                 yamlPath: yamlPath,
                 schemaPath: schemaNode.SchemaPathHint,
                 displayPath: GetDiagnosticPath(displayPath),
                 rawValue: itemCount.ToString(CultureInfo.InvariantCulture),
-                detail: $"Minimum item count: {constraints.MinItems.Value}.");
+                detail: string.Create(CultureInfo.InvariantCulture, $"Minimum item count: {constraints.MinItems.Value}."));
         }
 
         if (constraints.MaxItems.HasValue && itemCount > constraints.MaxItems.Value)
@@ -3277,12 +3277,12 @@ internal static partial class YamlConfigSchemaValidator
             throw ConfigLoadExceptionFactory.Create(
                 ConfigLoadFailureKind.ConstraintViolation,
                 tableName,
-                $"Property '{displayPath}' in config file '{yamlPath}' must contain at most {constraints.MaxItems.Value} items, but the current YAML sequence contains {itemCount}.",
+                string.Create(CultureInfo.InvariantCulture, $"Property '{displayPath}' in config file '{yamlPath}' must contain at most {constraints.MaxItems.Value} items, but the current YAML sequence contains {itemCount}."),
                 yamlPath: yamlPath,
                 schemaPath: schemaNode.SchemaPathHint,
                 displayPath: GetDiagnosticPath(displayPath),
                 rawValue: itemCount.ToString(CultureInfo.InvariantCulture),
-                detail: $"Maximum item count: {constraints.MaxItems.Value}.");
+                detail: string.Create(CultureInfo.InvariantCulture, $"Maximum item count: {constraints.MaxItems.Value}."));
         }
     }
 
@@ -3318,11 +3318,11 @@ internal static partial class YamlConfigSchemaValidator
             var comparableValue = BuildComparableNodeValue(itemNode, schemaNode.ItemNode);
             if (seenItems.TryGetValue(comparableValue, out var existingIndex))
             {
-                var itemPath = $"{displayPath}[{itemIndex}]";
+                var itemPath = string.Create(CultureInfo.InvariantCulture, $"{displayPath}[{itemIndex}]");
                 throw ConfigLoadExceptionFactory.Create(
                     ConfigLoadFailureKind.ConstraintViolation,
                     tableName,
-                    $"Property '{displayPath}' in config file '{yamlPath}' requires unique array items, but item '{itemPath}' duplicates '{displayPath}[{existingIndex}]'.",
+                    string.Create(CultureInfo.InvariantCulture, $"Property '{displayPath}' in config file '{yamlPath}' requires unique array items, but item '{itemPath}' duplicates '{displayPath}[{existingIndex}]'."),
                     yamlPath: yamlPath,
                     schemaPath: schemaNode.SchemaPathHint,
                     displayPath: itemPath,
@@ -3372,12 +3372,12 @@ internal static partial class YamlConfigSchemaValidator
             throw ConfigLoadExceptionFactory.Create(
                 ConfigLoadFailureKind.ConstraintViolation,
                 tableName,
-                $"Property '{displayPath}' in config file '{yamlPath}' must contain at least {requiredMinContains} items matching the 'contains' schema, but the current YAML sequence contains {matchingCount}.",
+                string.Create(CultureInfo.InvariantCulture, $"Property '{displayPath}' in config file '{yamlPath}' must contain at least {requiredMinContains} items matching the 'contains' schema, but the current YAML sequence contains {matchingCount}."),
                 yamlPath: yamlPath,
                 schemaPath: schemaNode.SchemaPathHint,
                 displayPath: GetDiagnosticPath(displayPath),
                 rawValue: rawValue,
-                detail: $"Minimum matching contains count: {requiredMinContains}.");
+                detail: string.Create(CultureInfo.InvariantCulture, $"Minimum matching contains count: {requiredMinContains}."));
         }
 
         if (containsConstraints.MaxContains.HasValue &&
@@ -3386,12 +3386,12 @@ internal static partial class YamlConfigSchemaValidator
             throw ConfigLoadExceptionFactory.Create(
                 ConfigLoadFailureKind.ConstraintViolation,
                 tableName,
-                $"Property '{displayPath}' in config file '{yamlPath}' must contain at most {containsConstraints.MaxContains.Value} items matching the 'contains' schema, but the current YAML sequence contains {matchingCount}.",
+                string.Create(CultureInfo.InvariantCulture, $"Property '{displayPath}' in config file '{yamlPath}' must contain at most {containsConstraints.MaxContains.Value} items matching the 'contains' schema, but the current YAML sequence contains {matchingCount}."),
                 yamlPath: yamlPath,
                 schemaPath: schemaNode.SchemaPathHint,
                 displayPath: GetDiagnosticPath(displayPath),
                 rawValue: rawValue,
-                detail: $"Maximum matching contains count: {containsConstraints.MaxContains.Value}.");
+                detail: string.Create(CultureInfo.InvariantCulture, $"Maximum matching contains count: {containsConstraints.MaxContains.Value}."));
         }
     }
 
@@ -3420,7 +3420,7 @@ internal static partial class YamlConfigSchemaValidator
             if (TryMatchSchemaNode(
                     tableName,
                     yamlPath,
-                    $"{displayPath}[{itemIndex}]",
+                    string.Create(CultureInfo.InvariantCulture, $"{displayPath}[{itemIndex}]"),
                     sequenceNode.Children[itemIndex],
                     containsNode,
                     references,
@@ -3574,7 +3574,7 @@ internal static partial class YamlConfigSchemaValidator
 
     /// <summary>
     ///     将一个已通过结构校验的 YAML 节点归一化为可比较字符串。
-    ///     该键同时服务于 <c>uniqueItems</c> 与 <c>const</c>，
+    ///     该键同时服务于 <c>uniqueItems</c> 与 <c language="json">const</c>，
     ///     因此要忽略对象字段顺序和字符串引号形式。
     /// </summary>
     /// <param name="node">YAML 节点。</param>
@@ -3590,7 +3590,7 @@ internal static partial class YamlConfigSchemaValidator
             YamlConfigSchemaPropertyType.Number => BuildComparableScalarValue(node, schemaNode),
             YamlConfigSchemaPropertyType.Boolean => BuildComparableScalarValue(node, schemaNode),
             YamlConfigSchemaPropertyType.String => BuildComparableScalarValue(node, schemaNode),
-            _ => throw new InvalidOperationException($"Unsupported schema node type '{schemaNode.NodeType}'.")
+            _ => throw new InvalidOperationException($"Unsupported schema node type '{schemaNode.NodeType}'."),
         };
     }
 
@@ -3629,7 +3629,7 @@ internal static partial class YamlConfigSchemaValidator
 
         objectEntries.Sort(static (left, right) => string.CompareOrdinal(left.Key, right.Key));
         return string.Join(
-            "|",
+'|',
             objectEntries.Select(static entry =>
                 $"{entry.Key.Length.ToString(CultureInfo.InvariantCulture)}:{entry.Key}={entry.Value.Length.ToString(CultureInfo.InvariantCulture)}:{entry.Value}"));
     }
@@ -3651,7 +3651,7 @@ internal static partial class YamlConfigSchemaValidator
 
         return "[" +
                string.Join(
-                   ",",
+',',
                    sequenceNode.Children.Select(item =>
                    {
                        var comparableValue = BuildComparableNodeValue(item, schemaNode.ItemNode);
@@ -3693,7 +3693,7 @@ internal static partial class YamlConfigSchemaValidator
             YamlConfigSchemaPropertyType.Object => "{...}",
             YamlConfigSchemaPropertyType.Array => "[...]",
             _ when node is YamlScalarNode scalarNode => scalarNode.Value ?? string.Empty,
-            _ => node.GetType().Name
+            _ => node.GetType().Name,
         };
     }
 
@@ -3715,7 +3715,7 @@ internal static partial class YamlConfigSchemaValidator
         }
 
         var quotient = value / divisor;
-        var nearestInteger = Math.Round(quotient);
+        var nearestInteger = Math.Round(quotient, MidpointRounding.ToEven);
         var tolerance = 1e-9 * Math.Max(1d, Math.Abs(quotient));
         return Math.Abs(quotient - nearestInteger) <= tolerance;
     }
@@ -4009,7 +4009,7 @@ internal static partial class YamlConfigSchemaValidator
                     bool.TrueString.ToLowerInvariant(),
                 YamlConfigSchemaPropertyType.Boolean when item.ValueKind == JsonValueKind.False =>
                     bool.FalseString.ToLowerInvariant(),
-                _ => throw new InvalidOperationException()
+                _ => throw new InvalidOperationException(),
             };
         }
         catch
@@ -4068,7 +4068,7 @@ internal static partial class YamlConfigSchemaValidator
                 throw new InvalidOperationException($"Value '{value}' cannot be normalized as boolean."),
             _ =>
                 throw new InvalidOperationException(
-                    $"Schema node type '{expectedType}' cannot be normalized as a scalar value.")
+                    $"Schema node type '{expectedType}' cannot be normalized as a scalar value."),
         };
     }
 
@@ -4087,7 +4087,7 @@ internal static partial class YamlConfigSchemaValidator
             YamlConfigSchemaPropertyType.String => "string",
             YamlConfigSchemaPropertyType.Array => "array",
             YamlConfigSchemaPropertyType.Object => "object",
-            _ => type.ToString()
+            _ => type.ToString(),
         };
     }
 

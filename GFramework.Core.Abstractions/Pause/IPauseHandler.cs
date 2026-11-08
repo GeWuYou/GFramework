@@ -11,7 +11,10 @@ public interface IPauseHandler
     /// <summary>
     /// 处理器优先级（数值越小优先级越高）
     /// </summary>
-    int Priority { get; }
+    int Priority
+    {
+        get;
+    }
 
     /// <summary>
     /// 当某个组的暂停状态变化时调用

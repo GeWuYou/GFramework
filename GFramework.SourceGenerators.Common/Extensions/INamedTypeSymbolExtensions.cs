@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.SourceGenerators.Common.Info;
@@ -27,7 +27,7 @@ public static class INamedTypeSymbolExtensions
 #if NET5_0_OR_GREATER || ROSLYN_3_7_OR_GREATER
             TypeKind.Record => "record",
 #endif
-            _ => "class"
+            _ => "class",
         };
     }
 
@@ -64,10 +64,13 @@ public static class INamedTypeSymbolExtensions
     {
         var parts = new List<string>();
 
-        if (tp.HasReferenceTypeConstraint) parts.Add("class");
-        if (tp.HasValueTypeConstraint) parts.Add("struct");
+        if (tp.HasReferenceTypeConstraint)
+            parts.Add("class");
+        if (tp.HasValueTypeConstraint)
+            parts.Add("struct");
         parts.AddRange(tp.ConstraintTypes.Select(t => t.ToDisplayString()));
-        if (tp.HasConstructorConstraint) parts.Add("new()");
+        if (tp.HasConstructorConstraint)
+            parts.Add("new()");
 
         return parts.Count == 0
             ? null
@@ -78,7 +81,7 @@ public static class INamedTypeSymbolExtensions
     ///     判断类型的所有声明是否均带有 partial 关键字。
     /// </summary>
     /// <param name="symbol">要获取完整类名的命名类型符号</param>
-    /// <returns>如果所有声明均为 partial，则返回 <c>true</c>。</returns>
+    /// <returns>如果所有声明均为 partial，则返回 <see langword="true" />。</returns>
     public static bool AreAllDeclarationsPartial(this INamedTypeSymbol symbol)
     {
         return symbol.DeclaringSyntaxReferences

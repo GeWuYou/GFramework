@@ -11,6 +11,4 @@ namespace GFramework.Cqrs.Abstractions.Cqrs;
 ///     <c>GFramework.Core.Abstractions</c> 的 <c>IArchitectureContext</c> 解耦。
 ///     运行时实现仍可在需要时识别更具体的上下文类型，并对现有 <c>IContextAware</c> 处理器执行兼容注入。
 /// </remarks>
-public interface ICqrsContext
-{
-}
+public interface ICqrsContext;

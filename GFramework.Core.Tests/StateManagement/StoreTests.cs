@@ -68,7 +68,10 @@ public class StoreTests
     {
         var store = CreateStore();
         store.RegisterReducer<IncrementAction>((state, action) =>
-            state with { Count = state.Count + action.Amount * 10 });
+            state with
+            {
+                Count = state.Count + action.Amount * 10,
+            });
 
         store.Dispatch(new IncrementAction(1));
 
@@ -87,7 +90,7 @@ public class StoreTests
         store.SubscribeWithInitValue(state => receivedCounts.Add(state.Count));
         store.Dispatch(new IncrementAction(3));
 
-        Assert.That(receivedCounts, Is.EqualTo(new[] { 5, 8 }));
+        Assert.That(receivedCounts, Is.EqualTo([5, 8]));
     }
 
     /// <summary>
@@ -108,7 +111,7 @@ public class StoreTests
             }
         });
 
-        Assert.That(receivedCounts, Is.EqualTo(new[] { 0, 1 }));
+        Assert.That(receivedCounts, Is.EqualTo([0, 1]));
     }
 
     /// <summary>
@@ -143,7 +146,7 @@ public class StoreTests
         store.Dispatch(new RenameAction("Renamed"));
         store.Dispatch(new IncrementAction(2));
 
-        Assert.That(selectedCounts, Is.EqualTo(new[] { 2 }));
+        Assert.That(selectedCounts, Is.EqualTo([2]));
     }
 
     /// <summary>
@@ -163,7 +166,7 @@ public class StoreTests
         store.Dispatch(new IncrementAction(5));
         store.Dispatch(new IncrementAction(6));
 
-        Assert.That(selectedCounts, Is.EqualTo(new[] { 11 }));
+        Assert.That(selectedCounts, Is.EqualTo([11]));
     }
 
     /// <summary>
@@ -185,7 +188,7 @@ public class StoreTests
             }
         });
 
-        Assert.That(receivedCounts, Is.EqualTo(new[] { 0, 1 }));
+        Assert.That(receivedCounts, Is.EqualTo([0, 1]));
     }
 
     /// <summary>
@@ -244,13 +247,13 @@ public class StoreTests
 
         store.Dispatch(new IncrementAction(2));
 
-        Assert.That(logs, Is.EqualTo(new[]
-        {
+        Assert.That(logs, Is.EqualTo(
+        [
             "first:before",
             "second:before",
             "second:after",
-            "first:after"
-        }));
+            "first:after",
+        ]));
 
         Assert.That(store.LastActionType, Is.EqualTo(typeof(IncrementAction)));
         Assert.That(store.LastStateChangedAt, Is.Not.Null);
@@ -267,7 +270,10 @@ public class StoreTests
     {
         var store = new Store<CounterState>(new CounterState(0, "Player"));
         var reducerHandle = store.RegisterReducerHandle<IncrementAction>((state, action) =>
-            state with { Count = state.Count + action.Amount });
+            state with
+            {
+                Count = state.Count + action.Amount,
+            });
 
         store.Dispatch(new IncrementAction(2));
         reducerHandle.UnRegister();
@@ -291,7 +297,7 @@ public class StoreTests
         store.Dispatch(new IncrementAction(1));
 
         Assert.That(store.State.Count, Is.EqualTo(2));
-        Assert.That(logs, Is.EqualTo(new[] { "dynamic:before", "dynamic:after" }));
+        Assert.That(logs, Is.EqualTo(["dynamic:before", "dynamic:after"]));
     }
 
     /// <summary>
@@ -306,25 +312,34 @@ public class StoreTests
         store.RegisterReducerHandle<IncrementAction>((state, action) =>
         {
             executionOrder.Add("first");
-            return state with { Count = state.Count + action.Amount };
+            return state with
+            {
+                Count = state.Count + action.Amount,
+            };
         });
 
         var middleReducer = store.RegisterReducerHandle<IncrementAction>((state, action) =>
         {
             executionOrder.Add("middle");
-            return state with { Count = state.Count + action.Amount * 10 };
+            return state with
+            {
+                Count = state.Count + action.Amount * 10,
+            };
         });
 
         store.RegisterReducerHandle<IncrementAction>((state, action) =>
         {
             executionOrder.Add("last");
-            return state with { Count = state.Count + action.Amount * 100 };
+            return state with
+            {
+                Count = state.Count + action.Amount * 100,
+            };
         });
 
         middleReducer.UnRegister();
         store.Dispatch(new IncrementAction(1));
 
-        Assert.That(executionOrder, Is.EqualTo(new[] { "first", "last" }));
+        Assert.That(executionOrder, Is.EqualTo(["first", "last"]));
         Assert.That(store.State.Count, Is.EqualTo(101));
     }
 
@@ -337,7 +352,10 @@ public class StoreTests
         var logs = new List<string>();
         var store = new Store<CounterState>(new CounterState(0, "Player"));
         var reducerHandle = store.RegisterReducerHandle<IncrementAction>((state, action) =>
-            state with { Count = state.Count + action.Amount });
+            state with
+            {
+                Count = state.Count + action.Amount,
+            });
         var middlewareHandle = store.RegisterMiddleware(new RecordingMiddleware(logs, "dynamic"));
 
         Assert.That(() =>
@@ -361,13 +379,16 @@ public class StoreTests
     [Test]
     public void UnRegister_During_Dispatch_Should_Affect_Next_Dispatch_But_Not_Current_One()
     {
-        using var entered = new ManualResetEventSlim(false);
-        using var release = new ManualResetEventSlim(false);
+        using var entered = new ManualResetEventSlim(initialState: false);
+        using var release = new ManualResetEventSlim(initialState: false);
 
         var logs = new List<string>();
         var store = new Store<CounterState>(new CounterState(0, "Player"));
         var reducerHandle = store.RegisterReducerHandle<IncrementAction>((state, action) =>
-            state with { Count = state.Count + action.Amount });
+            state with
+            {
+                Count = state.Count + action.Amount,
+            });
         var blockingHandle = store.RegisterMiddleware(new BlockingMiddleware(entered, release));
         var recordingHandle = store.RegisterMiddleware(new RecordingMiddleware(logs, "dynamic"));
 
@@ -382,12 +403,12 @@ public class StoreTests
 
         Assert.That(dispatchTask.Wait(TimeSpan.FromSeconds(2)), Is.True, "dispatch 未在释放 middleware 后完成");
         Assert.That(store.State.Count, Is.EqualTo(1), "当前 dispatch 应继续使用启动时抓取的 reducer 快照");
-        Assert.That(logs, Is.EqualTo(new[] { "dynamic:before", "dynamic:after" }));
+        Assert.That(logs, Is.EqualTo(["dynamic:before", "dynamic:after"]));
 
         store.Dispatch(new IncrementAction(1));
 
         Assert.That(store.State.Count, Is.EqualTo(1), "后续 dispatch 应看到 reducer 已被注销");
-        Assert.That(logs, Is.EqualTo(new[] { "dynamic:before", "dynamic:after" }));
+        Assert.That(logs, Is.EqualTo(["dynamic:before", "dynamic:after"]));
     }
 
     /// <summary>
@@ -470,7 +491,7 @@ public class StoreTests
 
         Assert.That(notifyCount, Is.EqualTo(1));
         Assert.That(store.State.Count, Is.EqualTo(2));
-        Assert.That(logs, Is.EqualTo(new[] { "builder:before", "builder:after", "builder:before", "builder:after" }));
+        Assert.That(logs, Is.EqualTo(["builder:before", "builder:after", "builder:before", "builder:after"]));
     }
 
     /// <summary>
@@ -494,7 +515,7 @@ public class StoreTests
 
         Assert.That(store.IsBatching, Is.False);
         Assert.That(store.State.Count, Is.EqualTo(3));
-        Assert.That(receivedCounts, Is.EqualTo(new[] { 3 }));
+        Assert.That(receivedCounts, Is.EqualTo([3]));
     }
 
     /// <summary>
@@ -522,7 +543,7 @@ public class StoreTests
         });
 
         Assert.That(store.State.Count, Is.EqualTo(3));
-        Assert.That(receivedCounts, Is.EqualTo(new[] { 3 }));
+        Assert.That(receivedCounts, Is.EqualTo([3]));
     }
 
     /// <summary>
@@ -569,7 +590,7 @@ public class StoreTests
         Assert.That(store.State.Count, Is.EqualTo(12));
         Assert.That(store.CanRedo, Is.False, "新 dispatch 应清除 redo 分支");
         Assert.That(store.GetHistoryEntriesSnapshot().Select(entry => entry.State.Count),
-            Is.EqualTo(new[] { 0, 1, 2, 12 }));
+            Is.EqualTo([0, 1, 2, 12]));
     }
 
     /// <summary>
@@ -600,9 +621,15 @@ public class StoreTests
     {
         var store = new Store<CounterState>(new CounterState(0, "Player"));
         store.RegisterReducer<IncrementActionBase>((state, action) =>
-            state with { Count = state.Count + action.Amount * 10 });
+            state with
+            {
+                Count = state.Count + action.Amount * 10,
+            });
         store.RegisterReducer<IIncrementActionMarker>((state, action) =>
-            state with { Count = state.Count + action.Amount * 100 });
+            state with
+            {
+                Count = state.Count + action.Amount * 100,
+            });
 
         store.Dispatch(new DerivedIncrementAction(1));
 
@@ -624,24 +651,33 @@ public class StoreTests
         store.RegisterReducer<IncrementActionBase>((state, action) =>
         {
             executionOrder.Add("base");
-            return state with { Count = state.Count + action.Amount * 10 };
+            return state with
+            {
+                Count = state.Count + action.Amount * 10,
+            };
         });
 
         store.RegisterReducer<IIncrementActionMarker>((state, action) =>
         {
             executionOrder.Add("interface");
-            return state with { Count = state.Count + action.Amount * 100 };
+            return state with
+            {
+                Count = state.Count + action.Amount * 100,
+            };
         });
 
         store.RegisterReducer<DerivedIncrementAction>((state, action) =>
         {
             executionOrder.Add("exact");
-            return state with { Count = state.Count + action.Amount };
+            return state with
+            {
+                Count = state.Count + action.Amount,
+            };
         });
 
         store.Dispatch(new DerivedIncrementAction(1));
 
-        Assert.That(executionOrder, Is.EqualTo(new[] { "exact", "base", "interface" }));
+        Assert.That(executionOrder, Is.EqualTo(["exact", "base", "interface"]));
         Assert.That(store.State.Count, Is.EqualTo(111));
     }
 
@@ -673,8 +709,8 @@ public class StoreTests
     [Test]
     public void Dispatch_Should_Not_Block_State_Read_Or_Subscribe_While_Middleware_Is_Running()
     {
-        using var entered = new ManualResetEventSlim(false);
-        using var release = new ManualResetEventSlim(false);
+        using var entered = new ManualResetEventSlim(initialState: false);
+        using var release = new ManualResetEventSlim(initialState: false);
 
         var store = CreateStore();
         store.UseMiddleware(new BlockingMiddleware(entered, release));
@@ -772,7 +808,10 @@ public class StoreTests
         /// <summary>
         ///     获取增量值。
         /// </summary>
-        int Amount { get; }
+        int Amount
+        {
+            get;
+        }
     }
 
     /// <summary>

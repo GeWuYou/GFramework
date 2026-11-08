@@ -68,10 +68,8 @@ public static class MetadataReferenceTestBuilder
     {
         var trustedPlatformAssemblies = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?
                                         .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-                                        ?? Array.Empty<string>();
+                                        ?? [];
 
-        return trustedPlatformAssemblies
-            .Select(static path => (MetadataReference)MetadataReference.CreateFromFile(path))
-            .ToImmutableArray();
+        return [.. trustedPlatformAssemblies.Select(static path => (MetadataReference)MetadataReference.CreateFromFile(path))];
     }
 }

@@ -23,7 +23,8 @@ public static class CoroutineExtensions
         Action? action,
         int? count = null)
     {
-        if (count is < 0) yield break;
+        if (count is < 0)
+            yield break;
 
         var executedCount = 0;
         while (count == null || executedCount < count)
@@ -44,7 +45,8 @@ public static class CoroutineExtensions
         double delay,
         Action? action)
     {
-        if (delay < 0) yield break;
+        if (delay < 0)
+            yield break;
 
         yield return new Delay(delay);
         action?.Invoke();

@@ -28,6 +28,7 @@ using Microsoft.Extensions.Logging;
 
 var loggerFactory = LoggerFactory.Create(builder =>
 {
+    builder.SetMinimumLevel(LogLevel.Trace);
     builder.AddProvider(GodotLog.Provider);
 });
 
@@ -179,6 +180,7 @@ var provider = new AppenderLoggerProvider(new ILogAppender[]
 
 var loggerFactory = LoggerFactory.Create(builder =>
 {
+    builder.SetMinimumLevel(LogLevel.Trace);
     builder.AddProvider(provider);
 });
 ```

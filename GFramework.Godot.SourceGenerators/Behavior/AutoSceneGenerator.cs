@@ -12,9 +12,9 @@ namespace GFramework.Godot.SourceGenerators.Behavior;
 ///     为标记了 <c>[AutoScene]</c> 的 Godot 节点生成场景行为样板。
 /// </summary>
 /// <remarks>
-///     该生成器会为兼容的非嵌套 <c>partial</c> Godot 节点类型生成 <c>SceneKeyStr</c> 与 <c>GetScene</c>，
+///     该生成器会为兼容的非嵌套 <see langword="partial"/> Godot 节点类型生成 <c>SceneKeyStr</c> 与 <c>GetScene</c>，
 ///     以便通过 <c>SceneBehaviorFactory</c> 延迟创建并缓存场景行为实例。
-///     生成管线仅处理显式标记了 <c>AutoSceneAttribute</c> 的类，并在类型不满足基类、<c>partial</c>、
+///     生成管线仅处理显式标记了 <c>AutoSceneAttribute</c> 的类，并在类型不满足基类、<see langword="partial"/>、
 ///     成员冲突或属性参数约束时通过诊断停止生成，而不是静默回退到不完整输出。
 /// </remarks>
 [Generator]
@@ -26,7 +26,7 @@ public sealed class AutoSceneGenerator : IIncrementalGenerator
     private static readonly string[] GeneratedMemberNames =
     [
         "SceneKeyStr",
-        "__autoSceneBehavior_Generated"
+        "__autoSceneBehavior_Generated",
     ];
 
     /// <summary>
@@ -172,7 +172,7 @@ public sealed class AutoSceneGenerator : IIncrementalGenerator
 
         context.ReportDiagnostic(Diagnostic.Create(
             AutoBehaviorDiagnostics.InvalidAttributeArguments,
-            attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation() ??
+            attribute.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation() ??
             typeSymbol.Locations.FirstOrDefault() ??
             Location.None,
             "AutoSceneAttribute",
@@ -194,18 +194,18 @@ public sealed class AutoSceneGenerator : IIncrementalGenerator
 
         if (ns is not null)
         {
-            builder.AppendLine($"namespace {ns};");
+            builder.Append("namespace ").Append(ns).Append(';').AppendLine();
             builder.AppendLine();
         }
 
-        builder.AppendLine($"{GetTypeDeclarationKeyword(typeSymbol)} {GetTypeDeclarationName(typeSymbol)}");
+        builder.Append(GetTypeDeclarationKeyword(typeSymbol)).Append(' ').Append(GetTypeDeclarationName(typeSymbol)).AppendLine();
         AppendTypeConstraints(builder, typeSymbol);
         builder.AppendLine("{");
         builder.AppendLine(
             "    private global::GFramework.Game.Abstractions.Scene.ISceneBehavior? __autoSceneBehavior_Generated;");
         builder.AppendLine();
         builder.Append("    public static string SceneKeyStr => ");
-        builder.Append(SymbolDisplay.FormatLiteral(key, true));
+        builder.Append(SymbolDisplay.FormatLiteral(key, quote: true));
         builder.AppendLine(";");
         builder.AppendLine();
         builder.AppendLine("    public global::GFramework.Game.Abstractions.Scene.ISceneBehavior GetScene()");
@@ -298,7 +298,7 @@ public sealed class AutoSceneGenerator : IIncrementalGenerator
     /// <param name="typeSymbol">当前待生成的类型符号。</param>
     /// <param name="fallbackLocation">冲突成员无定位信息时的后备位置。</param>
     /// <param name="memberNames">需要校验的生成器保留成员名集合。</param>
-    /// <returns>存在任意冲突时返回 <c>true</c>。</returns>
+    /// <returns>存在任意冲突时返回 <see langword="true" />。</returns>
     private static bool ReportGeneratedMemberConflicts(
         SourceProductionContext context,
         INamedTypeSymbol typeSymbol,
@@ -328,16 +328,10 @@ public sealed class AutoSceneGenerator : IIncrementalGenerator
         return hasConflict;
     }
 
-    private sealed class TypeCandidate
+    private sealed class TypeCandidate(ClassDeclarationSyntax classDeclaration, INamedTypeSymbol typeSymbol)
     {
-        public TypeCandidate(ClassDeclarationSyntax classDeclaration, INamedTypeSymbol typeSymbol)
-        {
-            ClassDeclaration = classDeclaration;
-            TypeSymbol = typeSymbol;
-        }
+        public ClassDeclarationSyntax ClassDeclaration { get; } = classDeclaration;
 
-        public ClassDeclarationSyntax ClassDeclaration { get; }
-
-        public INamedTypeSymbol TypeSymbol { get; }
+        public INamedTypeSymbol TypeSymbol { get; } = typeSymbol;
     }
 }

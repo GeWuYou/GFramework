@@ -28,5 +28,5 @@ public static class LoggerGeneratorDiagnostics
         "'{0}' uses [Log] but has no architecture context: implement IContextAware, derive from ContextAwareBase, or mark the type [ContextAware]; DI-activated services should inject ILogger<T> instead",
         LoggingRuleCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 }

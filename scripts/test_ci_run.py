@@ -3,13 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Exercise failure propagation and execution boundaries without a .NET toolchain."""
+from contextlib import redirect_stdout
+from io import StringIO
 import json
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import ci_run
+from ci_impact import select
 
 
 class RunTests(unittest.TestCase):
@@ -59,13 +64,64 @@ class RunTests(unittest.TestCase):
             command.assert_not_called()
             process.assert_not_called()
 
+    def test_full_fallback_runs_tests_without_reparsing_unresolved_graph(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, capture_output=True)
+            for project, is_test in (("Library", False), ("Tests", True)):
+                directory = root / project
+                directory.mkdir()
+                (directory / f"{project}.csproj").write_text(
+                    '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
+                    f'<IsTestProject>{str(is_test).lower()}</IsTestProject></PropertyGroup>'
+                    '<Import Project="$(MSBuildThisFileDirectory)shared.targets"/></Project>', encoding="utf-8")
+                (directory / "shared.targets").write_text("<Project/>", encoding="utf-8")
+            (root / "GFramework.sln").write_text(
+                'Project("{type}") = "Library", "Library/Library.csproj", "{library}"\nEndProject\n'
+                'Project("{type}") = "Tests", "Tests/Tests.csproj", "{tests}"\nEndProject\n', encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True, capture_output=True)
+            subprocess.run(["git", "-c", "user.name=CI fixture", "-c", "user.email=ci@example.invalid",
+                            "-c", "commit.gpgsign=false", "-c", "core.hooksPath=" + os.devnull,
+                            "commit", "-qm", "fixture"], cwd=root, check=True, capture_output=True)
+            plan = select(root, None, "HEAD")
+            plan["tested_sha"] = plan["head"]
+            self.assertTrue(plan["full"])
+            self.assertEqual(plan["test_projects"], [])
+            path = root / "plan.json"
+            path.write_text(json.dumps(plan), encoding="utf-8")
+            plan = ci_run.load_plan(path, root)
+
+            real_popen = subprocess.Popen
+
+            def successful_test(argv, **kwargs):
+                if argv[0] != "dotnet":
+                    return real_popen(argv, **kwargs)
+                self.assertEqual(argv[2], "Tests/Tests.csproj")
+                trx = root / "TestResults/Tests.trx"
+                trx.write_text('<TestRun><ResultSummary><Counters executed="1"/></ResultSummary></TestRun>')
+                instance = MagicMock()
+                instance.__enter__.return_value = instance
+                instance.stdout = ["one real selected fixture\n"]
+                instance.wait.return_value = 0
+                return instance
+
+            with patch("ci_run.ROOT", root), patch("ci_run.command"), \
+                    patch("ci_run.subprocess.Popen", side_effect=successful_test) as process:
+                self.assertEqual(ci_run.tests(plan), 0)
+                self.assertEqual([call.args[0][2] for call in process.call_args_list
+                                  if call.args[0][0] == "dotnet"], ["Tests/Tests.csproj"])
+
     def test_failed_test_exit_is_not_hidden_by_report_generation(self):
         with tempfile.TemporaryDirectory() as folder, patch("ci_run.ROOT", Path(folder)), \
                 patch("ci_run.command"), patch("ci_run.subprocess.Popen") as process:
             instance = process.return_value.__enter__.return_value
             instance.stdout = ["failed test host\n"]
             instance.wait.return_value = 1
-            self.assertEqual(ci_run.tests({"full": False, "test_projects": ["Tests/Tests.csproj"]}), 1)
+            # The expected failure remains asserted, but its GitHub annotation must not escape the unit fixture.
+            output = StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(ci_run.tests({"full": False, "test_projects": ["Tests/Tests.csproj"]}), 1)
+            self.assertIn("::error::Test project failed (1): Tests/Tests.csproj", output.getvalue())
             self.assertIn("failed test host", (Path(folder) / "TestResults/Tests.console.log").read_text())
 
     def test_build_uses_single_solution_filter_and_pack_targets(self):

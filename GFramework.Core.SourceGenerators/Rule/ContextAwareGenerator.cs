@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.SourceGenerators.Diagnostics;
@@ -93,7 +93,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
 
         if (ns is not null)
         {
-            sb.AppendLine($"namespace {ns};");
+            sb.Append("namespace ").Append(ns).Append(';').AppendLine();
             sb.AppendLine();
         }
 
@@ -106,10 +106,9 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         sb.AppendLine("/// <remarks>");
         sb.AppendLine(
             "/// 上下文由 <c>IContextAware.SetContext(...)</c> 显式绑定到当前实例；访问未绑定的实例会抛出异常。");
-        sb.AppendLine(
-            $"/// 生成实现使用实例级 <c>{memberNames.SyncFieldName}</c> 协调绑定与读取，不读取全局上下文或其他实例的状态。");
+        sb.Append("/// 生成实现使用实例级 <c>").Append(memberNames.SyncFieldName).AppendLine("</c> 协调绑定与读取，不读取全局上下文或其他实例的状态。");
         sb.AppendLine("/// </remarks>");
-        sb.AppendLine($"partial class {symbol.Name} : {interfaceName}");
+        sb.Append("partial class ").Append(symbol.Name).Append(" : ").Append(interfaceName).AppendLine();
         sb.AppendLine("{");
 
         GenerateContextProperty(sb, memberNames);
@@ -154,9 +153,8 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         StringBuilder sb,
         GeneratedContextMemberNames memberNames)
     {
-        sb.AppendLine(
-            $"    private global::GFramework.Core.Abstractions.Architectures.IArchitectureContext? {memberNames.ContextFieldName};");
-        sb.AppendLine($"    private readonly object {memberNames.SyncFieldName} = new();");
+        sb.Append("    private global::GFramework.Core.Abstractions.Architectures.IArchitectureContext? ").Append(memberNames.ContextFieldName).Append(';').AppendLine();
+        sb.Append("    private readonly object ").Append(memberNames.SyncFieldName).Append(" = new();").AppendLine();
         sb.AppendLine();
     }
 
@@ -178,9 +176,9 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         sb.AppendLine("    {");
         sb.AppendLine("        get");
         sb.AppendLine("        {");
-        sb.AppendLine($"            lock ({memberNames.SyncFieldName})");
+        sb.Append("            lock (").Append(memberNames.SyncFieldName).Append(')').AppendLine();
         sb.AppendLine("            {");
-        sb.AppendLine($"                return {memberNames.ContextFieldName}");
+        sb.Append("                return ").Append(memberNames.ContextFieldName).AppendLine();
         sb.AppendLine(
             "                    ?? throw new global::System.InvalidOperationException(\"Architecture context has not been initialized. Bind this instance through IContextAware.SetContext before accessing it.\");");
         sb.AppendLine("            }");
@@ -234,8 +232,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
             method.Parameters.Select(p =>
                 $"{p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} {p.Name}"));
 
-        sb.AppendLine(
-            $"    {returnType} {interfaceName}.{method.Name}({parameters})");
+        sb.Append("    ").Append(returnType).Append(' ').Append(interfaceName).Append('.').Append(method.Name).Append('(').Append(parameters).Append(')').AppendLine();
         sb.AppendLine("    {");
 
         GenerateMethodBody(sb, method, memberNames);
@@ -258,9 +255,9 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
             case "SetContext":
                 sb.AppendLine("        global::System.ArgumentNullException.ThrowIfNull(context);");
                 sb.AppendLine("        // 与 Context getter 使用同一实例锁，避免并发读取观察到不一致的绑定。");
-                sb.AppendLine($"        lock ({memberNames.SyncFieldName})");
+                sb.Append("        lock (").Append(memberNames.SyncFieldName).Append(')').AppendLine();
                 sb.AppendLine("        {");
-                sb.AppendLine($"            {memberNames.ContextFieldName} = context;");
+                sb.Append("            ").Append(memberNames.ContextFieldName).Append(" = context;").AppendLine();
                 sb.AppendLine("        }");
                 break;
 
@@ -270,8 +267,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
 
             default:
                 if (!method.ReturnsVoid)
-                    sb.AppendLine(
-                        $"        throw new System.NotImplementedException(\"Method '{method.Name}' is not supported.\");");
+                    sb.Append("        throw new System.NotImplementedException(\"Method '").Append(method.Name).Append("' is not supported.\");").AppendLine();
 
                 break;
         }
@@ -330,7 +326,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
 
         for (var suffix = 1; ; suffix++)
         {
-            var candidateName = $"{baseName}{suffix}";
+            var candidateName = global::System.FormattableString.Invariant($"{baseName}{suffix}");
             if (reservedNames.Add(candidateName))
                 return candidateName;
         }

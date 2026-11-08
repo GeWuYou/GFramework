@@ -25,7 +25,10 @@ public interface ISceneAroundTransitionHandler
     /// 数值越小优先级越高，越先执行（外层）。
     /// 建议范围：-1000 到 1000。
     /// </summary>
-    int Priority { get; }
+    int Priority
+    {
+        get;
+    }
 
     /// <summary>
     /// 判断处理器是否应该处理当前场景过渡事件。

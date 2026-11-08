@@ -37,7 +37,7 @@ public sealed class YamlConfigLoader : IConfigLoader
     private readonly Dictionary<string, IReadOnlyCollection<string>> _lastSuccessfulDependencies =
         new(StringComparer.Ordinal);
 
-    private readonly List<IYamlTableRegistration> _registrations = new();
+    private readonly List<IYamlTableRegistration> _registrations = [];
     private readonly string _rootPath;
 
     /// <summary>
@@ -46,7 +46,7 @@ public sealed class YamlConfigLoader : IConfigLoader
     /// <param name="rootPath">配置根目录。</param>
     /// <exception cref="ArgumentException">当 <paramref name="rootPath" /> 为空时抛出。</exception>
     public YamlConfigLoader(string rootPath)
-        : this(rootPath, null, null)
+        : this(rootPath, canEnableHotReload: null, hotReloadUnavailableMessage: null)
     {
     }
 
@@ -148,7 +148,7 @@ public sealed class YamlConfigLoader : IConfigLoader
             {
                 OnTableReloaded = onTableReloaded,
                 OnTableReloadFailed = onTableReloadFailed,
-                DebounceDelay = debounceDelay ?? DefaultHotReloadDebounceDelay
+                DebounceDelay = debounceDelay ?? DefaultHotReloadDebounceDelay,
             });
     }
 
@@ -238,7 +238,7 @@ public sealed class YamlConfigLoader : IConfigLoader
         return RegisterTable(
             new YamlConfigTableRegistrationOptions<TKey, TValue>(tableName, relativePath, keySelector)
             {
-                Comparer = comparer
+                Comparer = comparer,
             });
     }
 
@@ -272,7 +272,7 @@ public sealed class YamlConfigLoader : IConfigLoader
             new YamlConfigTableRegistrationOptions<TKey, TValue>(tableName, relativePath, keySelector)
             {
                 SchemaRelativePath = schemaRelativePath,
-                Comparer = comparer
+                Comparer = comparer,
             });
     }
 
@@ -359,20 +359,15 @@ public sealed class YamlConfigLoader : IConfigLoader
             var tableInterface = table.GetType()
                 .GetInterfaces()
                 .FirstOrDefault(static type =>
-                    type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IConfigTable<,>));
-
-            if (tableInterface == null)
-            {
-                throw new InvalidOperationException(
+                    type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IConfigTable<,>)) ?? throw new InvalidOperationException(
                     $"Loaded config table '{name}' does not implement '{typeof(IConfigTable<,>).Name}'.");
-            }
 
             var genericArguments = tableInterface.GetGenericArguments();
             var method = typeof(IConfigRegistry)
                 .GetMethod(nameof(IConfigRegistry.RegisterTable))!
                 .MakeGenericMethod(genericArguments[0], genericArguments[1]);
 
-            method.Invoke(registry, new object[] { name, table });
+            method.Invoke(registry, [name, table]);
         }
     }
 
@@ -384,17 +379,26 @@ public sealed class YamlConfigLoader : IConfigLoader
         /// <summary>
         ///     获取配置表名称。
         /// </summary>
-        string Name { get; }
+        string Name
+        {
+            get;
+        }
 
         /// <summary>
         ///     获取相对配置根目录的子目录。
         /// </summary>
-        string RelativePath { get; }
+        string RelativePath
+        {
+            get;
+        }
 
         /// <summary>
         ///     获取相对配置根目录的 schema 文件路径；未启用 schema 校验时返回空。
         /// </summary>
-        string? SchemaRelativePath { get; }
+        string? SchemaRelativePath
+        {
+            get;
+        }
 
         /// <summary>
         ///     从指定根目录加载配置表。
@@ -459,17 +463,26 @@ public sealed class YamlConfigLoader : IConfigLoader
         /// <summary>
         ///     获取配置表名称。
         /// </summary>
-        public string Name { get; }
+        public string Name
+        {
+            get;
+        }
 
         /// <summary>
         ///     获取相对配置根目录的子目录。
         /// </summary>
-        public string RelativePath { get; }
+        public string RelativePath
+        {
+            get;
+        }
 
         /// <summary>
         ///     获取相对配置根目录的 schema 文件路径；未启用 schema 校验时返回空。
         /// </summary>
-        public string? SchemaRelativePath { get; }
+        public string? SchemaRelativePath
+        {
+            get;
+        }
 
         /// <inheritdoc />
         public async Task<YamlTableLoadResult> LoadAsync(
@@ -537,13 +550,12 @@ public sealed class YamlConfigLoader : IConfigLoader
 
         private static string[] GetYamlFiles(string directoryPath)
         {
-            return Directory
+            return [.. Directory
                 .EnumerateFiles(directoryPath, "*.*", SearchOption.TopDirectoryOnly)
                 .Where(static path =>
                     path.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase) ||
                     path.EndsWith(".yml", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(static path => path, StringComparer.Ordinal)
-                .ToArray();
+                .Order(StringComparer.Ordinal)];
         }
 
         private async Task<string> ReadYamlAsync(
@@ -642,7 +654,7 @@ public sealed class YamlConfigLoader : IConfigLoader
                 return new YamlTableLoadResult(
                     Name,
                     table,
-                    schema?.ReferencedTableNames ?? Array.Empty<string>(),
+                    schema?.ReferencedTableNames ?? [],
                     referenceUsages);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -696,22 +708,34 @@ public sealed class YamlConfigLoader : IConfigLoader
         /// <summary>
         ///     获取配置表名称。
         /// </summary>
-        public string Name { get; }
+        public string Name
+        {
+            get;
+        }
 
         /// <summary>
         ///     获取已构建好的配置表。
         /// </summary>
-        public IConfigTable Table { get; }
+        public IConfigTable Table
+        {
+            get;
+        }
 
         /// <summary>
         ///     获取 schema 声明的依赖表名称集合。
         /// </summary>
-        public IReadOnlyCollection<string> ReferencedTableNames { get; }
+        public IReadOnlyCollection<string> ReferencedTableNames
+        {
+            get;
+        }
 
         /// <summary>
         ///     获取 YAML 中提取出的实际引用集合。
         /// </summary>
-        public IReadOnlyCollection<YamlConfigReferenceUsage> ReferenceUsages { get; }
+        public IReadOnlyCollection<YamlConfigReferenceUsage> ReferenceUsages
+        {
+            get;
+        }
     }
 
     /// <summary>
@@ -892,8 +916,11 @@ public sealed class YamlConfigLoader : IConfigLoader
                 .GetInterfaces()
                 .First(static type =>
                     type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IConfigTable<,>));
+            // Constructed nameof keeps the net8/net9 C# 12/13 targets compatible.
+#pragma warning disable IDE0340
             var containsKeyMethod = tableInterface.GetMethod(nameof(IConfigTable<int, int>.ContainsKey))!;
-            return (bool)containsKeyMethod.Invoke(table, new[] { key })!;
+#pragma warning restore IDE0340
+            return (bool)containsKeyMethod.Invoke(table, [key])!;
         }
     }
 
@@ -923,7 +950,7 @@ public sealed class YamlConfigLoader : IConfigLoader
         private readonly Dictionary<string, SemaphoreSlim> _reloadLocks = new(StringComparer.Ordinal);
         private readonly Dictionary<string, CancellationTokenSource> _reloadTokens = new(StringComparer.Ordinal);
         private readonly string _rootPath;
-        private readonly List<FileSystemWatcher> _watchers = new();
+        private readonly List<FileSystemWatcher> _watchers = [];
         private bool _disposed;
 
         /// <summary>
@@ -967,7 +994,7 @@ public sealed class YamlConfigLoader : IConfigLoader
                 _dependenciesByTable[registration.Name] =
                     initialDependencies.TryGetValue(registration.Name, out var dependencies)
                         ? dependencies
-                        : Array.Empty<string>();
+                        : [];
                 CreateWatchersForRegistration(registration);
             }
         }
@@ -989,11 +1016,11 @@ public sealed class YamlConfigLoader : IConfigLoader
                 }
 
                 _disposed = true;
-                watchersToDispose = _watchers.ToList();
+                watchersToDispose = [.. _watchers];
                 _watchers.Clear();
-                reloadTokensToDispose = _reloadTokens.Values.ToList();
+                reloadTokensToDispose = [.. _reloadTokens.Values];
                 _reloadTokens.Clear();
-                reloadLocksToDispose = _reloadLocks.Values.ToList();
+                reloadLocksToDispose = [.. _reloadLocks.Values];
                 _reloadLocks.Clear();
             }
 
@@ -1057,7 +1084,7 @@ public sealed class YamlConfigLoader : IConfigLoader
                                NotifyFilters.LastWrite |
                                NotifyFilters.Size |
                                NotifyFilters.CreationTime |
-                               NotifyFilters.DirectoryName
+                               NotifyFilters.DirectoryName,
             };
 
             watcher.Changed += (_, _) => ScheduleReload(tableName);
@@ -1106,6 +1133,7 @@ public sealed class YamlConfigLoader : IConfigLoader
                 _reloadTokens[tableName] = reloadTokenSource;
             }
 
+            // The body observes reload cancellation; its finally must still run if cancellation wins before scheduling.
             _ = Task.Run(async () =>
             {
                 try
@@ -1130,7 +1158,7 @@ public sealed class YamlConfigLoader : IConfigLoader
 
                     reloadTokenSource.Dispose();
                 }
-            });
+            }, CancellationToken.None);
         }
 
         private async Task ReloadTableAsync(string tableName, CancellationToken cancellationToken)
@@ -1187,7 +1215,7 @@ public sealed class YamlConfigLoader : IConfigLoader
         {
             var affectedTableNames = new HashSet<string>(StringComparer.Ordinal)
             {
-                changedTableName
+                changedTableName,
             };
             var pendingTableNames = new Queue<string>();
             pendingTableNames.Enqueue(changedTableName);
@@ -1210,9 +1238,7 @@ public sealed class YamlConfigLoader : IConfigLoader
                 }
             }
 
-            return affectedTableNames
-                .OrderBy(static name => name, StringComparer.Ordinal)
-                .ToArray();
+            return [.. affectedTableNames.Order(StringComparer.Ordinal)];
         }
 
         private static bool ContainsDependency(

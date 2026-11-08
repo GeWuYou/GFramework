@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -21,17 +21,26 @@ public interface ISettingsMigration
     /// <summary>
     ///     获取要迁移的设置类型
     /// </summary>
-    Type SettingsType { get; }
+    Type SettingsType
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取源版本号（迁移前的版本）
     /// </summary>
-    int FromVersion { get; }
+    int FromVersion
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取目标版本号（迁移后的版本）
     /// </summary>
-    int ToVersion { get; }
+    int ToVersion
+    {
+        get;
+    }
 
     /// <summary>
     ///     执行设置数据迁移操作

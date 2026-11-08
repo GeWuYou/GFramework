@@ -24,7 +24,7 @@ public sealed class StandaloneRepositoryCancellationTests
         var repository = new SaveRepository<TestSaveData>(storage.Object, new SaveConfiguration(),
             new SaveRepositoryOptions<TestSaveData> { GameId = "test", CurrentVersion = 1 });
         using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
 
         await Assert.CatchAsync<OperationCanceledException>(() => repository.SaveAsync(1, new TestSaveData(), cancellation.Token));
 
@@ -38,7 +38,7 @@ public sealed class StandaloneRepositoryCancellationTests
         var entered = NewCompletion();
         var release = NewCompletion();
         var storage = new Mock<IStorage>(MockBehavior.Strict);
-        storage.Setup(value => value.ExistsAsync(It.IsAny<string>())).ReturnsAsync(false);
+        storage.Setup(value => value.ExistsAsync(It.IsAny<string>())).ReturnsAsync(value: false);
         var snapshots = storage.As<IStorageBackup>();
         snapshots.Setup(value => value.WriteSnapshotAsync(It.IsAny<string>(), It.IsAny<StorageSnapshot>(), It.IsAny<CancellationToken>()))
             .Returns(() => { entered.TrySetResult(); return release.Task; });
@@ -47,11 +47,11 @@ public sealed class StandaloneRepositoryCancellationTests
         using var cancellation = new CancellationTokenSource();
 
         var save = repository.SaveAsync(1, new TestSaveData(), cancellation.Token);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        cancellation.Cancel();
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: global::System.Threading.CancellationToken.None);
+        await cancellation.CancelAsync();
         Assert.That(save.IsCompleted, Is.False);
         release.TrySetResult();
-        await save.WaitAsync(TimeSpan.FromSeconds(5));
+        await save.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: global::System.Threading.CancellationToken.None);
 
         snapshots.Verify(value => value.WriteSnapshotAsync(It.IsAny<string>(), It.IsAny<StorageSnapshot>(), It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -63,7 +63,7 @@ public sealed class StandaloneRepositoryCancellationTests
         var entered = NewCompletion();
         var release = NewCompletion();
         var storage = new Mock<IStorage>(MockBehavior.Strict);
-        storage.Setup(value => value.ExistsAsync(It.IsAny<string>())).ReturnsAsync(false);
+        storage.Setup(value => value.ExistsAsync(It.IsAny<string>())).ReturnsAsync(value: false);
         storage.Setup(value => value.WriteAsync(It.IsAny<string>(), It.IsAny<UnifiedSettingsFile>()))
             .Returns(() => { entered.TrySetResult(); return release.Task; });
         var repository = new UnifiedSettingsDataRepository(storage.Object, new JsonSerializer(),
@@ -73,12 +73,12 @@ public sealed class StandaloneRepositoryCancellationTests
         await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
         using var cancellation = new CancellationTokenSource();
         var second = repository.SaveAsync(location, new TestSimpleData { Value = 9 }, cancellation.Token);
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         await Assert.CatchAsync<OperationCanceledException>(() => second);
         release.TrySetResult();
-        await first.WaitAsync(TimeSpan.FromSeconds(5));
+        await first.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: global::System.Threading.CancellationToken.None);
 
-        var loaded = await repository.LoadAsync<TestSimpleData>(location);
+        var loaded = await repository.LoadAsync<TestSimpleData>(location, cancellationToken: global::System.Threading.CancellationToken.None);
         Assert.That(loaded.Value, Is.EqualTo(7));
         storage.Verify(value => value.WriteAsync(It.IsAny<string>(), It.IsAny<UnifiedSettingsFile>()), Times.Once);
     }

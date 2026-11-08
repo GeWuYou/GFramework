@@ -12,7 +12,7 @@ namespace GFramework.Game.SourceGenerators.Config;
 ///     当前共享子集也会把 <c>multipleOf</c>、<c>uniqueItems</c>、
 ///     <c>contains</c> / <c>minContains</c> / <c>maxContains</c>、
 ///     <c>minProperties</c>、<c>maxProperties</c>、<c>dependentRequired</c>、
-///     <c>dependentSchemas</c>、<c>allOf</c>、object-focused <c>if</c> / <c>then</c> / <c>else</c>
+///     <c>dependentSchemas</c>、<c>allOf</c>、object-focused <see langword="if" /> / <c>then</c> / <see langword="else" />
 ///     与稳定字符串 <c>format</c> 子集写入生成代码文档，
 ///     让消费者能直接在强类型 API 上看到运行时生效且不改变生成类型形状的约束。
 /// </summary>
@@ -631,8 +631,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 TryBuildEnumDocumentation(property.Value, schemaType),
                 TryBuildConstraintDocumentation(property.Value, schemaType),
                 context.RefTableName,
-                null,
-                null)));
+NestedObject: null,
+ItemTypeSpec: null)));
     }
 
     /// <summary>
@@ -678,17 +678,17 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             context.IsRequired,
             context.Title,
             context.Description,
-            false,
+IsIndexedLookup: false,
             new SchemaTypeSpec(
                 SchemaNodeKind.Object,
                 "object",
                 context.IsRequired ? objectSpec.ClassName : $"{objectSpec.ClassName}?",
                 context.IsRequired ? " = new();" : null,
                 TryBuildEnumDocumentation(property.Value, "object"),
-                null,
-                null,
+ConstraintDocumentation: null,
+RefTableName: null,
                 objectSpec,
-                null)));
+ItemTypeSpec: null)));
     }
 
     /// <summary>
@@ -1088,7 +1088,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     /// <summary>
     ///     以统一顺序递归遍历 schema 树，并把每个节点交给调用方提供的校验逻辑。
     ///     该遍历覆盖对象属性、<c>dependentSchemas</c> / <c>allOf</c> /
-    ///     <c>if</c> / <c>then</c> / <c>else</c> / <c>not</c> 子 schema、
+    ///     <see langword="if" /> / <c>then</c> / <see langword="else" /> / <c>not</c> 子 schema、
     ///     数组 <c>items</c> 与 <c>contains</c>，
     ///     避免不同关键字验证器在同一棵 schema 树上各自维护一份容易漂移的递归流程。
     /// </summary>
@@ -1398,7 +1398,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     /// <returns>格式化后的 allOf 条目路径。</returns>
     private static string BuildAllOfEntryPath(string displayPath, int allOfIndex)
     {
-        return $"{displayPath}[allOf[{allOfIndex}]]";
+        return global::System.FormattableString.Invariant($"{displayPath}[allOf[{allOfIndex}]]");
     }
 
     /// <summary>
@@ -1985,7 +1985,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 CreateFileLocation(filePath),
                 Path.GetFileName(filePath),
                 displayPath,
-                $"Entry #{allOfIndex + 1} in 'allOf' must be an object-valued schema.");
+                global::System.FormattableString.Invariant($"Entry #{allOfIndex + 1} in 'allOf' must be an object-valued schema."));
             return false;
         }
 
@@ -1998,7 +1998,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 CreateFileLocation(filePath),
                 Path.GetFileName(filePath),
                 displayPath,
-                $"Entry #{allOfIndex + 1} in 'allOf' must declare an object-typed schema.");
+                global::System.FormattableString.Invariant($"Entry #{allOfIndex + 1} in 'allOf' must declare an object-typed schema."));
             return false;
         }
 
@@ -2006,7 +2006,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    ///     验证当前 schema 节点是否以运行时支持的方式声明了 object-focused <c>if</c> / <c>then</c> / <c>else</c>。
+    ///     验证当前 schema 节点是否以运行时支持的方式声明了 object-focused <see langword="if" /> / <c>then</c> / <see langword="else" />。
     /// </summary>
     /// <param name="filePath">Schema 文件路径。</param>
     /// <param name="displayPath">逻辑字段路径。</param>
@@ -2045,7 +2045,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    ///     递归验证 schema 树中的 object-focused <c>if</c> / <c>then</c> / <c>else</c> 元数据。
+    ///     递归验证 schema 树中的 object-focused <see langword="if" /> / <c>then</c> / <see langword="else" /> 元数据。
     /// </summary>
     /// <param name="filePath">Schema 文件路径。</param>
     /// <param name="displayPath">逻辑字段路径。</param>
@@ -2136,7 +2136,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
     /// <summary>
     ///     验证 object-focused 条件分支集合。
-    ///     <c>if</c> 分支始终必检，<c>then</c> / <c>else</c> 仅在声明时校验，
+    ///     <see langword="if" /> 分支始终必检，<c>then</c> / <see langword="else" /> 仅在声明时校验，
     ///     以保持生成器对分支缺失与分支内容错误的诊断顺序稳定。
     /// </summary>
     /// <param name="filePath">Schema 文件路径。</param>
@@ -2194,7 +2194,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    ///     验证 object-focused <c>if</c> / <c>then</c> / <c>else</c> 的存在性组合是否合法。
+    ///     验证 object-focused <see langword="if" /> / <c>then</c> / <see langword="else" /> 的存在性组合是否合法。
     /// </summary>
     /// <param name="filePath">Schema 文件路径。</param>
     /// <param name="displayPath">父对象逻辑路径。</param>
@@ -2420,7 +2420,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    ///     验证 object-focused 条件 schema 的 <c>required</c> 约束只引用父对象已声明字段。
+    ///     验证 object-focused 条件 schema 的 <see langword="required" /> 约束只引用父对象已声明字段。
     /// </summary>
     /// <param name="filePath">Schema 文件路径。</param>
     /// <param name="displayPath">当前分支逻辑路径。</param>
@@ -2567,7 +2567,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 CreateFileLocation(filePath),
                 Path.GetFileName(filePath),
                 allOfEntryPath,
-                $"Entry #{allOfIndex + 1} in 'allOf' must declare 'properties' as an object-valued map.");
+                global::System.FormattableString.Invariant($"Entry #{allOfIndex + 1} in 'allOf' must declare 'properties' as an object-valued map."));
             return false;
         }
 
@@ -2583,7 +2583,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 CreateFileLocation(filePath),
                 Path.GetFileName(filePath),
                 allOfEntryPath,
-                $"Entry #{allOfIndex + 1} in 'allOf' declares property '{property.Name}', but that property is not declared in the parent object schema.");
+                global::System.FormattableString.Invariant($"Entry #{allOfIndex + 1} in 'allOf' declares property '{property.Name}', but that property is not declared in the parent object schema."));
             return false;
         }
 
@@ -2591,7 +2591,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    ///     验证单个 <c>allOf</c> 条目的 <c>required</c> 约束不会引用父对象未声明字段。
+    ///     验证单个 <c>allOf</c> 条目的 <see langword="required" /> 约束不会引用父对象未声明字段。
     /// </summary>
     /// <param name="filePath">Schema 文件路径。</param>
     /// <param name="allOfEntryPath">当前 allOf 条目逻辑路径。</param>
@@ -2621,7 +2621,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 CreateFileLocation(filePath),
                 Path.GetFileName(filePath),
                 allOfEntryPath,
-                $"Entry #{allOfIndex + 1} in 'allOf' must declare 'required' as an array of parent property names.");
+                global::System.FormattableString.Invariant($"Entry #{allOfIndex + 1} in 'allOf' must declare 'required' as an array of parent property names."));
             return false;
         }
 
@@ -2634,7 +2634,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     CreateFileLocation(filePath),
                     Path.GetFileName(filePath),
                     allOfEntryPath,
-                    $"Entry #{allOfIndex + 1} in 'allOf' must declare 'required' entries as parent property-name strings.");
+                    global::System.FormattableString.Invariant($"Entry #{allOfIndex + 1} in 'allOf' must declare 'required' entries as parent property-name strings."));
                 return false;
             }
 
@@ -2646,7 +2646,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     CreateFileLocation(filePath),
                     Path.GetFileName(filePath),
                     allOfEntryPath,
-                    $"Entry #{allOfIndex + 1} in 'allOf' cannot declare blank property names in 'required'.");
+                    global::System.FormattableString.Invariant($"Entry #{allOfIndex + 1} in 'allOf' cannot declare blank property names in 'required'."));
                 return false;
             }
 
@@ -2661,7 +2661,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 CreateFileLocation(filePath),
                 Path.GetFileName(filePath),
                 allOfEntryPath,
-                $"Entry #{allOfIndex + 1} in 'allOf' requires property '{normalizedRequiredPropertyName}', but that property is not declared in the parent object schema.");
+                global::System.FormattableString.Invariant($"Entry #{allOfIndex + 1} in 'allOf' requires property '{normalizedRequiredPropertyName}', but that property is not declared in the parent object schema."));
             return false;
         }
 
@@ -2684,7 +2684,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             "time" => true,
             "uri" => true,
             "uuid" => true,
-            _ => false
+            _ => false,
         };
     }
 
@@ -2810,7 +2810,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             "integer" => "int",
             "number" => "double",
             "boolean" => "bool",
-            _ => "string"
+            _ => "string",
         };
 
         return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
@@ -2820,7 +2820,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             context.IsRequired,
             context.Title,
             context.Description,
-            false,
+IsIndexedLookup: false,
             new SchemaTypeSpec(
                 SchemaNodeKind.Array,
                 "array",
@@ -2831,17 +2831,17 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 TryBuildEnumDocumentation(itemsElement, itemType),
                 TryBuildConstraintDocumentation(property.Value, "array"),
                 context.RefTableName,
-                null,
+NestedObject: null,
                 new SchemaTypeSpec(
                     SchemaNodeKind.Scalar,
                     itemType,
                     itemClrType,
-                    null,
+Initializer: null,
                     TryBuildEnumDocumentation(itemsElement, itemType),
                     TryBuildConstraintDocumentation(itemsElement, itemType),
                     context.RefTableName,
-                    null,
-                    null))));
+NestedObject: null,
+ItemTypeSpec: null))));
     }
 
     /// <summary>
@@ -2902,7 +2902,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             context.IsRequired,
             context.Title,
             context.Description,
-            false,
+IsIndexedLookup: false,
             new SchemaTypeSpec(
                 SchemaNodeKind.Array,
                 "array",
@@ -2911,18 +2911,18 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 TryBuildEnumDocumentation(property.Value, "array") ??
                 TryBuildEnumDocumentation(itemsElement, "object"),
                 TryBuildConstraintDocumentation(property.Value, "array"),
-                null,
-                null,
+RefTableName: null,
+NestedObject: null,
                 new SchemaTypeSpec(
                     SchemaNodeKind.Object,
                     "object",
                     objectSpec.ClassName,
-                    null,
+Initializer: null,
                     TryBuildEnumDocumentation(itemsElement, "object"),
-                    null,
-                    null,
+ConstraintDocumentation: null,
+RefTableName: null,
                     objectSpec,
-                    null)));
+ItemTypeSpec: null)));
     }
 
     /// <summary>
@@ -3055,7 +3055,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("// <auto-generated />");
         builder.AppendLine("#nullable enable");
         builder.AppendLine();
-        builder.AppendLine($"namespace {namespaceName};");
+        builder.Append("namespace ").Append(namespaceName).Append(';').AppendLine();
         builder.AppendLine();
     }
 
@@ -3065,20 +3065,16 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         IReadOnlyList<SchemaPropertySpec> indexedQueryableProperties)
     {
         builder.AppendLine("/// <summary>");
-        builder.AppendLine(
-            $"///     Auto-generated table wrapper for schema file '{schema.FileName}'.");
+        builder.Append("///     Auto-generated table wrapper for schema file '").Append(schema.FileName).AppendLine("'.");
         builder.AppendLine(
             "///     The wrapper keeps generated call sites strongly typed while delegating actual storage to the runtime config table implementation.");
         builder.AppendLine("/// </summary>");
-        builder.AppendLine(
-            $"public sealed partial class {schema.TableName} : global::GFramework.Game.Abstractions.Config.IConfigTable<{schema.KeyClrType}, {schema.ClassName}>");
+        builder.Append("public sealed partial class ").Append(schema.TableName).Append(" : global::GFramework.Game.Abstractions.Config.IConfigTable<").Append(schema.KeyClrType).Append(", ").Append(schema.ClassName).Append('>').AppendLine();
         builder.AppendLine("{");
-        builder.AppendLine(
-            $"    private readonly global::GFramework.Game.Abstractions.Config.IConfigTable<{schema.KeyClrType}, {schema.ClassName}> _inner;");
+        builder.Append("    private readonly global::GFramework.Game.Abstractions.Config.IConfigTable<").Append(schema.KeyClrType).Append(", ").Append(schema.ClassName).Append("> _inner;").AppendLine();
         foreach (var property in indexedQueryableProperties)
         {
-            builder.AppendLine(
-                $"    private readonly global::System.Lazy<global::System.Collections.Generic.IReadOnlyDictionary<{property.TypeSpec.ClrType}, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>>> _{ToCamelCase(property.PropertyName)}Index;");
+            builder.Append("    private readonly global::System.Lazy<global::System.Collections.Generic.IReadOnlyDictionary<").Append(property.TypeSpec.ClrType).Append(", global::System.Collections.Generic.IReadOnlyList<").Append(schema.ClassName).Append(">>> _").Append(ToCamelCase(property.PropertyName)).Append("Index;").AppendLine();
         }
     }
 
@@ -3092,15 +3088,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    ///     Creates a generated table wrapper around the runtime config table instance.");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    /// <param name=\"inner\">The runtime config table instance.</param>");
-        builder.AppendLine(
-            $"    public {schema.TableName}(global::GFramework.Game.Abstractions.Config.IConfigTable<{schema.KeyClrType}, {schema.ClassName}> inner)");
+        builder.Append("    public ").Append(schema.TableName).Append("(global::GFramework.Game.Abstractions.Config.IConfigTable<").Append(schema.KeyClrType).Append(", ").Append(schema.ClassName).Append("> inner)").AppendLine();
         builder.AppendLine("    {");
         builder.AppendLine("        _inner = inner ?? throw new global::System.ArgumentNullException(nameof(inner));");
         foreach (var property in indexedQueryableProperties)
         {
-            builder.AppendLine(
-                $"        _{ToCamelCase(property.PropertyName)}Index = new global::System.Lazy<global::System.Collections.Generic.IReadOnlyDictionary<{property.TypeSpec.ClrType}, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>>>(");
-            builder.AppendLine($"            Build{property.PropertyName}Index,");
+            builder.Append("        _").Append(ToCamelCase(property.PropertyName)).Append("Index = new global::System.Lazy<global::System.Collections.Generic.IReadOnlyDictionary<").Append(property.TypeSpec.ClrType).Append(", global::System.Collections.Generic.IReadOnlyList<").Append(schema.ClassName).Append(">>>(").AppendLine();
+            builder.Append("            Build").Append(property.PropertyName).Append("Index,").AppendLine();
             builder.AppendLine("            global::System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);");
         }
 
@@ -3120,26 +3114,25 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    public int Count => _inner.Count;");
         builder.AppendLine();
         builder.AppendLine("    /// <inheritdoc />");
-        builder.AppendLine($"    public {schema.ClassName} Get({schema.KeyClrType} key)");
+        builder.Append("    public ").Append(schema.ClassName).Append(" Get(").Append(schema.KeyClrType).Append(" key)").AppendLine();
         builder.AppendLine("    {");
         builder.AppendLine("        return _inner.Get(key);");
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine("    /// <inheritdoc />");
-        builder.AppendLine($"    public bool TryGet({schema.KeyClrType} key, out {schema.ClassName}? value)");
+        builder.Append("    public bool TryGet(").Append(schema.KeyClrType).Append(" key, out ").Append(schema.ClassName).Append("? value)").AppendLine();
         builder.AppendLine("    {");
         builder.AppendLine("        return _inner.TryGet(key, out value);");
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine("    /// <inheritdoc />");
-        builder.AppendLine($"    public bool ContainsKey({schema.KeyClrType} key)");
+        builder.Append("    public bool ContainsKey(").Append(schema.KeyClrType).Append(" key)").AppendLine();
         builder.AppendLine("    {");
         builder.AppendLine("        return _inner.ContainsKey(key);");
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine("    /// <inheritdoc />");
-        builder.AppendLine(
-            $"    public global::System.Collections.Generic.IReadOnlyCollection<{schema.ClassName}> All()");
+        builder.Append("    public global::System.Collections.Generic.IReadOnlyCollection<").Append(schema.ClassName).Append("> All()").AppendLine();
         builder.AppendLine("    {");
         builder.AppendLine("        return _inner.All();");
         builder.AppendLine("    }");
@@ -3175,12 +3168,11 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     private static void AppendBindingsTypeHeader(StringBuilder builder, string bindingsClassName, string fileName)
     {
         builder.AppendLine("/// <summary>");
-        builder.AppendLine(
-            $"///     Auto-generated registration and lookup helpers for schema file '{fileName}'.");
+        builder.Append("///     Auto-generated registration and lookup helpers for schema file '").Append(fileName).Append("'.").AppendLine();
         builder.AppendLine(
             "///     The helper centralizes table naming, config directory, schema path, and strongly-typed registry access so consumer projects do not need to duplicate the same conventions.");
         builder.AppendLine("/// </summary>");
-        builder.AppendLine($"public static class {bindingsClassName}");
+        builder.Append("public static class ").Append(bindingsClassName).AppendLine();
         builder.AppendLine("{");
     }
 
@@ -3263,27 +3255,23 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             "        ///     Gets the logical config domain derived from the schema base name. The current runtime convention keeps this value aligned with the generated table name.");
         builder.AppendLine("        /// </summary>");
-        builder.AppendLine(
-            $"        public const string ConfigDomain = {SymbolDisplay.FormatLiteral(schema.TableRegistrationName, true)};");
+        builder.Append("        public const string ConfigDomain = ").Append(SymbolDisplay.FormatLiteral(schema.TableRegistrationName, quote: true)).Append(';').AppendLine();
         builder.AppendLine();
         builder.AppendLine("        /// <summary>");
         builder.AppendLine("        ///     Gets the runtime registration name of the generated config table.");
         builder.AppendLine("        /// </summary>");
-        builder.AppendLine(
-            $"        public const string TableName = {SymbolDisplay.FormatLiteral(schema.TableRegistrationName, true)};");
+        builder.Append("        public const string TableName = ").Append(SymbolDisplay.FormatLiteral(schema.TableRegistrationName, quote: true)).Append(';').AppendLine();
         builder.AppendLine();
         builder.AppendLine("        /// <summary>");
         builder.AppendLine(
             "        ///     Gets the config directory path expected by the generated registration helper.");
         builder.AppendLine("        /// </summary>");
-        builder.AppendLine(
-            $"        public const string ConfigRelativePath = {SymbolDisplay.FormatLiteral(schema.ConfigRelativePath, true)};");
+        builder.Append("        public const string ConfigRelativePath = ").Append(SymbolDisplay.FormatLiteral(schema.ConfigRelativePath, quote: true)).Append(';').AppendLine();
         builder.AppendLine();
         builder.AppendLine("        /// <summary>");
         builder.AppendLine("        ///     Gets the schema file path expected by the generated registration helper.");
         builder.AppendLine("        /// </summary>");
-        builder.AppendLine(
-            $"        public const string SchemaRelativePath = {SymbolDisplay.FormatLiteral(schema.SchemaRelativePath, true)};");
+        builder.Append("        public const string SchemaRelativePath = ").Append(SymbolDisplay.FormatLiteral(schema.SchemaRelativePath, quote: true)).Append(';').AppendLine();
         builder.AppendLine("    }");
     }
 
@@ -3337,19 +3325,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         foreach (var referenceSpec in referenceSpecs)
         {
             builder.AppendLine("        /// <summary>");
-            builder.AppendLine(
-                $"        ///     Gets generated reference metadata for schema property path '{EscapeXmlDocumentation(referenceSpec.DisplayPath)}'.");
+            builder.Append("        ///     Gets generated reference metadata for schema property path '").Append(EscapeXmlDocumentation(referenceSpec.DisplayPath)).Append("'.").AppendLine();
             builder.AppendLine("        /// </summary>");
-            builder.AppendLine(
-                $"        public static readonly ReferenceMetadata {referenceSpec.MemberName} = new(");
-            builder.AppendLine(
-                $"            {SymbolDisplay.FormatLiteral(referenceSpec.DisplayPath, true)},");
-            builder.AppendLine(
-                $"            {SymbolDisplay.FormatLiteral(referenceSpec.ReferencedTableName, true)},");
-            builder.AppendLine(
-                $"            {SymbolDisplay.FormatLiteral(referenceSpec.ValueSchemaType, true)},");
-            builder.AppendLine(
-                $"            {(referenceSpec.IsCollection ? "true" : "false")});");
+            builder.Append("        public static readonly ReferenceMetadata ").Append(referenceSpec.MemberName).Append(" = new(").AppendLine();
+            builder.Append("            ").Append(SymbolDisplay.FormatLiteral(referenceSpec.DisplayPath, quote: true)).Append(',').AppendLine();
+            builder.Append("            ").Append(SymbolDisplay.FormatLiteral(referenceSpec.ReferencedTableName, quote: true)).Append(',').AppendLine();
+            builder.Append("            ").Append(SymbolDisplay.FormatLiteral(referenceSpec.ValueSchemaType, quote: true)).Append(',').AppendLine();
+            builder.Append("            ").Append((referenceSpec.IsCollection ? "true" : "false")).Append(");").AppendLine();
             builder.AppendLine();
         }
     }
@@ -3374,7 +3356,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("        {");
         foreach (var referenceSpec in referenceSpecs)
         {
-            builder.AppendLine($"            {referenceSpec.MemberName},");
+            builder.Append("            ").Append(referenceSpec.MemberName).Append(',').AppendLine();
         }
 
         builder.AppendLine("        });");
@@ -3411,10 +3393,9 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         {
             foreach (var referenceSpec in referenceSpecs)
             {
-                builder.AppendLine(
-                    $"            if (string.Equals(displayPath, {SymbolDisplay.FormatLiteral(referenceSpec.DisplayPath, true)}, global::System.StringComparison.Ordinal))");
+                builder.Append("            if (string.Equals(displayPath, ").Append(SymbolDisplay.FormatLiteral(referenceSpec.DisplayPath, quote: true)).Append(", global::System.StringComparison.Ordinal))").AppendLine();
                 builder.AppendLine("            {");
-                builder.AppendLine($"                metadata = {referenceSpec.MemberName};");
+                builder.Append("                metadata = ").Append(referenceSpec.MemberName).Append(';').AppendLine();
                 builder.AppendLine("                return true;");
                 builder.AppendLine("            }");
             }
@@ -3441,23 +3422,20 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             "    /// <param name=\"comparer\">Optional key comparer for the generated table registration.</param>");
         builder.AppendLine("    /// <returns>The same loader instance so registration can keep chaining.</returns>");
-        builder.AppendLine(
-            $"    public static global::GFramework.Game.Config.YamlConfigLoader {registerMethodName}(");
+        builder.Append("    public static global::GFramework.Game.Config.YamlConfigLoader ").Append(registerMethodName).Append('(').AppendLine();
         builder.AppendLine("        this global::GFramework.Game.Config.YamlConfigLoader loader,");
-        builder.AppendLine(
-            $"        global::System.Collections.Generic.IEqualityComparer<{schema.KeyClrType}>? comparer = null)");
+        builder.Append("        global::System.Collections.Generic.IEqualityComparer<").Append(schema.KeyClrType).Append(">? comparer = null)").AppendLine();
         builder.AppendLine("    {");
         builder.AppendLine("        if (loader is null)");
         builder.AppendLine("        {");
         builder.AppendLine("            throw new global::System.ArgumentNullException(nameof(loader));");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine(
-            $"        return loader.RegisterTable<{schema.KeyClrType}, {schema.ClassName}>(");
+        builder.Append("        return loader.RegisterTable<").Append(schema.KeyClrType).Append(", ").Append(schema.ClassName).Append(">(").AppendLine();
         builder.AppendLine("            Metadata.TableName,");
         builder.AppendLine("            Metadata.ConfigRelativePath,");
         builder.AppendLine("            Metadata.SchemaRelativePath,");
-        builder.AppendLine($"            static config => config.{schema.KeyPropertyName},");
+        builder.Append("            static config => config.").Append(schema.KeyPropertyName).Append(',').AppendLine();
         builder.AppendLine("            comparer);");
         builder.AppendLine("    }");
     }
@@ -3475,16 +3453,14 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    /// <returns>The generated strongly-typed table wrapper.</returns>");
         builder.AppendLine(
             "    /// <exception cref=\"global::System.ArgumentNullException\">When <paramref name=\"registry\"/> is null.</exception>");
-        builder.AppendLine(
-            $"    public static {schema.TableName} {getMethodName}(this global::GFramework.Game.Abstractions.Config.IConfigRegistry registry)");
+        builder.Append("    public static ").Append(schema.TableName).Append(' ').Append(getMethodName).Append("(this global::GFramework.Game.Abstractions.Config.IConfigRegistry registry)").AppendLine();
         builder.AppendLine("    {");
         builder.AppendLine("        if (registry is null)");
         builder.AppendLine("        {");
         builder.AppendLine("            throw new global::System.ArgumentNullException(nameof(registry));");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine(
-            $"        return new {schema.TableName}(registry.GetTable<{schema.KeyClrType}, {schema.ClassName}>(Metadata.TableName));");
+        builder.Append("        return new ").Append(schema.TableName).Append("(registry.GetTable<").Append(schema.KeyClrType).Append(", ").Append(schema.ClassName).Append(">(Metadata.TableName));").AppendLine();
         builder.AppendLine("    }");
     }
 
@@ -3504,18 +3480,16 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             "    /// <returns>True when the generated table is registered and type-compatible; otherwise false.</returns>");
         builder.AppendLine(
             "    /// <exception cref=\"global::System.ArgumentNullException\">When <paramref name=\"registry\"/> is null.</exception>");
-        builder.AppendLine(
-            $"    public static bool {tryGetMethodName}(this global::GFramework.Game.Abstractions.Config.IConfigRegistry registry, out {schema.TableName}? table)");
+        builder.Append("    public static bool ").Append(tryGetMethodName).Append("(this global::GFramework.Game.Abstractions.Config.IConfigRegistry registry, out ").Append(schema.TableName).Append("? table)").AppendLine();
         builder.AppendLine("    {");
         builder.AppendLine("        if (registry is null)");
         builder.AppendLine("        {");
         builder.AppendLine("            throw new global::System.ArgumentNullException(nameof(registry));");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine(
-            $"        if (registry.TryGetTable<{schema.KeyClrType}, {schema.ClassName}>(Metadata.TableName, out var innerTable) && innerTable is not null)");
+        builder.Append("        if (registry.TryGetTable<").Append(schema.KeyClrType).Append(", ").Append(schema.ClassName).Append(">(Metadata.TableName, out var innerTable) && innerTable is not null)").AppendLine();
         builder.AppendLine("        {");
-        builder.AppendLine($"            table = new {schema.TableName}(innerTable);");
+        builder.Append("            table = new ").Append(schema.TableName).Append("(innerTable);").AppendLine();
         builder.AppendLine("            return true;");
         builder.AppendLine("        }");
         builder.AppendLine();
@@ -3618,10 +3592,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         foreach (var schema in schemas)
         {
             builder.AppendLine("        new(");
-            builder.AppendLine($"            {schema.EntityName}ConfigBindings.Metadata.ConfigDomain,");
-            builder.AppendLine($"            {schema.EntityName}ConfigBindings.Metadata.TableName,");
-            builder.AppendLine($"            {schema.EntityName}ConfigBindings.Metadata.ConfigRelativePath,");
-            builder.AppendLine($"            {schema.EntityName}ConfigBindings.Metadata.SchemaRelativePath),");
+            builder.Append("            ").Append(schema.EntityName).Append("ConfigBindings.Metadata.ConfigDomain,").AppendLine();
+            builder.Append("            ").Append(schema.EntityName).Append("ConfigBindings.Metadata.TableName,").AppendLine();
+            builder.Append("            ").Append(schema.EntityName).Append("ConfigBindings.Metadata.ConfigRelativePath,").AppendLine();
+            builder.Append("            ").Append(schema.EntityName).Append("ConfigBindings.Metadata.SchemaRelativePath),").AppendLine();
         }
 
         builder.AppendLine("    });");
@@ -3689,11 +3663,9 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         for (var index = 0; index < schemas.Count; index++)
         {
             var schema = schemas[index];
-            builder.AppendLine(
-                $"        if (string.Equals(tableName, {schema.EntityName}ConfigBindings.Metadata.TableName, global::System.StringComparison.Ordinal))");
+            builder.Append("        if (string.Equals(tableName, ").Append(schema.EntityName).Append("ConfigBindings.Metadata.TableName, global::System.StringComparison.Ordinal))").AppendLine();
             builder.AppendLine("        {");
-            builder.AppendLine(
-                $"            metadata = Tables[{index.ToString(CultureInfo.InvariantCulture)}];");
+            builder.Append("            metadata = Tables[").Append(index.ToString(CultureInfo.InvariantCulture)).Append("];").AppendLine();
             builder.AppendLine("            return true;");
             builder.AppendLine("        }");
             builder.AppendLine();
@@ -3899,11 +3871,9 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             var comparerTypeDocumentation = EscapeXmlDocumentation(
                 $"global::System.Collections.Generic.IEqualityComparer<{schema.KeyClrType}>?");
             builder.AppendLine("    /// <summary>");
-            builder.AppendLine(
-                $"    ///     Gets or sets the optional key comparer forwarded to {schema.EntityName}ConfigBindings.Register{schema.EntityName}Table using <c>{comparerTypeDocumentation}</c> when aggregate registration runs.");
+            builder.Append("    ///     Gets or sets the optional key comparer forwarded to ").Append(schema.EntityName).Append("ConfigBindings.Register").Append(schema.EntityName).Append("Table using <c>").Append(comparerTypeDocumentation).Append("</c> when aggregate registration runs.").AppendLine();
             builder.AppendLine("    /// </summary>");
-            builder.AppendLine(
-                $"    public global::System.Collections.Generic.IEqualityComparer<{schema.KeyClrType}>? {schema.EntityName}Comparer {{ get; init; }}");
+            builder.Append("    public global::System.Collections.Generic.IEqualityComparer<").Append(schema.KeyClrType).Append(">? ").Append(schema.EntityName).Append("Comparer { get; init; }").AppendLine();
 
             if (index < schemas.Count - 1)
             {
@@ -3997,11 +3967,9 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         for (var index = 0; index < schemas.Count; index++)
         {
             var schema = schemas[index];
-            builder.AppendLine(
-                $"        if (GeneratedConfigCatalog.MatchesRegistrationOptions(GeneratedConfigCatalog.Tables[{index.ToString(CultureInfo.InvariantCulture)}], effectiveOptions))");
+            builder.Append("        if (GeneratedConfigCatalog.MatchesRegistrationOptions(GeneratedConfigCatalog.Tables[").Append(index.ToString(CultureInfo.InvariantCulture)).Append("], effectiveOptions))").AppendLine();
             builder.AppendLine("        {");
-            builder.AppendLine(
-                $"            loader.Register{schema.EntityName}Table(effectiveOptions.{schema.EntityName}Comparer);");
+            builder.Append("            loader.Register").Append(schema.EntityName).Append("Table(effectiveOptions.").Append(schema.EntityName).Append("Comparer);").AppendLine();
             builder.AppendLine("        }");
             builder.AppendLine();
         }
@@ -4042,7 +4010,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             "    /// <returns>YAML text that preserves the shared camelCase field naming convention.</returns>");
         builder.AppendLine(
             "    /// <exception cref=\"global::System.ArgumentNullException\">Thrown when <paramref name=\"config\"/> is <see langword=\"null\"/>.</exception>");
-        builder.AppendLine($"    public static string SerializeToYaml({schema.ClassName} config)");
+        builder.Append("    public static string SerializeToYaml(").Append(schema.ClassName).Append(" config)").AppendLine();
         builder.AppendLine("    {");
         builder.AppendLine("        return global::GFramework.Game.Config.YamlConfigTextSerializer.Serialize(config);");
         builder.AppendLine("    }");
@@ -4253,16 +4221,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         SchemaPropertySpec property)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine(
-            $"    ///     Builds the exact-match lookup index declared for property '{EscapeXmlDocumentation(property.DisplayPath)}'.");
+        builder.Append("    ///     Builds the exact-match lookup index declared for property '").Append(EscapeXmlDocumentation(property.DisplayPath)).Append("'.").AppendLine();
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine(
-            $"    /// <returns>A read-only lookup index keyed by <c>{EscapeXmlDocumentation(property.PropertyName)}</c>.</returns>");
-        builder.AppendLine(
-            $"    private global::System.Collections.Generic.IReadOnlyDictionary<{property.TypeSpec.ClrType}, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>> Build{property.PropertyName}Index()");
+        builder.Append("    /// <returns>A read-only lookup index keyed by <c>").Append(EscapeXmlDocumentation(property.PropertyName)).Append("</c>.</returns>").AppendLine();
+        builder.Append("    private global::System.Collections.Generic.IReadOnlyDictionary<").Append(property.TypeSpec.ClrType).Append(", global::System.Collections.Generic.IReadOnlyList<").Append(schema.ClassName).Append(">> Build").Append(property.PropertyName).Append("Index()").AppendLine();
         builder.AppendLine("    {");
-        builder.AppendLine(
-            $"        return BuildLookupIndex(static config => config.{property.PropertyName});");
+        builder.Append("        return BuildLookupIndex(static config => config.").Append(property.PropertyName).Append(");").AppendLine();
         builder.AppendLine("    }");
     }
 
@@ -4301,14 +4265,11 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             "    ///     The generated index skips runtime null keys even though <typeparamref name=\"TProperty\"/> is constrained to <c>notnull</c>. Malformed YAML payloads can still deserialize missing indexed values to <see langword=\"null\" />, and throwing from this lazy path would permanently poison the cached index for the current table wrapper instance.");
         builder.AppendLine("    /// </remarks>");
-        builder.AppendLine(
-            $"    private global::System.Collections.Generic.IReadOnlyDictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>> BuildLookupIndex<TProperty>(");
-        builder.AppendLine($"        global::System.Func<{schema.ClassName}, TProperty> keySelector)");
+        builder.Append("    private global::System.Collections.Generic.IReadOnlyDictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<").Append(schema.ClassName).Append(">> BuildLookupIndex<TProperty>(").AppendLine();
+        builder.Append("        global::System.Func<").Append(schema.ClassName).Append(", TProperty> keySelector)").AppendLine();
         builder.AppendLine("        where TProperty : notnull");
         builder.AppendLine("    {");
-        builder.AppendLine(
-            "        var buckets = new global::System.Collections.Generic.Dictionary<TProperty, global::System.Collections.Generic.List<" +
-            $"{schema.ClassName}>>();");
+        builder.Append("        var buckets = new global::System.Collections.Generic.Dictionary<TProperty, global::System.Collections.Generic.List<").Append(schema.ClassName).Append(">>();").AppendLine();
     }
 
     /// <summary>
@@ -4337,24 +4298,21 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine();
         builder.AppendLine("            if (!buckets.TryGetValue(key, out var matches))");
         builder.AppendLine("            {");
-        builder.AppendLine(
-            $"                matches = new global::System.Collections.Generic.List<{schema.ClassName}>();");
+        builder.Append("                matches = new global::System.Collections.Generic.List<").Append(schema.ClassName).Append(">();").AppendLine();
         builder.AppendLine("                buckets.Add(key, matches);");
         builder.AppendLine("            }");
         builder.AppendLine();
         builder.AppendLine("            matches.Add(candidate);");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine(
-            $"        var materialized = new global::System.Collections.Generic.Dictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>>(buckets.Count, buckets.Comparer);");
+        builder.Append("        var materialized = new global::System.Collections.Generic.Dictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<").Append(schema.ClassName).Append(">>(buckets.Count, buckets.Comparer);").AppendLine();
         builder.AppendLine("        foreach (var pair in buckets)");
         builder.AppendLine("        {");
         builder.AppendLine(
             $"            materialized.Add(pair.Key, pair.Value.AsReadOnly());");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine(
-            $"        return new global::System.Collections.ObjectModel.ReadOnlyDictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>>(materialized);");
+        builder.Append("        return new global::System.Collections.ObjectModel.ReadOnlyDictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<").Append(schema.ClassName).Append(">>(materialized);").AppendLine();
         builder.AppendLine("    }");
     }
 
@@ -4370,8 +4328,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         SchemaPropertySpec property)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine(
-            $"    ///     Finds all config entries whose property '{EscapeXmlDocumentation(property.DisplayPath)}' equals the supplied value.");
+        builder.Append("    ///     Finds all config entries whose property '").Append(EscapeXmlDocumentation(property.DisplayPath)).Append("' equals the supplied value.").AppendLine();
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    /// <param name=\"value\">The property value to match.</param>");
         builder.AppendLine("    /// <returns>A read-only snapshot containing every matching config entry.</returns>");
@@ -4388,8 +4345,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         builder.AppendLine("    /// </remarks>");
-        builder.AppendLine(
-            $"    public global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}> FindBy{property.PropertyName}({property.TypeSpec.ClrType} value)");
+        builder.Append("    public global::System.Collections.Generic.IReadOnlyList<").Append(schema.ClassName).Append("> FindBy").Append(property.PropertyName).Append('(').Append(property.TypeSpec.ClrType).Append(" value)").AppendLine();
         builder.AppendLine("    {");
         AppendFindByPropertyBody(builder, schema, property);
         builder.AppendLine("    }");
@@ -4412,37 +4368,33 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             {
                 builder.AppendLine("        if (value is null)");
                 builder.AppendLine("        {");
-                builder.AppendLine($"            return global::System.Array.Empty<{schema.ClassName}>();");
+                builder.Append("            return global::System.Array.Empty<").Append(schema.ClassName).Append(">();").AppendLine();
                 builder.AppendLine("        }");
                 builder.AppendLine();
             }
 
-            builder.AppendLine(
-                $"        if (_{ToCamelCase(property.PropertyName)}Index.Value.TryGetValue(value, out var matches))");
+            builder.Append("        if (_").Append(ToCamelCase(property.PropertyName)).Append("Index.Value.TryGetValue(value, out var matches))").AppendLine();
             builder.AppendLine("        {");
             builder.AppendLine("            return matches;");
             builder.AppendLine("        }");
             builder.AppendLine();
-            builder.AppendLine($"        return global::System.Array.Empty<{schema.ClassName}>();");
+            builder.Append("        return global::System.Array.Empty<").Append(schema.ClassName).Append(">();").AppendLine();
         }
         else
         {
-            builder.AppendLine(
-                $"        var matches = new global::System.Collections.Generic.List<{schema.ClassName}>();");
+            builder.Append("        var matches = new global::System.Collections.Generic.List<").Append(schema.ClassName).Append(">();").AppendLine();
             builder.AppendLine();
             builder.AppendLine(
                 "        // Scan the current table snapshot on demand so generated helpers stay aligned with reloadable runtime data.");
             builder.AppendLine("        foreach (var candidate in All())");
             builder.AppendLine("        {");
-            builder.AppendLine(
-                $"            if (global::System.Collections.Generic.EqualityComparer<{property.TypeSpec.ClrType}>.Default.Equals(candidate.{property.PropertyName}, value))");
+            builder.Append("            if (global::System.Collections.Generic.EqualityComparer<").Append(property.TypeSpec.ClrType).Append(">.Default.Equals(candidate.").Append(property.PropertyName).Append(", value))").AppendLine();
             builder.AppendLine("            {");
             builder.AppendLine("                matches.Add(candidate);");
             builder.AppendLine("            }");
             builder.AppendLine("        }");
             builder.AppendLine();
-            builder.AppendLine(
-                $"        return matches.Count == 0 ? global::System.Array.Empty<{schema.ClassName}>() : matches.AsReadOnly();");
+            builder.Append("        return matches.Count == 0 ? global::System.Array.Empty<").Append(schema.ClassName).Append(">() : matches.AsReadOnly();").AppendLine();
         }
     }
 
@@ -4458,8 +4410,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         SchemaPropertySpec property)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine(
-            $"    ///     Tries to find the first config entry whose property '{EscapeXmlDocumentation(property.DisplayPath)}' equals the supplied value.");
+        builder.Append("    ///     Tries to find the first config entry whose property '").Append(EscapeXmlDocumentation(property.DisplayPath)).Append("' equals the supplied value.").AppendLine();
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    /// <param name=\"value\">The property value to match.</param>");
         builder.AppendLine(
@@ -4479,10 +4430,9 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         builder.AppendLine("    /// </remarks>");
-        builder.AppendLine(
-            $"    public bool TryFindFirstBy{property.PropertyName}({property.TypeSpec.ClrType} value, out {schema.ClassName}? result)");
+        builder.Append("    public bool TryFindFirstBy").Append(property.PropertyName).Append('(').Append(property.TypeSpec.ClrType).Append(" value, out ").Append(schema.ClassName).Append("? result)").AppendLine();
         builder.AppendLine("    {");
-        AppendTryFindFirstByPropertyBody(builder, schema, property);
+        AppendTryFindFirstByPropertyBody(builder, property);
         builder.AppendLine("    }");
     }
 
@@ -4490,11 +4440,9 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     ///     Emits the body of a generated <c>TryFindFirstBy*</c> lookup helper.
     /// </summary>
     /// <param name="builder">Output buffer.</param>
-    /// <param name="schema">Generator-level schema model.</param>
     /// <param name="property">Property model used by the lookup helper.</param>
     private static void AppendTryFindFirstByPropertyBody(
         StringBuilder builder,
-        SchemaFileSpec schema,
         SchemaPropertySpec property)
     {
         if (property.IsIndexedLookup)
@@ -4509,8 +4457,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 builder.AppendLine();
             }
 
-            builder.AppendLine(
-                $"        if (_{ToCamelCase(property.PropertyName)}Index.Value.TryGetValue(value, out var matches) && matches.Count > 0)");
+            builder.Append("        if (_").Append(ToCamelCase(property.PropertyName)).Append("Index.Value.TryGetValue(value, out var matches) && matches.Count > 0)").AppendLine();
             builder.AppendLine("        {");
             builder.AppendLine("            result = matches[0];");
             builder.AppendLine("            return true;");
@@ -4525,8 +4472,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 "        // Keep the search path allocation-free for the first-match case by exiting as soon as one entry matches.");
             builder.AppendLine("        foreach (var candidate in All())");
             builder.AppendLine("        {");
-            builder.AppendLine(
-                $"            if (global::System.Collections.Generic.EqualityComparer<{property.TypeSpec.ClrType}>.Default.Equals(candidate.{property.PropertyName}, value))");
+            builder.Append("            if (global::System.Collections.Generic.EqualityComparer<").Append(property.TypeSpec.ClrType).Append(">.Default.Equals(candidate.").Append(property.PropertyName).Append(", value))").AppendLine();
             builder.AppendLine("            {");
             builder.AppendLine("                result = candidate;");
             builder.AppendLine("                return true;");
@@ -4601,7 +4547,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         AppendObjectTypeHeader(builder, objectSpec, fileName, title, description, isRoot, indent);
         AppendObjectTypeProperties(builder, objectSpec, indentationLevel);
         AppendNestedObjectTypes(builder, objectSpec, fileName, indentationLevel);
-        builder.AppendLine($"{indent}}}");
+        builder.Append(indent).Append('}').AppendLine();
     }
 
     /// <summary>
@@ -4623,33 +4569,28 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         bool isRoot,
         string indent)
     {
-        builder.AppendLine($"{indent}/// <summary>");
+        builder.Append(indent).Append("/// <summary>").AppendLine();
         if (isRoot)
         {
-            builder.AppendLine(
-                $"{indent}///     Auto-generated config type for schema file '{fileName}'.");
-            builder.AppendLine(
-                $"{indent}///     {EscapeXmlDocumentation(description ?? title ?? "This type is generated from JSON schema so runtime loading and editor tooling can share the same contract.")}");
+            builder.Append(indent).Append("///     Auto-generated config type for schema file '").Append(fileName).Append("'.").AppendLine();
+            builder.Append(indent).Append("///     ").Append(EscapeXmlDocumentation(description ?? title ?? "This type is generated from JSON schema so runtime loading and editor tooling can share the same contract.")).AppendLine();
         }
         else
         {
-            builder.AppendLine(
-                $"{indent}///     Auto-generated nested config type for schema property path '{EscapeXmlDocumentation(objectSpec.DisplayPath)}'.");
-            builder.AppendLine(
-                $"{indent}///     {EscapeXmlDocumentation(description ?? title ?? "This nested type is generated so object-valued schema fields remain strongly typed in consumer code.")}");
+            builder.Append(indent).Append("///     Auto-generated nested config type for schema property path '").Append(EscapeXmlDocumentation(objectSpec.DisplayPath)).Append("'.").AppendLine();
+            builder.Append(indent).Append("///     ").Append(EscapeXmlDocumentation(description ?? title ?? "This nested type is generated so object-valued schema fields remain strongly typed in consumer code.")).AppendLine();
         }
 
-        builder.AppendLine($"{indent}/// </summary>");
+        builder.Append(indent).Append("/// </summary>").AppendLine();
         if (!string.IsNullOrWhiteSpace(objectSpec.ConstraintDocumentation))
         {
-            builder.AppendLine($"{indent}/// <remarks>");
-            builder.AppendLine(
-                $"{indent}///     Constraints: {EscapeXmlDocumentation(objectSpec.ConstraintDocumentation!)}.");
-            builder.AppendLine($"{indent}/// </remarks>");
+            builder.Append(indent).Append("/// <remarks>").AppendLine();
+            builder.Append(indent).Append("///     Constraints: ").Append(EscapeXmlDocumentation(objectSpec.ConstraintDocumentation!)).Append('.').AppendLine();
+            builder.Append(indent).Append("/// </remarks>").AppendLine();
         }
 
-        builder.AppendLine($"{indent}public sealed partial class {objectSpec.ClassName}");
-        builder.AppendLine($"{indent}{{");
+        builder.Append(indent).Append("public sealed partial class ").Append(objectSpec.ClassName).AppendLine();
+        builder.Append(indent).Append('{').AppendLine();
     }
 
     /// <summary>
@@ -4669,8 +4610,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             AppendPropertyDocumentation(builder, property, indentationLevel + 1);
 
             var propertyIndent = new string(' ', (indentationLevel + 1) * 4);
-            builder.Append(
-                $"{propertyIndent}public {property.TypeSpec.ClrType} {property.PropertyName} {{ get; set; }}");
+            builder.Append(propertyIndent).Append("public ").Append(property.TypeSpec.ClrType).Append(' ').Append(property.PropertyName).Append(" { get; set; }");
             if (!string.IsNullOrEmpty(property.TypeSpec.Initializer))
             {
                 builder.Append(property.TypeSpec.Initializer);
@@ -4750,53 +4690,45 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         int indentationLevel)
     {
         var indent = new string(' ', indentationLevel * 4);
-        builder.AppendLine($"{indent}/// <summary>");
-        builder.AppendLine(
-            $"{indent}///     {EscapeXmlDocumentation(property.Description ?? property.Title ?? $"Gets or sets the value mapped from schema property path '{property.DisplayPath}'.")}");
-        builder.AppendLine($"{indent}/// </summary>");
-        builder.AppendLine($"{indent}/// <remarks>");
-        builder.AppendLine(
-            $"{indent}///     Schema property path: '{EscapeXmlDocumentation(property.DisplayPath)}'.");
+        builder.Append(indent).Append("/// <summary>").AppendLine();
+        builder.Append(indent).Append("///     ").Append(EscapeXmlDocumentation(property.Description ?? property.Title ?? $"Gets or sets the value mapped from schema property path '{property.DisplayPath}'.")).AppendLine();
+        builder.Append(indent).Append("/// </summary>").AppendLine();
+        builder.Append(indent).Append("/// <remarks>").AppendLine();
+        builder.Append(indent).Append("///     Schema property path: '").Append(EscapeXmlDocumentation(property.DisplayPath)).Append("'.").AppendLine();
 
         if (!string.IsNullOrWhiteSpace(property.Title))
         {
-            builder.AppendLine(
-                $"{indent}///     Display title: '{EscapeXmlDocumentation(property.Title!)}'.");
+            builder.Append(indent).Append("///     Display title: '").Append(EscapeXmlDocumentation(property.Title!)).Append("'.").AppendLine();
         }
 
         if (!string.IsNullOrWhiteSpace(property.TypeSpec.EnumDocumentation))
         {
-            builder.AppendLine(
-                $"{indent}///     Allowed values: {EscapeXmlDocumentation(property.TypeSpec.EnumDocumentation!)}.");
+            builder.Append(indent).Append("///     Allowed values: ").Append(EscapeXmlDocumentation(property.TypeSpec.EnumDocumentation!)).Append('.').AppendLine();
         }
 
         if (!string.IsNullOrWhiteSpace(property.TypeSpec.ConstraintDocumentation))
         {
-            builder.AppendLine(
-                $"{indent}///     Constraints: {EscapeXmlDocumentation(property.TypeSpec.ConstraintDocumentation!)}.");
+            builder.Append(indent).Append("///     Constraints: ").Append(EscapeXmlDocumentation(property.TypeSpec.ConstraintDocumentation!)).Append('.').AppendLine();
         }
 
         if (!string.IsNullOrWhiteSpace(property.TypeSpec.RefTableName))
         {
-            builder.AppendLine(
-                $"{indent}///     References config table: '{EscapeXmlDocumentation(property.TypeSpec.RefTableName!)}'.");
+            builder.Append(indent).Append("///     References config table: '").Append(EscapeXmlDocumentation(property.TypeSpec.RefTableName!)).Append("'.").AppendLine();
         }
 
         var itemConstraintDocumentation = property.TypeSpec.ItemTypeSpec?.ConstraintDocumentation;
         if (property.TypeSpec.Kind == SchemaNodeKind.Array &&
             !string.IsNullOrWhiteSpace(itemConstraintDocumentation))
         {
-            builder.AppendLine(
-                $"{indent}///     Item constraints: {EscapeXmlDocumentation(itemConstraintDocumentation!)}.");
+            builder.Append(indent).Append("///     Item constraints: ").Append(EscapeXmlDocumentation(itemConstraintDocumentation!)).Append('.').AppendLine();
         }
 
         if (!string.IsNullOrWhiteSpace(property.TypeSpec.Initializer))
         {
-            builder.AppendLine(
-                $"{indent}///     Generated default initializer: {EscapeXmlDocumentation(property.TypeSpec.Initializer!.Trim())}");
+            builder.Append(indent).Append("///     Generated default initializer: ").Append(EscapeXmlDocumentation(property.TypeSpec.Initializer!.Trim())).AppendLine();
         }
 
-        builder.AppendLine($"{indent}/// </remarks>");
+        builder.Append(indent).Append("/// </remarks>").AppendLine();
     }
 
     /// <summary>
@@ -4955,7 +4887,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     private static string ToPascalCase(string value)
     {
         var tokens = value
-            .Split(new[] { '-', '_', '.', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+            .Split(['-', '_', '.', ' '], StringSplitOptions.RemoveEmptyEntries)
             .Select(static token =>
                 char.ToUpperInvariant(token[0]) + token.Substring(1))
             .ToArray();
@@ -4990,15 +4922,15 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     /// <returns>稳定的成员名。</returns>
     private static string BuildReferenceMemberName(string displayPath)
     {
-        var segments = displayPath.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+        var segments = displayPath.Split(['.'], StringSplitOptions.RemoveEmptyEntries);
         var builder = new StringBuilder();
 
         foreach (var segment in segments)
         {
             var normalizedSegment = segment
                 .Replace("[]", "Items")
-                .Replace("[", " ")
-                .Replace("]", " ");
+                .Replace('[', ' ')
+                .Replace(']', ' ');
             builder.Append(ToPascalCase(normalizedSegment));
         }
 
@@ -5084,7 +5016,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     ///     这里必须显式枚举所有已支持的 schema 标量类型，避免未来新增引用类型标量时静默漏掉空检查。
     /// </summary>
     /// <param name="typeSpec">生成字段的标量类型模型。</param>
-    /// <returns>需要在生成的索引查询辅助中保护 <see langword="null" /> 参数时返回 <c>true</c>；否则返回 <c>false</c>。</returns>
+    /// <returns>需要在生成的索引查询辅助中保护 <see langword="null" /> 参数时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
     /// <exception cref="InvalidOperationException">当前受支持的标量映射未被完整分类时抛出。</exception>
     private static bool RequiresIndexedLookupNullGuard(SchemaTypeSpec typeSpec)
     {
@@ -5095,7 +5027,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             "boolean" => false,
             "string" => true,
             _ => throw new InvalidOperationException(
-                $"Indexed lookup null-guard classification does not cover schema scalar type '{typeSpec.SchemaType}' mapped to '{typeSpec.ClrType}'.")
+                $"Indexed lookup null-guard classification does not cover schema scalar type '{typeSpec.SchemaType}' mapped to '{typeSpec.ClrType}'."),
         };
     }
 
@@ -5173,7 +5105,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         var normalizedSegments = new List<string>();
-        foreach (var segment in normalizedPath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries))
+        foreach (var segment in normalizedPath.Split(['/'], StringSplitOptions.RemoveEmptyEntries))
         {
             if (string.Equals(segment, ".", StringComparison.Ordinal))
             {
@@ -5214,8 +5146,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             "boolean" when defaultElement.ValueKind == JsonValueKind.True => " = true;",
             "boolean" when defaultElement.ValueKind == JsonValueKind.False => " = false;",
             "string" when defaultElement.ValueKind == JsonValueKind.String =>
-                $" = {SymbolDisplay.FormatLiteral(defaultElement.GetString() ?? string.Empty, true)};",
-            _ => null
+                $" = {SymbolDisplay.FormatLiteral(defaultElement.GetString() ?? string.Empty, quote: true)};",
+            _ => null,
         };
     }
 
@@ -5246,8 +5178,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 "boolean" when item.ValueKind == JsonValueKind.True => "true",
                 "boolean" when item.ValueKind == JsonValueKind.False => "false",
                 "string" when item.ValueKind == JsonValueKind.String =>
-                    SymbolDisplay.FormatLiteral(item.GetString() ?? string.Empty, true),
-                _ => string.Empty
+                    SymbolDisplay.FormatLiteral(item.GetString() ?? string.Empty, quote: true),
+                _ => string.Empty,
             };
 
             if (string.IsNullOrEmpty(literal))
@@ -5289,7 +5221,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 "string" when item.ValueKind == JsonValueKind.String => item.GetString(),
                 "array" when item.ValueKind == JsonValueKind.Array => item.GetRawText(),
                 "object" when item.ValueKind == JsonValueKind.Object => item.GetRawText(),
-                _ => null
+                _ => null,
             };
 
             if (!string.IsNullOrWhiteSpace(displayValue))
@@ -5321,7 +5253,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    ///     Adds <c>const</c> documentation when the schema value matches the current type.
+    ///     Adds <see langword="const" /> documentation when the schema value matches the current type.
     /// </summary>
     /// <param name="element">Schema node.</param>
     /// <param name="schemaType">Current schema type.</param>
@@ -5627,7 +5559,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    ///     将对象 <c>if</c> / <c>then</c> / <c>else</c> 条件约束整理成 XML 文档可读字符串。
+    ///     将对象 <see langword="if" /> / <c>then</c> / <see langword="else" /> 条件约束整理成 XML 文档可读字符串。
     /// </summary>
     /// <param name="element">对象 schema 节点。</param>
     /// <returns>格式化后的条件约束说明。</returns>
@@ -5762,7 +5694,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     /// </summary>
     /// <param name="schemaElement">内联子 schema。</param>
     /// <param name="includeRequiredProperties">
-    ///     为对象摘要额外输出 <c>required</c> 信息时返回 <see langword="true" />。
+    ///     为对象摘要额外输出 <see langword="required" /> 信息时返回 <see langword="true" />。
     /// </param>
     /// <returns>格式化后的摘要字符串。</returns>
     private static string? TryBuildInlineSchemaSummary(
@@ -5816,7 +5748,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    ///     将对象 schema 的 <c>required</c> 字段整理成紧凑说明。
+    ///     将对象 schema 的 <see langword="required" /> 字段整理成紧凑说明。
     /// </summary>
     /// <param name="element">对象 schema 节点。</param>
     /// <returns>格式化后的 required 说明。</returns>
@@ -5866,7 +5798,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             "string" when constElement.ValueKind == JsonValueKind.String => constElement.GetRawText(),
             "array" when constElement.ValueKind == JsonValueKind.Array => constElement.GetRawText(),
             "object" when constElement.ValueKind == JsonValueKind.Object => constElement.GetRawText(),
-            _ => null
+            _ => null,
         };
     }
 
@@ -5946,12 +5878,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     {
         public static SchemaParseResult FromSchema(SchemaFileSpec schema)
         {
-            return new SchemaParseResult(schema, Array.Empty<Diagnostic>());
+            return new SchemaParseResult(schema, []);
         }
 
         public static SchemaParseResult FromDiagnostic(Diagnostic diagnostic)
         {
-            return new SchemaParseResult(null, new[] { diagnostic });
+            return new SchemaParseResult(Schema: null, [diagnostic]);
         }
     }
 
@@ -5966,12 +5898,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     {
         public static ParsedObjectResult FromObject(SchemaObjectSpec schemaObject)
         {
-            return new ParsedObjectResult(schemaObject, null);
+            return new ParsedObjectResult(schemaObject, Diagnostic: null);
         }
 
         public static ParsedObjectResult FromDiagnostic(Diagnostic diagnostic)
         {
-            return new ParsedObjectResult(null, diagnostic);
+            return new ParsedObjectResult(Object: null, diagnostic);
         }
     }
 
@@ -6125,12 +6057,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     {
         public static ParsedPropertyResult FromProperty(SchemaPropertySpec property)
         {
-            return new ParsedPropertyResult(property, null);
+            return new ParsedPropertyResult(property, Diagnostic: null);
         }
 
         public static ParsedPropertyResult FromDiagnostic(Diagnostic diagnostic)
         {
-            return new ParsedPropertyResult(null, diagnostic);
+            return new ParsedPropertyResult(Property: null, diagnostic);
         }
     }
 
@@ -6141,6 +6073,6 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     {
         Scalar,
         Object,
-        Array
+        Array,
     }
 }

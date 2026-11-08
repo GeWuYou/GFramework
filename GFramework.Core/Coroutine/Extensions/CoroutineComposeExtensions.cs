@@ -22,7 +22,7 @@ public static class CoroutineComposeExtensions
     {
         ArgumentNullException.ThrowIfNull(first);
         ArgumentNullException.ThrowIfNull(next);
-        return new OwnedCoroutineEnumerator(new[] { first }, next);
+        return new OwnedCoroutineEnumerator([first], next);
     }
 
     /// <summary>
@@ -37,6 +37,6 @@ public static class CoroutineComposeExtensions
     {
         ArgumentNullException.ThrowIfNull(first);
         ArgumentNullException.ThrowIfNull(second);
-        return new OwnedCoroutineEnumerator(new[] { first, second });
+        return new OwnedCoroutineEnumerator([first, second]);
     }
 }

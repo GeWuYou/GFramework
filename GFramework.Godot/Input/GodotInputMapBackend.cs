@@ -26,7 +26,7 @@ internal sealed class GodotInputMapBackend : IGodotInputMapBackend
     /// <inheritdoc />
     public IReadOnlyList<string> GetActionNames()
     {
-        return [..InputMap.GetActions().Select(static action => action.ToString())];
+        return [.. InputMap.GetActions().Select(static action => action.ToString())];
     }
 
     /// <inheritdoc />
@@ -36,7 +36,7 @@ internal sealed class GodotInputMapBackend : IGodotInputMapBackend
 
         if (!InputMap.HasAction(actionName))
         {
-            return Array.Empty<InputBindingDescriptor>();
+            return [];
         }
 
         var bindings = new List<InputBindingDescriptor>();

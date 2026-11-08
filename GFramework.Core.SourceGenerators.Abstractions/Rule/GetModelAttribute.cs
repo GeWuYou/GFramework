@@ -7,6 +7,4 @@ namespace GFramework.Core.SourceGenerators.Abstractions.Rule;
 ///     标记字段需要自动注入单个模型实例。
 /// </summary>
 [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
-public sealed class GetModelAttribute : Attribute
-{
-}
+public sealed class GetModelAttribute : Attribute;

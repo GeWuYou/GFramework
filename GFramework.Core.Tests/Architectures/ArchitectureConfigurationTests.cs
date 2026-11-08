@@ -69,7 +69,7 @@ public class ArchitectureConfigurationTests
         var customFactory = NullLoggerFactory.Instance;
         var customLoggerProperties = new LoggerProperties
         {
-            LoggerFactory = customFactory
+            LoggerFactory = customFactory,
         };
 
         _configuration!.LoggerProperties = customLoggerProperties;
@@ -89,7 +89,7 @@ public class ArchitectureConfigurationTests
     {
         var customProperties = new ArchitectureProperties
         {
-            StrictPhaseValidation = false
+            StrictPhaseValidation = false,
         };
 
         _configuration!.ArchitectureProperties = customProperties;

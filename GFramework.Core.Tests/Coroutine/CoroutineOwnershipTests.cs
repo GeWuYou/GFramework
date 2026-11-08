@@ -16,15 +16,15 @@ public sealed class CoroutineOwnershipTests
     public void SynchronousChildCompletion_ResumesParent()
     {
         var scheduler = Create();
-        var resumed = false;
+        var resumed = new global::System.Runtime.CompilerServices.StrongBox<bool>(value: false);
         IEnumerator<IYieldInstruction> Parent()
         {
             yield return new WaitForCoroutine(Immediate());
-            resumed = true;
+            resumed.Value = true;
         }
         var handle = scheduler.Run(Parent());
         scheduler.Update();
-        Assert.That(resumed, Is.True);
+        Assert.That(resumed.Value, Is.True);
         Assert.That(Result(scheduler, handle).Status, Is.EqualTo(CoroutineCompletionStatus.Completed));
     }
 
@@ -47,7 +47,7 @@ public sealed class CoroutineOwnershipTests
         }
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            context.RunChild(Child());
+            context.RunChild(Child(), cancellationToken: global::System.Threading.CancellationToken.None);
             yield break;
         }
         var handle = scheduler.Run(Parent);
@@ -67,8 +67,8 @@ public sealed class CoroutineOwnershipTests
         CoroutineHandle sibling = default;
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            sibling = context.RunChild(Wait());
-            context.RunChild(FailAfterFrame(failure));
+            sibling = context.RunChild(Wait(), cancellationToken: global::System.Threading.CancellationToken.None);
+            context.RunChild(FailAfterFrame(failure), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
         var parent = scheduler.Run(Parent);
@@ -87,7 +87,7 @@ public sealed class CoroutineOwnershipTests
         CoroutineHandle child = default;
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            child = context.RunChild(FailAfterFrame(new InvalidOperationException("isolated")));
+            child = context.RunChild(FailAfterFrame(new InvalidOperationException("isolated")), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
         var parent = scope.Run(Parent, childFailurePolicy: CoroutineFailurePolicy.Supervisor);
@@ -120,7 +120,7 @@ public sealed class CoroutineOwnershipTests
         CoroutineHandle child = default;
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            child = context.RunChild(Wait());
+            child = context.RunChild(Wait(), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
         var parent = scheduler.Run(Parent);
@@ -142,7 +142,7 @@ public sealed class CoroutineOwnershipTests
         }
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            child = context.RunChild(Child());
+            child = context.RunChild(Child(), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
         var parent = scheduler.Run(Parent);
@@ -182,7 +182,7 @@ public sealed class CoroutineOwnershipTests
         }
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            context.RunChild(Child());
+            context.RunChild(Child(), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
         parent = scheduler.Run(Parent);
@@ -205,7 +205,7 @@ public sealed class CoroutineOwnershipTests
     public void SelfKill_DoesNotDisposeExecutingIterator()
     {
         var scheduler = Create();
-        CoroutineHandle handle = default;
+        var handle = new global::System.Runtime.CompilerServices.StrongBox<CoroutineHandle>(default);
         var unwound = false;
         var disposed = false;
         IEnumerator<IYieldInstruction> Routine()
@@ -213,7 +213,7 @@ public sealed class CoroutineOwnershipTests
             try
             {
                 yield return new WaitOneFrame();
-                scheduler.Kill(handle);
+                scheduler.Kill(handle.Value);
                 Assert.That(disposed, Is.False);
                 unwound = true;
                 yield return new Delay(100);
@@ -223,7 +223,7 @@ public sealed class CoroutineOwnershipTests
                 disposed = true;
             }
         }
-        handle = scheduler.Run(Routine());
+        handle.Value = scheduler.Run(Routine());
         scheduler.Update();
         Assert.That(unwound && disposed, Is.True);
     }
@@ -338,7 +338,7 @@ public sealed class CoroutineOwnershipTests
         }
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            context.RunChild(Child());
+            context.RunChild(Child(), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
         parent = scheduler.Run(Parent);
@@ -352,7 +352,7 @@ public sealed class CoroutineOwnershipTests
     public void DeepOwnedChain_CancelsWithoutRecursiveTeardown()
     {
         var scheduler = Create();
-        IEnumerator<IYieldInstruction> Chain(int remaining)
+        static IEnumerator<IYieldInstruction> Chain(int remaining)
         {
             if (remaining > 0)
             {
@@ -389,15 +389,15 @@ public sealed class CoroutineOwnershipTests
     {
         var scheduler = Create();
         var failure = new OperationCanceledException("cleanup failure");
-        var continued = false;
+        var continued = new global::System.Runtime.CompilerServices.StrongBox<bool>(value: false);
         IEnumerator<IYieldInstruction> Routine()
         {
             yield return new CleanupFailureWait(failure);
-            continued = true;
+            continued.Value = true;
         }
-        var handle = scheduler.Run(Routine());
+        var handle = scheduler.Run(Routine(), cancellationToken: global::System.Threading.CancellationToken.None);
         scheduler.Update();
-        Assert.That(continued, Is.False);
+        Assert.That(continued.Value, Is.False);
         Assert.That(Result(scheduler, handle).Status, Is.EqualTo(CoroutineCompletionStatus.Faulted));
         Assert.That(Result(scheduler, handle).Exception, Is.SameAs(failure));
     }

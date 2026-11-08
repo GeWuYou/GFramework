@@ -11,12 +11,18 @@ public interface ILocalizationString
     /// <summary>
     /// 表名
     /// </summary>
-    string Table { get; }
+    string Table
+    {
+        get;
+    }
 
     /// <summary>
     /// 键名
     /// </summary>
-    string Key { get; }
+    string Key
+    {
+        get;
+    }
 
     /// <summary>
     /// 添加变量

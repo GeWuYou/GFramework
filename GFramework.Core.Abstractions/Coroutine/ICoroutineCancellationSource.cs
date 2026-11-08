@@ -17,5 +17,8 @@ public interface ICoroutineCancellationSource
     /// <summary>
     ///     获取该枚举器额外绑定的生命周期令牌。返回值应稳定，读取不得启动业务操作。
     /// </summary>
-    CancellationToken CancellationToken { get; }
+    CancellationToken CancellationToken
+    {
+        get;
+    }
 }

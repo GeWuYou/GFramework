@@ -40,13 +40,15 @@ var services = new ServiceCollection();
 
 services.AddCqrsRuntime();
 services.AddCqrsHandlersFromAssembly(typeof(CreatePlayerHandler).Assembly);
-services.AddCqrsPipelineBehavior<LoggingBehavior<,>>();
+services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 
 await using var provider = services.BuildServiceProvider();
 var runtime = provider.GetRequiredService<ICqrsRuntime>();
 ```
 
 `AddCqrsRuntime` 提供 `AddCqrsRuntime()`、`AddCqrsRuntime(ILoggerFactory?)`（提供标准 `ILoggerFactory` 时注册进 `IServiceCollection`）与 `AddCqrsRuntime(ILogger)` 三种重载，runtime 单例在 provider 构建完成后惰性创建。`LoggingBehavior`、`PerformanceBehavior` 等 pipeline 行为通过构造注入 `ILogger<T>` 获取日志。
+
+默认单例只解析根 provider 可用的依赖。请求宿主需要 Scoped handler 时，使用 `AddScopedCqrsRuntime()`，按业务需要登记 Scoped handler 与依赖，并从 `scope.ServiceProvider` 解析 `ICqrsRuntime`；三个分发入口均遵循同一作用域。跨作用域不能共享该 runtime，也不能与单例注册混用。
 
 从 `ICqrsRuntime` 分发（全部为异步入口）：
 
@@ -67,22 +69,23 @@ public sealed class GameArchitecture : Architecture
 {
     protected override void ConfigureServices(IServiceCollection services)
     {
-        services.AddCqrsPipelineBehavior<LoggingBehavior<,>>();
+        this.UseCqrsRuntime(typeof(InventoryModule).Assembly);
+        services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
         services.UseTaskWhenAllNotificationPublisher();
     }
 }
 
-// 启动前安装 runtime 模块（自动包含架构所在程序集的 handler）
-var architecture = new GameArchitecture();
-architecture.UseCqrsRuntime(typeof(InventoryModule).Assembly);
-await architecture.InitializeAsync();
 ```
 
-或者显式登记服务模块：
+配置完成后创建架构并调用 `InitializeAsync()`。模块必须在 `ConfigureServices` 或其配置回调窗口中安装；不能在启动前直接调用 `architecture.UseCqrsRuntime()`。
+
+或者在配置窗口中显式登记服务模块：
 
 ```csharp
-architecture.RegisterServiceModule(new CqrsRuntimeModule(
-    typeof(InventoryModule).Assembly));
+protected override void ConfigureServices(IServiceCollection services)
+{
+    RegisterServiceModule(new CqrsRuntimeModule(typeof(InventoryModule).Assembly));
+}
 ```
 
 `CqrsRuntimeModule` 的构造函数接受 `params Assembly[] handlerAssemblies`；`UseCqrsRuntime(params Assembly[] additionalHandlerAssemblies)` 会在其中自动补充架构所在程序集。`CqrsRuntimeModule` 不再内置到 Core 的默认模块列表，未安装它的架构没有 CQRS 分发能力。
@@ -104,19 +107,20 @@ using GFramework.Cqrs.Abstractions.Cqrs;
 
 public sealed record CreatePlayerRequest(string Name) : IRequest<int>;
 
-public sealed class CreatePlayerHandler
-    : AbstractRequestHandler<CreatePlayerRequest, int>
+public sealed class CreatePlayerHandler(PlayerModel playerModel)
+    : IRequestHandler<CreatePlayerRequest, int>
 {
-    public override ValueTask<int> Handle(
+    public ValueTask<int> Handle(
         CreatePlayerRequest request,
         CancellationToken cancellationToken)
     {
-        var playerModel = Context.GetModel<PlayerModel>();
         var playerId = playerModel.Create(request.Name);
         return ValueTask.FromResult(playerId);
     }
 }
 ```
+
+`PlayerModel` 是应用提供的业务模型；在组合根登记 `services.AddSingleton<PlayerModel>()`，让标准 DI 注入处理器。裸 `runtime.SendAsync()` 不为处理器创建 Architecture 上下文。
 
 在 `IContextAware` 对象内部发送请求：
 
@@ -202,7 +206,7 @@ services.UseNotificationPublisher<MyCustomNotificationPublisher>();
 围绕请求处理流程插入横切逻辑：
 
 ```csharp
-services.AddCqrsPipelineBehavior<LoggingBehavior<,>>();
+services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 ```
 
 适合的场景包括日志、性能统计、校验、审计、重试或统一异常封装。
@@ -210,7 +214,7 @@ services.AddCqrsPipelineBehavior<LoggingBehavior<,>>();
 围绕 `CreateStream(...)` 的建流过程插入横切逻辑时，实现 `IStreamPipelineBehavior<TRequest, TResponse>` 并注册：
 
 ```csharp
-services.AddCqrsStreamPipelineBehavior<MyStreamBehavior<,>>();
+services.AddSingleton(typeof(IStreamPipelineBehavior<,>), typeof(MyStreamBehavior<,>));
 ```
 
 两个边界需要明确：

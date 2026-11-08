@@ -11,5 +11,8 @@ public sealed class TestEventV2
     /// <summary>
     ///     获取或设置测试事件数据。
     /// </summary>
-    public int Data { get; init; }
+    public int Data
+    {
+        get; init;
+    }
 }

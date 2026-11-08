@@ -12,7 +12,7 @@ namespace GFramework.Godot.SourceGenerators.Registration;
 ///     为导出集合生成批量注册样板方法。
 /// </summary>
 /// <remarks>
-///     该生成器会扫描标记了 <c>AutoRegisterExportedCollectionsAttribute</c> 的 <c>partial</c> 类型，
+///     该生成器会扫描标记了 <c>AutoRegisterExportedCollectionsAttribute</c> 的 <see langword="partial"/> 类型，
 ///     为其中使用 <c>RegisterExportedCollectionAttribute</c> 声明的集合成员生成集中注册方法。
 ///     仅当集合可枚举、元素类型可推导、注册表成员存在且可找到兼容的实例注册方法时才会输出代码；
 ///     否则通过 <c>GF_AutoExport_001</c> 到 <c>GF_AutoExport_008</c> 以及公共 <c>ClassMustBePartial</c> 诊断显式阻止生成。
@@ -308,8 +308,7 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
             return false;
         }
 
-        var resolvedRegistryType = GetMemberType(registryMember) as INamedTypeSymbol;
-        if (resolvedRegistryType is null)
+        if (GetMemberType(registryMember) is not INamedTypeSymbol resolvedRegistryType)
             return false;
 
         registryType = resolvedRegistryType;
@@ -361,7 +360,7 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
         {
             IFieldSymbol field => field.Type,
             IPropertySymbol property => property.Type,
-            _ => null
+            _ => null,
         };
     }
 
@@ -376,7 +375,7 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
                 !property.IsStatic &&
                 property.Parameters.Length == 0 &&
                 property.GetMethod is not null,
-            _ => false
+            _ => false,
         };
     }
 
@@ -475,7 +474,7 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 AutoRegisterExportedCollectionsDiagnostics.InvalidAttributeArguments,
-                attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation()
+                attribute.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation()
                 ?? collectionMember.Locations.FirstOrDefault()
                 ?? Location.None,
                 collectionMember.Name));
@@ -519,11 +518,11 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
 
         if (ns is not null)
         {
-            builder.AppendLine($"namespace {ns};");
+            builder.Append("namespace ").Append(ns).Append(';').AppendLine();
             builder.AppendLine();
         }
 
-        builder.AppendLine($"{GetTypeDeclarationKeyword(typeSymbol)} {GetTypeDeclarationName(typeSymbol)}");
+        builder.Append(GetTypeDeclarationKeyword(typeSymbol)).Append(' ').Append(GetTypeDeclarationName(typeSymbol)).AppendLine();
         AppendTypeConstraints(builder, typeSymbol);
         builder.AppendLine("{");
         builder.AppendLine($"    private void {GeneratedMethodName}()");
@@ -581,7 +580,7 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
             { TypeKind: TypeKind.Struct } => "partial struct",
             { TypeKind: TypeKind.Class } => "partial class",
             { TypeKind: TypeKind.Interface } => "partial interface",
-            _ => throw new NotSupportedException($"Unsupported type: {typeSymbol.TypeKind}")
+            _ => throw new NotSupportedException($"Unsupported type: {typeSymbol.TypeKind}"),
         };
     }
 
@@ -633,32 +632,19 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
         }
     }
 
-    private sealed class TypeCandidate
+    private sealed class TypeCandidate(ClassDeclarationSyntax classDeclaration, INamedTypeSymbol typeSymbol)
     {
-        public TypeCandidate(ClassDeclarationSyntax classDeclaration, INamedTypeSymbol typeSymbol)
-        {
-            ClassDeclaration = classDeclaration;
-            TypeSymbol = typeSymbol;
-        }
+        public ClassDeclarationSyntax ClassDeclaration { get; } = classDeclaration;
 
-        public ClassDeclarationSyntax ClassDeclaration { get; }
-
-        public INamedTypeSymbol TypeSymbol { get; }
+        public INamedTypeSymbol TypeSymbol { get; } = typeSymbol;
     }
 
-    private sealed class RegistrationSpec
+    private sealed class RegistrationSpec(string collectionMemberName, string registryMemberName, string registerMethodName)
     {
-        public RegistrationSpec(string collectionMemberName, string registryMemberName, string registerMethodName)
-        {
-            CollectionMemberName = collectionMemberName;
-            RegistryMemberName = registryMemberName;
-            RegisterMethodName = registerMethodName;
-        }
+        public string CollectionMemberName { get; } = collectionMemberName;
 
-        public string CollectionMemberName { get; }
+        public string RegistryMemberName { get; } = registryMemberName;
 
-        public string RegistryMemberName { get; }
-
-        public string RegisterMethodName { get; }
+        public string RegisterMethodName { get; } = registerMethodName;
     }
 }

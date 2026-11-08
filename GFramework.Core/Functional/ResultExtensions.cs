@@ -172,7 +172,8 @@ public static class ResultExtensions
         ArgumentNullException.ThrowIfNull(predicate);
         ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
 
-        if (result.IsFaulted) return result;
+        if (result.IsFaulted)
+            return result;
 
         return result.Match(
             succ: value => predicate(value)
@@ -193,7 +194,8 @@ public static class ResultExtensions
         ArgumentNullException.ThrowIfNull(predicate);
         ArgumentNullException.ThrowIfNull(exceptionFactory);
 
-        if (result.IsFaulted) return result;
+        if (result.IsFaulted)
+            return result;
 
         return result.Match(
             succ: value => predicate(value)

@@ -19,20 +19,16 @@ namespace GFramework.Core.SourceGenerators.Abstractions.Bases;
 /// }
 /// </code>
 /// </example>
+/// <remarks>
+/// 初始化 <see cref="PriorityAttribute"/> 类的新实例
+/// </remarks>
+/// <param name="value">优先级值，越小优先级越高</param>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-public sealed class PriorityAttribute : Attribute
+public sealed class PriorityAttribute(int value) : Attribute
 {
-    /// <summary>
-    /// 初始化 <see cref="PriorityAttribute"/> 类的新实例
-    /// </summary>
-    /// <param name="value">优先级值，越小优先级越高</param>
-    public PriorityAttribute(int value)
-    {
-        Value = value;
-    }
 
     /// <summary>
     /// 获取优先级值
     /// </summary>
-    public int Value { get; }
+    public int Value { get; } = value;
 }

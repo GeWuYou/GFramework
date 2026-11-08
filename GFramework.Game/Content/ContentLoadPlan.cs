@@ -13,11 +13,17 @@ public sealed class ContentLoadPlan
     internal ContentLoadPlan(IEnumerable<ContentPack> packages)
     {
         Packages = Array.AsReadOnly(packages.ToArray());
-        Snapshot = new ContentSnapshot(Packages.Select(static pack =>
-            new ContentPackStamp(pack.Manifest.Id, pack.Manifest.Version, pack.Fingerprint)).ToArray());
+        Snapshot = new ContentSnapshot([.. Packages.Select(static pack =>
+            new ContentPackStamp(pack.Manifest.Id, pack.Manifest.Version, pack.Fingerprint))]);
     }
     /// <summary>Gets the actual immutable package sequence.</summary>
-    public IReadOnlyList<ContentPack> Packages { get; }
+    public IReadOnlyList<ContentPack> Packages
+    {
+        get;
+    }
     /// <summary>Gets the exact set and order for save compatibility checks.</summary>
-    public ContentSnapshot Snapshot { get; }
+    public ContentSnapshot Snapshot
+    {
+        get;
+    }
 }

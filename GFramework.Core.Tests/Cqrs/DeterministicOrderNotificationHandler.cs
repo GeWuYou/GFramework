@@ -19,6 +19,7 @@ namespace GFramework.Core.Tests.Cqrs;
 /// <summary>
 ///     供容器注册测试验证程序集扫描结果的通知处理器。
 /// </summary>
+[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
 internal sealed class DeterministicOrderNotificationHandler : INotificationHandler<DeterministicOrderNotification>
 {
     /// <summary>

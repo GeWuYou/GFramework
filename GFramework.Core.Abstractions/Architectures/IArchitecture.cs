@@ -18,7 +18,10 @@ public interface IArchitecture : IAsyncInitializable, IAsyncDestroyable, IInitia
     /// <summary>
     ///     获取架构上下文
     /// </summary>
-    IArchitectureContext Context { get; }
+    IArchitectureContext Context
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取或设置用于配置服务集合的委托
@@ -26,7 +29,10 @@ public interface IArchitecture : IAsyncInitializable, IAsyncDestroyable, IInitia
     /// <value>
     ///     一个可为空的委托，用于配置IServiceCollection实例
     /// </value>
-    Action<IServiceCollection>? Configurator { get; }
+    Action<IServiceCollection>? Configurator
+    {
+        get;
+    }
 
     /// <summary>
     ///     注册系统实例到架构中

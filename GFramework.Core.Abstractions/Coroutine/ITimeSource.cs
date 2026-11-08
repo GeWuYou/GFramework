@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Core.Abstractions.Coroutine;
@@ -11,12 +11,18 @@ public interface ITimeSource
     /// <summary>
     ///     获取当前时间
     /// </summary>
-    double CurrentTime { get; }
+    double CurrentTime
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取时间增量（上一帧到当前帧的时间差）
     /// </summary>
-    double DeltaTime { get; }
+    double DeltaTime
+    {
+        get;
+    }
 
     /// <summary>
     ///     更新时间源的状态

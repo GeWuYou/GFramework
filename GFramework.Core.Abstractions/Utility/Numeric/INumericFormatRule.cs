@@ -11,7 +11,10 @@ public interface INumericFormatRule
     /// <summary>
     /// 规则名称。
     /// </summary>
-    string Name { get; }
+    string Name
+    {
+        get;
+    }
 
     /// <summary>
     /// 尝试按当前规则格式化数值。

@@ -1,6 +1,7 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Architectures;
@@ -121,6 +122,7 @@ public abstract class AbstractArchitecture : Architecture
             if (_extensions.Count != 0)
                 throw new InvalidOperationException("Godot modules require an active SceneTree.");
 
+            await InvokeInheritedStartupAsync(cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -140,6 +142,18 @@ public abstract class AbstractArchitecture : Architecture
                 module.OnAttach(this);
             }, cancellationToken).ConfigureAwait(false);
         }
+        await InvokeInheritedStartupAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Runs the inherited startup hook on the Godot thread after all host attachments exist.</summary>
+    /// <param name="cancellationToken">The startup lifetime.</param>
+    /// <returns>Completion of the inherited host setup.</returns>
+    private async ValueTask InvokeInheritedStartupAsync(CancellationToken cancellationToken)
+    {
+        var started = ValueTask.CompletedTask;
+        await _dispatcher.InvokeAsync(() => started = base.OnStartedAsync(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        await started.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -155,7 +169,7 @@ public abstract class AbstractArchitecture : Architecture
     private void AttachToGodotLifecycle()
     {
         _architectureAnchorName =
-            $"__{GFrameworkConstants.FrameworkName}__{GetType().Name}__{GetHashCode()}__ArchitectureAnchor__";
+            string.Create(CultureInfo.InvariantCulture, $"__{GFrameworkConstants.FrameworkName}__{GetType().Name}__{GetHashCode()}__ArchitectureAnchor__");
         if (Engine.GetMainLoop() is not SceneTree tree)
             return;
 
@@ -165,7 +179,7 @@ public abstract class AbstractArchitecture : Architecture
 
         _anchor = new ArchitectureAnchor
         {
-            Name = _architectureAnchorName
+            Name = _architectureAnchorName,
         };
 
         _anchor.Bind(ObserveDestroyAsync);

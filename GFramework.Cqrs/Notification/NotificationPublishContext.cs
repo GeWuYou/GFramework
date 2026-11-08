@@ -36,12 +36,18 @@ public abstract class NotificationPublishContext<TNotification>
     /// <summary>
     ///     获取当前要发布的通知。
     /// </summary>
-    public TNotification Notification { get; }
+    public TNotification Notification
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取当前发布调用已解析到的处理器集合。
     /// </summary>
-    public IReadOnlyList<object> Handlers { get; }
+    public IReadOnlyList<object> Handlers
+    {
+        get;
+    }
 
     /// <summary>
     ///     执行单个通知处理器。

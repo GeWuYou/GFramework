@@ -166,7 +166,11 @@ public sealed class HarmonyModExtensionTests
     private static void AddOne(ref int __result) => __result++;
     private static void AddTen(ref int __result) => __result += 10;
     private static void InvalidPostfix(string absentParameter) => _ = absentParameter;
-    private static bool SkipOriginal(ref int __result) { __result = 42; return false; }
+    private static bool SkipOriginal(ref int __result)
+    {
+        __result = 42;
+        return false;
+    }
     private static Exception? SuppressError(Exception __exception)
     {
         // Harmony injects this argument by name; this finalizer intentionally suppresses the supplied failure.
@@ -200,11 +204,17 @@ public sealed class HarmonyModExtensionTests
         /// <inheritdoc />
         public ILogger Logger => NullLogger.Instance;
         /// <inheritdoc />
-        public void Own(IDisposable resource) { }
+        public void Own(IDisposable resource)
+        {
+        }
         /// <inheritdoc />
-        public void OwnAsync(IAsyncDisposable resource) { }
+        public void OwnAsync(IAsyncDisposable resource)
+        {
+        }
         /// <inheritdoc />
-        public void OwnRegistration(IUnRegister registration) { }
+        public void OwnRegistration(IUnRegister registration)
+        {
+        }
     }
     /// <summary>Ensures these tests do not depend on game service registration.</summary>
     private sealed class EmptyServices : IServiceProvider

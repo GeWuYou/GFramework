@@ -16,10 +16,10 @@ namespace GFramework.Godot.Coroutine;
 internal sealed class NodeBoundCoroutine : IEnumerator<IYieldInstruction>, ICoroutineCancellationSource
 {
     private readonly IEnumerator<IYieldInstruction> _inner;
-    private readonly List<WeakReference<Node>> _nodes = new();
+    private readonly List<WeakReference<Node>> _nodes = [];
     private readonly CancellationTokenSource _cancellation = new();
     private readonly Action _onNodeExiting;
-    private CancellationTokenRegistration _innerCancellationRegistration;
+    private readonly CancellationTokenRegistration _innerCancellationRegistration;
     private bool _disposed;
 
     /// <summary>Transfers iterator ownership and subscribes each valid node exactly once.</summary>
@@ -70,7 +70,10 @@ internal sealed class NodeBoundCoroutine : IEnumerator<IYieldInstruction>, ICoro
     object IEnumerator.Current => Current;
 
     /// <summary>Gets the intrinsic lifetime independently from whichever facade, scope or context starts this iterator.</summary>
-    public CancellationToken CancellationToken { get; }
+    public CancellationToken CancellationToken
+    {
+        get;
+    }
 
     /// <summary>Stops before the next user step when a bound node has exited.</summary>
     /// <returns>Whether the inner iterator produced another instruction.</returns>
@@ -95,7 +98,7 @@ internal sealed class NodeBoundCoroutine : IEnumerator<IYieldInstruction>, ICoro
             }
             catch (Exception exception)
             {
-                (failures ??= new List<Exception>()).Add(exception);
+                (failures ??= []).Add(exception);
             }
         }
 
@@ -120,7 +123,7 @@ internal sealed class NodeBoundCoroutine : IEnumerator<IYieldInstruction>, ICoro
         }
         catch (Exception exception)
         {
-            (failures ??= new List<Exception>()).Add(exception);
+            (failures ??= []).Add(exception);
         }
     }
 }

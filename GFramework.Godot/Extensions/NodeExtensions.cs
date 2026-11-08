@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using Godot;
@@ -17,13 +17,16 @@ public static class NodeExtensions
     public static void QueueFreeX(this Node? node)
     {
         // 检查节点是否为空
-        if (node is null) return;
+        if (node is null)
+            return;
 
         // 检查节点实例是否有效
-        if (!GodotObject.IsInstanceValid(node)) return;
+        if (!GodotObject.IsInstanceValid(node))
+            return;
 
         // 检查节点是否已经加入删除队列
-        if (node.IsQueuedForDeletion()) return;
+        if (node.IsQueuedForDeletion())
+            return;
 
         // 延迟调用QueueFree方法，避免在当前帧中直接删除节点
         node.CallDeferred(Node.MethodName.QueueFree);
@@ -36,13 +39,16 @@ public static class NodeExtensions
     public static void FreeX(this Node? node)
     {
         // 检查节点是否为空
-        if (node is null) return;
+        if (node is null)
+            return;
 
         // 检查节点实例是否有效
-        if (!GodotObject.IsInstanceValid(node)) return;
+        if (!GodotObject.IsInstanceValid(node))
+            return;
 
         // 检查节点是否已经加入删除队列
-        if (node.IsQueuedForDeletion()) return;
+        if (node.IsQueuedForDeletion())
+            return;
 
         // 立即释放节点资源
         node.Free();
@@ -56,7 +62,8 @@ public static class NodeExtensions
     /// <returns>表示异步操作的任务</returns>
     public static async Task WaitUntilReadyAsync(this Node node)
     {
-        if (!node.IsInsideTree()) await node.ToSignal(node, Node.SignalName.Ready);
+        if (!node.IsInsideTree())
+            await node.ToSignal(node, Node.SignalName.Ready);
     }
 
     /// <summary>
@@ -145,7 +152,7 @@ public static class NodeExtensions
     public static T? FindChildX<T>(this Node node, string name, bool recursive = true)
         where T : Node
     {
-        var child = node.FindChild(name, recursive, false);
+        var child = node.FindChild(name, recursive, owned: false);
         return child as T;
     }
 

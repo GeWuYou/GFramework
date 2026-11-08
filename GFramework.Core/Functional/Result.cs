@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025 GeWuYou
+// Copyright (c) 2025 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -65,7 +65,7 @@ public readonly struct Result : IEquatable<Result>
     /// </summary>
     /// <returns>成功结果</returns>
     [Pure]
-    public static Result Success() => new(true, null);
+    public static Result Success() => new(isSuccess: true, exception: null);
 
     /// <summary>
     ///     创建失败结果
@@ -76,7 +76,7 @@ public readonly struct Result : IEquatable<Result>
     public static Result Failure(Exception ex)
     {
         ArgumentNullException.ThrowIfNull(ex);
-        return new(false, ex);
+        return new(isSuccess: false, ex);
     }
 
     /// <summary>
@@ -88,7 +88,7 @@ public readonly struct Result : IEquatable<Result>
     public static Result Failure(string message)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
-        return new Result(false, new InvalidOperationException(message));
+        return new Result(isSuccess: false, new InvalidOperationException(message));
     }
 
     /// <summary>

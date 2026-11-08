@@ -225,7 +225,7 @@ public class SchemaConfigGeneratorSnapshotTests
     ///     运行 monster schema 场景，并把生成结果转换为按 hint name 索引的字典。
     /// </summary>
     /// <returns>当前快照场景的全部生成文件内容。</returns>
-    private static IReadOnlyDictionary<string, string> GenerateSourcesForMonsterSchema()
+    private static Dictionary<string, string> GenerateSourcesForMonsterSchema()
     {
         var result = SchemaGeneratorTestDriver.Run(
             RuntimeContractsSource,

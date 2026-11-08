@@ -65,7 +65,8 @@ public sealed class FileAppender : ILogAppender, IDisposable
     /// </summary>
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         lock (_lock)
         {
@@ -80,6 +81,8 @@ public sealed class FileAppender : ILogAppender, IDisposable
     ///     追加日志条目到文件
     /// </summary>
     /// <param name="entry">日志条目</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1513",
+        Justification = "Preserve the established short ObjectName FileAppender; the ThrowIf instance overload reports the qualified runtime type.")]
     public void Append(LogEntry entry)
     {
         if (_disposed)
@@ -120,7 +123,7 @@ public sealed class FileAppender : ILogAppender, IDisposable
     {
         _writer = new StreamWriter(_filePath, append: true, Encoding.UTF8)
         {
-            AutoFlush = true
+            AutoFlush = true,
         };
     }
 }

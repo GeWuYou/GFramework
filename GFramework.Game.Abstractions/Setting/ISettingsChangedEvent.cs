@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Game.Abstractions.Setting;
@@ -12,15 +12,24 @@ public interface ISettingsChangedEvent
     /// <summary>
     ///     获取变更的设置类型
     /// </summary>
-    Type SettingsType { get; }
+    Type SettingsType
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取变更的设置实例
     /// </summary>
-    ISettingsSection Settings { get; }
+    ISettingsSection Settings
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取变更发生的时间
     /// </summary>
-    DateTime ChangedAt { get; }
+    DateTime ChangedAt
+    {
+        get;
+    }
 }

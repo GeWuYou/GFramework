@@ -17,7 +17,7 @@ public static class GeneratedMethodConflictExtensions
     /// <param name="context">源代码生成上下文。</param>
     /// <param name="fallbackLocation">当冲突成员缺少源码位置时使用的后备位置。</param>
     /// <param name="generatedMethodNames">生成器将保留的零参数方法名集合。</param>
-    /// <returns>若发现任一冲突则返回 <c>true</c>。</returns>
+    /// <returns>若发现任一冲突则返回 <see langword="true" />。</returns>
     public static bool ReportGeneratedMethodConflicts(
         this INamedTypeSymbol typeSymbol,
         SourceProductionContext context,

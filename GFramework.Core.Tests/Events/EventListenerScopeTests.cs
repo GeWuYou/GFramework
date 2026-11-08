@@ -23,7 +23,7 @@ public class EventListenerScopeTests
     /// <summary>
     ///     测试用的简单事件类
     /// </summary>
-    private class TestEvent
+    private sealed class TestEvent
     {
         public string Data { get; set; } = string.Empty;
     }
@@ -310,8 +310,14 @@ public class EventListenerScopeTests
     [StructLayout(LayoutKind.Auto)]
     private struct StructEvent
     {
-        public int Id { get; set; }
-        public float Value { get; set; }
+        public int Id
+        {
+            get; set;
+        }
+        public float Value
+        {
+            get; set;
+        }
     }
 
     /// <summary>

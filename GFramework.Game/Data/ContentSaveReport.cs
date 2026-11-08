@@ -23,15 +23,30 @@ public sealed class ContentSaveReport
     }
 
     /// <summary>Gets the inspected slot.</summary>
-    public int Slot { get; }
+    public int Slot
+    {
+        get;
+    }
     /// <summary>Gets the exact original serialized-file hash for source diagnostics.</summary>
-    public string SourceFingerprint { get; }
+    public string SourceFingerprint
+    {
+        get;
+    }
     /// <summary>Gets the save's previous content metadata.</summary>
-    public ContentSnapshot? SavedContent { get; }
+    public ContentSnapshot? SavedContent
+    {
+        get;
+    }
     /// <summary>Gets the active content session used during preparation.</summary>
-    public ContentSnapshot CurrentContent { get; }
+    public ContentSnapshot CurrentContent
+    {
+        get;
+    }
     /// <summary>Gets all blocking and advisory differences in deterministic order.</summary>
-    public IReadOnlyList<ContentSaveIssue> Issues { get; }
+    public IReadOnlyList<ContentSaveIssue> Issues
+    {
+        get;
+    }
     /// <summary>Gets whether ordinary loading is blocked.</summary>
     public bool RequiresRecovery => Issues.Any(static issue => issue.Blocking);
     /// <summary>Gets whether any blocking or advisory differences were found.</summary>

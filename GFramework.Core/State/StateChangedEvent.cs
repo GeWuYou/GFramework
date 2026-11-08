@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.State;
@@ -13,10 +13,16 @@ public sealed class StateChangedEvent
     /// <summary>
     ///     获取变更前的旧状态
     /// </summary>
-    public IState? OldState { get; init; }
+    public IState? OldState
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     获取变更后的新状态
     /// </summary>
-    public IState? NewState { get; init; }
+    public IState? NewState
+    {
+        get; init;
+    }
 }

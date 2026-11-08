@@ -26,11 +26,20 @@ public sealed class ContentPack
     }
 
     /// <summary>Gets the physical package root, for host-specific loading only.</summary>
-    public string RootPath { get; }
+    public string RootPath
+    {
+        get;
+    }
     /// <summary>Gets package declarations; these are data, not a trust decision.</summary>
-    public ContentPackManifest Manifest { get; }
+    public ContentPackManifest Manifest
+    {
+        get;
+    }
     /// <summary>Gets the exact discovered file fingerprint.</summary>
-    public string Fingerprint { get; }
+    public string Fingerprint
+    {
+        get;
+    }
 
     /// <summary>Resolves a package-relative file after rejecting rooted paths, traversal and symbolic links.</summary>
     /// <param name="relativePath">A slash-separated package-relative path.</param>

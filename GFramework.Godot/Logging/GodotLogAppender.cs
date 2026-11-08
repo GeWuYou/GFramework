@@ -193,8 +193,8 @@ public sealed class GodotLogAppender : ILogAppender
 
         return value switch
         {
-            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
-            _ => value.ToString() ?? string.Empty
+            IFormattable formattable => formattable.ToString(format: null, CultureInfo.InvariantCulture),
+            _ => value.ToString() ?? string.Empty,
         };
     }
 

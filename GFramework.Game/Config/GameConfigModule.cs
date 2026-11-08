@@ -5,8 +5,8 @@ using System;
 using System.Threading;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
+using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Architectures;
-using GFramework.Core.Utility;
 using GFramework.Game.Abstractions.Config;
 
 namespace GFramework.Game.Config;
@@ -28,6 +28,7 @@ public sealed class GameConfigModule : IArchitectureModule
     private const int InstallStateConsumed = 2;
 
     private readonly GameConfigBootstrap _bootstrap;
+    private static long _nextLifetimeId;
     private int _installState;
 
     /// <summary>
@@ -102,7 +103,7 @@ public sealed class GameConfigModule : IArchitectureModule
             // 阶段窗口已经在前面做过无副作用校验，因此这里优先注册 utility，
             // 让常见的容器/上下文接线失败在不可回滚的 hook 注册之前暴露出来。
             architecture.RegisterUtility(Registry);
-            architecture.RegisterUtility<ModuleBootstrapLifetimeUtility>(utility => utility.Bind(_bootstrap));
+            architecture.RegisterServiceModule(new BootstrapLifetimeModule(_bootstrap));
             architecture.RegisterLifecycleHook(new BootstrapInitializationHook(_bootstrap));
             Volatile.Write(ref _installState, InstallStateConsumed);
         }
@@ -198,51 +199,48 @@ public sealed class GameConfigModule : IArchitectureModule
     }
 
     /// <summary>
-    ///     正式 provider 拥有的 bootstrap 生命周期适配器。
-    ///     业务停止先关闭热重载，资源释放由 provider 完成；未初始化成功也可安全释放。
+    ///     每个配置模块声明独立的 provider-owned 工厂，避免将相同 helper 类型误用为唯一组件键。
     /// </summary>
-    private sealed class ModuleBootstrapLifetimeUtility : AbstractContextUtility, IDisposable
+    private sealed class BootstrapLifetimeModule(GameConfigBootstrap bootstrap) : IServiceModule
     {
-        private GameConfigBootstrap? _bootstrap;
+        private IIocContainer? _container;
 
-        /// <summary>
-        ///     供正式 DI provider 激活生命周期适配器；此时尚不执行文件加载。
-        /// </summary>
-        public ModuleBootstrapLifetimeUtility()
+        /// <inheritdoc />
+        public string ModuleName { get; } = string.Create(CultureInfo.InvariantCulture, $"GameConfigLifetime:{Interlocked.Increment(ref _nextLifetimeId)}");
+
+        /// <inheritdoc />
+        public int Priority => 0;
+
+        /// <inheritdoc />
+        public bool IsEnabled => true;
+
+        /// <inheritdoc />
+        public void Register(IIocContainer container)
         {
+            _container = container;
+            container.RegisterFactory(_ => new BootstrapLifetime(bootstrap));
         }
 
-        /// <summary>
-        ///     将本模块的 bootstrap 交由当前 provider 拥有的适配器负责释放。
-        /// </summary>
-        /// <param name="bootstrap">尚未加载的模块 bootstrap。</param>
-        public void Bind(GameConfigBootstrap bootstrap)
+        /// <inheritdoc />
+        public void Initialize()
         {
-            _bootstrap = bootstrap;
+            // Activating the complete helper set gives the one formal provider ownership before config hooks can fail.
+            _ = (_container ?? throw new InvalidOperationException("Configuration lifetime was not registered."))
+                .GetAll<BootstrapLifetime>();
         }
 
-        /// <summary>
-        ///     首载由更早的异步阶段钩子负责。
-        /// </summary>
-        protected override void OnInit()
+        /// <inheritdoc />
+        public ValueTask DestroyAsync()
         {
+            bootstrap.StopHotReload();
+            return ValueTask.CompletedTask;
         }
+    }
 
-        /// <summary>
-        ///     停止业务监听；资源最终释放由 provider 的 Dispose 路径完成。
-        /// </summary>
-        protected override void OnDestroy()
-        {
-            _bootstrap?.StopHotReload();
-        }
-
-        /// <summary>
-        ///     即使首载钩子失败、适配器尚未完成初始化，也释放 bootstrap。
-        /// </summary>
-        public void Dispose()
-        {
-            _bootstrap?.Dispose();
-            _bootstrap = null;
-        }
+    /// <summary>Releases exactly one module bootstrap when its formal DI provider is disposed.</summary>
+    private sealed class BootstrapLifetime(GameConfigBootstrap bootstrap) : IDisposable
+    {
+        /// <inheritdoc />
+        public void Dispose() => bootstrap.Dispose();
     }
 }

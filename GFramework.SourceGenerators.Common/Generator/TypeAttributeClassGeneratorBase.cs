@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.CodeAnalysis;
@@ -14,7 +14,10 @@ public abstract class TypeAttributeClassGeneratorBase
     /// <summary>
     ///     获取要处理的特性类型
     /// </summary>
-    protected abstract Type AttributeType { get; }
+    protected abstract Type AttributeType
+    {
+        get;
+    }
 
     /// <summary>
     ///     解析指定符号上的特性

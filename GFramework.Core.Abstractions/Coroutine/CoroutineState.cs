@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Core.Abstractions.Coroutine;
@@ -26,5 +26,5 @@ public enum CoroutineState
     /// <summary>
     ///     协程已被取消
     /// </summary>
-    Cancelled
+    Cancelled,
 }

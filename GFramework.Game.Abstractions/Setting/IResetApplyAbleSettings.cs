@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -23,11 +23,17 @@ public interface IResetApplyAbleSettings : IResettable, IApplyAbleSettings
     ///     获取设置数据对象
     /// </summary>
     /// <returns>ISettingsData类型的设置数据</returns>
-    ISettingsData Data { get; }
+    ISettingsData Data
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取数据类型信息
     /// </summary>
     /// <returns>表示数据类型的Type对象</returns>
-    Type DataType { get; }
+    Type DataType
+    {
+        get;
+    }
 }

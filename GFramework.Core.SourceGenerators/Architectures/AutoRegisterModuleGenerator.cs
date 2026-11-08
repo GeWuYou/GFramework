@@ -312,11 +312,11 @@ public sealed class AutoRegisterModuleGenerator : IIncrementalGenerator
 
         if (ns is not null)
         {
-            builder.AppendLine($"namespace {ns};");
+            builder.Append("namespace ").Append(ns).Append(';').AppendLine();
             builder.AppendLine();
         }
 
-        builder.AppendLine($"{GetTypeDeclarationKeyword(typeSymbol)} {GetTypeDeclarationName(typeSymbol)}");
+        builder.Append(GetTypeDeclarationKeyword(typeSymbol)).Append(' ').Append(GetTypeDeclarationName(typeSymbol)).AppendLine();
         AppendTypeConstraints(builder, typeSymbol);
         builder.AppendLine("{");
         builder.AppendLine(
@@ -332,7 +332,7 @@ public sealed class AutoRegisterModuleGenerator : IIncrementalGenerator
                 RegistrationKind.System => "RegisterSystem",
                 RegistrationKind.Utility => "RegisterUtility",
                 _ => throw new InvalidOperationException(
-                    $"Unsupported registration kind '{registration.Kind}'.")
+                    $"Unsupported registration kind '{registration.Kind}'."),
             });
             builder.Append("(new ");
             builder.Append(registration.ComponentTypeDisplayName);
@@ -457,6 +457,6 @@ public sealed class AutoRegisterModuleGenerator : IIncrementalGenerator
     {
         Model,
         System,
-        Utility
+        Utility,
     }
 }

@@ -10,13 +10,25 @@ namespace GFramework.Game.Abstractions.Scene;
 public interface ISceneRouter : IAsyncDisposable
 {
     /// <summary>Gets the current scene, or null for an empty stack.</summary>
-    ISceneBehavior? Current { get; }
+    ISceneBehavior? Current
+    {
+        get;
+    }
     /// <summary>Gets the current scene identifier.</summary>
-    string? CurrentKey { get; }
+    string? CurrentKey
+    {
+        get;
+    }
     /// <summary>Gets a bottom-to-top snapshot of the scene stack.</summary>
-    IEnumerable<ISceneBehavior> Stack { get; }
+    IEnumerable<ISceneBehavior> Stack
+    {
+        get;
+    }
     /// <summary>Gets whether a transition is currently executing.</summary>
-    bool IsTransitioning { get; }
+    bool IsTransitioning
+    {
+        get;
+    }
     /// <summary>Prepares a scene before clearing the previous stack.</summary>
     /// <param name="sceneKey">Registered scene identifier.</param>
     /// <param name="param">Optional preparation parameters.</param>

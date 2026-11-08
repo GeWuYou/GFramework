@@ -25,7 +25,7 @@ internal static class AutoBehaviorDiagnostics
         "Generator '{0}' does not support nested class '{1}'",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     报告目标类型没有继承生成器要求的 Godot 基类。
@@ -36,7 +36,7 @@ internal static class AutoBehaviorDiagnostics
         "Type '{0}' must inherit from '{1}' to use '{2}'",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     报告行为生成器特性参数不满足约定签名，导致生成器无法推导所需元数据。
@@ -47,5 +47,5 @@ internal static class AutoBehaviorDiagnostics
         "Attribute '{0}' on '{1}' must provide {2}",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 }

@@ -33,8 +33,12 @@ internal static class DodgeRoutes
     /// <summary>Declares input and pause behavior independently of visual ordering.</summary>
     private static UiRouteOptions Modal(int layer) => new()
     {
-        Kind = UiRouteKind.Window, Layer = layer, Modal = true,
-        BlocksWorldActionInput = true, BlocksWorldPointerInput = true,
-        PauseWhileVisible = true, ContinueProcessingWhenPaused = true
+        Kind = UiRouteKind.Window,
+        Layer = layer,
+        Modal = true,
+        BlocksWorldActionInput = true,
+        BlocksWorldPointerInput = true,
+        PauseWhileVisible = true,
+        ContinueProcessingWhenPaused = true,
     };
 }

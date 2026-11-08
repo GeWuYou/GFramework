@@ -24,7 +24,7 @@ public sealed class SettingsSystemTests
         failing.Setup(value => value.ApplyAsync(It.IsAny<CancellationToken>()))
             .Returns(Task.FromException(new InvalidOperationException("apply failed")));
         var model = new Mock<ISettingsModel>();
-        model.Setup(value => value.AllApplicators()).Returns(new[] { successful.Object, failing.Object });
+        model.Setup(value => value.AllApplicators()).Returns([successful.Object, failing.Object]);
         var events = new List<object>();
         var system = new SettingsSystem(model.Object, events.Add);
 
@@ -61,11 +61,11 @@ public sealed class SettingsSystemTests
             .Returns(() => { calls.Add("apply"); return Task.CompletedTask; });
         var model = new Mock<ISettingsModel>();
         model.Setup(value => value.ResetAll()).Callback(() => calls.Add("reset"));
-        model.Setup(value => value.AllApplicators()).Returns(new[] { applicator.Object });
+        model.Setup(value => value.AllApplicators()).Returns([applicator.Object]);
 
         await new SettingsSystem(model.Object).ResetAllAsync();
 
-        Assert.That(calls, Is.EqualTo(new[] { "reset", "apply" }));
+        Assert.That(calls, Is.EqualTo(["reset", "apply"]));
     }
 
     /// <summary>A missing targeted applicator produces no unrelated application.</summary>
@@ -85,7 +85,7 @@ public sealed class SettingsSystemTests
     public async Task ApplyAllAsync_WhenAlreadyCanceled_DoesNotReadModel()
     {
         using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         var model = new Mock<ISettingsModel>(MockBehavior.Strict);
         var system = new SettingsSystem(model.Object);
 
@@ -111,7 +111,7 @@ public sealed class SettingsSystemTests
             return Task.CompletedTask;
         });
         var model = new Mock<ISettingsModel>();
-        model.Setup(value => value.AllApplicators()).Returns(new[] { first.Object, second.Object });
+        model.Setup(value => value.AllApplicators()).Returns([first.Object, second.Object]);
         var system = new SettingsSystem(model.Object, dispatcher: new SynchronizationContextGameDispatcher(host));
 
         await system.ApplyAllAsync();
@@ -123,7 +123,7 @@ public sealed class SettingsSystemTests
     /// <summary>Emulates an engine-owned callback thread while keeping the test independent of an engine package.</summary>
     private sealed class DedicatedHostContext : SynchronizationContext, IDisposable
     {
-        private readonly BlockingCollection<Action> _callbacks = new();
+        private readonly BlockingCollection<Action> _callbacks = [];
         private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly Thread _thread;
 
@@ -170,6 +170,8 @@ public sealed class SettingsSystemTests
         /// <inheritdoc />
         public Task ApplyAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         /// <inheritdoc />
-        public void Reset() { }
+        public void Reset()
+        {
+        }
     }
 }

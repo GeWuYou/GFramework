@@ -23,7 +23,7 @@ public class CompositeFilterTests
     [Test]
     public void Constructor_WithEmptyFilters_ShouldThrowArgumentException()
     {
-        Assert.Throws<ArgumentException>(() => new CompositeFilter(Array.Empty<ILogFilter>()));
+        Assert.Throws<ArgumentException>(() => new CompositeFilter([]));
     }
 
     [Test]
@@ -33,7 +33,7 @@ public class CompositeFilterTests
         var filter2 = new NamespaceFilter("GFramework");
         var compositeFilter = new CompositeFilter(filter1, filter2);
 
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", Exception: null, Properties: null);
 
         Assert.That(compositeFilter.ShouldLog(entry), Is.True);
     }
@@ -45,7 +45,7 @@ public class CompositeFilterTests
         var filter2 = new NamespaceFilter("GFramework");
         var compositeFilter = new CompositeFilter(filter1, filter2);
 
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", Exception: null, Properties: null);
 
         Assert.That(compositeFilter.ShouldLog(entry), Is.False);
     }
@@ -57,7 +57,7 @@ public class CompositeFilterTests
         var filter2 = new NamespaceFilter("MyApp");
         var compositeFilter = new CompositeFilter(filter1, filter2);
 
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", Exception: null, Properties: null);
 
         Assert.That(compositeFilter.ShouldLog(entry), Is.False);
     }
@@ -70,19 +70,19 @@ public class CompositeFilterTests
         var compositeFilter = new CompositeFilter(levelFilter, namespaceFilter);
 
         // 满足所有条件
-        var entry1 = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", null, null);
+        var entry1 = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", Exception: null, Properties: null);
         Assert.That(compositeFilter.ShouldLog(entry1), Is.True);
 
         // 级别不满足
-        var entry2 = new LogEntry(DateTime.UtcNow, LogLevel.Debug, "GFramework.Core", "Test", null, null);
+        var entry2 = new LogEntry(DateTime.UtcNow, LogLevel.Debug, "GFramework.Core", "Test", Exception: null, Properties: null);
         Assert.That(compositeFilter.ShouldLog(entry2), Is.False);
 
         // 命名空间不满足
-        var entry3 = new LogEntry(DateTime.UtcNow, LogLevel.Information, "OtherNamespace", "Test", null, null);
+        var entry3 = new LogEntry(DateTime.UtcNow, LogLevel.Information, "OtherNamespace", "Test", Exception: null, Properties: null);
         Assert.That(compositeFilter.ShouldLog(entry3), Is.False);
 
         // 都不满足
-        var entry4 = new LogEntry(DateTime.UtcNow, LogLevel.Debug, "OtherNamespace", "Test", null, null);
+        var entry4 = new LogEntry(DateTime.UtcNow, LogLevel.Debug, "OtherNamespace", "Test", Exception: null, Properties: null);
         Assert.That(compositeFilter.ShouldLog(entry4), Is.False);
     }
 
@@ -97,10 +97,10 @@ public class CompositeFilterTests
         var outerComposite = new CompositeFilter(innerComposite, filter3);
 
         // 需要同时满足：Info 以上 AND GFramework 命名空间 AND Warning 以上
-        var entry1 = new LogEntry(DateTime.UtcNow, LogLevel.Warning, "GFramework.Core", "Test", null, null);
+        var entry1 = new LogEntry(DateTime.UtcNow, LogLevel.Warning, "GFramework.Core", "Test", Exception: null, Properties: null);
         Assert.That(outerComposite.ShouldLog(entry1), Is.True);
 
-        var entry2 = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", null, null);
+        var entry2 = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", Exception: null, Properties: null);
         Assert.That(outerComposite.ShouldLog(entry2), Is.False); // 不满足 Warning
     }
 }

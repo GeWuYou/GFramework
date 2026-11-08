@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Core.Abstractions.Enums;
@@ -65,5 +65,5 @@ public enum ArchitecturePhase
     /// <summary>
     ///     初始化失败 暂时不使用
     /// </summary>
-    FailedInitialization
+    FailedInitialization,
 }

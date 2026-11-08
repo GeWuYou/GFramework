@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -37,7 +38,8 @@ public sealed class DocumentSaveTests
     public void TearDown()
     {
         _storage.Dispose();
-        if (Directory.Exists(_root)) Directory.Delete(_root, true);
+        if (Directory.Exists(_root))
+            Directory.Delete(_root, recursive: true);
     }
 
     /// <summary>The old payload cannot become a current DTO, but a document conversion can rename/retype it first.</summary>
@@ -114,8 +116,8 @@ public sealed class DocumentSaveTests
         var graph = new SaveMigrationGraph([Edge(1, 2), Edge(2, 4), Edge(1, 3), Edge(3, 4)]);
         var repository = Repository(4, graph);
         await Assert.ThrowsAsync<InvalidOperationException>(() => repository.PrepareLoadAsync(1));
-        var prepared = await repository.PrepareLoadAsync(1, versionPath: new[] { 1, 3, 4 });
-        Assert.That(prepared.MigrationPath.Select(static step => step.ToVersion), Is.EqualTo(new[] { 3, 4 }));
+        var prepared = await repository.PrepareLoadAsync(1, versionPath: [1, 3, 4]);
+        Assert.That(prepared.MigrationPath.Select(static step => step.ToVersion), Is.EqualTo([3, 4]));
     }
 
     /// <summary>Duplicate edges, self edges and route reversals fail deterministically at policy boundaries.</summary>
@@ -125,8 +127,8 @@ public sealed class DocumentSaveTests
         Assert.Throws<ArgumentException>(() => new SaveMigrationStep(1, 1, "invalid", static (block, _) => Task.FromResult(block)));
         Assert.Throws<ArgumentException>(() => new SaveMigrationGraph([Edge(1, 2), Edge(1, 2)]));
         var graph = new SaveMigrationGraph([Edge(1, 3), Edge(3, 2), Edge(2, 4)]);
-        Assert.Throws<ArgumentException>(() => graph.Plan(1, 4, new[] { 1, 3, 2, 4 }));
-        Assert.Throws<ArgumentException>(() => graph.Plan(1, 4, new[] { 2, 4 }));
+        Assert.Throws<ArgumentException>(() => graph.Plan(1, 4, [1, 3, 2, 4]));
+        Assert.Throws<ArgumentException>(() => graph.Plan(1, 4, [2, 4]));
     }
 
     /// <summary>Wrong output versions and callback failures preserve original bytes.</summary>
@@ -141,7 +143,7 @@ public sealed class DocumentSaveTests
         {
             "throw" => throw new InvalidOperationException("broken conversion"),
             "null" => Task.FromResult<SaveDataBlock>(null!),
-            _ => Task.FromResult(block)
+            _ => Task.FromResult(block),
         });
         await Assert.ThrowsAsync<InvalidOperationException>(() => Repository(2, new SaveMigrationGraph([step])).PrepareLoadAsync(1));
         Assert.That((await SnapshotAsync()).Fingerprint, Is.EqualTo(original.Fingerprint));
@@ -186,14 +188,16 @@ public sealed class DocumentSaveTests
         var original = await SnapshotAsync();
         var proxy = StorageProxy(key =>
         {
-            if (key.Contains("backups/", StringComparison.Ordinal) == failBackup) throw new IOException("Injected write failure");
+            if (key.Contains("backups/", StringComparison.Ordinal) == failBackup)
+                throw new IOException("Injected write failure");
             return Task.CompletedTask;
         });
         var repository = Repository(2, new SaveMigrationGraph([PositionUpgrade()]), storage: proxy);
         var prepared = await repository.PrepareLoadAsync(1);
         await Assert.ThrowsAsync<IOException>(() => repository.CommitPreparedAsync(1, prepared));
         Assert.That((await SnapshotAsync()).Fingerprint, Is.EqualTo(original.Fingerprint));
-        if (!failBackup) Assert.That(Directory.GetFiles(Path.Combine(SlotPath, "backups")), Has.Length.EqualTo(1));
+        if (!failBackup)
+            Assert.That(Directory.GetFiles(Path.Combine(SlotPath, "backups")), Has.Length.EqualTo(1));
     }
 
     /// <summary>External writes during backup invalidate approval before the final atomic replacement.</summary>
@@ -234,11 +238,11 @@ public sealed class DocumentSaveTests
         await WriteAsync(Document(1, """{}"""));
         var original = await SnapshotAsync();
         using var cancellation = new CancellationTokenSource();
-        var step = new SaveMigrationStep(1, 2, "cancel", (block, _) =>
+        var step = new SaveMigrationStep(1, 2, "cancel", async (block, _) =>
         {
-            cancellation.Cancel();
+            await cancellation.CancelAsync().ConfigureAwait(false);
             block.Version = 2;
-            return Task.FromResult(block);
+            return block;
         });
         await Assert.CatchAsync<OperationCanceledException>(() => Repository(2, new SaveMigrationGraph([step])).PrepareLoadAsync(1, cancellation.Token));
         Assert.That((await SnapshotAsync()).Fingerprint, Is.EqualTo(original.Fingerprint));
@@ -263,7 +267,7 @@ public sealed class DocumentSaveTests
         var enabled = Repository(2, mods: [new ModSavePolicy("missing", 7), new ModSavePolicy("extra", 1)]);
         Assert.That((await enabled.PrepareLoadAsync(1)).ModState.ForMod("extra").Read<ModCounter>()!.Count, Is.EqualTo(9));
         await enabled.SaveAsync(1, new CurrentSave());
-        Assert.That(_codec.Decode(await SnapshotAsync()).Mods.Keys, Is.EquivalentTo(new[] { "missing", "extra" }));
+        Assert.That(_codec.Decode(await SnapshotAsync()).Mods.Keys, Is.EquivalentTo(["missing", "extra"]));
     }
 
     /// <summary>Composition captures caller-owned policy routes and collections instead of observing later mutations.</summary>
@@ -271,18 +275,18 @@ public sealed class DocumentSaveTests
     public async Task ModData_CapturesPolicyCollectionAndExplicitPath()
     {
         var document = Document(2, """{}""");
-        document.Mods["extra"] = new SaveDataBlock { Version = 1, Data = new JObject() };
+        document.Mods["extra"] = new SaveDataBlock { Version = 1, Data = [] };
         await WriteAsync(document);
         var path = new[] { 1, 3, 4 };
         var policies = new List<ModSavePolicy>
         {
-            new("extra", 4, new SaveMigrationGraph([Edge(1, 2), Edge(2, 4), Edge(1, 3), Edge(3, 4)])) { VersionPath = path }
+            new("extra", 4, new SaveMigrationGraph([Edge(1, 2), Edge(2, 4), Edge(1, 3), Edge(3, 4)])) { VersionPath = path },
         };
         var repository = Repository(2, mods: policies);
         path[1] = 2;
         policies.Clear();
         var prepared = await repository.PrepareLoadAsync(1);
-        Assert.That(prepared.MigrationPath.Select(static step => step.ToVersion), Is.EqualTo(new[] { 3, 4 }));
+        Assert.That(prepared.MigrationPath.Select(static step => step.ToVersion), Is.EqualTo([3, 4]));
     }
 
     /// <summary>Active namespaces and versions are explicit validated policy, independent of any DTO interface.</summary>
@@ -315,7 +319,9 @@ public sealed class DocumentSaveTests
         document.Mods["extra"] = new SaveDataBlock { Version = 1, Data = JObject.Parse("""{"Count":4}""") };
         await WriteAsync(document);
         var policy = new ModSavePolicy("extra", 4, new SaveMigrationGraph([Edge(1, 2), Edge(2, 4), Edge(1, 3), Edge(3, 4)]))
-        { VersionPath = new[] { 1, 3, 4 } };
+        {
+            VersionPath = [1, 3, 4],
+        };
         var repository = Repository(2, mods: [policy]);
         var prepared = await repository.PrepareLoadAsync(1);
         Assert.That(prepared.Document.Mods["extra"].Version, Is.EqualTo(4));
@@ -352,7 +358,7 @@ public sealed class DocumentSaveTests
         await _storage.WriteSnapshotAsync("saves/slot_2/save", _codec.Encode(destination));
         await repository.SaveDocumentAsync(2, loaded.Data, state);
         var saved = _codec.Decode(await _storage.ReadSnapshotAsync("saves/slot_2/save"));
-        Assert.That(saved.Mods.Keys, Is.EqualTo(new[] { "missing" }));
+        Assert.That(saved.Mods.Keys, Is.EqualTo(["missing"]));
         Assert.That(saved.Mods["missing"].Data["Count"]!.Value<int>(), Is.EqualTo(123));
         await repository.SaveDocumentAsync(2, loaded.Data, state);
         Assert.That(_codec.Decode(await _storage.ReadSnapshotAsync("saves/slot_2/save")).Mods.ContainsKey("other-run"), Is.False);
@@ -368,7 +374,7 @@ public sealed class DocumentSaveTests
         state.ForMod("extra").Write(new ModCounter { Count = 1 });
         await repository.SaveDocumentAsync(1, new CurrentSave(), state);
         var saved = _codec.Decode(await SnapshotAsync());
-        Assert.That(saved.Mods.Keys, Is.EqualTo(new[] { "extra" }));
+        Assert.That(saved.Mods.Keys, Is.EqualTo(["extra"]));
         Assert.That(saved.Mods["extra"].Data["Count"]!.Value<int>(), Is.EqualTo(1));
     }
 
@@ -380,7 +386,8 @@ public sealed class DocumentSaveTests
         for (var version = 1; version < 100; version++)
         {
             edges.Add(Edge(version, version + 1));
-            if (version < 99) edges.Add(Edge(version, version + 2));
+            if (version < 99)
+                edges.Add(Edge(version, version + 2));
         }
         var graph = new SaveMigrationGraph(edges);
         Assert.Throws<InvalidOperationException>(() => graph.Plan(1, 1000));
@@ -426,15 +433,19 @@ public sealed class DocumentSaveTests
         IReadOnlyList<ModSavePolicy>? mods = null, IStorage? storage = null) => new(storage ?? _storage, Configuration,
         new SaveRepositoryOptions<CurrentSave>
         {
-            GameId = "test", CurrentVersion = version, Migrations = graph ?? new SaveMigrationGraph(),
-            ModPolicies = mods ?? [], Validate = static data =>
+            GameId = "test",
+            CurrentVersion = version,
+            Migrations = graph ?? new SaveMigrationGraph(),
+            ModPolicies = mods ?? [],
+            Validate = static data =>
             {
-                if (data.Position.X < 0) throw new InvalidOperationException("Negative position is invalid.");
-            }
+                if (data.Position.X < 0)
+                    throw new InvalidOperationException("Negative position is invalid.");
+            },
         });
 
     /// <summary>Creates a deterministic no-op structure conversion with an explicit version update.</summary>
-    private static SaveMigrationStep Edge(int from, int to) => new(from, to, $"""{from} to {to}""", (block, _) =>
+    private static SaveMigrationStep Edge(int from, int to) => new(from, to, string.Create(CultureInfo.InvariantCulture, $"""{from} to {to}"""), (block, _) =>
     {
         block.Version = to;
         return Task.FromResult(block);
@@ -451,7 +462,10 @@ public sealed class DocumentSaveTests
 
     /// <summary>Creates test envelope data without constructing any current DTO.</summary>
     private static SaveDocument Document(int version, string payload) => new()
-    { GameId = "test", Game = new SaveDataBlock { Version = version, Data = JObject.Parse(payload) } };
+    {
+        GameId = "test",
+        Game = new SaveDataBlock { Version = version, Data = JObject.Parse(payload) },
+    };
 
     /// <summary>Writes an entire raw document through the production snapshot boundary.</summary>
     private Task WriteAsync(SaveDocument document) => _storage.WriteSnapshotAsync(SaveKey, _codec.Encode(document));
@@ -489,14 +503,23 @@ public sealed class DocumentSaveTests
     public sealed class Coordinates
     {
         /// <summary>Gets or sets horizontal position.</summary>
-        public int X { get; set; }
+        public int X
+        {
+            get; set;
+        }
         /// <summary>Gets or sets vertical position.</summary>
-        public int Y { get; set; }
+        public int Y
+        {
+            get; set;
+        }
     }
     /// <summary>Portable mod-specific progress.</summary>
     public sealed class ModCounter
     {
         /// <summary>Gets or sets accumulated progress.</summary>
-        public int Count { get; set; }
+        public int Count
+        {
+            get; set;
+        }
     }
 }

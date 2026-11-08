@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -34,9 +34,10 @@ public class AsyncContextAwareStateBase : IAsyncState, IContextAware, IDestroyab
     ///     异步销毁当前状态，释放相关资源
     ///     子类可重写此方法以执行特定的异步清理操作
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "The default async adapter must invoke the synchronous virtual hook exactly once; its async alternative is this same method.")]
     public virtual ValueTask DestroyAsync()
     {
-        // 默认实现：调用同步 Destroy()
         Destroy();
         return ValueTask.CompletedTask;
     }

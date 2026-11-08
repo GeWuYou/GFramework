@@ -11,5 +11,5 @@ internal enum SettingsCloseChoice
     /// <summary>Save the draft and close the settings window.</summary>
     Apply,
     /// <summary>Close without saving the audio/display draft.</summary>
-    Discard
+    Discard,
 }

@@ -27,10 +27,10 @@ internal sealed class PartialGeneratedNotificationHandlerRegistry : ICqrsHandler
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(logger);
 
-        services.AddTransient(
-            typeof(INotificationHandler<GeneratedRegistryNotification>),
-            typeof(GeneratedRegistryNotificationHandler));
-        logger.LogDebug(
-            $"Registered CQRS handler {typeof(GeneratedRegistryNotificationHandler).FullName} as {typeof(INotificationHandler<GeneratedRegistryNotification>).FullName}.");
+        services.AddTransient<INotificationHandler<GeneratedRegistryNotification>, GeneratedRegistryNotificationHandler>();
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Registered CQRS handler {ImplementationType} as {HandlerContract}.", typeof(GeneratedRegistryNotificationHandler).FullName, typeof(INotificationHandler<GeneratedRegistryNotification>).FullName);
+        }
     }
 }

@@ -33,7 +33,7 @@ public sealed class YamlConfigLoaderDependentRequiredTests
     {
         if (Directory.Exists(_rootPath))
         {
-            Directory.Delete(_rootPath, true);
+            Directory.Delete(_rootPath, recursive: true);
         }
     }
 
@@ -399,7 +399,10 @@ public sealed class YamlConfigLoaderDependentRequiredTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置奖励对象。
@@ -420,7 +423,10 @@ public sealed class YamlConfigLoaderDependentRequiredTests
         /// <summary>
         ///     获取或设置掉落物数量。
         /// </summary>
-        public int ItemCount { get; set; }
+        public int ItemCount
+        {
+            get; set;
+        }
     }
 
     /// <summary>
@@ -431,7 +437,10 @@ public sealed class YamlConfigLoaderDependentRequiredTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置使用 PascalCase 字段名的奖励对象。
@@ -452,6 +461,9 @@ public sealed class YamlConfigLoaderDependentRequiredTests
         /// <summary>
         ///     获取或设置掉落物数量。
         /// </summary>
-        public int ItemCount { get; set; }
+        public int ItemCount
+        {
+            get; set;
+        }
     }
 }

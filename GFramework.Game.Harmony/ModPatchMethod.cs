@@ -18,9 +18,15 @@ public sealed class ModPatchMethod
         Method = method;
     }
     /// <summary>Gets the exact patch method.</summary>
-    public MethodInfo Method { get; }
+    public MethodInfo Method
+    {
+        get;
+    }
     /// <summary>Gets an optional priority override; null preserves Harmony's method annotation/default behavior.</summary>
-    public int? Priority { get; init; }
+    public int? Priority
+    {
+        get; init;
+    }
     /// <summary>Gets owner IDs to run after this patch; an empty list preserves method annotations.</summary>
     public IReadOnlyList<string> Before { get; init; } = [];
     /// <summary>Gets owner IDs to run before this patch; an empty list preserves method annotations.</summary>

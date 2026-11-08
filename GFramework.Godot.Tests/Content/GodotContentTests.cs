@@ -59,7 +59,10 @@ public sealed class GodotContentTests
         var target = Path.Combine(_root, "target");
         Directory.CreateDirectory(target);
         var link = Path.Combine(_root, "link");
-        try { Directory.CreateSymbolicLink(link, target); }
+        try
+        {
+            Directory.CreateSymbolicLink(link, target);
+        }
         catch (UnauthorizedAccessException) { Assert.Ignore("This environment does not permit creating symbolic links."); }
         var files = new GodotContentFileResolver(_root);
         Assert.Throws<ArgumentException>(() => files.Resolve("link/image.png"));
@@ -70,8 +73,8 @@ public sealed class GodotContentTests
     public void Mounter_WithoutPolicy_RejectsBeforeNativeCall()
     {
         var nativeCalls = 0;
-        var mounter = new GodotContentPackMounter(null, _ => { nativeCalls++; return true; });
-        Assert.Throws<InvalidOperationException>(() => mounter.MountAll(new[] { Pack("official") }));
+        var mounter = new GodotContentPackMounter(trustPolicy: null, _ => { nativeCalls++; return true; });
+        Assert.Throws<InvalidOperationException>(() => mounter.MountAll([Pack("official")]));
         Assert.That(nativeCalls, Is.Zero);
         Assert.That(mounter.RequiresRestart, Is.False);
     }
@@ -86,7 +89,7 @@ public sealed class GodotContentTests
         var actual = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(first.FilePath))).ToLowerInvariant();
         var mounter = new GodotContentPackMounter((pack, hash) => string.Equals(pack.PackId, "first", StringComparison.Ordinal) && string.Equals(hash, actual, StringComparison.Ordinal),
             _ => { nativeCalls++; return true; });
-        Assert.Throws<InvalidOperationException>(() => mounter.MountAll(new[] { first, second }));
+        Assert.Throws<InvalidOperationException>(() => mounter.MountAll([first, second]));
         Assert.That(nativeCalls, Is.Zero);
     }
 
@@ -98,11 +101,11 @@ public sealed class GodotContentTests
         var first = Pack("first");
         var second = Pack("second");
         var mounter = new GodotContentPackMounter(static (_, _) => true, path => { paths.Add(path); return true; });
-        mounter.MountAll(new[] { first, second });
-        Assert.That(paths, Is.EqualTo(new[] { first.FilePath, second.FilePath }));
+        mounter.MountAll([first, second]);
+        Assert.That(paths, Is.EqualTo([first.FilePath, second.FilePath]));
         Assert.That(mounter.GetResourcePath("first", "arena.tscn"), Is.EqualTo("res://content/first/arena.tscn"));
         Assert.Throws<ArgumentException>(() => mounter.GetResourcePath("first", "../base.tscn"));
-        Assert.Throws<InvalidOperationException>(() => mounter.MountAll(Array.Empty<GodotContentPackDescriptor>()));
+        Assert.Throws<InvalidOperationException>(() => mounter.MountAll([]));
     }
 
     /// <summary>One official package can contribute multiple distinct PCK files in declared order.</summary>
@@ -114,10 +117,10 @@ public sealed class GodotContentTests
         var second = new GodotContentPackDescriptor("official", _root, "extra.pck");
         var calls = 0;
         var mounter = new GodotContentPackMounter(static (_, _) => true, _ => { calls++; return true; });
-        mounter.MountAll(new[] { first, second });
+        mounter.MountAll([first, second]);
         Assert.That(calls, Is.EqualTo(2));
         var duplicateMounter = new GodotContentPackMounter(static (_, _) => true, static _ => true);
-        Assert.Throws<InvalidOperationException>(() => duplicateMounter.MountAll(new[] { first, first }));
+        Assert.Throws<InvalidOperationException>(() => duplicateMounter.MountAll([first, first]));
     }
 
     /// <summary>A native failure invalidates the whole session, including earlier mounted resources.</summary>
@@ -126,7 +129,7 @@ public sealed class GodotContentTests
     {
         var calls = 0;
         var mounter = new GodotContentPackMounter(static (_, _) => true, _ => ++calls == 1);
-        Assert.Throws<IOException>(() => mounter.MountAll(new[] { Pack("first"), Pack("second") }));
+        Assert.Throws<IOException>(() => mounter.MountAll([Pack("first"), Pack("second")]));
         Assert.That(mounter.RequiresRestart, Is.True);
         Assert.Throws<InvalidOperationException>(() => mounter.GetResourcePath("first", "arena.tscn"));
     }
@@ -136,7 +139,7 @@ public sealed class GodotContentTests
     public async Task Mounter_RejectsBackgroundThread()
     {
         var mounter = new GodotContentPackMounter(static (_, _) => true, static _ => true);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(() => mounter.MountAll(Array.Empty<GodotContentPackDescriptor>())));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(() => mounter.MountAll([])));
     }
 
     /// <summary>Loose media decoding also rejects worker-thread entry before calling native Godot APIs.</summary>

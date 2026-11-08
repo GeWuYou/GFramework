@@ -29,6 +29,8 @@ var result = await scenes.ReplaceAsync("play", cancellationToken: cancellationTo
 
 采用标准 DI 时，将这些接口和 `SceneRouter` 登记为宿主实例的服务；使用 Architecture 时沿用相同实例和显式依赖。宿主必须在释放根节点、工厂和调度器之前等待路由停止。
 
+需要记录过渡扩展中被 `ContinueOnError` 保留的错误时，可向 `SceneRouter` 的四参数构造函数传入 `ILogger<SceneRouter>`。标准 DI 的 `AddLogging()` 可提供该依赖；错误记录会保留原始异常及其调用栈。
+
 ## 导航与结果
 
 - `ReplaceAsync`：准备目标后替换整份场景栈。

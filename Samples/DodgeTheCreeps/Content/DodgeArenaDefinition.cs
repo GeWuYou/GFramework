@@ -13,9 +13,12 @@ public sealed class DodgeArenaDefinition
     /// <summary>Gets or sets the display name.</summary>
     public string Name { get; set; } = string.Empty;
     /// <summary>Gets or sets the allowed enemy definition IDs.</summary>
-    public string[] Enemies { get; set; } = Array.Empty<string>();
+    public string[] Enemies { get; set; } = [];
     /// <summary>Gets or sets the starting spawn interval.</summary>
-    public double SpawnInterval { get; set; }
+    public double SpawnInterval
+    {
+        get; set;
+    }
     /// <summary>Gets or sets an RGB hexadecimal background color.</summary>
     public string Background { get; set; } = "091222";
     /// <summary>Gets or sets an optional package-qualified scene from a host-trusted PCK.</summary>

@@ -20,18 +20,19 @@ public partial class DodgeApp
     private async Task RunPersistenceSmokeAsync(bool continuation)
     {
         using var paused = _pause.PauseScope("Complete-board persistence acceptance");
-        foreach (var action in new[] { "dodge_left", "dodge_right", "dodge_up", "dodge_down" }) Input.ActionRelease(action);
+        foreach (var action in new[] { "dodge_left", "dodge_right", "dodge_up", "dodge_down" })
+            Input.ActionRelease(action);
         if (continuation)
         {
             var expected = await _storage.ReadAsync<DodgeProgress>(_dataRoot + "/persistence-expected.json").ConfigureAwait(true);
-            await StartGameAsync(true).ConfigureAwait(true);
+            await StartGameAsync(restore: true).ConfigureAwait(true);
             Require(_world is { IsRunning: true }, "Fresh-process continue did not create a live board.");
             RequireSameProgress(expected, _world!.CaptureProgress(), "Fresh-process board");
             CheckFutureSpawnContinuation(expected);
         }
         else
         {
-            await StartGameAsync(false).ConfigureAwait(true);
+            await StartGameAsync(restore: false).ConfigureAwait(true);
             var expected = CreatePersistenceFixture(_world!.CaptureProgress());
             _world.RestoreProgress(expected);
             Require(_world.EnemyCount >= 2, "The persistence fixture must contain a nonempty enemy board.");
@@ -53,7 +54,7 @@ public partial class DodgeApp
             GD.Print("DODGE_PERSISTENCE_NEXT " + _smokeId);
         }
         GD.Print("DODGE_PERSISTENCE_RESULT PASS " + (continuation ? "continue" : "seed"));
-        FinishSmoke(true);
+        FinishSmoke(passed: true);
     }
 
     /// <summary>Produces a deterministic nonempty board with fractional timing and already-consumed random draws.</summary>
@@ -71,19 +72,19 @@ public partial class DodgeApp
         template.GraceRemaining = 0.75;
         template.RandomSeed = random.Seed;
         template.RandomState = random.State;
-        template.Enemies = new List<DodgeMobProgress>()
-        {
+        template.Enemies =
+        [
             new DodgeMobProgress
             {
                 EnemyId = "base:walker", X = 60, Y = 130, VelocityX = 80, VelocityY = 45,
-                Appearance = 0, AnimationFrame = 1, AnimationProgress = 0.25f
+                Appearance = 0, AnimationFrame = 1, AnimationProgress = 0.25f,
             },
             new DodgeMobProgress
             {
                 EnemyId = "base:swimmer", X = 400, Y = 210, VelocityX = -95, VelocityY = 30,
-                Appearance = 1, AnimationFrame = 0, AnimationProgress = 0.75f
-            }
-        };
+                Appearance = 1, AnimationFrame = 0, AnimationProgress = 0.75f,
+            },
+        ];
         return template;
     }
 
@@ -110,13 +111,16 @@ public partial class DodgeApp
             static value => value.RandomState = null,
             static value => value.Enemies[0].X = float.NaN,
             static value => value.Enemies[1].EnemyId = "base:missing-enemy",
-            static value => value.Enemies = Enumerable.Repeat(value.Enemies[0], DodgeProgress.MaxSavedEnemies + 1).ToList()
+            static value => value.Enemies = [.. Enumerable.Repeat(value.Enemies[0], DodgeProgress.MaxSavedEnemies + 1)],
         })
         {
             var invalid = CloneProgress(snapshot);
             mutate(invalid);
             var rejected = false;
-            try { _world!.RestoreProgress(invalid); }
+            try
+            {
+                _world!.RestoreProgress(invalid);
+            }
             catch (Exception exception) when (exception is InvalidOperationException or ArgumentException or System.Collections.Generic.KeyNotFoundException)
             {
                 rejected = true;
@@ -134,19 +138,29 @@ public partial class DodgeApp
         var codec = new JsonSaveDocumentCodec();
         var sparse = new SaveDocument
         {
-            GameId = "dodge-the-creeps", Content = _content.Catalog.Snapshot,
-            Game = new SaveDataBlock { Version = 1, Data = new Newtonsoft.Json.Linq.JObject
-                { ["Score"] = 21, ["X"] = 140, ["Y"] = 500, ["ArenaId"] = "base:yard" } }
+            GameId = "dodge-the-creeps",
+            Content = _content.Catalog.Snapshot,
+            Game = new SaveDataBlock
+            {
+                Version = 1,
+                Data = new Newtonsoft.Json.Linq.JObject
+                {
+                    ["Score"] = 21,
+                    ["X"] = 140,
+                    ["Y"] = 500,
+                    ["ArenaId"] = "base:yard",
+                },
+            },
         };
         await _storage.WriteSnapshotAsync(key, codec.Encode(sparse), _lifetime.Token).ConfigureAwait(true);
         var original = await _storage.ReadSnapshotAsync(key, _lifetime.Token).ConfigureAwait(true);
         var prepared = await _saves.PrepareLoadAsync(slot, _lifetime.Token).ConfigureAwait(true);
         Require(prepared.RequiresCommit && prepared.Data.Enemies.Count == 0 && prepared.Data.Score == 21 &&
             prepared.Data.RandomState is not null, "Sparse document did not migrate before DTO validation.");
-        Require(string.Equals((await _storage.ReadSnapshotAsync(key).ConfigureAwait(true)).Fingerprint, original.Fingerprint, StringComparison.Ordinal),
+        Require(string.Equals((await _storage.ReadSnapshotAsync(key, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true)).Fingerprint, original.Fingerprint, StringComparison.Ordinal),
             "Preparing an upgrade rewrote the source.");
         var committed = await _saves.CommitPreparedAsync(slot, prepared, _lifetime.Token).ConfigureAwait(true);
-        var backup = await _storage.ReadSnapshotAsync(_dataRoot + "/saves/slot_88/" + committed.BackupKey).ConfigureAwait(true);
+        var backup = await _storage.ReadSnapshotAsync(_dataRoot + "/saves/slot_88/" + committed.BackupKey, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
         Require(string.Equals(backup.Fingerprint, original.Fingerprint, StringComparison.Ordinal), "Upgrade backup changed original bytes.");
 
         var future = prepared.Document;
@@ -156,14 +170,14 @@ public partial class DodgeApp
         future.Game.Data.Remove("Y");
         future.Game.Data["FutureMode"] = true;
         await _storage.WriteSnapshotAsync(key, codec.Encode(future), _lifetime.Token).ConfigureAwait(true);
-        var newer = await _storage.ReadSnapshotAsync(key).ConfigureAwait(true);
+        var newer = await _storage.ReadSnapshotAsync(key, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
         var downgrade = await _saves.PrepareLoadAsync(slot, _lifetime.Token).ConfigureAwait(true);
         Require(downgrade.RequiresConfirmation && downgrade.Data.X == 140 && downgrade.Data.Y == 500,
             "A future document could not be downgraded before current DTO deserialization.");
-        Require(string.Equals((await _storage.ReadSnapshotAsync(key).ConfigureAwait(true)).Fingerprint, newer.Fingerprint, StringComparison.Ordinal),
+        Require(string.Equals((await _storage.ReadSnapshotAsync(key, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true)).Fingerprint, newer.Fingerprint, StringComparison.Ordinal),
             "Preparing or cancelling a downgrade changed the source.");
         await _saves.CommitPreparedAsync(slot, downgrade, _lifetime.Token).ConfigureAwait(true);
-        Require((await _saves.LoadAsync(slot).ConfigureAwait(true)).Score == 21, "Committed downgrade was not ordinarily loadable.");
+        Require((await _saves.LoadAsync(slot, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true)).Score == 21, "Committed downgrade was not ordinarily loadable.");
     }
 
     /// <summary>Game-owned recovery removes only unavailable enemy definitions and retains valid board values.</summary>
@@ -173,15 +187,20 @@ public partial class DodgeApp
         var missing = CloneProgress(expected);
         missing.Enemies.Add(new DodgeMobProgress
         {
-            EnemyId = "removed:creep", X = 100, Y = 110, VelocityX = 25, VelocityY = 10, Appearance = 0
+            EnemyId = "removed:creep",
+            X = 100,
+            Y = 110,
+            VelocityX = 25,
+            VelocityY = 10,
+            Appearance = 0,
         });
         var key = _dataRoot + "/saves/slot_89/save.json";
         var codec = new JsonSaveDocumentCodec();
         var document = new SaveDocument
         {
-            GameId = "dodge-the-creeps", Game = new SaveDataBlock { Version = 2, Data = codec.SerializeData(missing) },
-            Content = new ContentSnapshot(_content.Catalog.Snapshot.Packs.Concat(
-                new[] { new ContentPackStamp("removed", "1.0.0", "previously-installed-mod") }).ToArray())
+            GameId = "dodge-the-creeps",
+            Game = new SaveDataBlock { Version = 2, Data = codec.SerializeData(missing) },
+            Content = new ContentSnapshot([.. _content.Catalog.Snapshot.Packs, new ContentPackStamp("removed", "1.0.0", "previously-installed-mod")]),
         };
         await _storage.WriteSnapshotAsync(key, codec.Encode(document), _lifetime.Token).ConfigureAwait(true);
         var original = await _storage.ReadSnapshotAsync(key, _lifetime.Token).ConfigureAwait(true);
@@ -232,7 +251,7 @@ public partial class DodgeApp
             Require(string.Equals(left.EnemyId, right.EnemyId, StringComparison.Ordinal) && left.X == right.X && left.Y == right.Y &&
                 left.VelocityX == right.VelocityX && left.VelocityY == right.VelocityY && left.Appearance == right.Appearance &&
                 left.AnimationFrame == right.AnimationFrame && Math.Abs(left.AnimationProgress - right.AnimationProgress) < 0.00001f,
-                subject + " changed enemy " + index + ".");
+                subject + " changed enemy " + index.ToString(System.Globalization.CultureInfo.InvariantCulture) + ".");
         }
     }
 }

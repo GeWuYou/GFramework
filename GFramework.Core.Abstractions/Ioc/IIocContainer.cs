@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Reflection;
@@ -254,7 +254,10 @@ public interface IIocContainer : IContextAware, IDisposable, IAsyncDisposable
     ///     提供对内部IServiceCollection的访问权限，用于高级配置和自定义操作
     /// </summary>
     /// <returns>底层的IServiceCollection实例</returns>
-    IServiceCollection GetServicesUnsafe { get; }
+    IServiceCollection GetServicesUnsafe
+    {
+        get;
+    }
 
     /// <summary>
     ///     创建一个新的服务作用域

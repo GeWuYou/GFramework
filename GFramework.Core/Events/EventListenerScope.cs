@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -36,7 +36,10 @@ public sealed class EventListenerScope<TEvent> : IDisposable
     /// <summary>
     ///     获取接收到的事件数据
     /// </summary>
-    public TEvent? EventData { get; private set; }
+    public TEvent? EventData
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取事件是否已被触发

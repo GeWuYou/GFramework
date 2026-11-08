@@ -35,7 +35,7 @@ public sealed class TaskWhenAllNotificationPublisher : INotificationPublisher
         {
             0 => ValueTask.CompletedTask,
             1 => context.InvokeHandlerAsync(context.Handlers[0], cancellationToken),
-            _ => PublishCoreAsync(context, cancellationToken)
+            _ => PublishCoreAsync(context, cancellationToken),
         };
     }
 

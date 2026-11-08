@@ -16,7 +16,10 @@ public sealed class ArchOptions
     /// <summary>
     ///     是否启用统计信息
     /// </summary>
-    public bool EnableStatistics { get; set; }
+    public bool EnableStatistics
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     模块优先级

@@ -50,7 +50,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             "GFramework.Cqrs.Tests.Cqrs.NamedFallbackMissingAssembly, Version=1.0.0.0",
             new CqrsReflectionFallbackAttribute(missingTypeName));
         generatedAssembly
-            .Setup(static assembly => assembly.GetType(missingTypeName, false, false))
+            .Setup(static assembly => assembly.GetType(missingTypeName, throwOnError: false, ignoreCase: false))
             .Returns((Type?)null);
 
         var container = new MicrosoftDiContainer();
@@ -83,7 +83,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             "GFramework.Cqrs.Tests.Cqrs.NamedFallbackThrowingAssembly, Version=1.0.0.0",
             new CqrsReflectionFallbackAttribute(failingTypeName));
         generatedAssembly
-            .Setup(static assembly => assembly.GetType(failingTypeName, false, false))
+            .Setup(static assembly => assembly.GetType(failingTypeName, throwOnError: false, ignoreCase: false))
             .Throws(new TypeLoadException(exceptionMessage));
 
         var container = new MicrosoftDiContainer();
@@ -225,10 +225,10 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             .SetupGet(static assembly => assembly.FullName)
             .Returns(assemblyName);
         generatedAssembly
-            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false))
             .Returns([new CqrsHandlerRegistryAttribute(typeof(PartialGeneratedNotificationHandlerRegistry))]);
         generatedAssembly
-            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsReflectionFallbackAttribute), false))
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsReflectionFallbackAttribute), inherit: false))
             .Returns([fallbackAttribute]);
         return generatedAssembly;
     }
@@ -246,7 +246,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             .SetupGet(static assembly => assembly.FullName)
             .Returns(assemblyName);
         generatedAssembly
-            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false))
             .Returns([new CqrsHandlerRegistryAttribute(registryType)]);
         return generatedAssembly;
     }
@@ -258,12 +258,11 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
     /// <returns>按注册顺序返回的处理器类型数组。</returns>
     private static Type[] GetGeneratedRegistryNotificationHandlerTypes(MicrosoftDiContainer container)
     {
-        return container.GetServicesUnsafe
+        return [.. container.GetServicesUnsafe
             .Where(static descriptor =>
                 descriptor.ServiceType == typeof(INotificationHandler<GeneratedRegistryNotification>) &&
                 descriptor.ImplementationType is not null)
-            .Select(static descriptor => descriptor.ImplementationType!)
-            .ToArray();
+            .Select(static descriptor => descriptor.ImplementationType!)];
     }
 
     /// <summary>
@@ -344,10 +343,9 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
     {
         Assert.That(_capturingLoggerFactoryProvider, Is.Not.Null);
 
-        return _capturingLoggerFactoryProvider!.Loggers
+        return [.. _capturingLoggerFactoryProvider!.Loggers
             .SelectMany(static logger => logger.Logs)
-            .Where(static log => log.Level == LogLevel.Warning)
-            .ToArray();
+            .Where(static log => log.Level == LogLevel.Warning)];
     }
 
     /// <summary>
@@ -365,9 +363,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(INotificationHandler<GeneratedRegistryNotification>),
-                typeof(GeneratedRegistryNotificationHandler));
+            services.AddTransient<INotificationHandler<GeneratedRegistryNotification>, GeneratedRegistryNotificationHandler>();
         }
     }
 
@@ -395,9 +391,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(INotificationHandler<GeneratedRegistryNotification>),
-                typeof(GeneratedRegistryNotificationHandler));
+            services.AddTransient<INotificationHandler<GeneratedRegistryNotification>, GeneratedRegistryNotificationHandler>();
         }
     }
 }

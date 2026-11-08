@@ -680,9 +680,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
-                typeof(GeneratedRequestInvokerRequestHandler));
+            services.AddTransient<IRequestHandler<GeneratedRequestInvokerRequest, string>, GeneratedRequestInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -720,12 +718,16 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
                         typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
                         typeof(NonStaticRequestInvokerProviderRegistry).GetMethod(
                             nameof(InvokeGenerated),
-                            BindingFlags.NonPublic | BindingFlags.Instance)!))
+                            BindingFlags.NonPublic | BindingFlags.Instance)!)),
             ];
         }
 
-        private ValueTask<string> InvokeGenerated(object handler, object request, CancellationToken cancellationToken)
+        private static ValueTask<string> InvokeGenerated(object handler, object request, CancellationToken cancellationToken)
         {
+            // Keep the reflection/delegate contract even when this probe does not consume an input.
+            _ = handler;
+            _ = request;
+            _ = cancellationToken;
             return ValueTask.FromResult(string.Empty);
         }
     }
@@ -753,9 +755,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
-                typeof(GeneratedRequestInvokerRequestHandler));
+            services.AddTransient<IRequestHandler<GeneratedRequestInvokerRequest, string>, GeneratedRequestInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -785,6 +785,9 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
 
         private static string InvokeGenerated(object handler, object request)
         {
+            // Keep the reflection/delegate contract even when this probe does not consume an input.
+            _ = handler;
+            _ = request;
             return string.Empty;
         }
     }
@@ -803,9 +806,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
-                typeof(GeneratedStreamInvokerRequestHandler));
+            services.AddTransient<IStreamRequestHandler<GeneratedStreamInvokerRequest, int>, GeneratedStreamInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -843,12 +844,16 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
                         typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
                         typeof(NonStaticStreamInvokerProviderRegistry).GetMethod(
                             nameof(InvokeGenerated),
-                            BindingFlags.NonPublic | BindingFlags.Instance)!))
+                            BindingFlags.NonPublic | BindingFlags.Instance)!)),
             ];
         }
 
-        private object InvokeGenerated(object handler, object request, CancellationToken cancellationToken)
+        private static object InvokeGenerated(object handler, object request, CancellationToken cancellationToken)
         {
+            // Keep the reflection/delegate contract even when this probe does not consume an input.
+            _ = handler;
+            _ = request;
+            _ = cancellationToken;
             return Array.Empty<int>().ToAsyncEnumerable();
         }
     }
@@ -876,9 +881,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
-                typeof(GeneratedStreamInvokerRequestHandler));
+            services.AddTransient<IStreamRequestHandler<GeneratedStreamInvokerRequest, int>, GeneratedStreamInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -908,6 +911,9 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
 
         private static object InvokeGenerated(object handler, object request)
         {
+            // Keep the reflection/delegate contract even when this probe does not consume an input.
+            _ = handler;
+            _ = request;
             return Array.Empty<int>().ToAsyncEnumerable();
         }
     }
@@ -931,9 +937,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
-                typeof(GeneratedRequestInvokerRequestHandler));
+            services.AddTransient<IRequestHandler<GeneratedRequestInvokerRequest, string>, GeneratedRequestInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -975,9 +979,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
-                typeof(GeneratedStreamInvokerRequestHandler));
+            services.AddTransient<IStreamRequestHandler<GeneratedStreamInvokerRequest, int>, GeneratedStreamInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -1014,9 +1016,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
-                typeof(GeneratedRequestInvokerRequestHandler));
+            services.AddTransient<IRequestHandler<GeneratedRequestInvokerRequest, string>, GeneratedRequestInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -1035,7 +1035,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         /// <inheritdoc />
         public IReadOnlyList<CqrsRequestInvokerDescriptorEntry> GetDescriptors()
         {
-            return Array.Empty<CqrsRequestInvokerDescriptorEntry>();
+            return [];
         }
     }
 
@@ -1053,9 +1053,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
-                typeof(GeneratedStreamInvokerRequestHandler));
+            services.AddTransient<IStreamRequestHandler<GeneratedStreamInvokerRequest, int>, GeneratedStreamInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -1074,7 +1072,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         /// <inheritdoc />
         public IReadOnlyList<CqrsStreamInvokerDescriptorEntry> GetDescriptors()
         {
-            return Array.Empty<CqrsStreamInvokerDescriptorEntry>();
+            return [];
         }
     }
 
@@ -1098,9 +1096,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
-                typeof(GeneratedRequestInvokerRequestHandler));
+            services.AddTransient<IRequestHandler<GeneratedRequestInvokerRequest, string>, GeneratedRequestInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -1149,9 +1145,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
-                typeof(GeneratedStreamInvokerRequestHandler));
+            services.AddTransient<IStreamRequestHandler<GeneratedStreamInvokerRequest, int>, GeneratedStreamInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -1206,9 +1200,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
-                typeof(GeneratedRequestInvokerRequestHandler));
+            services.AddTransient<IRequestHandler<GeneratedRequestInvokerRequest, string>, GeneratedRequestInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -1236,7 +1228,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             return
             [
                 new CqrsRequestInvokerDescriptorEntry(typeof(GeneratedRequestInvokerRequest), typeof(string), PrimaryDescriptor),
-                new CqrsRequestInvokerDescriptorEntry(typeof(GeneratedRequestInvokerRequest), typeof(string), SecondaryDescriptor)
+                new CqrsRequestInvokerDescriptorEntry(typeof(GeneratedRequestInvokerRequest), typeof(string), SecondaryDescriptor),
             ];
         }
 
@@ -1245,6 +1237,10 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             object request,
             CancellationToken cancellationToken)
         {
+            // Keep the reflection/delegate contract even when this probe does not consume an input.
+            _ = handler;
+            _ = request;
+            _ = cancellationToken;
             return ValueTask.FromResult("duplicate:payload");
         }
     }
@@ -1268,6 +1264,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             typeof(DuplicateEnumeratingStreamInvokerProviderRegistry).GetMethod(
                 nameof(InvokeAlternativeGenerated),
                 BindingFlags.NonPublic | BindingFlags.Static)!);
+        private static readonly int[] _sourceArray = [900, 901];
 
         /// <inheritdoc />
         public void Register(IServiceCollection services, ILogger logger)
@@ -1275,9 +1272,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
-                typeof(GeneratedStreamInvokerRequestHandler));
+            services.AddTransient<IStreamRequestHandler<GeneratedStreamInvokerRequest, int>, GeneratedStreamInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -1305,13 +1300,17 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             return
             [
                 new CqrsStreamInvokerDescriptorEntry(typeof(GeneratedStreamInvokerRequest), typeof(int), PrimaryDescriptor),
-                new CqrsStreamInvokerDescriptorEntry(typeof(GeneratedStreamInvokerRequest), typeof(int), SecondaryDescriptor)
+                new CqrsStreamInvokerDescriptorEntry(typeof(GeneratedStreamInvokerRequest), typeof(int), SecondaryDescriptor),
             ];
         }
 
         private static object InvokeAlternativeGenerated(object handler, object request, CancellationToken cancellationToken)
         {
-            return new[] { 900, 901 }.ToAsyncEnumerable();
+            // Keep the reflection/delegate contract even when this probe does not consume an input.
+            _ = handler;
+            _ = request;
+            _ = cancellationToken;
+            return _sourceArray.ToAsyncEnumerable();
         }
     }
 
@@ -1341,9 +1340,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
-                typeof(GeneratedRequestInvokerRequestHandler));
+            services.AddTransient<IRequestHandler<GeneratedRequestInvokerRequest, string>, GeneratedRequestInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -1373,7 +1370,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
                 new CqrsRequestInvokerDescriptorEntry(
                     typeof(GeneratedRequestInvokerRequest),
                     typeof(string),
-                    EnumeratedDescriptor)
+                    EnumeratedDescriptor),
             ];
         }
 
@@ -1382,6 +1379,10 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             object request,
             CancellationToken cancellationToken)
         {
+            // Keep the reflection/delegate contract even when this probe does not consume an input.
+            _ = handler;
+            _ = request;
+            _ = cancellationToken;
             return ValueTask.FromResult("mismatched:payload");
         }
     }
@@ -1412,9 +1413,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
-                typeof(GeneratedRequestInvokerRequestHandler));
+            services.AddTransient<IRequestHandler<GeneratedRequestInvokerRequest, string>, GeneratedRequestInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -1448,7 +1447,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
                 new CqrsRequestInvokerDescriptorEntry(
                     typeof(GeneratedRequestInvokerRequest),
                     typeof(string),
-                    ValidDescriptor)
+                    ValidDescriptor),
             ];
         }
 
@@ -1457,6 +1456,10 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             object request,
             CancellationToken cancellationToken)
         {
+            // Keep the reflection/delegate contract even when this probe does not consume an input.
+            _ = handler;
+            _ = request;
+            _ = cancellationToken;
             return ValueTask.FromResult("invalid-first:payload");
         }
     }
@@ -1480,6 +1483,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             typeof(MismatchedEnumeratingStreamInvokerProviderRegistry).GetMethod(
                 nameof(InvokeAlternativeGenerated),
                 BindingFlags.NonPublic | BindingFlags.Static)!);
+        private static readonly int[] _sourceArray = [700, 701];
 
         /// <inheritdoc />
         public void Register(IServiceCollection services, ILogger logger)
@@ -1487,9 +1491,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
-                typeof(GeneratedStreamInvokerRequestHandler));
+            services.AddTransient<IStreamRequestHandler<GeneratedStreamInvokerRequest, int>, GeneratedStreamInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -1519,13 +1521,17 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
                 new CqrsStreamInvokerDescriptorEntry(
                     typeof(GeneratedStreamInvokerRequest),
                     typeof(int),
-                    EnumeratedDescriptor)
+                    EnumeratedDescriptor),
             ];
         }
 
         private static object InvokeAlternativeGenerated(object handler, object request, CancellationToken cancellationToken)
         {
-            return new[] { 700, 701 }.ToAsyncEnumerable();
+            // Keep the reflection/delegate contract even when this probe does not consume an input.
+            _ = handler;
+            _ = request;
+            _ = cancellationToken;
+            return _sourceArray.ToAsyncEnumerable();
         }
     }
 
@@ -1548,6 +1554,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             typeof(GeneratedStreamInvokerProviderRegistry).GetMethod(
                 "InvokeGenerated",
                 BindingFlags.NonPublic | BindingFlags.Static)!);
+        private static readonly int[] _sourceArray = [800, 801];
 
         /// <inheritdoc />
         public void Register(IServiceCollection services, ILogger logger)
@@ -1555,9 +1562,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
-                typeof(GeneratedStreamInvokerRequestHandler));
+            services.AddTransient<IStreamRequestHandler<GeneratedStreamInvokerRequest, int>, GeneratedStreamInvokerRequestHandler>();
         }
 
         /// <inheritdoc />
@@ -1591,13 +1596,17 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
                 new CqrsStreamInvokerDescriptorEntry(
                     typeof(GeneratedStreamInvokerRequest),
                     typeof(int),
-                    ValidDescriptor)
+                    ValidDescriptor),
             ];
         }
 
         private static object InvokeAlternativeGenerated(object handler, object request, CancellationToken cancellationToken)
         {
-            return new[] { 800, 801 }.ToAsyncEnumerable();
+            // Keep the reflection/delegate contract even when this probe does not consume an input.
+            _ = handler;
+            _ = request;
+            _ = cancellationToken;
+            return _sourceArray.ToAsyncEnumerable();
         }
     }
 
@@ -1611,7 +1620,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             .SetupGet(static assembly => assembly.FullName)
             .Returns("GFramework.Cqrs.Tests.Cqrs.GeneratedRequestInvokerAssembly, Version=1.0.0.0");
         generatedAssembly
-            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false))
             .Returns([new CqrsHandlerRegistryAttribute(typeof(GeneratedRequestInvokerProviderRegistry))]);
         return generatedAssembly;
     }
@@ -1626,7 +1635,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             .SetupGet(static assembly => assembly.FullName)
             .Returns("GFramework.Cqrs.Tests.Cqrs.GeneratedStreamInvokerAssembly, Version=1.0.0.0");
         generatedAssembly
-            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false))
             .Returns([new CqrsHandlerRegistryAttribute(typeof(GeneratedStreamInvokerProviderRegistry))]);
         return generatedAssembly;
     }
@@ -1647,7 +1656,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             .SetupGet(static assembly => assembly.FullName)
             .Returns(assemblyFullName);
         generatedAssembly
-            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false))
             .Returns([new CqrsHandlerRegistryAttribute(registryType)]);
         return generatedAssembly;
     }
@@ -1662,7 +1671,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             .SetupGet(static assembly => assembly.FullName)
             .Returns("GFramework.Cqrs.Tests.Cqrs.HiddenGeneratedRequestInvokerAssembly, Version=1.0.0.0");
         generatedAssembly
-            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false))
             .Returns([new CqrsHandlerRegistryAttribute(typeof(HiddenImplementationGeneratedRequestInvokerProviderRegistry))]);
         return generatedAssembly;
     }
@@ -1677,7 +1686,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             .SetupGet(static assembly => assembly.FullName)
             .Returns("GFramework.Cqrs.Tests.Cqrs.HiddenGeneratedStreamInvokerAssembly, Version=1.0.0.0");
         generatedAssembly
-            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false))
             .Returns([new CqrsHandlerRegistryAttribute(typeof(HiddenImplementationGeneratedStreamInvokerProviderRegistry))]);
         return generatedAssembly;
     }
@@ -1740,7 +1749,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     {
         _ = cache.GetType()
             .GetMethod("Clear", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
-            .Invoke(cache, Array.Empty<object>());
+            .Invoke(cache, []);
     }
 
     /// <summary>
@@ -1785,7 +1794,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
 
         return method!
             .MakeGenericMethod(responseType)
-            .Invoke(bindingBox, Array.Empty<object>());
+            .Invoke(bindingBox, []);
     }
 
     /// <summary>

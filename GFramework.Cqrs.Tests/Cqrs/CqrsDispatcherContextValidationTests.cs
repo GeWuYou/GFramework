@@ -163,9 +163,7 @@ internal sealed class CqrsDispatcherContextValidationTests
     /// <summary>
     ///     为失败语义测试提供最小 CQRS 上下文标记，但故意不实现架构上下文能力。
     /// </summary>
-    private sealed class FakeCqrsContext : ICqrsContext
-    {
-    }
+    private sealed class FakeCqrsContext : ICqrsContext;
 
     /// <summary>
     ///     为 request 上下文校验提供最小测试请求。
@@ -322,7 +320,7 @@ internal sealed class CqrsDispatcherContextValidationTests
             {
                 var elementType = serviceType.GetGenericArguments()[0];
                 return _registrations.TryGetValue(elementType, out var instances)
-                    ? instances.ToArray()
+                    ? [.. instances]
                     : Array.Empty<object>();
             }
 

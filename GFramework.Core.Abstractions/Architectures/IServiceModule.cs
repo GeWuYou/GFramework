@@ -15,19 +15,28 @@ public interface IServiceModule : IInitializable, IAsyncDestroyable
     /// <summary>
     ///     获取模块的唯一名称。
     /// </summary>
-    string ModuleName { get; }
+    string ModuleName
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取模块的优先级，数值越小优先级越高。
     ///     用于控制模块的注册和初始化顺序。
     /// </summary>
-    int Priority { get; }
+    int Priority
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取模块的启用状态。
     ///     返回 true 表示模块已启用，false 表示模块被禁用。
     /// </summary>
-    bool IsEnabled { get; }
+    bool IsEnabled
+    {
+        get;
+    }
 
     /// <summary>
     ///     注册模块提供的服务到依赖注入容器中。

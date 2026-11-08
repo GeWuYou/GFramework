@@ -24,7 +24,7 @@ public static class LoggingConfigurationLoader
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: true) }
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: true) },
     };
 
     /// <summary>
@@ -64,11 +64,15 @@ public static class LoggingConfigurationLoader
     public static Microsoft.Extensions.Logging.ILoggerFactory CreateFactory(LoggingConfiguration config)
     {
         ArgumentNullException.ThrowIfNull(config);
-        var appenders = config.Appenders.Select(CreateAppender).ToArray();
+        // 缺省与显式空/null 配置都沿用控制台默认输出；不修改调用方的配置集合。
+        var appenderConfigurations = config.Appenders is { Count: > 0 }
+            ? config.Appenders
+            : [new() { Type = "Console" }];
+        var appenders = appenderConfigurations.Select(CreateAppender).ToArray();
         return Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
         {
             builder.SetMinimumLevel(config.MinLevel);
-            foreach (var pair in config.LoggerLevels)
+            foreach (var pair in config.LoggerLevels ?? new Dictionary<string, LogLevel>(StringComparer.Ordinal))
             {
                 var category = pair.Key;
                 var level = pair.Value;
@@ -108,7 +112,7 @@ public static class LoggingConfigurationLoader
                                throw new InvalidOperationException("InnerAppender is required for Async appender.")),
                 config.BufferSize),
 
-            _ => throw new NotSupportedException($"Appender type '{config.Type}' is not supported.")
+            _ => throw new NotSupportedException($"Appender type '{config.Type}' is not supported."),
         };
     }
 
@@ -121,7 +125,7 @@ public static class LoggingConfigurationLoader
         {
             "default" => new DefaultLogFormatter(),
             "json" => new JsonLogFormatter(),
-            _ => throw new NotSupportedException($"Formatter type '{formatterType}' is not supported.")
+            _ => throw new NotSupportedException($"Formatter type '{formatterType}' is not supported."),
         };
     }
 
@@ -143,7 +147,7 @@ public static class LoggingConfigurationLoader
                 config.Filters?.Select(CreateFilter).ToArray() ??
                 throw new InvalidOperationException("Filters is required for Composite filter.")),
 
-            _ => throw new NotSupportedException($"Filter type '{config.Type}' is not supported.")
+            _ => throw new NotSupportedException($"Filter type '{config.Type}' is not supported."),
         };
     }
 }

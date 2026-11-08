@@ -13,7 +13,10 @@ namespace GFramework.Core.Ioc;
 public partial class MicrosoftDiContainer
 {
     /// <summary>自有标准容器共享给包装上下文的访问窗口，不作为可解析业务服务暴露。</summary>
-    internal global::GFramework.Core.Architectures.ArchitectureContextAccess? ContextAccess { get; set; }
+    internal global::GFramework.Core.Architectures.ArchitectureContextAccess? ContextAccess
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     只保护清理操作的发布；资源回调不在该锁或容器读写锁内执行。
@@ -42,12 +45,18 @@ public partial class MicrosoftDiContainer
     public void Dispose()
     {
         GetDisposalTask(asyncMode: false).GetAwaiter().GetResult();
+        if (_disposalTask is { IsCompletedSuccessfully: true })
+        {
+            GC.SuppressFinalize(this);
+        }
     }
 
     /// <summary>
     ///     异步释放根 provider 及其拥有的同步和异步资源。
     /// </summary>
     /// <returns>所有并发释放调用共享的清理操作。</returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1816",
+        Justification = "CompleteDisposalAsync suppresses finalization only after successful canonical cleanup; this alias must preserve the shared Task identity for concurrent callers.")]
     public ValueTask DisposeAsync()
     {
         return new ValueTask(GetDisposalTask(asyncMode: true));
@@ -85,6 +94,8 @@ public partial class MicrosoftDiContainer
     /// <param name="completion">已向调用方发布的共享完成源。</param>
     /// <param name="asyncMode">是否优先调用标准 provider 的异步释放入口。</param>
     /// <returns>内部清理过程；异常会传递给共享完成源。</returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1816",
+        Justification = "Only successful canonical disposal suppresses finalization before publishing the shared task; aliases and reentrant no-ops preserve Task identity.")]
     private async Task CompleteDisposalAsync(TaskCompletionSource<object?> completion, bool asyncMode)
     {
         _insideDisposal.Value = true;
@@ -108,6 +119,8 @@ public partial class MicrosoftDiContainer
             }
 
             _logger.LogInformation("IOC Container disposed");
+            // Only canonical successful cleanup may suppress finalizers; reentrant no-op aliases never do.
+            GC.SuppressFinalize(this);
             completion.TrySetResult(null);
         }
         catch (Exception exception)
@@ -124,7 +137,7 @@ public partial class MicrosoftDiContainer
     ///     等待现有解析退出，标记终态并移交本容器拥有的 provider；外部实例不会被逐项释放。
     /// </summary>
     /// <returns>需要由本次清理释放的根 provider；尚未构建时为空。</returns>
-    private IServiceProvider? DetachOwnedProvider()
+    private ServiceProvider? DetachOwnedProvider()
     {
         _lock.EnterWriteLock();
         try

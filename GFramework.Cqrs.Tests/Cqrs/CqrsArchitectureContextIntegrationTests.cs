@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Concurrent;
+using System.Globalization;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
@@ -197,7 +198,7 @@ public class CqrsArchitectureContextIntegrationTests
 
         // 验证架构上下文集成的性能开销在合理范围内。
         Assert.That(avgTime, Is.LessThan(5.0)); // 平均每个请求不超过5ms
-        Console.WriteLine($"Average time with context integration: {avgTime:F2}ms");
+        Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"Average time with context integration: {avgTime:F2}ms"));
     }
 
     /// <summary>
@@ -235,7 +236,7 @@ public class CqrsArchitectureContextIntegrationTests
 
         // 放宽性能要求，避免环境抖动导致偶发失败。
         Assert.That(avgCached, Is.LessThan(avgUncached * 2.5));
-        Console.WriteLine($"Uncached avg: {avgUncached:F2}ms, Cached avg: {avgCached:F2}ms");
+        Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"Uncached avg: {avgUncached:F2}ms, Cached avg: {avgCached:F2}ms"));
     }
 
     /// <summary>
@@ -284,7 +285,7 @@ public class CqrsArchitectureContextIntegrationTests
                 var request = new TestStateModificationRequest
                 {
                     SharedState = sharedState,
-                    Increment = 1
+                    Increment = 1,
                 };
                 await _context!.SendRequestAsync(request).ConfigureAwait(false);
             });
@@ -411,7 +412,7 @@ public class CqrsArchitectureContextIntegrationTests
         {
             TestNestedRequestHandler2.ExecutionCount++;
             // 模拟嵌套调用。
-            return new ValueTask<string>($"Nested execution completed at depth {request.Depth}");
+            return new ValueTask<string>(string.Create(CultureInfo.InvariantCulture, $"Nested execution completed at depth {request.Depth}"));
         }
     }
 
@@ -687,7 +688,10 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取或设置最近一次测试观察到的架构上下文。
         /// </summary>
-        public static IArchitectureContext? LastContext { get; set; }
+        public static IArchitectureContext? LastContext
+        {
+            get; set;
+        }
     }
 
     /// <summary>
@@ -703,7 +707,10 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取或设置最近一次解析得到的服务实例。
         /// </summary>
-        public static object? LastRetrievedService { get; set; }
+        public static object? LastRetrievedService
+        {
+            get; set;
+        }
     }
 
     /// <summary>
@@ -725,7 +732,10 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取请求携带的嵌套深度。
         /// </summary>
-        public int Depth { get; init; }
+        public int Depth
+        {
+            get; init;
+        }
     }
 
     /// <summary>
@@ -736,7 +746,10 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取或设置嵌套请求处理器的执行次数。
         /// </summary>
-        public static int ExecutionCount { get; set; }
+        public static int ExecutionCount
+        {
+            get; set;
+        }
     }
 
     /// <summary>
@@ -752,12 +765,18 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取或设置初始化次数。
         /// </summary>
-        public static int InitializationCount { get; set; }
+        public static int InitializationCount
+        {
+            get; set;
+        }
 
         /// <summary>
         /// 获取或设置释放次数。
         /// </summary>
-        public static int DisposalCount { get; set; }
+        public static int DisposalCount
+        {
+            get; set;
+        }
     }
 
     /// <summary>
@@ -768,7 +787,10 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取请求编号。
         /// </summary>
-        public int RequestId { get; init; }
+        public int RequestId
+        {
+            get; init;
+        }
     }
 
     /// <summary>
@@ -784,7 +806,10 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取或设置最近一次记录到的异常。
         /// </summary>
-        public static Exception? LastException { get; set; }
+        public static Exception? LastException
+        {
+            get; set;
+        }
     }
 
     /// <summary>
@@ -800,7 +825,10 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取请求编号。
         /// </summary>
-        public int Id { get; init; }
+        public int Id
+        {
+            get; init;
+        }
     }
 
     /// <summary>
@@ -811,7 +839,10 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取请求编号。
         /// </summary>
-        public int Id { get; init; }
+        public int Id
+        {
+            get; init;
+        }
     }
 
     /// <summary>
@@ -822,7 +853,10 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取请求编号。
         /// </summary>
-        public int Id { get; init; }
+        public int Id
+        {
+            get; init;
+        }
     }
 
     /// <summary>
@@ -855,12 +889,15 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取请求编号。
         /// </summary>
-        public int RequestId { get; init; }
+        public int RequestId
+        {
+            get; init;
+        }
 
         /// <summary>
         /// 获取用于记录执行顺序的共享集合。
         /// </summary>
-        public ICollection<int> OrderTracker { get; init; } = new List<int>();
+        public ICollection<int> OrderTracker { get; init; } = [];
     }
 
     /// <summary>
@@ -876,7 +913,10 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取要增加的计数值。
         /// </summary>
-        public int Increment { get; init; }
+        public int Increment
+        {
+            get; init;
+        }
     }
 
     /// <summary>
@@ -887,7 +927,10 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取或设置最近一次系统调用记录。
         /// </summary>
-        public static string? LastSystemCall { get; set; }
+        public static string? LastSystemCall
+        {
+            get; set;
+        }
     }
 
     /// <summary>
@@ -903,7 +946,10 @@ public class CqrsArchitectureContextIntegrationTests
         /// <summary>
         /// 获取请求返回的测试值。
         /// </summary>
-        public int Value { get; init; }
+        public int Value
+        {
+            get; init;
+        }
     }
 
     /// <summary>

@@ -27,10 +27,7 @@ public static class ContextAwareServiceExtensions
     /// <exception cref="InvalidOperationException">当指定服务未注册时抛出</exception>
     public static TService GetService<TService>(this IContextAware contextAware) where TService : class
     {
-        if (contextAware is null)
-        {
-            throw new ArgumentNullException(nameof(contextAware));
-        }
+        ArgumentNullException.ThrowIfNull(contextAware);
 
         var context = contextAware.GetContext();
         return GetRequiredComponent(context, static architectureContext => architectureContext.GetService<TService>(),
@@ -47,10 +44,7 @@ public static class ContextAwareServiceExtensions
     /// <exception cref="InvalidOperationException">当指定系统未注册时抛出</exception>
     public static TSystem GetSystem<TSystem>(this IContextAware contextAware) where TSystem : class, ISystem
     {
-        if (contextAware is null)
-        {
-            throw new ArgumentNullException(nameof(contextAware));
-        }
+        ArgumentNullException.ThrowIfNull(contextAware);
 
         var context = contextAware.GetContext();
         return GetRequiredComponent(context, static architectureContext => architectureContext.GetSystem<TSystem>(),
@@ -67,10 +61,7 @@ public static class ContextAwareServiceExtensions
     /// <exception cref="InvalidOperationException">当指定模型未注册时抛出</exception>
     public static TModel GetModel<TModel>(this IContextAware contextAware) where TModel : class, IModel
     {
-        if (contextAware is null)
-        {
-            throw new ArgumentNullException(nameof(contextAware));
-        }
+        ArgumentNullException.ThrowIfNull(contextAware);
 
         var context = contextAware.GetContext();
         return GetRequiredComponent(context, static architectureContext => architectureContext.GetModel<TModel>(),
@@ -87,10 +78,7 @@ public static class ContextAwareServiceExtensions
     /// <exception cref="InvalidOperationException">当指定工具未注册时抛出</exception>
     public static TUtility GetUtility<TUtility>(this IContextAware contextAware) where TUtility : class, IUtility
     {
-        if (contextAware is null)
-        {
-            throw new ArgumentNullException(nameof(contextAware));
-        }
+        ArgumentNullException.ThrowIfNull(contextAware);
 
         var context = contextAware.GetContext();
         return GetRequiredComponent(context, static architectureContext => architectureContext.GetUtility<TUtility>(),
@@ -111,10 +99,7 @@ public static class ContextAwareServiceExtensions
     public static IReadOnlyList<TService> GetServices<TService>(this IContextAware contextAware)
         where TService : class
     {
-        if (contextAware is null)
-        {
-            throw new ArgumentNullException(nameof(contextAware));
-        }
+        ArgumentNullException.ThrowIfNull(contextAware);
 
         var context = contextAware.GetContext();
         return context.GetServices<TService>();
@@ -130,10 +115,7 @@ public static class ContextAwareServiceExtensions
     public static IReadOnlyList<TSystem> GetSystems<TSystem>(this IContextAware contextAware)
         where TSystem : class, ISystem
     {
-        if (contextAware is null)
-        {
-            throw new ArgumentNullException(nameof(contextAware));
-        }
+        ArgumentNullException.ThrowIfNull(contextAware);
 
         var context = contextAware.GetContext();
         return context.GetSystems<TSystem>();
@@ -149,10 +131,7 @@ public static class ContextAwareServiceExtensions
     public static IReadOnlyList<TModel> GetModels<TModel>(this IContextAware contextAware)
         where TModel : class, IModel
     {
-        if (contextAware is null)
-        {
-            throw new ArgumentNullException(nameof(contextAware));
-        }
+        ArgumentNullException.ThrowIfNull(contextAware);
 
         var context = contextAware.GetContext();
         return context.GetModels<TModel>();
@@ -168,10 +147,7 @@ public static class ContextAwareServiceExtensions
     public static IReadOnlyList<TUtility> GetUtilities<TUtility>(this IContextAware contextAware)
         where TUtility : class, IUtility
     {
-        if (contextAware is null)
-        {
-            throw new ArgumentNullException(nameof(contextAware));
-        }
+        ArgumentNullException.ThrowIfNull(contextAware);
 
         var context = contextAware.GetContext();
         return context.GetUtilities<TUtility>();
@@ -187,10 +163,7 @@ public static class ContextAwareServiceExtensions
     public static IReadOnlyList<TService> GetServicesByPriority<TService>(this IContextAware contextAware)
         where TService : class
     {
-        if (contextAware is null)
-        {
-            throw new ArgumentNullException(nameof(contextAware));
-        }
+        ArgumentNullException.ThrowIfNull(contextAware);
 
         var context = contextAware.GetContext();
         return context.GetServicesByPriority<TService>();
@@ -206,10 +179,7 @@ public static class ContextAwareServiceExtensions
     public static IReadOnlyList<TSystem> GetSystemsByPriority<TSystem>(this IContextAware contextAware)
         where TSystem : class, ISystem
     {
-        if (contextAware is null)
-        {
-            throw new ArgumentNullException(nameof(contextAware));
-        }
+        ArgumentNullException.ThrowIfNull(contextAware);
 
         var context = contextAware.GetContext();
         return context.GetSystemsByPriority<TSystem>();
@@ -225,10 +195,7 @@ public static class ContextAwareServiceExtensions
     public static IReadOnlyList<TModel> GetModelsByPriority<TModel>(this IContextAware contextAware)
         where TModel : class, IModel
     {
-        if (contextAware is null)
-        {
-            throw new ArgumentNullException(nameof(contextAware));
-        }
+        ArgumentNullException.ThrowIfNull(contextAware);
 
         var context = contextAware.GetContext();
         return context.GetModelsByPriority<TModel>();
@@ -244,10 +211,7 @@ public static class ContextAwareServiceExtensions
     public static IReadOnlyList<TUtility> GetUtilitiesByPriority<TUtility>(this IContextAware contextAware)
         where TUtility : class, IUtility
     {
-        if (contextAware is null)
-        {
-            throw new ArgumentNullException(nameof(contextAware));
-        }
+        ArgumentNullException.ThrowIfNull(contextAware);
 
         var context = contextAware.GetContext();
         return context.GetUtilitiesByPriority<TUtility>();
@@ -257,10 +221,7 @@ public static class ContextAwareServiceExtensions
         Func<IArchitectureContext, TComponent> resolver, string componentKind)
         where TComponent : class
     {
-        if (context is null)
-        {
-            throw new ArgumentNullException(nameof(context));
-        }
+        ArgumentNullException.ThrowIfNull(context);
 
         var component = resolver(context);
         return component ?? throw new InvalidOperationException($"{componentKind} {typeof(TComponent)} not registered");

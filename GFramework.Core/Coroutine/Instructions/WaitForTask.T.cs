@@ -10,18 +10,13 @@ namespace GFramework.Core.Coroutine.Instructions;
 /// </summary>
 /// <typeparam name="T">任务结果类型。</typeparam>
 /// <remarks>该等待不拥有外部任务的取消权。</remarks>
-public sealed class WaitForTask<T> : IYieldInstruction, ICoroutineCompletionStatusSource, ICoroutineCompletionConsumer
+/// <remarks>
+///     创建一个观察已有 Task 的等待指令。
+/// </remarks>
+/// <param name="task">需要等待的任务。</param>
+public sealed class WaitForTask<T>(Task<T> task) : IYieldInstruction, ICoroutineCompletionStatusSource, ICoroutineCompletionConsumer
 {
-    private readonly Task<T> _task;
-
-    /// <summary>
-    ///     创建一个观察已有 Task 的等待指令。
-    /// </summary>
-    /// <param name="task">需要等待的任务。</param>
-    public WaitForTask(Task<T> task)
-    {
-        _task = task ?? throw new ArgumentNullException(nameof(task));
-    }
+    private readonly Task<T> _task = task ?? throw new ArgumentNullException(nameof(task));
 
     /// <summary>
     ///     获取已完成任务的结果。未完成时明确失败，避免阻塞游戏线程。

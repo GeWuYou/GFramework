@@ -15,31 +15,35 @@ namespace DodgeTheCreeps;
 /// <summary>Explicit game APIs and per-run data scopes for independently compiled desktop mods.</summary>
 public partial class DodgeApp
 {
-    private readonly List<Func<int, int>> _scoreModifiers = new();
+    private readonly List<Func<int, int>> _scoreModifiers = [];
     private ModSaveSession _modState = null!;
     private IGameDispatcher _gameDispatcher = null!;
 
     /// <summary>Shares exact contract and target assemblies while keeping mod dependencies private.</summary>
     private GameModHostOptions CreateModOptions() => new()
     {
-        GameId = "dodge-the-creeps", CodeApiVersion = "1.0.0", Dispatcher = _gameDispatcher,
-        SharedAssemblies = new[] { typeof(IDodgeModApi).Assembly, typeof(DodgeApp).Assembly },
+        GameId = "dodge-the-creeps",
+        CodeApiVersion = "1.0.0",
+        Dispatcher = _gameDispatcher,
+        SharedAssemblies = [typeof(IDodgeModApi).Assembly, typeof(DodgeApp).Assembly],
         TrustPolicy = stamp => _content.IsCodeApproved(stamp),
         CreateServices = context => new DodgeModServices(this, context.Package.Id),
-        Extensions = new[] { new HarmonyModExtension() }
+        Extensions = [new HarmonyModExtension()],
     };
 
     /// <summary>Applies API registrations in deterministic initialization order on the gameplay thread.</summary>
     private int ModifyScore(int increment)
     {
-        foreach (var modifier in _scoreModifiers.ToArray()) increment = modifier(increment);
+        foreach (var modifier in _scoreModifiers.ToArray())
+            increment = modifier(increment);
         return increment;
     }
 
     /// <summary>Distinguishes mod-host startup from per-run data lifetime with an actionable contract error.</summary>
     private ModSaveScope ActiveModState(string modId)
     {
-        if (_world is not { IsRunning: true }) throw new InvalidOperationException("Start or load a run before accessing mod save data.");
+        if (_world is not { IsRunning: true })
+            throw new InvalidOperationException("Start or load a run before accessing mod save data.");
         return _modState.ForMod(modId);
     }
 
@@ -70,7 +74,7 @@ public partial class DodgeApp
             ArgumentException.ThrowIfNullOrWhiteSpace(key);
             ArgumentNullException.ThrowIfNull(value);
             var scope = app.ActiveModState(modId);
-            var data = scope.Read<JObject>() ?? new JObject();
+            var data = scope.Read<JObject>() ?? [];
             data[key] = JToken.FromObject(value);
             scope.Write(data);
         }
@@ -84,7 +88,8 @@ public partial class DodgeApp
         /// <inheritdoc />
         public void Dispose()
         {
-            if (_disposed) return;
+            if (_disposed)
+                return;
             _disposed = true;
             registrations.Remove(modifier);
         }

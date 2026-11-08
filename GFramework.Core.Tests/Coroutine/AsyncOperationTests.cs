@@ -135,19 +135,19 @@ public sealed class AsyncOperationTests
     {
         var operation = new AsyncOperation();
         var scheduler = new CoroutineScheduler(new FakeTimeSource());
-        var continued = false;
+        var continued = new global::System.Runtime.CompilerServices.StrongBox<bool>(value: false);
 
         IEnumerator<IYieldInstruction> Routine()
         {
             yield return operation;
-            continued = true;
+            continued.Value = true;
         }
 
         var handle = scheduler.Run(Routine());
         operation.SetException(new InvalidOperationException("failure"));
         scheduler.Update();
 
-        Assert.That(continued, Is.False);
+        Assert.That(continued.Value, Is.False);
         Assert.That(scheduler.TryGetCompletionStatus(handle, out var status), Is.True);
         Assert.That(status, Is.EqualTo(CoroutineCompletionStatus.Faulted));
     }

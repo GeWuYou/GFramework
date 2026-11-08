@@ -12,19 +12,40 @@ public sealed class DodgeMobProgress
     /// <summary>Gets or sets the stable enemy definition used to resolve the active session's media.</summary>
     public string EnemyId { get; set; } = "base:walker";
     /// <summary>Gets or sets logical horizontal position.</summary>
-    public float X { get; set; }
+    public float X
+    {
+        get; set;
+    }
     /// <summary>Gets or sets logical vertical position.</summary>
-    public float Y { get; set; }
+    public float Y
+    {
+        get; set;
+    }
     /// <summary>Gets or sets horizontal movement per second.</summary>
-    public float VelocityX { get; set; }
+    public float VelocityX
+    {
+        get; set;
+    }
     /// <summary>Gets or sets vertical movement per second.</summary>
-    public float VelocityY { get; set; }
+    public float VelocityY
+    {
+        get; set;
+    }
     /// <summary>Gets or sets the original tutorial appearance, zero through two.</summary>
-    public int Appearance { get; set; }
+    public int Appearance
+    {
+        get; set;
+    }
     /// <summary>Gets or sets the current animation frame.</summary>
-    public int AnimationFrame { get; set; }
+    public int AnimationFrame
+    {
+        get; set;
+    }
     /// <summary>Gets or sets progress through the current frame.</summary>
-    public float AnimationProgress { get; set; }
+    public float AnimationProgress
+    {
+        get; set;
+    }
 
     /// <summary>Checks finite board coordinates, bounded speed and animation state before native allocation.</summary>
     /// <exception cref="InvalidOperationException">Any portable enemy state is invalid.</exception>

@@ -34,7 +34,7 @@ public sealed class GeneratedStreamInvokerBenchmarkRegistry :
         new GFramework.Cqrs.CqrsStreamInvokerDescriptorEntry(
             typeof(StreamInvokerBenchmarks.GeneratedBenchmarkStreamRequest),
             typeof(StreamInvokerBenchmarks.GeneratedBenchmarkResponse),
-            Descriptor)
+            Descriptor),
     ];
 
     /// <summary>
@@ -45,11 +45,7 @@ public sealed class GeneratedStreamInvokerBenchmarkRegistry :
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(logger);
 
-        services.AddTransient(
-            typeof(IStreamRequestHandler<
-                StreamInvokerBenchmarks.GeneratedBenchmarkStreamRequest,
-                StreamInvokerBenchmarks.GeneratedBenchmarkResponse>),
-            typeof(StreamInvokerBenchmarks.GeneratedBenchmarkStreamHandler));
+        services.AddTransient<IStreamRequestHandler<StreamInvokerBenchmarks.GeneratedBenchmarkStreamRequest, StreamInvokerBenchmarks.GeneratedBenchmarkResponse>, StreamInvokerBenchmarks.GeneratedBenchmarkStreamHandler>();
         logger.LogDebug("Registered generated stream invoker benchmark handler.");
     }
 

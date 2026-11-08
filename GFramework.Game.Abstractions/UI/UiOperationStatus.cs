@@ -11,5 +11,5 @@ public enum UiOperationStatus
     /// <summary>A guard refused the request without changing state.</summary>
     Rejected,
     /// <summary>The requested state already exists or the target is no longer open.</summary>
-    NoOp
+    NoOp,
 }

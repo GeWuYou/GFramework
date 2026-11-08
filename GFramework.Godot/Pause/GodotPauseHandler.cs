@@ -10,18 +10,13 @@ namespace GFramework.Godot.Pause;
 /// Godot 引擎的暂停处理器
 /// 响应暂停栈状态变化，控制 SceneTree.Paused
 /// </summary>
-public class GodotPauseHandler : IPauseHandler
+/// <remarks>
+/// 创建 Godot 暂停处理器
+/// </remarks>
+/// <param name="tree">场景树</param>
+public class GodotPauseHandler(SceneTree tree) : IPauseHandler
 {
-    private readonly SceneTree _tree;
-
-    /// <summary>
-    /// 创建 Godot 暂停处理器
-    /// </summary>
-    /// <param name="tree">场景树</param>
-    public GodotPauseHandler(SceneTree tree)
-    {
-        _tree = tree ?? throw new ArgumentNullException(nameof(tree));
-    }
+    private readonly SceneTree _tree = tree ?? throw new ArgumentNullException(nameof(tree));
 
     /// <summary>
     /// 处理器优先级

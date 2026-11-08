@@ -13,22 +13,34 @@ public sealed class TrackingStateV2 : IState
     /// <summary>
     ///     获取进入状态被调用的次数。
     /// </summary>
-    public int EnterCallCount { get; private set; }
+    public int EnterCallCount
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取退出状态被调用的次数。
     /// </summary>
-    public int ExitCallCount { get; private set; }
+    public int ExitCallCount
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取进入此状态的来源状态。
     /// </summary>
-    public IState? EnterFrom { get; private set; }
+    public IState? EnterFrom
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取从此状态退出的目标状态。
     /// </summary>
-    public IState? ExitTo { get; private set; }
+    public IState? ExitTo
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     进入当前状态时调用的方法。

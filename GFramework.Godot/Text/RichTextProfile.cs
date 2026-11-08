@@ -40,14 +40,15 @@ public partial class RichTextProfile : Resource
     {
         ArgumentNullException.ThrowIfNull(plan);
 
-        var profile = new RichTextProfile();
-        profile.Effects = plan.Effects
-            .Select(static entry => new RichTextEffectEntry
-            {
-                Key = entry.Key,
-                Enabled = entry.Enabled
-            })
-            .ToArray();
+        var profile = new RichTextProfile
+        {
+            Effects = [.. plan.Effects
+                .Select(static entry => new RichTextEffectEntry
+                {
+                    Key = entry.Key,
+                    Enabled = entry.Enabled,
+                })],
+        };
         return profile;
     }
 }

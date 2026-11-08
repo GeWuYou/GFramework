@@ -9,11 +9,12 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
-from ci_impact import ROOT, FLAGS, Snapshot, revision
+from ci_impact import ROOT, FLAGS, Snapshot, normalize, revision
 
 JOBS = {"dotnet": "build-and-test", "tool": "config-tool", "docs": "docs", "lint": "megalinter", "codeql": "codeql"}
 
@@ -78,10 +79,29 @@ def pack(plan: dict) -> None:
     command(["python3", "scripts/validate-runtime-generator-boundaries.py", "--package-dir", str(output)])
 
 
+def full_test_projects(root: Path) -> list[str]:
+    """Read explicit test declarations without rebuilding the graph which caused full fallback."""
+    snapshot = Snapshot(root, "HEAD")
+    members = re.findall(r'^Project\([^\n]+?= "[^"]+", "([^"]+\.csproj)"',
+                         snapshot.text("GFramework.sln"), re.M)
+    if not members:
+        raise ValueError("Solution has no projects")
+    selected = set()
+    for member in members:
+        path = normalize("", member)
+        tree = ET.fromstring(snapshot.text(path))
+        # Test projects explicitly declare IsTestProject in this repository. Imports and references
+        # may contain arbitrary MSBuild expressions; full execution must not expand those graph inputs.
+        if any(element.tag.split("}")[-1] == "IsTestProject"
+               and (element.text or "").strip().lower() == "true" for element in tree.iter()):
+            selected.add(path)
+    return sorted(selected)
+
+
 def tests(plan: dict) -> int:
     selected = plan["test_projects"]
     if plan["full"]:
-        selected = sorted(p for p, value in Snapshot(ROOT, "HEAD").projects.items() if value["test"])
+        selected = full_test_projects(ROOT)
     if not selected:
         print("No affected test projects; no test report generated")
         return 0
@@ -167,7 +187,7 @@ def main() -> int:
         else:
             return tests(plan)
         return 0
-    except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
+    except (ValueError, KeyError, OSError, ET.ParseError, subprocess.SubprocessError) as error:
         print(str(error), file=sys.stderr)
         return 1
 

@@ -19,15 +19,9 @@ namespace GFramework.Godot.Scene;
 ///     Control 场景行为类，用于管理 UI 场景节点的生命周期。
 ///     适用于基于 Control 的 UI 场景元素。
 /// </summary>
-public sealed class ControlSceneBehavior : SceneBehaviorBase<Control>
-{
-    /// <summary>
-    ///     初始化 ControlSceneBehavior 实例。
-    /// </summary>
-    /// <param name="owner">UI 场景节点的所有者实例。</param>
-    /// <param name="key">场景的唯一标识键。</param>
-    public ControlSceneBehavior(Control owner, string key)
-        : base(owner, key)
-    {
-    }
-}
+/// <remarks>
+///     初始化 ControlSceneBehavior 实例。
+/// </remarks>
+/// <param name="owner">UI 场景节点的所有者实例。</param>
+/// <param name="key">场景的唯一标识键。</param>
+public sealed class ControlSceneBehavior(Control owner, string key) : SceneBehaviorBase<Control>(owner, key);

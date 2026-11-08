@@ -19,7 +19,7 @@ public sealed class ContentPackDiscovery : IContentPackSource
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
-        MaxDepth = 32
+        MaxDepth = 32,
     };
 
     /// <inheritdoc />
@@ -42,7 +42,7 @@ public sealed class ContentPackDiscovery : IContentPackSource
                 ContentPack.RejectLink(root);
                 var directories = File.Exists(Path.Combine(root, "content-pack.json"))
                     ? new[] { root }
-                    : Directory.GetDirectories(root).OrderBy(static path => path, StringComparer.Ordinal).ToArray();
+                    : [.. Directory.GetDirectories(root).Order(StringComparer.Ordinal)];
                 foreach (var directory in directories)
                 {
                     inspectedPath = Path.GetFullPath(directory);
@@ -56,7 +56,9 @@ public sealed class ContentPackDiscovery : IContentPackSource
             {
                 throw new ContentLoadException(new ContentLoadDiagnostic
                 {
-                    Code = "InvalidPackagePath", FilePath = inspectedPath, Detail = exception.Message
+                    Code = "InvalidPackagePath",
+                    FilePath = inspectedPath,
+                    Detail = exception.Message,
                 }, exception);
             }
         }
@@ -78,7 +80,7 @@ public sealed class ContentPackDiscovery : IContentPackSource
             ValidateManifest(manifest);
             var fingerprint = await ComputeFingerprintAsync(root, cancellationToken).ConfigureAwait(false);
             var package = new ContentPack(root, manifest, fingerprint);
-            foreach (var path in manifest.ContentFiles.Concat(manifest.ResourcePacks).Concat(manifest.Code is null ? Array.Empty<string>() : new[] { manifest.Code.AssemblyPath }))
+            foreach (var path in manifest.ContentFiles.Concat(manifest.ResourcePacks).Concat(manifest.Code is null ? [] : new[] { manifest.Code.AssemblyPath }))
             {
                 if (!File.Exists(package.GetFilePath(path)))
                     throw new FileNotFoundException("A declared content file was not found.", path);
@@ -91,8 +93,11 @@ public sealed class ContentPackDiscovery : IContentPackSource
         {
             throw new ContentLoadException(new ContentLoadDiagnostic
             {
-                Code = "InvalidManifest", PackId = manifest?.Id, PackVersion = manifest?.Version,
-                FilePath = manifestPath, Detail = $"Cannot discover package: {exception.Message}"
+                Code = "InvalidManifest",
+                PackId = manifest?.Id,
+                PackVersion = manifest?.Version,
+                FilePath = manifestPath,
+                Detail = $"Cannot discover package: {exception.Message}",
             }, exception);
         }
     }
@@ -123,7 +128,7 @@ public sealed class ContentPackDiscovery : IContentPackSource
             ContentVersionRules.Validate(code.ApiVersions);
             ArgumentNullException.ThrowIfNull(code.RequiredCapabilities, nameof(manifest));
             if (code.RequiredCapabilities.Any(static name => !ContentId.IsCanonicalSegment(name)) ||
-                code.RequiredCapabilities.Distinct(StringComparer.Ordinal).Count() != code.RequiredCapabilities.Count)
+                code.RequiredCapabilities.Distinct(StringComparer.Ordinal).Take(code.RequiredCapabilities.Count + 1).Count() != code.RequiredCapabilities.Count)
                 throw new ArgumentException("Code capabilities must have unique canonical names.", nameof(manifest));
         }
         var dependencyIds = new HashSet<string>(StringComparer.Ordinal);
@@ -138,8 +143,8 @@ public sealed class ContentPackDiscovery : IContentPackSource
                 throw new ArgumentException("Incompatible package IDs must be canonical.", nameof(manifest));
         foreach (var path in manifest.ContentFiles.Concat(manifest.ResourcePacks))
             ContentPack.ValidateRelativePath(path);
-        if (manifest.ContentFiles.Distinct(StringComparer.Ordinal).Count() != manifest.ContentFiles.Count ||
-            manifest.ResourcePacks.Distinct(StringComparer.Ordinal).Count() != manifest.ResourcePacks.Count)
+        if (manifest.ContentFiles.Distinct(StringComparer.Ordinal).Take(manifest.ContentFiles.Count + 1).Count() != manifest.ContentFiles.Count ||
+            manifest.ResourcePacks.Distinct(StringComparer.Ordinal).Take(manifest.ResourcePacks.Count + 1).Count() != manifest.ResourcePacks.Count)
             throw new ArgumentException("Content entrypoint paths cannot be duplicated.", nameof(manifest));
         if (manifest.ContentFiles.Any(static path => !path.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase) &&
                 !path.EndsWith(".yml", StringComparison.OrdinalIgnoreCase)) ||
@@ -164,8 +169,10 @@ public sealed class ContentPackDiscovery : IContentPackSource
             foreach (var entry in Directory.EnumerateFileSystemEntries(directory))
             {
                 ContentPack.RejectLink(entry);
-                if (Directory.Exists(entry)) pending.Push(entry);
-                else files.Add(entry);
+                if (Directory.Exists(entry))
+                    pending.Push(entry);
+                else
+                    files.Add(entry);
                 if (++entryCount > 10000)
                     throw new IOException("A package cannot exceed 10000 files and directories.");
             }
@@ -178,7 +185,7 @@ public sealed class ContentPackDiscovery : IContentPackSource
             hash.AppendData(Encoding.UTF8.GetBytes(relative + "\0"));
             var length = new FileInfo(file).Length;
             hash.AppendData(Encoding.UTF8.GetBytes(length.ToString(System.Globalization.CultureInfo.InvariantCulture) + "\0"));
-            var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, buffer.Length, true);
+            var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, buffer.Length, useAsync: true);
             await using (stream.ConfigureAwait(false))
             {
                 int count;

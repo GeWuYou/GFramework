@@ -18,13 +18,15 @@ public sealed class BasicMod : IGameMod
     {
         _id = context.Package.Id;
         _observe = (Action<string>?)context.Services.GetService(typeof(Action<string>));
-        _observe?.Invoke(_id + ":init:" + FixturePrivate.VersionInfo.Value);
+        _observe?.Invoke(_id + ":init:" + FixturePrivate.VersionInfo.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
         context.Own(new CallbackDisposable(() =>
         {
             _observe?.Invoke(_id + ":dispose");
-            if (string.Equals(_id, "dispose-failing", StringComparison.Ordinal)) throw new InvalidOperationException("Fixture resource cleanup failed.");
+            if (string.Equals(_id, "dispose-failing", StringComparison.Ordinal))
+                throw new InvalidOperationException("Fixture resource cleanup failed.");
         }));
-        if (string.Equals(_id, "failing", StringComparison.Ordinal)) throw new InvalidOperationException("Fixture initialization failed.");
+        if (string.Equals(_id, "failing", StringComparison.Ordinal))
+            throw new InvalidOperationException("Fixture initialization failed.");
         return Task.CompletedTask;
     }
     /// <inheritdoc />
@@ -37,7 +39,8 @@ public sealed class BasicMod : IGameMod
     public Task StopAsync(CancellationToken cancellationToken)
     {
         _observe?.Invoke(_id + ":stop");
-        if (string.Equals(_id, "stop-failing", StringComparison.Ordinal)) throw new InvalidOperationException("Fixture stop failed.");
+        if (string.Equals(_id, "stop-failing", StringComparison.Ordinal))
+            throw new InvalidOperationException("Fixture stop failed.");
         return Task.CompletedTask;
     }
     /// <summary>Reports tracked resource cleanup across the real assembly boundary.</summary>

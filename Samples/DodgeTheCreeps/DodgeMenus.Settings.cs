@@ -15,12 +15,12 @@ internal sealed partial class DodgeMenus
 {
     // #region tutorial-settings
     /// <summary>Creates an audio/display draft; language changes are persisted immediately in place.</summary>
-    private Control Settings(UiViewContext context) => new SettingsEditor(this, context).Build();
+    private SettingsRoot Settings(UiViewContext context) => new SettingsEditor(this, context).Build();
     // #endregion tutorial-settings
 
     private Control SettingsUnsaved(UiDialogContext<SettingsCloseChoice> context)
     {
-        var root = Page("SettingsUnsaved", out var column, false);
+        var root = Page("SettingsUnsaved", out var column, background: false);
         Title(column, "unsaved_title", 26);
         Caption(column, "unsaved_question");
         Button(column, "ApplySettingsAndExit", "apply_changes", () => context.CompleteAsync(SettingsCloseChoice.Apply));
@@ -54,14 +54,15 @@ internal sealed partial class DodgeMenus
         }
 
         /// <summary>Builds controls once so language changes preserve focus, drafts and route ownership.</summary>
-        internal Control Build()
+        internal SettingsRoot Build()
         {
             var column = CreateLayout();
             _menus.Title(column, "settings", 28);
             var scroll = new ScrollContainer
             {
-                CustomMinimumSize = new Vector2(350, 300), SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-                HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
+                CustomMinimumSize = new Vector2(350, 300),
+                SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+                HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
             };
             var body = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             body.AddThemeConstantOverride("separation", 7);
@@ -98,14 +99,18 @@ internal sealed partial class DodgeMenus
         {
             var slider = new HSlider
             {
-                Name = name, MinValue = 0, MaxValue = 1, Step = 0.05, Value = value,
-                CustomMinimumSize = new Vector2(350, 30)
+                Name = name,
+                MinValue = 0,
+                MaxValue = 1,
+                Step = 0.05,
+                Value = value,
+                CustomMinimumSize = new Vector2(350, 30),
             };
             var label = new Label { HorizontalAlignment = HorizontalAlignment.Center };
             label.AddThemeFontSizeOverride("font_size", 15);
             label.AddThemeColorOverride("font_color", new Color("b2c1d8"));
             void RefreshLabel() => label.Text = _menus._app.Text.Get(key) + "  " +
-                Math.Round(slider.Value * 100).ToString(CultureInfo.InvariantCulture) + "%";
+                Math.Round(slider.Value * 100, MidpointRounding.ToEven).ToString(CultureInfo.InvariantCulture) + "%";
             _menus._app.Text.Bind(label, RefreshLabel);
             column.AddChild(label);
             column.AddChild(slider);
@@ -142,9 +147,10 @@ internal sealed partial class DodgeMenus
         {
             for (var index = 0; index < DodgePreferences.ResolutionChoices.Count; index++)
             {
-                var size = DodgePreferences.ResolutionChoices[index];
-                _resolution.AddItem(FormattableString.Invariant($"{size.Width} × {size.Height}"));
-                if (size.Width == applied.ResolutionWidth && size.Height == applied.ResolutionHeight) _resolution.Select(index);
+                var (Width, Height) = DodgePreferences.ResolutionChoices[index];
+                _resolution.AddItem(string.Create(CultureInfo.InvariantCulture, $"{Width} × {Height}"));
+                if (Width == applied.ResolutionWidth && Height == applied.ResolutionHeight)
+                    _resolution.Select(index);
             }
             _menus._app.Text.Bind(_resolution, () => _resolution.SetItemText(1, _menus._app.Text.Get("resolution_portrait")));
         }
@@ -159,7 +165,10 @@ internal sealed partial class DodgeMenus
             _language.ItemSelected += index => _menus._app.RunAction(async () =>
             {
                 _language.Disabled = true;
-                try { await _menus._app.SetLanguageAsync(index == 1 ? "zh-CN" : "en").ConfigureAwait(true); }
+                try
+                {
+                    await _menus._app.SetLanguageAsync(index == 1 ? "zh-CN" : "en").ConfigureAwait(true);
+                }
                 finally { if (GodotObject.IsInstanceValid(_language)) _language.Disabled = false; }
             });
             column.AddChild(_language);
@@ -174,7 +183,10 @@ internal sealed partial class DodgeMenus
             button.Pressed += () => _menus._app.RunAction(async () =>
             {
                 button.Disabled = true;
-                try { await action().ConfigureAwait(true); }
+                try
+                {
+                    await action().ConfigureAwait(true);
+                }
                 finally { if (GodotObject.IsInstanceValid(button)) button.Disabled = false; }
             });
         }
@@ -184,12 +196,17 @@ internal sealed partial class DodgeMenus
             var index = _resolution.Selected;
             if (index < 0 || index >= DodgePreferences.ResolutionChoices.Count)
                 throw new InvalidOperationException("Select a supported output resolution.");
-            var size = DodgePreferences.ResolutionChoices[index];
+            var (Width, Height) = DodgePreferences.ResolutionChoices[index];
             return new DodgePreferences
             {
-                Volume = (float)_master.Value, BgmVolume = (float)_bgm.Value, SfxVolume = (float)_sfx.Value,
-                Fullscreen = _display.Selected == 0, ResolutionWidth = size.Width, ResolutionHeight = size.Height,
-                Language = _menus._app.Preferences.Language, BestScore = _menus._app.Preferences.BestScore
+                Volume = (float)_master.Value,
+                BgmVolume = (float)_bgm.Value,
+                SfxVolume = (float)_sfx.Value,
+                Fullscreen = _display.Selected == 0,
+                ResolutionWidth = Width,
+                ResolutionHeight = Height,
+                Language = _menus._app.Preferences.Language,
+                BestScore = _menus._app.Preferences.BestScore,
             };
         }
 
@@ -215,16 +232,19 @@ internal sealed partial class DodgeMenus
 
         private async Task RequestCloseAsync()
         {
-            if (_closing) return;
+            if (_closing)
+                return;
             _closing = true;
             try
             {
                 var draft = ReadDraft();
                 if (_menus._app.HasPendingSettings(draft))
                 {
-                    var choice = await _menus._app.Ui.ShowDialogAsync(DodgeRoutes.SettingsUnsaved, false).ConfigureAwait(true);
-                    if (!choice.Accepted || choice.Value == SettingsCloseChoice.Cancel) return;
-                    if (choice.Value == SettingsCloseChoice.Apply) await _menus._app.SaveSettingsAsync(draft).ConfigureAwait(true);
+                    var choice = await _menus._app.Ui.ShowDialogAsync(DodgeRoutes.SettingsUnsaved, args: false).ConfigureAwait(true);
+                    if (!choice.Accepted || choice.Value == SettingsCloseChoice.Cancel)
+                        return;
+                    if (choice.Value == SettingsCloseChoice.Apply)
+                        await _menus._app.SaveSettingsAsync(draft).ConfigureAwait(true);
                 }
                 await _context.CloseAsync().ConfigureAwait(true);
             }
@@ -233,7 +253,8 @@ internal sealed partial class DodgeMenus
 
         private void RefreshDirtyStatus()
         {
-            if (_master is null || _bgm is null || _sfx is null || _display is null || _resolution is null) return;
+            if (_master is null || _bgm is null || _sfx is null || _display is null || _resolution is null)
+                return;
             _menus.SetStatus(() => _menus._app.Text.Get(_menus._app.HasPendingSettings(ReadDraft()) ? "settings_unsaved_hint" : "settings_hint"));
         }
     }
@@ -242,13 +263,17 @@ internal sealed partial class DodgeMenus
     private sealed partial class SettingsRoot : Control, IUiActionTarget
     {
         /// <summary>Gets or sets the observed close-request scheduler supplied by this view's owner.</summary>
-        internal Action? RequestClose { get; set; }
+        internal Action? RequestClose
+        {
+            get; set;
+        }
 
         /// <inheritdoc />
         public Task<bool> HandleActionAsync(UiInputAction action, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (action != UiInputAction.Cancel) return Task.FromResult(false);
+            if (action != UiInputAction.Cancel)
+                return Task.FromResult(false);
             // DispatchAction owns the UI service's serialized operation. A native deferred
             // callback leaves that operation's execution context before requesting another
             // route, rather than reentering its queue from the action-target callback.

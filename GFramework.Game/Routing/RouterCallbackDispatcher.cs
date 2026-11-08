@@ -24,8 +24,8 @@ internal static class RouterCallbackDispatcher
                 if (executionContext is null)
                     Start();
                 else
-                    ExecutionContext.Run(executionContext, _ => Start(), null);
-            }, null);
+                    ExecutionContext.Run(executionContext, _ => Start(), state: null);
+            }, state: null);
         }
         catch (Exception exception)
         {

@@ -32,7 +32,8 @@ public sealed partial class ContentCatalogLoader
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
         ArgumentNullException.ThrowIfNull(keySelector);
-        if (_started) throw new InvalidOperationException("Content table registration is closed after loading starts.");
+        if (_started)
+            throw new InvalidOperationException("Content table registration is closed after loading starts.");
         if (!_definitions.TryAdd(tableName, new ContentTableDefinition<T>(tableName, schemaPath, keySelector)))
             throw new InvalidOperationException($"Content table '{tableName}' is already registered.");
         return this;
@@ -43,7 +44,7 @@ public sealed partial class ContentCatalogLoader
     /// <param name="cancellationToken">Cancels preparation; no catalog is published on cancellation.</param>
     /// <returns>A fully validated content session.</returns>
     public Task<ContentCatalog> LoadAsync(ContentLoadPlan plan, CancellationToken cancellationToken = default)
-        => LoadAsync(plan, null, cancellationToken);
+        => LoadAsync(plan, admission: null, cancellationToken);
 
     /// <summary>Loads a plan whose code was approved and loaded before native resource preparation.</summary>
     /// <param name="plan">The exact plan used to prepare the mod host.</param>
@@ -56,7 +57,8 @@ public sealed partial class ContentCatalogLoader
         ArgumentNullException.ThrowIfNull(plan);
         if (plan.Packages.Any(static pack => pack.Manifest.Code is not null))
         {
-            if (admission is null) throw new InvalidOperationException("Code packages require explicit GameModHost admission.");
+            if (admission is null)
+                throw new InvalidOperationException("Code packages require explicit GameModHost admission.");
             admission.Validate(plan);
         }
         _started = true;
@@ -94,8 +96,10 @@ public sealed partial class ContentCatalogLoader
             {
                 throw new ContentLoadException(new ContentLoadDiagnostic
                 {
-                    Code = "PackageChanged", PackId = package.Manifest.Id, PackVersion = package.Manifest.Version,
-                    Detail = exception.Message
+                    Code = "PackageChanged",
+                    PackId = package.Manifest.Id,
+                    PackVersion = package.Manifest.Version,
+                    Detail = exception.Message,
                 }, exception);
             }
         }
@@ -110,23 +114,29 @@ public sealed partial class ContentCatalogLoader
         Dictionary<(ContentReference Reference, string Field), ContentSource> fields, CancellationToken cancellationToken)
     {
         JArray operations;
-        try { operations = ContentDocumentParser.Parse(await pack.ReadTextAsync(file, cancellationToken).ConfigureAwait(false)); }
+        try
+        {
+            operations = ContentDocumentParser.Parse(await pack.ReadTextAsync(file, cancellationToken).ConfigureAwait(false));
+        }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
             ArgumentException or InvalidOperationException or YamlDotNet.Core.YamlException)
         {
             throw Error("InvalidContentFile", new ContentSource(pack.Manifest.Id, pack.Manifest.Version, file, 0),
-                null, null, exception.Message, exception);
+reference: null, field: null, exception.Message, exception);
         }
         for (var index = 0; index < operations.Count; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var source = new ContentSource(pack.Manifest.Id, pack.Manifest.Version, file, index);
-            try { ApplyOperation(operations[index], source, rows, sources, fields); }
+            try
+            {
+                ApplyOperation(operations[index], source, rows, sources, fields);
+            }
             catch (ContentLoadException) { throw; }
             catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
             {
-                throw Error("InvalidOperation", source, null, null, exception.Message, exception);
+                throw Error("InvalidOperation", source, reference: null, field: null, exception.Message, exception);
             }
         }
     }
@@ -143,27 +153,27 @@ public sealed partial class ContentCatalogLoader
         var id = new ContentId(RequiredString(mapping, "id"));
         var reference = new ContentReference(tableName, id);
         if (!_definitions.ContainsKey(tableName))
-            throw Error("UnknownTable", source, reference, null, $"Table '{tableName}' is not registered by the game.");
+            throw Error("UnknownTable", source, reference, field: null, $"Table '{tableName}' is not registered by the game.");
         rows.TryGetValue(reference, out var existing);
         if (string.Equals(op, "add", StringComparison.Ordinal) &&
             (!string.Equals(id.PackId, source.PackId, StringComparison.Ordinal) || existing is not null))
-            throw Error("DuplicateOrForeignContent", source, reference, null,
+            throw Error("DuplicateOrForeignContent", source, reference, field: null,
                 "Add requires a new ID owned by the contributing package; use replace or patch for existing content.");
         if (op is "replace" or "patch" or "remove" && existing is null)
-            throw Error("MissingContentTarget", source, reference, null, $"Cannot {op} missing content '{id}'.");
+            throw Error("MissingContentTarget", source, reference, field: null, $"Cannot {op} missing content '{id}'.");
         if (string.Equals(op, "remove", StringComparison.Ordinal))
         {
             if (mapping.ContainsKey("value"))
-                throw Error("InvalidOperation", source, reference, null, "Remove cannot contain a value.");
+                throw Error("InvalidOperation", source, reference, field: null, "Remove cannot contain a value.");
             rows.Remove(reference);
             RemoveFieldSources(fields, reference, string.Empty);
         }
         else
         {
             if (op is not "add" and not "replace" and not "patch")
-                throw Error("UnknownOperation", source, reference, null, $"Unknown content operation '{op}'.");
+                throw Error("UnknownOperation", source, reference, field: null, $"Unknown content operation '{op}'.");
             if (mapping["value"] is not JObject value)
-                throw Error("InvalidOperation", source, reference, null, "Add, replace and patch need an object value.");
+                throw Error("InvalidOperation", source, reference, field: null, "Add, replace and patch need an object value.");
             if (string.Equals(op, "patch", StringComparison.Ordinal))
             {
                 var merged = (JObject)existing!.DeepClone();
@@ -179,7 +189,7 @@ public sealed partial class ContentCatalogLoader
         }
         if (!sources.TryGetValue(reference, out var history))
         {
-            history = new List<ContentSource>();
+            history = [];
             sources.Add(reference, history);
         }
         history.Add(source);
@@ -206,7 +216,7 @@ public sealed partial class ContentCatalogLoader
             {
                 if (target[property.Name] is not JObject existing)
                 {
-                    existing = new JObject();
+                    existing = [];
                     target[property.Name] = existing;
                     RemoveFieldSources(fields, reference, path);
                     fields[(reference, path)] = source;
@@ -226,7 +236,8 @@ public sealed partial class ContentCatalogLoader
         Dictionary<(ContentReference Reference, string Field), ContentSource> fields)
     {
         fields[(reference, path)] = source;
-        if (token is not JObject mapping) return;
+        if (token is not JObject mapping)
+            return;
         foreach (var property in mapping.Properties())
             RecordFields(property.Value, reference, path.Length == 0 ? property.Name : path + "." + property.Name, source, fields);
     }
@@ -244,7 +255,13 @@ public sealed partial class ContentCatalogLoader
         string? field, string detail, Exception? inner = null)
         => new(new ContentLoadDiagnostic
         {
-            Code = code, PackId = source.PackId, PackVersion = source.PackVersion, FilePath = source.FilePath,
-            TableName = reference?.TableName, ContentId = reference?.Id.ToString(), FieldPath = field, Detail = detail
+            Code = code,
+            PackId = source.PackId,
+            PackVersion = source.PackVersion,
+            FilePath = source.FilePath,
+            TableName = reference?.TableName,
+            ContentId = reference?.Id.ToString(),
+            FieldPath = field,
+            Detail = detail,
         }, inner);
 }

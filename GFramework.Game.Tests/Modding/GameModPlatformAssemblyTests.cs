@@ -49,7 +49,7 @@ public sealed class GameModPlatformAssemblyTests
     public void MissingRuntimeMetadata_FailsClosed()
     {
         var error = Assert.Throws<InvalidOperationException>(() => GameModPlatformAssemblies.Read(
-            new[] { "/host/Newtonsoft.Json.dll" }, Array.Empty<string>()));
+            ["/host/Newtonsoft.Json.dll"], []));
         Assert.That(error!.Message, Does.Contain("runtime-pack"));
     }
 

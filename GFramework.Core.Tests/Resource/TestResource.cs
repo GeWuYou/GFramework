@@ -16,5 +16,8 @@ public class TestResource
     /// <summary>
     ///     获取或设置一个值，指示资源是否已经被测试加载器标记为已卸载。
     /// </summary>
-    public bool IsDisposed { get; set; }
+    public bool IsDisposed
+    {
+        get; set;
+    }
 }

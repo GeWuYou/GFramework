@@ -8,7 +8,7 @@ namespace GFramework.Godot.Coroutine;
 
 public partial class Timing
 {
-    private Dictionary<ulong, OwnedCoroutineScope> _ownerScopes = new();
+    private Dictionary<ulong, OwnedCoroutineScope> _ownerScopes = [];
 
     /// <summary>Tracks native exit callbacks and all independently selectable scopes belonging to one node.</summary>
     private sealed class OwnedCoroutineScope
@@ -30,22 +30,40 @@ public partial class Timing
         }
 
         /// <summary>Gets the weak native owner, avoiding an ownership cycle with a persistent Timing host.</summary>
-        internal WeakReference<Node> Owner { get; }
+        internal WeakReference<Node> Owner
+        {
+            get;
+        }
 
         /// <summary>Gets the default scope used by ordinary node task entrypoints.</summary>
-        internal CoroutineScope DefaultScope { get; set; }
+        internal CoroutineScope DefaultScope
+        {
+            get; set;
+        }
 
         /// <summary>Gets every explicitly selected scope that must be closed on tree exit.</summary>
-        internal List<CoroutineScope> Scopes { get; }
+        internal List<CoroutineScope> Scopes
+        {
+            get;
+        }
 
         /// <summary>Gets the pre-exit cancellation callback.</summary>
-        internal Action OnExiting { get; }
+        internal Action OnExiting
+        {
+            get;
+        }
 
         /// <summary>Gets the post-exit callback that releases this registration.</summary>
-        internal Action OnExited { get; }
+        internal Action OnExited
+        {
+            get;
+        }
 
         /// <summary>Prevents synchronous cleanup callbacks from starting replacement work on an exiting node.</summary>
-        internal bool IsExiting { get; set; }
+        internal bool IsExiting
+        {
+            get; set;
+        }
     }
 
     /// <summary>Creates an independent node-owned scope with an explicit, immutable failure policy.</summary>

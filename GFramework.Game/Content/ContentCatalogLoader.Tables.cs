@@ -17,7 +17,10 @@ public sealed partial class ContentCatalogLoader
 {
     private interface IContentTableDefinition
     {
-        string Name { get; }
+        string Name
+        {
+            get;
+        }
         Task<IConfigTable> BuildAsync(IReadOnlyDictionary<ContentReference, JObject> rows,
             IReadOnlyDictionary<(ContentReference Reference, string Field), ContentSource> fields,
             IReadOnlyDictionary<ContentReference, List<ContentSource>> sources, CancellationToken cancellationToken);
@@ -62,7 +65,7 @@ public sealed partial class ContentCatalogLoader
                 }
                 catch (Exception exception) when (exception is not OutOfMemoryException)
                 {
-                    throw Error("ContentBindingFailed", source, reference, null, exception.Message, exception);
+                    throw Error("ContentBindingFailed", source, reference, field: null, exception.Message, exception);
                 }
             }
             return new InMemoryConfigTable<ContentId, T>(values, value => new ContentId(keySelector(value)));
@@ -80,7 +83,10 @@ public sealed partial class ContentCatalogLoader
             foreach (var usage in usages)
             {
                 ContentId id;
-                try { id = new ContentId(usage.RawValue); }
+                try
+                {
+                    id = new ContentId(usage.RawValue);
+                }
                 catch (ArgumentException exception)
                 {
                     throw Error("InvalidContentReference", FindFieldSource(owner, usage.DisplayPath, fields, source),
@@ -93,11 +99,16 @@ public sealed partial class ContentCatalogLoader
                     var removal = sources.TryGetValue(target, out var history) ? history[^1] : null;
                     throw new ContentLoadException(new ContentLoadDiagnostic
                     {
-                        Code = "MissingContentReference", PackId = origin.PackId, PackVersion = origin.PackVersion,
-                        FilePath = origin.FilePath, TableName = owner.TableName, ContentId = owner.Id.ToString(),
-                        FieldPath = usage.DisplayPath, RelatedPackId = removal?.PackId ?? id.PackId,
+                        Code = "MissingContentReference",
+                        PackId = origin.PackId,
+                        PackVersion = origin.PackVersion,
+                        FilePath = origin.FilePath,
+                        TableName = owner.TableName,
+                        ContentId = owner.Id.ToString(),
+                        FieldPath = usage.DisplayPath,
+                        RelatedPackId = removal?.PackId ?? id.PackId,
                         Detail = $"Content '{owner.Id}' references missing '{target.TableName}/{target.Id}'." +
-                            (removal is null ? string.Empty : $" Last target operation came from '{removal.PackId}' in '{removal.FilePath}'.")
+                            (removal is null ? string.Empty : $" Last target operation came from '{removal.PackId}' in '{removal.FilePath}'."),
                     });
                 }
             }
@@ -110,9 +121,11 @@ public sealed partial class ContentCatalogLoader
         var current = path ?? string.Empty;
         while (true)
         {
-            if (fields.TryGetValue((reference, current), out var source)) return source;
+            if (fields.TryGetValue((reference, current), out var source))
+                return source;
             var separator = Math.Max(current.LastIndexOf('.'), current.LastIndexOf('['));
-            if (separator < 0) return fallback;
+            if (separator < 0)
+                return fallback;
             current = current[..separator];
         }
     }

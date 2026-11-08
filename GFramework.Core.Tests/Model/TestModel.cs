@@ -16,7 +16,10 @@ public sealed class TestModel : AbstractModel, ITestModel
     /// <summary>
     ///     获取模型是否已初始化的状态
     /// </summary>
-    public bool Initialized { get; private set; }
+    public bool Initialized
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     初始化模型

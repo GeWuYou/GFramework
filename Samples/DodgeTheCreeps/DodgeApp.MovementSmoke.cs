@@ -32,7 +32,7 @@ public partial class DodgeApp
                 player.Advance(step);
                 distances[direction] = player.Position.DistanceTo(origin);
                 var expected = origin + heading * (float)(330 * step);
-                Require(player.Position.DistanceTo(expected) < 0.001f, "Movement heading or speed differs in sector " + direction);
+                Require(player.Position.DistanceTo(expected) < 0.001f, "Movement heading or speed differs in sector " + direction.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 CheckPlayerFacing(player, direction);
                 var sprite = player.GetNode<AnimatedSprite2D>("Sprite");
                 Require(sprite.IsPlaying(), "Nonzero movement did not start the facing animation.");
@@ -54,16 +54,20 @@ public partial class DodgeApp
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
         GD.Print("DODGE_MOVEMENT_RESULT PASS");
-        FinishSmoke(true);
+        FinishSmoke(passed: true);
     }
 
     private static void PressMovementDirection(Vector2 direction)
     {
         ReleaseMovementActions();
-        if (direction.X > 0.1f) Input.ActionPress("dodge_right");
-        else if (direction.X < -0.1f) Input.ActionPress("dodge_left");
-        if (direction.Y > 0.1f) Input.ActionPress("dodge_down");
-        else if (direction.Y < -0.1f) Input.ActionPress("dodge_up");
+        if (direction.X > 0.1f)
+            Input.ActionPress("dodge_right");
+        else if (direction.X < -0.1f)
+            Input.ActionPress("dodge_left");
+        if (direction.Y > 0.1f)
+            Input.ActionPress("dodge_down");
+        else if (direction.Y < -0.1f)
+            Input.ActionPress("dodge_up");
     }
 
     private static void ReleaseMovementActions()
@@ -76,7 +80,7 @@ public partial class DodgeApp
     {
         var names = new[] { "walk", "walk", "up", "walk", "walk", "walk", "up", "walk" };
         var sprite = player.GetNode<AnimatedSprite2D>("Sprite");
-        Require(player.FacingDirection == direction, "The player did not retain facing sector " + direction);
+        Require(player.FacingDirection == direction, "The player did not retain facing sector " + direction.ToString(System.Globalization.CultureInfo.InvariantCulture));
         Require(string.Equals(sprite.Animation.ToString(), names[direction], StringComparison.Ordinal), "Facing selected the wrong native animation.");
         Require(sprite.FlipH == (direction is 3 or 4 or 5) && sprite.FlipV == (direction == 2), "A previous facing left stale sprite flips.");
         Require(Mathf.Abs(sprite.Rotation) < 0.001f, "The player sprite was rotated for diagonal movement.");
@@ -85,8 +89,10 @@ public partial class DodgeApp
         // Reconstruct the rendered heading from the original art's orientation and the
         // actual native transforms, rather than accepting a changed animation name alone.
         var rendered = direction is 2 or 6 ? Vector2.Up : Vector2.Right;
-        if (sprite.FlipH) rendered.X = -rendered.X;
-        if (sprite.FlipV) rendered.Y = -rendered.Y;
+        if (sprite.FlipH)
+            rendered.X = -rendered.X;
+        if (sprite.FlipV)
+            rendered.Y = -rendered.Y;
         rendered = rendered.Rotated(sprite.Rotation);
         var displayedDirection = direction is 2 or 6 ? direction : direction is 3 or 4 or 5 ? 4 : 0;
         var expected = Vector2.Right.Rotated(displayedDirection * Mathf.Pi / 4);
@@ -104,7 +110,10 @@ public partial class DodgeApp
         foreach (var invalid in new[] { -1, 8 })
         {
             var rejected = false;
-            try { player.RestoreFacingDirection(invalid); }
+            try
+            {
+                player.RestoreFacingDirection(invalid);
+            }
             catch (ArgumentOutOfRangeException) { rejected = true; }
             Require(rejected && player.FacingDirection == 0, "Invalid saved facing was accepted or changed the current pose.");
         }

@@ -19,5 +19,8 @@ public sealed class DemoSave : IData
     public float Y { get; set; } = 320;
 
     /// <summary>Gets or sets the number of collected circles.</summary>
-    public int Collected { get; set; }
+    public int Collected
+    {
+        get; set;
+    }
 }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Lifecycle;
+using System.Diagnostics.CodeAnalysis;
 using GFramework.Core.Abstractions.Logging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,29 +15,28 @@ namespace GFramework.Core.Pause;
 /// 暂停栈管理器实现，用于管理游戏中的暂停状态。
 /// 支持多组暂停、嵌套暂停、以及暂停状态的通知机制。
 /// </summary>
-public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
+/// <remarks>创建暂停栈管理器；未注入日志时使用空输出。</remarks>
+public class PauseStackManager(ILogger? logger = null) : IPauseStackManager, IAsyncDestroyable
 {
-    /// <summary>创建暂停栈管理器；未注入日志时使用空输出。</summary>
-    public PauseStackManager(ILogger? logger = null)
-    {
-        _logger = logger ?? NullLogger.Instance;
-    }
-
-    private readonly List<IPauseHandler> _handlers = new();
+    private readonly List<IPauseHandler> _handlers = [];
     private readonly ReaderWriterLockSlim _lock = new();
-    private readonly ILogger _logger;
-    private readonly Dictionary<PauseGroup, Stack<PauseEntry>> _pauseStacks = new();
-    private readonly Dictionary<Guid, PauseEntry> _tokenMap = new();
+    private readonly ILogger _logger = logger ?? NullLogger<PauseStackManager>.Instance;
+    private readonly Dictionary<PauseGroup, Stack<PauseEntry>> _pauseStacks = [];
+    private readonly Dictionary<Guid, PauseEntry> _tokenMap = [];
     private volatile bool _disposed;
 
     /// <summary>
     /// 异步销毁方法，在组件销毁时调用。
     /// </summary>
     /// <returns>表示异步操作完成的任务。</returns>
+    [SuppressMessage("Usage", "CA1816:Dispose methods should call SuppressFinalize",
+        Justification = "DestroyAsync owns cleanup and suppresses finalization only after success; this alias preserves its ValueTask.")]
     public ValueTask DisposeAsync() => DestroyAsync();
 
     /// <summary>Stops this manager and releases its synchronization resources once.</summary>
     /// <returns>The completed shutdown operation.</returns>
+    [SuppressMessage("Usage", "CA1816",
+        Justification = "DestroyAsync is the canonical full cleanup used by DisposeAsync; finalization is suppressed only after successful cleanup without wrapping its ValueTask.")]
     public ValueTask DestroyAsync()
     {
         if (_disposed)
@@ -52,6 +52,7 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
 
         NotifyDestroyedGroups(destroySnapshot.Value);
         _lock.Dispose();
+        GC.SuppressFinalize(this);
 
         return ValueTask.CompletedTask;
     }
@@ -84,7 +85,7 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
                 TokenId = Guid.NewGuid(),
                 Reason = reason,
                 Group = group,
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow,
             };
 
             if (!_pauseStacks.TryGetValue(group, out var stack))
@@ -96,7 +97,10 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
             stack.Push(entry);
             _tokenMap[entry.TokenId] = entry;
 
-            _logger.LogDebug($"Pause pushed: {reason} (Group: {group}, Depth: {stack.Count})");
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Pause pushed: {Reason} (Group: {Group}, Depth: {Depth})", reason, group, stack.Count);
+            }
 
             token = new PauseToken(entry.TokenId);
 
@@ -111,7 +115,7 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
         // 在锁外通知处理器，避免死锁
         if (shouldNotify)
         {
-            NotifyHandlers(group, true);
+            NotifyHandlers(group, isPaused: true);
         }
 
         return token;
@@ -132,7 +136,7 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
         var result = TryPopEntry(token);
         if (result.ShouldNotify)
         {
-            NotifyHandlers(result.NotifyGroup, false);
+            NotifyHandlers(result.NotifyGroup, isPaused: false);
         }
 
         return result.Found;
@@ -189,9 +193,9 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
             ThrowIfDisposed();
 
             if (!_pauseStacks.TryGetValue(group, out var stack))
-                return Array.Empty<string>();
+                return [];
 
-            return stack.Select(e => e.Reason).ToList();
+            return [.. stack.Select(e => e.Reason)];
         }
         finally
         {
@@ -240,7 +244,7 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
 
             stack.Clear();
 
-            _logger.LogWarning($"Cleared all pauses for group: {group}");
+            _logger.LogWarning("Cleared all pauses for group: {Group}", group);
 
             // 状态变化检测
             shouldNotify = wasPaused;
@@ -253,7 +257,7 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
         // 在锁外通知处理器，避免死锁
         if (shouldNotify)
         {
-            NotifyHandlers(group, false);
+            NotifyHandlers(group, isPaused: false);
         }
     }
 
@@ -269,10 +273,9 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
         {
             ThrowIfDisposed();
 
-            pausedGroups = _pauseStacks
+            pausedGroups = [.. _pauseStacks
                 .Where(kvp => kvp.Value.Count > 0)
-                .Select(kvp => kvp.Key)
-                .ToList();
+                .Select(kvp => kvp.Key)];
 
             _pauseStacks.Clear();
             _tokenMap.Clear();
@@ -287,7 +290,7 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
         // 在锁外通知所有之前暂停的组，避免死锁
         foreach (var group in pausedGroups)
         {
-            NotifyHandlers(group, false);
+            NotifyHandlers(group, isPaused: false);
         }
     }
 
@@ -305,7 +308,10 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
             if (!_handlers.Contains(handler))
             {
                 _handlers.Add(handler);
-                _logger.LogDebug($"Registered pause handler: {handler.GetType().Name}");
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug("Registered pause handler: {HandlerType}", handler.GetType().Name);
+                }
             }
         }
         finally
@@ -327,7 +333,10 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
 
             if (_handlers.Remove(handler))
             {
-                _logger.LogDebug($"Unregistered pause handler: {handler.GetType().Name}");
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug("Unregistered pause handler: {HandlerType}", handler.GetType().Name);
+                }
             }
         }
         finally
@@ -395,9 +404,12 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
     {
         foreach (var group in destroySnapshot.PausedGroups)
         {
-            _logger.LogDebug($"Notifying handlers of destruction: Group={group}, IsPaused=false");
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Notifying handlers of destruction: Group={Group}, IsPaused=false", group);
+            }
 
-            NotifyHandlersSnapshot(group, false, destroySnapshot.HandlersSnapshot, isDestroying: true);
+            NotifyHandlersSnapshot(group, isPaused: false, destroySnapshot.HandlersSnapshot, isDestroying: true);
             RaiseDestroyStateChanged(group);
         }
     }
@@ -420,7 +432,7 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
 
             if (!_tokenMap.TryGetValue(token.Id, out var entry))
             {
-                _logger.LogWarning($"Attempted to pop invalid/expired token: {token.Id}");
+                _logger.LogWarning("Attempted to pop invalid/expired token: {TokenId}", token.Id);
                 return PopResult.NotFound;
             }
 
@@ -433,9 +445,12 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
             }
 
             _tokenMap.Remove(token.Id);
-            _logger.LogDebug($"Pause popped: {entry.Reason} (Group: {entry.Group}, Remaining: {stack.Count})");
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Pause popped: {Reason} (Group: {Group}, Remaining: {Remaining})", entry.Reason, entry.Group, stack.Count);
+            }
 
-            return new PopResult(true, wasPaused && stack.Count == 0, entry.Group);
+            return new PopResult(Found: true, wasPaused && stack.Count == 0, entry.Group);
         }
         finally
         {
@@ -480,10 +495,9 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
     /// <returns>包含所有暂停中的分组的数组。</returns>
     private PauseGroup[] CollectPausedGroups()
     {
-        return _pauseStacks
+        return [.. _pauseStacks
             .Where(kvp => kvp.Value.Count > 0)
-            .Select(kvp => kvp.Key)
-            .ToArray();
+            .Select(kvp => kvp.Key)];
     }
 
     /// <summary>
@@ -492,9 +506,7 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
     /// <returns>已按优先级排序的处理器快照。</returns>
     private IPauseHandler[] CreateHandlerSnapshot()
     {
-        return _handlers
-            .OrderBy(handler => handler.Priority)
-            .ToArray();
+        return [.. _handlers.OrderBy(handler => handler.Priority)];
     }
 
     /// <summary>
@@ -518,10 +530,14 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
             }
             catch (Exception ex)
             {
-                var message = isDestroying
-                    ? $"Handler {handler.GetType().Name} failed during destruction"
-                    : $"Handler {handler.GetType().Name} failed";
-                _logger.LogError(ex, message);
+                if (isDestroying)
+                {
+                    _logger.LogError(ex, "Handler {HandlerType} failed during destruction", handler.GetType().Name);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Handler {HandlerType} failed", handler.GetType().Name);
+                }
             }
         }
     }
@@ -534,11 +550,11 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
     {
         try
         {
-            RaisePauseStateChanged(group, false);
+            RaisePauseStateChanged(group, isPaused: false);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Event subscriber failed during destruction for group {group}");
+            _logger.LogError(ex, "Event subscriber failed during destruction for group {Group}", group);
         }
     }
 
@@ -559,7 +575,10 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
     /// <param name="isPaused">新的暂停状态。</param>
     private void NotifyHandlers(PauseGroup group, bool isPaused)
     {
-        _logger.LogDebug($"Notifying handlers: Group={group}, IsPaused={isPaused}");
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Notifying handlers: Group={Group}, IsPaused={IsPaused}", group, isPaused);
+        }
 
         // 在锁内获取处理器快照，避免并发修改异常
         IPauseHandler[] handlersSnapshot;
@@ -610,6 +629,6 @@ public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
         /// <summary>
         /// 表示未找到目标令牌时的默认结果。
         /// </summary>
-        public static PopResult NotFound { get; } = new(false, false, PauseGroup.Global);
+        public static PopResult NotFound { get; } = new(Found: false, ShouldNotify: false, PauseGroup.Global);
     }
 }

@@ -23,7 +23,7 @@ internal static class DispatcherStreamPipelineOrderState
         {
             lock (SyncRoot)
             {
-                return _steps.ToArray();
+                return [.. _steps];
             }
         }
     }

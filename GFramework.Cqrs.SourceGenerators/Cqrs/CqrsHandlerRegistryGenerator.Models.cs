@@ -78,7 +78,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
     {
         Direct,
         ReflectedImplementation,
-        PreciseReflected
+        PreciseReflected,
     }
 
     /// <summary>
@@ -105,12 +105,12 @@ public sealed partial class CqrsHandlerRegistryGenerator
         {
             return new RuntimeTypeReferenceSpec(
                 typeDisplayName,
-                null,
-                null,
-                null,
+ReflectionTypeMetadataName: null,
+ReflectionAssemblyName: null,
+ArrayElementTypeReference: null,
                 0,
-                null,
-                ImmutableArray<RuntimeTypeReferenceSpec>.Empty);
+GenericTypeDefinitionReference: null,
+                []);
         }
 
         /// <summary>
@@ -119,13 +119,13 @@ public sealed partial class CqrsHandlerRegistryGenerator
         public static RuntimeTypeReferenceSpec FromReflectionLookup(string reflectionTypeMetadataName)
         {
             return new RuntimeTypeReferenceSpec(
-                null,
+TypeDisplayName: null,
                 reflectionTypeMetadataName,
-                null,
-                null,
+ReflectionAssemblyName: null,
+ArrayElementTypeReference: null,
                 0,
-                null,
-                ImmutableArray<RuntimeTypeReferenceSpec>.Empty);
+GenericTypeDefinitionReference: null,
+                []);
         }
 
         /// <summary>
@@ -136,13 +136,13 @@ public sealed partial class CqrsHandlerRegistryGenerator
             string reflectionTypeMetadataName)
         {
             return new RuntimeTypeReferenceSpec(
-                null,
+TypeDisplayName: null,
                 reflectionTypeMetadataName,
                 reflectionAssemblyName,
-                null,
+ArrayElementTypeReference: null,
                 0,
-                null,
-                ImmutableArray<RuntimeTypeReferenceSpec>.Empty);
+GenericTypeDefinitionReference: null,
+                []);
         }
 
         /// <summary>
@@ -151,13 +151,13 @@ public sealed partial class CqrsHandlerRegistryGenerator
         public static RuntimeTypeReferenceSpec FromArray(RuntimeTypeReferenceSpec elementTypeReference, int arrayRank)
         {
             return new RuntimeTypeReferenceSpec(
-                null,
-                null,
-                null,
+TypeDisplayName: null,
+ReflectionTypeMetadataName: null,
+ReflectionAssemblyName: null,
                 elementTypeReference,
                 arrayRank,
-                null,
-                ImmutableArray<RuntimeTypeReferenceSpec>.Empty);
+GenericTypeDefinitionReference: null,
+                []);
         }
 
         /// <summary>
@@ -168,10 +168,10 @@ public sealed partial class CqrsHandlerRegistryGenerator
             ImmutableArray<RuntimeTypeReferenceSpec> genericTypeArguments)
         {
             return new RuntimeTypeReferenceSpec(
-                null,
-                null,
-                null,
-                null,
+TypeDisplayName: null,
+ReflectionTypeMetadataName: null,
+ReflectionAssemblyName: null,
+ArrayElementTypeReference: null,
                 0,
                 genericTypeDefinitionReference,
                 genericTypeArguments);
@@ -216,43 +216,31 @@ public sealed partial class CqrsHandlerRegistryGenerator
         string? ReflectionFallbackHandlerTypeDisplayName,
         string? ReflectionFallbackHandlerTypeMetadataName);
 
-    private readonly struct HandlerCandidateAnalysis : IEquatable<HandlerCandidateAnalysis>
+    private readonly struct HandlerCandidateAnalysis(
+        string implementationTypeDisplayName,
+        string implementationLogName,
+        ImmutableArray<CqrsHandlerRegistryGenerator.HandlerRegistrationSpec> registrations,
+        ImmutableArray<CqrsHandlerRegistryGenerator.ReflectedImplementationRegistrationSpec> reflectedImplementationRegistrations,
+        ImmutableArray<CqrsHandlerRegistryGenerator.PreciseReflectedRegistrationSpec> preciseReflectedRegistrations,
+        string? reflectionTypeMetadataName,
+        string? reflectionFallbackHandlerTypeDisplayName,
+        string? reflectionFallbackHandlerTypeMetadataName) : IEquatable<HandlerCandidateAnalysis>
     {
-        public HandlerCandidateAnalysis(
-            string implementationTypeDisplayName,
-            string implementationLogName,
-            ImmutableArray<HandlerRegistrationSpec> registrations,
-            ImmutableArray<ReflectedImplementationRegistrationSpec> reflectedImplementationRegistrations,
-            ImmutableArray<PreciseReflectedRegistrationSpec> preciseReflectedRegistrations,
-            string? reflectionTypeMetadataName,
-            string? reflectionFallbackHandlerTypeDisplayName,
-            string? reflectionFallbackHandlerTypeMetadataName)
-        {
-            ImplementationTypeDisplayName = implementationTypeDisplayName;
-            ImplementationLogName = implementationLogName;
-            Registrations = registrations;
-            ReflectedImplementationRegistrations = reflectedImplementationRegistrations;
-            PreciseReflectedRegistrations = preciseReflectedRegistrations;
-            ReflectionTypeMetadataName = reflectionTypeMetadataName;
-            ReflectionFallbackHandlerTypeDisplayName = reflectionFallbackHandlerTypeDisplayName;
-            ReflectionFallbackHandlerTypeMetadataName = reflectionFallbackHandlerTypeMetadataName;
-        }
+        public string ImplementationTypeDisplayName { get; } = implementationTypeDisplayName;
 
-        public string ImplementationTypeDisplayName { get; }
+        public string ImplementationLogName { get; } = implementationLogName;
 
-        public string ImplementationLogName { get; }
+        public ImmutableArray<HandlerRegistrationSpec> Registrations { get; } = registrations;
 
-        public ImmutableArray<HandlerRegistrationSpec> Registrations { get; }
+        public ImmutableArray<ReflectedImplementationRegistrationSpec> ReflectedImplementationRegistrations { get; } = reflectedImplementationRegistrations;
 
-        public ImmutableArray<ReflectedImplementationRegistrationSpec> ReflectedImplementationRegistrations { get; }
+        public ImmutableArray<PreciseReflectedRegistrationSpec> PreciseReflectedRegistrations { get; } = preciseReflectedRegistrations;
 
-        public ImmutableArray<PreciseReflectedRegistrationSpec> PreciseReflectedRegistrations { get; }
+        public string? ReflectionTypeMetadataName { get; } = reflectionTypeMetadataName;
 
-        public string? ReflectionTypeMetadataName { get; }
+        public string? ReflectionFallbackHandlerTypeDisplayName { get; } = reflectionFallbackHandlerTypeDisplayName;
 
-        public string? ReflectionFallbackHandlerTypeDisplayName { get; }
-
-        public string? ReflectionFallbackHandlerTypeMetadataName { get; }
+        public string? ReflectionFallbackHandlerTypeMetadataName { get; } = reflectionFallbackHandlerTypeMetadataName;
 
         public bool Equals(HandlerCandidateAnalysis other)
         {

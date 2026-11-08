@@ -13,24 +13,18 @@ namespace GFramework.Core.Architectures;
 /// </summary>
 /// <typeparam name="TRegistry">注册表类型</typeparam>
 /// <typeparam name="TConfig">配置类型</typeparam>
-public abstract class RegistryInitializationHookBase<TRegistry, TConfig> : IArchitectureLifecycleHook
+/// <remarks>
+/// 初始化注册表初始化钩子
+/// </remarks>
+/// <param name="configs">配置集合</param>
+/// <param name="targetPhase">目标执行阶段，默认为 AfterSystemInit</param>
+public abstract class RegistryInitializationHookBase<TRegistry, TConfig>(
+    IEnumerable<TConfig> configs,
+    ArchitecturePhase targetPhase = ArchitecturePhase.AfterSystemInit) : IArchitectureLifecycleHook
     where TRegistry : class, IUtility
 {
-    private readonly IEnumerable<TConfig> _configs;
-    private readonly ArchitecturePhase _targetPhase;
-
-    /// <summary>
-    /// 初始化注册表初始化钩子
-    /// </summary>
-    /// <param name="configs">配置集合</param>
-    /// <param name="targetPhase">目标执行阶段，默认为 AfterSystemInit</param>
-    protected RegistryInitializationHookBase(
-        IEnumerable<TConfig> configs,
-        ArchitecturePhase targetPhase = ArchitecturePhase.AfterSystemInit)
-    {
-        _configs = configs;
-        _targetPhase = targetPhase;
-    }
+    private readonly IEnumerable<TConfig> _configs = configs;
+    private readonly ArchitecturePhase _targetPhase = targetPhase;
 
     /// <summary>
     /// 当架构进入指定阶段时触发的回调方法

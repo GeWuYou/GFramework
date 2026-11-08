@@ -65,7 +65,7 @@ public sealed class DefaultRichTextEffectRegistry : IRichTextEffectRegistry
             "sine" => new RichTextSineEffect(animatedEffectsEnabled),
             "jitter" => new RichTextJitterEffect(animatedEffectsEnabled),
             "fly_in" => new RichTextFlyInEffect(animatedEffectsEnabled),
-            _ => null
+            _ => null,
         };
     }
 }

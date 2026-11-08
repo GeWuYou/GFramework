@@ -15,7 +15,11 @@ namespace GFramework.Core.Resource;
 ///     句柄获取、卸载和释放策略在同一操作锁内串行化。加载器拥有它创建的资源及释放责任；
 ///     管理器保留原始加载器的释放操作，不额外调用资源的 Dispose。
 /// </summary>
-public class ResourceManager : IResourceManager
+/// <remarks>
+///     创建资源管理器
+///     默认使用手动释放策略
+/// </remarks>
+public class ResourceManager(ILogger? logger = null) : IResourceManager
 {
     /// <summary>
     ///     Path 参数验证错误消息常量
@@ -31,18 +35,8 @@ public class ResourceManager : IResourceManager
     // net8.0 目标仍回退到 object 锁，以保持多目标编译兼容性。
     private readonly object _loadLock = new();
 #endif
-    private readonly ILogger _logger;
-    private IResourceReleaseStrategy _releaseStrategy;
-
-    /// <summary>
-    ///     创建资源管理器
-    ///     默认使用手动释放策略
-    /// </summary>
-    public ResourceManager(ILogger? logger = null)
-    {
-        _logger = logger ?? NullLogger.Instance;
-        _releaseStrategy = new ManualReleaseStrategy();
-    }
+    private readonly ILogger _logger = logger ?? NullLogger<ResourceManager>.Instance;
+    private IResourceReleaseStrategy _releaseStrategy = new ManualReleaseStrategy();
 
     /// <summary>
     ///     获取已加载资源的数量
@@ -65,11 +59,7 @@ public class ResourceManager : IResourceManager
                 return cached;
             }
 
-            var loader = GetLoader<T>();
-            if (loader == null)
-            {
-                throw new InvalidOperationException($"No loader registered for type {typeof(T).Name}");
-            }
+            var loader = GetLoader<T>() ?? throw new InvalidOperationException($"No loader registered for type {typeof(T).Name}");
 
             try
             {
@@ -79,7 +69,7 @@ public class ResourceManager : IResourceManager
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to load resource '{path}'");
+                _logger.LogError(ex, "Failed to load resource '{ResourcePath}'", path);
                 return null;
             }
         }
@@ -106,11 +96,7 @@ public class ResourceManager : IResourceManager
                 return cached;
         }
 
-        var loader = GetLoader<T>();
-        if (loader == null)
-        {
-            throw new InvalidOperationException($"No loader registered for type {typeof(T).Name}");
-        }
+        var loader = GetLoader<T>() ?? throw new InvalidOperationException($"No loader registered for type {typeof(T).Name}");
 
         try
         {
@@ -141,7 +127,7 @@ public class ResourceManager : IResourceManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to load resource '{path}'");
+            _logger.LogError(ex, "Failed to load resource '{ResourcePath}'", path);
             return null;
         }
     }
@@ -184,7 +170,7 @@ public class ResourceManager : IResourceManager
             var refCount = _cache.GetReferenceCount(path);
             if (refCount > 0)
             {
-                _logger.LogError($"Cannot unload resource '{path}' with {refCount} active references");
+                _logger.LogError("Cannot unload resource '{ResourcePath}' with {ReferenceCount} active references", path, refCount);
                 return false;
             }
 
@@ -227,10 +213,7 @@ public class ResourceManager : IResourceManager
     /// </summary>
     public void RegisterLoader<T>(IResourceLoader<T> loader) where T : class
     {
-        if (loader == null)
-            throw new ArgumentNullException(nameof(loader));
-
-        _loaders[typeof(T)] = loader;
+        _loaders[typeof(T)] = loader ?? throw new ArgumentNullException(nameof(loader));
     }
 
     /// <summary>

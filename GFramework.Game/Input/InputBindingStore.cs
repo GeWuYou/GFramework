@@ -35,8 +35,8 @@ public sealed class InputBindingStore : IInputBindingStore
         ArgumentException.ThrowIfNullOrWhiteSpace(actionName);
 
         return _currentBindings.TryGetValue(actionName, out var bindings)
-            ? new InputActionBinding(actionName, bindings.ToArray())
-            : new InputActionBinding(actionName, Array.Empty<InputBindingDescriptor>());
+            ? new InputActionBinding(actionName, [.. bindings])
+            : new InputActionBinding(actionName, []);
     }
 
     /// <inheritdoc />
@@ -44,7 +44,7 @@ public sealed class InputBindingStore : IInputBindingStore
     {
         var actions = _currentBindings
             .OrderBy(static pair => pair.Key, StringComparer.Ordinal)
-            .Select(static pair => new InputActionBinding(pair.Key, pair.Value.ToArray()))
+            .Select(static pair => new InputActionBinding(pair.Key, [.. pair.Value]))
             .ToArray();
 
         return new InputBindingSnapshot(actions);
@@ -58,7 +58,7 @@ public sealed class InputBindingStore : IInputBindingStore
         _currentBindings.Clear();
         foreach (var action in snapshot.Actions)
         {
-            _currentBindings[action.ActionName] = [..action.Bindings];
+            _currentBindings[action.ActionName] = [.. action.Bindings];
         }
     }
 
@@ -94,7 +94,7 @@ public sealed class InputBindingStore : IInputBindingStore
 
         if (_defaultBindings.TryGetValue(actionName, out var bindings))
         {
-            _currentBindings[actionName] = [..bindings];
+            _currentBindings[actionName] = [.. bindings];
             return;
         }
 
@@ -107,7 +107,7 @@ public sealed class InputBindingStore : IInputBindingStore
         _currentBindings.Clear();
         foreach (var pair in _defaultBindings)
         {
-            _currentBindings[pair.Key] = [..pair.Value];
+            _currentBindings[pair.Key] = [.. pair.Value];
         }
     }
 
@@ -181,7 +181,7 @@ public sealed class InputBindingStore : IInputBindingStore
                 continue;
             }
 
-            if (pair.Value.Any(existing => AreEquivalent(existing, binding)))
+            if (pair.Value.Exists(existing => AreEquivalent(existing, binding)))
             {
                 return pair.Key;
             }

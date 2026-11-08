@@ -3898,9 +3898,9 @@ public class CqrsHandlerRegistryGeneratorTests
     /// </summary>
     /// <param name="source">输入源码。</param>
     /// <param name="allowUnsafe">
-    ///     是否允许测试编译包含 <c>unsafe</c> 代码。
+    ///     是否允许测试编译包含 <see langword="unsafe" /> 代码。
     ///     某些回归用例会故意构造带指针类型的非法 handler 合同，以覆盖 fallback 防御分支，此时需要启用该选项避免把缺少
-    ///     <c>unsafe</c> 编译上下文的错误与目标生成器行为混淆。
+    ///     <see langword="unsafe" /> 编译上下文的错误与目标生成器行为混淆。
     /// </param>
     /// <param name="additionalReferences">附加元数据引用，用于构造跨程序集场景。</param>
     /// <returns>包含生成源、生成器诊断和更新后编译诊断的执行结果。</returns>
@@ -3948,7 +3948,7 @@ public class CqrsHandlerRegistryGeneratorTests
             .ToArray();
         return new GeneratorExecutionResult(
             generatedSources,
-            generatorDiagnostics.ToArray(),
+            [.. generatorDiagnostics],
             compilationDiagnostics,
             inputCompilationDiagnostics,
             generatedCompilationDiagnostics);

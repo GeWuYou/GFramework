@@ -47,7 +47,10 @@ public class StreamInvokerBenchmarks
     ///     控制当前 benchmark 观察“只推进首个元素”还是“完整枚举整个 stream”。
     /// </summary>
     [Params(StreamObservation.FirstItem, StreamObservation.DrainAll)]
-    public StreamObservation Observation { get; set; }
+    public StreamObservation Observation
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     用于拆分 stream invoker 固定成本与后续枚举成本的观测模式。
@@ -62,7 +65,7 @@ public class StreamInvokerBenchmarks
         /// <summary>
         ///     完整枚举整个 stream，保留原有 benchmark 语义。
         /// </summary>
-        DrainAll
+        DrainAll,
     }
 
     /// <summary>
@@ -202,7 +205,7 @@ public class StreamInvokerBenchmarks
             _ => throw new ArgumentOutOfRangeException(
                 nameof(observation),
                 observation,
-                "Unsupported stream observation mode.")
+                "Unsupported stream observation mode."),
         };
     }
 

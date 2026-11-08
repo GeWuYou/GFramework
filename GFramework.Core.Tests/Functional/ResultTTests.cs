@@ -351,7 +351,7 @@ public class ResultTTests
     public void Map_Should_Not_Throw_When_Mapper_Returns_Null()
     {
         var result = Result<string>.Succeed("test");
-        Assert.DoesNotThrow(() => result.Map<string?>(_ => null));
+        Assert.DoesNotThrow(() => { _ = result.Map<string?>(_ => null); });
     }
 
     /// <summary>
@@ -719,7 +719,7 @@ public class ResultTTests
     {
         var result1 = Result<object>.Succeed(new object());
         var result2 = Result<object>.Succeed(new object());
-        Assert.DoesNotThrow(() => result1.CompareTo(result2));
+        Assert.DoesNotThrow(() => { _ = result1.CompareTo(result2); });
     }
 
     /// <summary>
@@ -758,7 +758,7 @@ public class ResultTTests
     [Test]
     public void Success_WithNullValue_Should_Create_Valid_Result()
     {
-        var result = Result<string?>.Succeed(null);
+        var result = Result<string?>.Succeed(value: null);
         Assert.That(result.IsSuccess, Is.True);
     }
 
@@ -768,7 +768,7 @@ public class ResultTTests
     [Test]
     public void Map_WithNullValue_Should_Handle_Correctly()
     {
-        var result = Result<string?>.Succeed(null);
+        var result = Result<string?>.Succeed(value: null);
         var mapped = result.Map(x => x?.Length ?? 0);
         Assert.That(mapped.IsSuccess, Is.True);
         Assert.That(mapped.Match(succ: v => v, fail: _ => -1), Is.EqualTo(0));
@@ -780,8 +780,8 @@ public class ResultTTests
     [Test]
     public void Equals_WithNullValues_Should_Work_Correctly()
     {
-        var result1 = Result<string?>.Succeed(null);
-        var result2 = Result<string?>.Succeed(null);
+        var result1 = Result<string?>.Succeed(value: null);
+        var result2 = Result<string?>.Succeed(value: null);
         Assert.That(result1.Equals(result2), Is.True);
     }
 

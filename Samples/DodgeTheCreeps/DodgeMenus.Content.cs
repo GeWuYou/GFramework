@@ -37,9 +37,12 @@ internal sealed partial class DodgeMenus
             Button(column, "ContentArena", () => _app.Text.Get("arena", ("name", _app.Text.ArenaName(arena.Id, arena.Name))),
                 () => ReopenContentAsync(context, _app.CycleArenaAsync));
         }
-        if (_app.Content.Error is not null || _app.Content.DiscoveryErrors.Count > 0) Caption(column, "diagnostics_heading");
-        if (_app.Content.Error is not null) Caption(column, () => _app.Content.Error ?? string.Empty);
-        foreach (var error in _app.Content.DiscoveryErrors) Caption(column, () => error);
+        if (_app.Content.Error is not null || _app.Content.DiscoveryErrors.Count > 0)
+            Caption(column, "diagnostics_heading");
+        if (_app.Content.Error is not null)
+            Caption(column, () => _app.Content.Error ?? string.Empty);
+        foreach (var error in _app.Content.DiscoveryErrors)
+            Caption(column, () => error);
         Button(column, "ResetContent", "reset_content", () => ReopenContentAsync(context, _app.ResetContentAsync));
         Button(column, "RestoreContentBackup", "restore_backup", _app.RestoreContentBackupAsync).Disabled = !_app.HasBackup;
         Button(column, "ContentBack", "back", () => context.CloseAsync());
@@ -49,7 +52,8 @@ internal sealed partial class DodgeMenus
 
     private string DescribeWalker()
     {
-        if (!_app.Content.IsReady) return _app.Text.Get("content_unavailable");
+        if (!_app.Content.IsReady)
+            return _app.Text.Get("content_unavailable");
         var enemy = _app.Content.Catalog.GetTable<DodgeEnemyDefinition>("enemies").Get(new ContentId("base:walker"));
         var source = _app.Content.Catalog.GetFieldSource(new ContentReference("enemies", new ContentId("base:walker")), "speedMin");
         var package = source?.PackId ?? "base";
@@ -71,8 +75,10 @@ internal sealed partial class DodgeMenus
             var toggle = new Button
             {
                 Name = "Toggle_" + id,
-                CustomMinimumSize = new Vector2(285, 45), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-                Disabled = string.Equals(id, "base", StringComparison.Ordinal), ClipText = true
+                CustomMinimumSize = new Vector2(285, 45),
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                Disabled = string.Equals(id, "base", StringComparison.Ordinal),
+                ClipText = true,
             };
             _app.Text.Bind(toggle, () =>
             {
@@ -100,10 +106,12 @@ internal sealed partial class DodgeMenus
 
     private int PreferredIndex(string id)
     {
-        if (string.Equals(id, "base", StringComparison.Ordinal)) return -1;
+        if (string.Equals(id, "base", StringComparison.Ordinal))
+            return -1;
         var order = _app.Content.RequestedProfile.LoadOrder;
         for (var index = 0; index < order.Count; index++)
-            if (string.Equals(order[index], id, StringComparison.Ordinal)) return index;
+            if (string.Equals(order[index], id, StringComparison.Ordinal))
+                return index;
         return int.MaxValue;
     }
 
@@ -119,7 +127,10 @@ internal sealed partial class DodgeMenus
         button.Pressed += () => _app.RunAction(async () =>
         {
             button.Disabled = true;
-            try { await ReopenContentAsync(context, action).ConfigureAwait(true); }
+            try
+            {
+                await ReopenContentAsync(context, action).ConfigureAwait(true);
+            }
             finally { if (GodotObject.IsInstanceValid(button) && !button.IsQueuedForDeletion()) button.Disabled = false; }
         });
     }
@@ -133,36 +144,37 @@ internal sealed partial class DodgeMenus
 
     private Control Recover(Func<string> message, UiDialogContext<bool> context)
     {
-        var root = Page("Recover", out var column, false);
+        var root = Page("Recover", out var column, background: false);
         Title(column, "save_content_title", 26);
         var scroll = new ScrollContainer
         {
-            Name = "RecoveryDetails", CustomMinimumSize = new Vector2(350, 240),
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
+            Name = "RecoveryDetails",
+            CustomMinimumSize = new Vector2(350, 240),
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
         };
         var details = new Label
         {
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         _app.Text.Bind(details, () => details.Text = message());
         details.AddThemeFontSizeOverride("font_size", 15);
         details.AddThemeColorOverride("font_color", new Color("b2c1d8"));
         scroll.AddChild(details);
         column.AddChild(scroll);
-        Button(column, "RecoveryCancel", "cancel", () => context.CompleteAsync(false));
-        Button(column, "RecoveryProceed", "back_up_continue", () => context.CompleteAsync(true));
+        Button(column, "RecoveryCancel", "cancel", () => context.CompleteAsync(result: false));
+        Button(column, "RecoveryProceed", "back_up_continue", () => context.CompleteAsync(result: true));
         return root;
     }
 
     /// <summary>Uses action labels that describe code execution rather than unrelated gameplay actions.</summary>
     private Control CodePermission(Func<string> message, UiDialogContext<bool> context)
     {
-        var root = Page("CodePermission", out var column, false);
+        var root = Page("CodePermission", out var column, background: false);
         Title(column, "code_permission_title", 26);
         Caption(column, message);
-        Button(column, "DenyCode", "cancel", () => context.CompleteAsync(false));
-        Button(column, "AllowCode", "approve_code", () => context.CompleteAsync(true));
+        Button(column, "DenyCode", "cancel", () => context.CompleteAsync(result: false));
+        Button(column, "AllowCode", "approve_code", () => context.CompleteAsync(result: true));
         return root;
     }
 }

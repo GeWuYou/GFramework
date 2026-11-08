@@ -110,7 +110,9 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
 - Multi-step work does not require a repository plan or recovery file. Use the current source and diff to continue;
   update an existing roadmap entry only when its durable scope, dependencies, acceptance or status changes.
 - Do not create or revive `ai-plan/`, tracking/trace pairs, recovery documents or agent execution logs. This prohibition
-  also applies to renamed equivalents under `engineering/` or elsewhere, even when a directory is ignored.
+  also applies to renamed task diaries under `engineering/` or elsewhere, even when a directory is ignored.
+  Temporary raw probe output, command logs and short continuation notes are allowed only in ignored `.local/` when
+  useful for the current task; they are optional, never committed, and must not become a maintained plan/trace system.
 
 ## Subagent Usage Rules
 

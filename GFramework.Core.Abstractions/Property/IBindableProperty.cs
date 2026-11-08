@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Core.Abstractions.Property;
@@ -12,7 +12,10 @@ public interface IBindableProperty<T> : IReadonlyBindableProperty<T>
     /// <summary>
     ///     获取或设置属性的值
     /// </summary>
-    new T Value { get; set; }
+    new T Value
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     设置属性值但不触发事件通知

@@ -35,7 +35,7 @@ public class YamlConfigLoaderTests
     {
         if (Directory.Exists(_rootPath))
         {
-            Directory.Delete(_rootPath, true);
+            Directory.Delete(_rootPath, recursive: true);
         }
     }
 
@@ -112,7 +112,7 @@ public class YamlConfigLoaderTests
                     "monster",
                     static config => config.Id)
                 {
-                    SchemaRelativePath = "schemas/monster.schema.json"
+                    SchemaRelativePath = "schemas/monster.schema.json",
                 });
         var registry = new ConfigRegistry();
 
@@ -182,10 +182,9 @@ public class YamlConfigLoaderTests
         registry.RegisterTable(
             "existing",
             new InMemoryConfigTable<int, ExistingConfigStub>(
-                new[]
-                {
-                    new ExistingConfigStub(100, "Original")
-                },
+                [
+                    new ExistingConfigStub(100, "Original"),
+                ],
                 static config => config.Id));
 
         var loader = new YamlConfigLoader(_rootPath)
@@ -371,7 +370,7 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
-    ///     验证标量 <c>const</c> 限制会在运行时被拒绝。
+    ///     验证标量 <c language="json">const</c> 限制会在运行时被拒绝。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Throw_When_Scalar_Value_Does_Not_Match_Schema_Const()
@@ -1525,7 +1524,7 @@ public class YamlConfigLoaderTests
         Assert.Multiple(() =>
         {
             Assert.That(table.Count, Is.EqualTo(1));
-            Assert.That(table.Get(1).DropRates, Is.EqualTo(new[] { 5, 7, 5 }));
+            Assert.That(table.Get(1).DropRates, Is.EqualTo([5, 7, 5]));
         });
     }
 
@@ -2035,7 +2034,7 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
-    ///     验证数组 <c>const</c> 限制会保留元素顺序并按完整序列比较。
+    ///     验证数组 <c language="json">const</c> 限制会保留元素顺序并按完整序列比较。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Throw_When_Array_Value_Does_Not_Match_Schema_Const()
@@ -2137,7 +2136,7 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
-    ///     验证嵌套对象 <c>const</c> 限制会按完整对象内容比较。
+    ///     验证嵌套对象 <c language="json">const</c> 限制会按完整对象内容比较。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Throw_When_Nested_Object_Does_Not_Match_Schema_Const()
@@ -2194,7 +2193,7 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
-    ///     验证空对象 <c>const</c> 约束会被视为合法 schema，并与空 YAML 映射正确匹配。
+    ///     验证空对象 <c language="json">const</c> 约束会被视为合法 schema，并与空 YAML 映射正确匹配。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Accept_Empty_Object_Schema_Const()
@@ -2881,13 +2880,12 @@ public class YamlConfigLoaderTests
         // 通过反射直接命中注册项的文件读取路径，稳定回归本次取消语义修复。
         var readTask = (Task<string>)readYamlAsyncMethod!.Invoke(
             registration,
-            new object?[]
-            {
+            [
                 Path.Combine(_rootPath, "monster"),
                 Path.Combine(_rootPath, "monster", "slime.yaml"),
                 null,
-                cancellationTokenSource.Token
-            })!;
+                cancellationTokenSource.Token,
+            ])!;
 
         Assert.That(
             async () => await readTask.ConfigureAwait(false),
@@ -2916,8 +2914,7 @@ public class YamlConfigLoaderTests
         var exception = Assert.Throws<TargetInvocationException>(() =>
             deserializeValueMethod!.Invoke(
                 registration,
-                new object?[]
-                {
+                [
                     deserializer,
                     Path.Combine(_rootPath, "monster"),
                     Path.Combine(_rootPath, "monster", "slime.yaml"),
@@ -2927,8 +2924,8 @@ public class YamlConfigLoaderTests
                     name: Slime
                     hp: 10
                     """,
-                    cancellationTokenSource.Token
-                }));
+                    cancellationTokenSource.Token,
+                ]));
 
         // 反射调用同步私有方法时会把原始异常包装为 TargetInvocationException。
         Assert.That(exception!.InnerException, Is.InstanceOf<OperationCanceledException>());
@@ -2955,8 +2952,7 @@ public class YamlConfigLoaderTests
         var exception = Assert.Throws<TargetInvocationException>(() =>
             buildLoadResultMethod!.Invoke(
                 registration,
-                new object?[]
-                {
+                [
                     Path.Combine(_rootPath, "monster"),
                     null,
                     new List<MonsterConfigStub>
@@ -2965,12 +2961,12 @@ public class YamlConfigLoaderTests
                         {
                             Id = 1,
                             Name = "Slime",
-                            Hp = 10
-                        }
+                            Hp = 10,
+                        },
                     },
                     new List<YamlConfigReferenceUsage>(),
-                    cancellationTokenSource.Token
-                }));
+                    cancellationTokenSource.Token,
+                ]));
 
         // 反射调用同步私有方法时会把原始异常包装为 TargetInvocationException。
         Assert.That(exception!.InnerException, Is.InstanceOf<OperationCanceledException>());
@@ -3005,7 +3001,7 @@ public class YamlConfigLoaderTests
                 Assert.That(diagnosticException.Diagnostic.RawValue, Is.EqualTo("potion"));
                 Assert.That(registry.GetTable<string, ItemConfigStub>("item").ContainsKey("potion"), Is.True);
                 Assert.That(registry.GetTable<int, MonsterDropArrayConfigStub>("monster").Get(1).DropItemIds,
-                    Is.EqualTo(new[] { "potion" }));
+                    Is.EqualTo(["potion"]));
             });
         }
         finally
@@ -3115,7 +3111,7 @@ public class YamlConfigLoaderTests
                 registry,
                 new YamlConfigHotReloadOptions
                 {
-                    DebounceDelay = TimeSpan.FromMilliseconds(-1)
+                    DebounceDelay = TimeSpan.FromMilliseconds(-1),
                 }));
 
         Assert.That(exception!.ParamName, Is.EqualTo("options"));
@@ -3326,7 +3322,7 @@ public class YamlConfigLoaderTests
                     "monster",
                     static config => config.Id)
                 {
-                    SchemaRelativePath = "schemas/monster.schema.json"
+                    SchemaRelativePath = "schemas/monster.schema.json",
                 })
             : new YamlConfigLoader(_rootPath)
                 .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
@@ -3409,7 +3405,7 @@ public class YamlConfigLoaderTests
                 new YamlConfigHotReloadOptions
                 {
                     OnTableReloaded = tableName => reloadTaskSource.TrySetResult(tableName),
-                    DebounceDelay = TimeSpan.FromMilliseconds(150)
+                    DebounceDelay = TimeSpan.FromMilliseconds(150),
                 })
             : loader.EnableHotReload(
                 registry,
@@ -3606,7 +3602,10 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置名称。
@@ -3616,7 +3615,10 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置生命值。
         /// </summary>
-        public int Hp { get; set; }
+        public int Hp
+        {
+            get; set;
+        }
     }
 
     /// <summary>
@@ -3627,12 +3629,18 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置浮点掉落率。
         /// </summary>
-        public double DropRate { get; set; }
+        public double DropRate
+        {
+            get; set;
+        }
     }
 
     /// <summary>
@@ -3643,7 +3651,10 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置名称。
@@ -3653,7 +3664,7 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置掉落率列表。
         /// </summary>
-        public List<int> DropRates { get; set; } = new();
+        public List<int> DropRates { get; set; } = [];
     }
 
     /// <summary>
@@ -3664,7 +3675,10 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置名称。
@@ -3685,7 +3699,10 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置金币数量。
         /// </summary>
-        public int Gold { get; set; }
+        public int Gold
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置货币类型。
@@ -3701,7 +3718,10 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置名称。
@@ -3711,7 +3731,7 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置阶段数组。
         /// </summary>
-        public IReadOnlyList<PhaseConfigStub> Phases { get; set; } = Array.Empty<PhaseConfigStub>();
+        public IReadOnlyList<PhaseConfigStub> Phases { get; set; } = [];
     }
 
     /// <summary>
@@ -3722,12 +3742,15 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置待比较对象数组。
         /// </summary>
-        public List<ComparableEntryConfigStub> Entries { get; set; } = new();
+        public List<ComparableEntryConfigStub> Entries { get; set; } = [];
     }
 
     /// <summary>
@@ -3738,7 +3761,10 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置名称。
@@ -3748,7 +3774,7 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置对象数组条目。
         /// </summary>
-        public List<WeightedEntryConfigStub> Entries { get; set; } = new();
+        public List<WeightedEntryConfigStub> Entries { get; set; } = [];
     }
 
     /// <summary>
@@ -3759,12 +3785,18 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置条目标识。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置权重。
         /// </summary>
-        public int Weight { get; set; }
+        public int Weight
+        {
+            get; set;
+        }
     }
 
     /// <summary>
@@ -3775,7 +3807,10 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置波次编号。
         /// </summary>
-        public int Wave { get; set; }
+        public int Wave
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置怪物主键。
@@ -3807,7 +3842,10 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置名称。
@@ -3817,7 +3855,7 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置阶段数组。
         /// </summary>
-        public List<PhaseDropConfigStub> Phases { get; set; } = new();
+        public List<PhaseDropConfigStub> Phases { get; set; } = [];
     }
 
     /// <summary>
@@ -3828,7 +3866,10 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置波次编号。
         /// </summary>
-        public int Wave { get; set; }
+        public int Wave
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置掉落物品主键。
@@ -3860,7 +3901,10 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置名称。
@@ -3881,7 +3925,10 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置名称。
@@ -3891,7 +3938,7 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置掉落物品主键列表。
         /// </summary>
-        public List<string> DropItemIds { get; set; } = new();
+        public List<string> DropItemIds { get; set; } = [];
     }
 
     /// <summary>

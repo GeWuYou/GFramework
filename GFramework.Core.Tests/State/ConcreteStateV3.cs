@@ -13,22 +13,34 @@ public sealed class ConcreteStateV3 : IState
     /// <summary>
     ///     获取进入状态是否被调用的标志。
     /// </summary>
-    public bool EnterCalled { get; private set; }
+    public bool EnterCalled
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取退出状态是否被调用的标志。
     /// </summary>
-    public bool ExitCalled { get; private set; }
+    public bool ExitCalled
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取进入此状态的来源状态。
     /// </summary>
-    public IState? EnterFrom { get; private set; }
+    public IState? EnterFrom
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取从此状态退出的目标状态。
     /// </summary>
-    public IState? ExitTo { get; private set; }
+    public IState? ExitTo
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     进入当前状态时调用的方法。

@@ -117,7 +117,7 @@ public class CollectionExtensionsTests
 
         // Assert
         Assert.That(result.Length, Is.EqualTo(3));
-        Assert.That(result, Is.EqualTo(new[] { "a", "b", "c" }));
+        Assert.That(result, Is.EqualTo(["a", "b", "c"]));
     }
 
     /// <summary>
@@ -185,7 +185,7 @@ public class CollectionExtensionsTests
             Assert.That(method.IsGenericMethodDefinition, Is.True);
             Assert.That(method.ReturnType.IsGenericType, Is.True);
             Assert.That(method.ReturnType.GetGenericTypeDefinition(), Is.EqualTo(typeof(Dictionary<,>)));
-            Assert.That(methodGenericArguments.Select(static argument => argument.Name), Is.EqualTo(new[] { "T", "TKey", "TValue" }));
+            Assert.That(methodGenericArguments.Select(static argument => argument.Name), Is.EqualTo(["T", "TKey", "TValue"]));
             Assert.That(returnTypeGenericArguments, Has.Length.EqualTo(2));
             Assert.That(returnTypeGenericArguments[0], Is.SameAs(methodGenericArguments[1]));
             Assert.That(returnTypeGenericArguments[1], Is.SameAs(methodGenericArguments[2]));

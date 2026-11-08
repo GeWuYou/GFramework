@@ -44,7 +44,7 @@ public sealed class UiServiceTests
             Assert.That(first.Active, Is.True);
             Assert.That(first.OpenCount, Is.EqualTo(1));
             Assert.That(second.DisposeCount, Is.EqualTo(1));
-            Assert.That(service.Snapshot.Views.Select(static view => view.RouteKey), Is.EqualTo(new[] { "menu" }));
+            Assert.That(service.Snapshot.Views.Select(static view => view.RouteKey), Is.EqualTo(["menu"]));
         });
     }
 
@@ -68,7 +68,7 @@ public sealed class UiServiceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(seen, Is.EqualTo(new[] { 1, 2 }));
+            Assert.That(seen, Is.EqualTo([1, 2]));
             Assert.That(first.Handle, Is.Not.EqualTo(second.Handle));
             Assert.That(service.Snapshot.Views.Single().Handle, Is.EqualTo(first.Handle));
             Assert.That(service.Snapshot.Views.Single().Active, Is.True);
@@ -87,7 +87,7 @@ public sealed class UiServiceTests
         var registry = new UiRegistry()
             .Register(page, (_, _, _) => Task.FromResult<IUiView>(new TestView
             {
-                OpenAction = async _ => { entered.SetResult(); await release.Task.ConfigureAwait(false); }
+                OpenAction = async _ => { entered.SetResult(); await release.Task.ConfigureAwait(false); },
             }))
             .Register(window, (_, _, _) =>
             {
@@ -104,7 +104,7 @@ public sealed class UiServiceTests
         release.SetResult();
         await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.That(service.Snapshot.Views.Select(static view => view.RouteKey), Is.EqualTo(new[] { "page", "window" }));
+        Assert.That(service.Snapshot.Views.Select(static view => view.RouteKey), Is.EqualTo(["page", "window"]));
     }
 
     /// <summary>Window singleton behavior returns the same identity and never invokes its factory twice.</summary>
@@ -153,7 +153,7 @@ public sealed class UiServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(host.Mounted, Is.EqualTo(new IUiView[] { second, first }));
-            Assert.That(service.Snapshot.Views.Select(static view => view.RouteKey), Is.EqualTo(new[] { "second", "first" }));
+            Assert.That(service.Snapshot.Views.Select(static view => view.RouteKey), Is.EqualTo(["second", "first"]));
             Assert.That(first.OpenCount, Is.EqualTo(1));
             Assert.That(first.CloseCount, Is.Zero);
             Assert.That(first.DisposeCount, Is.Zero);
@@ -190,7 +190,9 @@ public sealed class UiServiceTests
     {
         var route = new UiRoute<string>("toast", new UiRouteOptions
         {
-            Kind = UiRouteKind.Window, AllowMultiple = true, CapturedActions = UiInputActionMask.None
+            Kind = UiRouteKind.Window,
+            AllowMultiple = true,
+            CapturedActions = UiInputActionMask.None,
         });
         var registry = new UiRegistry().Register(route, (_, _, _) => Task.FromResult<IUiView>(new TestView()));
         await using var service = CreateService(registry);
@@ -213,7 +215,10 @@ public sealed class UiServiceTests
         var page = new UiRoute<string>("page");
         var hud = new UiRoute<string>("hud", new UiRouteOptions
         {
-            Kind = UiRouteKind.Window, Layer = 100, AllowBack = false, CapturedActions = UiInputActionMask.None
+            Kind = UiRouteKind.Window,
+            Layer = 100,
+            AllowBack = false,
+            CapturedActions = UiInputActionMask.None,
         });
         var registry = new UiRegistry()
             .Register(page, (_, _, _) => Task.FromResult<IUiView>(new TestView()))
@@ -224,7 +229,7 @@ public sealed class UiServiceTests
 
         await service.BackAsync();
 
-        Assert.That(service.Snapshot.Views.Select(static view => view.RouteKey), Is.EqualTo(new[] { "hud" }));
+        Assert.That(service.Snapshot.Views.Select(static view => view.RouteKey), Is.EqualTo(["hud"]));
     }
 
     /// <summary>A non-backable modal consumes back without closing views behind it.</summary>
@@ -234,7 +239,10 @@ public sealed class UiServiceTests
         var page = new UiRoute<string>("page");
         var modal = new UiRoute<string>("busy", new UiRouteOptions
         {
-            Kind = UiRouteKind.Window, Layer = 10, Modal = true, AllowBack = false
+            Kind = UiRouteKind.Window,
+            Layer = 10,
+            Modal = true,
+            AllowBack = false,
         });
         var registry = new UiRegistry()
             .Register(page, (_, _, _) => Task.FromResult<IUiView>(new TestView()))
@@ -304,10 +312,10 @@ public sealed class UiServiceTests
         using var cancellation = new CancellationTokenSource();
 
         var result = service.ShowDialogAsync(route, "question", cancellation.Token);
-        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await service.ShowAsync(hud, "status");
-        cancellation.Cancel();
-        await Assert.ThrowsAsync<TaskCanceledException>(() => result.WaitAsync(TimeSpan.FromSeconds(5)));
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: global::System.Threading.CancellationToken.None);
+        await service.ShowAsync(hud, "status", cancellationToken: global::System.Threading.CancellationToken.None);
+        await cancellation.CancelAsync();
+        await Assert.ThrowsAsync<TaskCanceledException>(() => result.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: global::System.Threading.CancellationToken.None));
 
         Assert.Multiple(() =>
         {
@@ -340,7 +348,7 @@ public sealed class UiServiceTests
             Assert.That(previous.DisposeCount, Is.Zero);
             Assert.That(target.CloseCount, Is.EqualTo(1));
             Assert.That(target.DisposeCount, Is.EqualTo(1));
-            Assert.That(host.Mounted, Is.EqualTo(new[] { previous }));
+            Assert.That(host.Mounted, Is.EqualTo([previous]));
         });
     }
 
@@ -357,7 +365,7 @@ public sealed class UiServiceTests
             {
                 entered.SetResult();
                 await Task.Delay(Timeout.Infinite, token).ConfigureAwait(false);
-            }
+            },
         };
         var registry = new UiRegistry()
             .Register(original, (_, _, _) => Task.FromResult<IUiView>(new TestView()))
@@ -367,8 +375,8 @@ public sealed class UiServiceTests
         using var cancellation = new CancellationTokenSource();
 
         var operation = service.PushAsync(pending, "new", cancellation.Token);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        cancellation.Cancel();
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: global::System.Threading.CancellationToken.None);
+        await cancellation.CancelAsync();
         await Assert.ThrowsAsync<TaskCanceledException>(() => operation);
 
         Assert.Multiple(() =>
@@ -391,7 +399,7 @@ public sealed class UiServiceTests
             return Task.FromResult<IUiView>(new TestView());
         });
         var guard = new TestGuard { CanOpen = false };
-        await using var service = new UiService(registry, new TestHost(), new InlineGameDispatcher(), guards: new[] { guard });
+        await using var service = new UiService(registry, new TestHost(), new InlineGameDispatcher(), guards: [guard]);
 
         var result = await service.ShowAsync(route, "args");
 
@@ -413,7 +421,7 @@ public sealed class UiServiceTests
             .Register(first, (_, _, _) => Task.FromResult<IUiView>(new TestView()))
             .Register(second, (_, _, _) => Task.FromResult<IUiView>(new TestView()));
         var guard = new TestGuard { RefusedCloseKey = second.Key };
-        await using var service = new UiService(registry, new TestHost(), new InlineGameDispatcher(), guards: new[] { guard });
+        await using var service = new UiService(registry, new TestHost(), new InlineGameDispatcher(), guards: [guard]);
         await service.ShowAsync(first, "");
         await service.ShowAsync(second, "");
 
@@ -430,8 +438,12 @@ public sealed class UiServiceTests
         var pause = new PauseStackManager();
         var first = new UiRoute<string>("pause", new UiRouteOptions
         {
-            Kind = UiRouteKind.Window, Layer = 10, Modal = true, PauseWhileVisible = true,
-            BlocksWorldActionInput = true, BlocksWorldPointerInput = true
+            Kind = UiRouteKind.Window,
+            Layer = 10,
+            Modal = true,
+            PauseWhileVisible = true,
+            BlocksWorldActionInput = true,
+            BlocksWorldPointerInput = true,
         });
         var second = new UiRoute<string>("settings", first.Options);
         var firstView = new TestView();
@@ -458,8 +470,9 @@ public sealed class UiServiceTests
     {
         var route = new UiDialogRoute<string, int>("confirm", new UiRouteOptions
         {
-            Kind = UiRouteKind.Window, Modal = true,
-            CapturedActions = UiInputActionMask.Confirm | UiInputActionMask.Cancel
+            Kind = UiRouteKind.Window,
+            Modal = true,
+            CapturedActions = UiInputActionMask.Confirm | UiInputActionMask.Cancel,
         });
         var ready = NewCompletion();
         var registry = new UiRegistry().Register(route, (_, context, _) =>
@@ -471,7 +484,7 @@ public sealed class UiServiceTests
                 {
                     await context.CompleteAsync(7, token).ConfigureAwait(false);
                     return true;
-                }
+                },
             });
         });
         await using var service = CreateService(registry);
@@ -492,7 +505,7 @@ public sealed class UiServiceTests
         var registry = new UiRegistry()
             .Register(outer, (_, _, _) => Task.FromResult<IUiView>(new TestView
             {
-                OpenAction = async token => await service!.ShowAsync(nested, "", token).ConfigureAwait(false)
+                OpenAction = async token => await service!.ShowAsync(nested, "", token).ConfigureAwait(false),
             }))
             .Register(nested, (_, _, _) => Task.FromResult<IUiView>(new TestView()));
         await using var owned = service = CreateService(registry);
@@ -560,7 +573,7 @@ public sealed class UiServiceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(views.All(static view => view.DisposeCount == 1), Is.True);
+            Assert.That(views.TrueForAll(static view => view.DisposeCount == 1), Is.True);
             Assert.That(host.Mounted, Is.Empty);
             Assert.That(service.Snapshot.Views, Is.Empty);
         });
@@ -578,29 +591,62 @@ public sealed class UiServiceTests
     private sealed class TestView : IUiView, IUiActionTarget
     {
         /// <summary>Gets optional opening work.</summary>
-        public Func<CancellationToken, Task>? OpenAction { get; init; }
+        public Func<CancellationToken, Task>? OpenAction
+        {
+            get; init;
+        }
         /// <summary>Gets optional closing work.</summary>
-        public Func<CancellationToken, Task>? CloseAction { get; init; }
+        public Func<CancellationToken, Task>? CloseAction
+        {
+            get; init;
+        }
         /// <summary>Gets optional semantic action work.</summary>
-        public Func<UiInputAction, CancellationToken, Task<bool>>? Action { get; init; }
+        public Func<UiInputAction, CancellationToken, Task<bool>>? Action
+        {
+            get; init;
+        }
         /// <summary>Gets whether opening simulates native children with authored input enabled.</summary>
-        public bool CreatesInputOnOpen { get; init; }
+        public bool CreatesInputOnOpen
+        {
+            get; init;
+        }
         /// <summary>Gets whether the view remains alive.</summary>
         public bool IsAlive => DisposeCount == 0;
         /// <summary>Gets the opening count.</summary>
-        public int OpenCount { get; private set; }
+        public int OpenCount
+        {
+            get; private set;
+        }
         /// <summary>Gets the closing count.</summary>
-        public int CloseCount { get; private set; }
+        public int CloseCount
+        {
+            get; private set;
+        }
         /// <summary>Gets the disposal count.</summary>
-        public int DisposeCount { get; private set; }
+        public int DisposeCount
+        {
+            get; private set;
+        }
         /// <summary>Gets current native visibility.</summary>
-        public bool Visible { get; private set; }
+        public bool Visible
+        {
+            get; private set;
+        }
         /// <summary>Gets current native interaction state.</summary>
-        public bool Active { get; private set; }
+        public bool Active
+        {
+            get; private set;
+        }
         /// <summary>Gets explicit activation notifications.</summary>
-        public int ActivationCount { get; private set; }
+        public int ActivationCount
+        {
+            get; private set;
+        }
         /// <summary>Gets explicit deactivation notifications.</summary>
-        public int DeactivationCount { get; private set; }
+        public int DeactivationCount
+        {
+            get; private set;
+        }
         /// <inheritdoc />
         public Task OpenAsync(CancellationToken cancellationToken = default)
         {
@@ -641,7 +687,7 @@ public sealed class UiServiceTests
     private sealed class TestHost : IUiHost
     {
         /// <summary>Gets current mounted view leases.</summary>
-        public List<IUiView> Mounted { get; } = new();
+        public List<IUiView> Mounted { get; } = [];
         /// <inheritdoc />
         public void Attach(IUiView view, int layer, long order)
         {
@@ -653,9 +699,13 @@ public sealed class UiServiceTests
         /// <inheritdoc />
         public object? CaptureFocus() => null;
         /// <inheritdoc />
-        public void Focus(IUiView view) { }
+        public void Focus(IUiView view)
+        {
+        }
         /// <inheritdoc />
-        public void RestoreFocus(object? bookmark) { }
+        public void RestoreFocus(object? bookmark)
+        {
+        }
     }
 
     /// <summary>Exposes explicit guard outcomes without introducing a dependency on Architecture.</summary>
@@ -664,7 +714,10 @@ public sealed class UiServiceTests
         /// <summary>Gets the opening decision.</summary>
         public bool CanOpen { get; init; } = true;
         /// <summary>Gets an optional route refused during close.</summary>
-        public string? RefusedCloseKey { get; init; }
+        public string? RefusedCloseKey
+        {
+            get; init;
+        }
         /// <inheritdoc />
         public Task<bool> CanOpenAsync(string routeKey, CancellationToken cancellationToken = default) => Task.FromResult(CanOpen);
         /// <inheritdoc />

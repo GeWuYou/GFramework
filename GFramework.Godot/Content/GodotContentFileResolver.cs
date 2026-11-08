@@ -31,7 +31,7 @@ public sealed class GodotContentFileResolver
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
         var normalized = relativePath.Replace('\\', '/');
-        if (Path.IsPathRooted(relativePath) || normalized.StartsWith("/", StringComparison.Ordinal) ||
+        if (Path.IsPathRooted(relativePath) || normalized.StartsWith('/') ||
             normalized.Contains(':', StringComparison.Ordinal))
         {
             throw new ArgumentException("Content paths must be relative to their package.", nameof(relativePath));

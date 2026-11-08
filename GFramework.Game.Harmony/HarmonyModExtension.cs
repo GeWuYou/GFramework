@@ -27,7 +27,10 @@ public sealed class HarmonyModExtension : IGameModExtension
     /// <inheritdoc />
     public string Capability => "harmony";
     /// <inheritdoc />
-    public IReadOnlyList<Assembly> SharedAssemblies { get; }
+    public IReadOnlyList<Assembly> SharedAssemblies
+    {
+        get;
+    }
     /// <inheritdoc />
     public IGameModServiceScope CreateScope(IGameModContext context)
     {

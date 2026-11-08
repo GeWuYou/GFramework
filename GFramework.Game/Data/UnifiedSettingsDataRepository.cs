@@ -219,12 +219,14 @@ public class UnifiedSettingsDataRepository(
     /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
     private async Task EnsureLoadedAsync(CancellationToken cancellationToken)
     {
-        if (_loaded) return;
+        if (_loaded)
+            return;
 
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_loaded) return;
+            if (_loaded)
+                return;
 
             cancellationToken.ThrowIfCancellationRequested();
             var key = UnifiedKey;
@@ -306,7 +308,7 @@ public class UnifiedSettingsDataRepository(
         return new UnifiedSettingsFile
         {
             Version = source.Version,
-            Sections = sections
+            Sections = sections,
         };
     }
 

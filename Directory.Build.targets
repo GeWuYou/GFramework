@@ -174,11 +174,17 @@
     </Target>
 
 
-    <!-- 每次构建幂等地启用仓库级 git 钩子目录（pre-commit 统一 LF），无需手动配置。 -->
+    <!--
+    每次构建幂等地启用仓库级 git 钩子目录（pre-commit 统一 LF），无需手动配置。
+    多个项目并行写入相同配置时可能争用 Git 配置锁；失败方不得让产品构建失败。
+    使用 MSBuild 的退出码与日志选项容错，避免 Unix 重定向和 true 破坏原生 Windows 的 cmd.exe 调用。
+    -->
     <Target Name="EnsureGitHooksPath" BeforeTargets="Build">
-        <Exec Command="git config core.hooksPath .githooks 2>/dev/null || true"
+        <Exec Command="git config core.hooksPath .githooks"
               WorkingDirectory="$(MSBuildThisFileDirectory)"
               IgnoreExitCode="true"
-              StandardOutputImportance="low"/>
+              IgnoreStandardErrorWarningFormat="true"
+              StandardOutputImportance="low"
+              StandardErrorImportance="low"/>
     </Target>
 </Project>

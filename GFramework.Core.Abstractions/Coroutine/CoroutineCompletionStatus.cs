@@ -27,5 +27,5 @@ public enum CoroutineCompletionStatus
     /// <summary>
     ///     协程在推进过程中抛出了异常。
     /// </summary>
-    Faulted
+    Faulted,
 }

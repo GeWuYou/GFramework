@@ -17,10 +17,13 @@ public class IocContainerLifetimeTests
 {
     private interface ITestService
     {
-        Guid Id { get; }
+        Guid Id
+        {
+            get;
+        }
     }
 
-    private class TestService : ITestService
+    private sealed class TestService : ITestService
     {
         public Guid Id { get; } = Guid.NewGuid();
     }
@@ -29,7 +32,10 @@ public class IocContainerLifetimeTests
     {
         public Guid Id { get; } = Guid.NewGuid();
 
-        public bool IsDisposed { get; private set; }
+        public bool IsDisposed
+        {
+            get; private set;
+        }
 
         public void Dispose()
         {

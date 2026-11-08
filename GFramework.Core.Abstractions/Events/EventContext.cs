@@ -17,7 +17,10 @@ public class EventContext<T>(T data)
     /// <summary>
     ///     事件是否已被处理
     /// </summary>
-    public bool IsHandled { get; private set; }
+    public bool IsHandled
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     标记事件为已处理，停止后续传播（仅对 UntilHandled 模式有效）

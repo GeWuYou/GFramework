@@ -17,7 +17,10 @@ public sealed class TestSystemV2 : ISystem
     /// <summary>
     ///     获取或设置测试用标识。
     /// </summary>
-    public int Id { get; init; }
+    public int Id
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     关联当前系统所属的架构上下文。

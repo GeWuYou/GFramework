@@ -46,7 +46,7 @@ PR 先分析从共同祖先到源分支 head 的累计差异，再验证 GitHub 
 
 CodeQL 仅在 C# 或相关构建配置变化时响应 PR，触发后仍分析全部 C#，保留跨模块安全数据流。每日及手动扫描继续全量运行。秘密扫描覆盖文档；MegaLinter 的扫描、格式与报告上传错误均阻断合并。`CI Result` 要求分析、轻量治理和全部选中任务成功，失败、取消、缺失或意外跳过均不能通过汇总。
 
-MegaLinter 的共享工作流由 PR 按需调用，并在 `main` 更新时独立全量扫描，不重复启动 .NET 构建、测试或发布。MegaLinter v10 使用 Betterleaks 代替已移除的 Gitleaks；聚合 SARIF 报告上传到代码扫描，缺失报告或上传失败会明确报错。手动运行 MegaLinter 也执行全量扫描。
+MegaLinter 的共享工作流由 PR 按需调用，并在 `main` 更新时独立全量扫描，不重复启动 .NET 构建、测试或发布。C# 格式检查以 `dotnet format GFramework.sln --severity info --verify-no-changes` 遍历完整 solution；配置移除上游额外拼接的单层 shell include，深层目录与测试源码也参与验证。MegaLinter v10 使用 Betterleaks 代替已移除的 Gitleaks；聚合 SARIF 报告上传到代码扫描，缺失报告或上传失败会明确报错。手动运行 MegaLinter 也执行全量扫描。
 
 框架包与合规工作流仅接受合法的 `v1.2.3`、`V1.2.3`、`1.2.3` 及 SemVer 预发布/构建后缀。配置工具继续使用 `gframework-config-tool-v*`；文档仅随正式小写 `v` 标签或手动操作发布。触发过滤后还会校验版本，格式错误的标签不会启动发布任务。版本审批、Benchmark 和许可证修复仍使用各自手动入口。
 

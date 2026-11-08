@@ -16,17 +16,20 @@ internal static class DemoUiRoutes
         BlocksWorldPointerInput = true,
         BlocksWorldActionInput = true,
         PauseWhileVisible = true,
-        ContinueProcessingWhenPaused = true
+        ContinueProcessingWhenPaused = true,
     };
 
     /// <summary>Gets the non-dismissible main-menu page; the string argument is its visible title.</summary>
-    internal static UiRoute<string> Menu { get; } = new("menu", new UiRouteOptions
+    internal static UiRoute<string> Menu
+    {
+        get;
+    } = new("menu", new UiRouteOptions
     {
         Layer = 20,
         AllowBack = false,
         CapturedActions = UiInputActionMask.None,
         BlocksWorldPointerInput = true,
-        BlocksWorldActionInput = true
+        BlocksWorldActionInput = true,
     });
 
     /// <summary>Gets the pause window, which owns one pause request while visible.</summary>

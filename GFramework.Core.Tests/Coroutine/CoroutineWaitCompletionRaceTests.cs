@@ -106,7 +106,7 @@ public sealed class CoroutineWaitCompletionRaceTests
             yield return wait;
         }
 
-        var handle = scheduler.Run(Routine);
+        var handle = scheduler.Run(Routine, cancellationToken: global::System.Threading.CancellationToken.None);
 
         Assert.That(scheduler.TryGetResult(handle, out var result), Is.True);
         Assert.That(result.Status, Is.EqualTo(CoroutineCompletionStatus.Faulted));
@@ -178,7 +178,7 @@ public sealed class CoroutineWaitCompletionRaceTests
                 }
                 else if (string.Equals(outcome, "cancel", StringComparison.Ordinal))
                 {
-                    operation.SetCanceled(new CancellationToken(true));
+                    operation.SetCanceled(new CancellationToken(canceled: true));
                 }
                 else
                 {
@@ -200,7 +200,7 @@ public sealed class CoroutineWaitCompletionRaceTests
             }
             else if (string.Equals(outcome, "cancel", StringComparison.Ordinal))
             {
-                source.SetCanceled(new CancellationToken(true));
+                source.SetCanceled(new CancellationToken(canceled: true));
             }
             else
             {
@@ -219,10 +219,16 @@ public sealed class CoroutineWaitCompletionRaceTests
         private bool _completed;
 
         /// <summary>获取实际等待推进次数。</summary>
-        public int UpdateCount { get; private set; }
+        public int UpdateCount
+        {
+            get; private set;
+        }
 
         /// <summary>获取终结结果消费次数。</summary>
-        public int ConsumeCount { get; private set; }
+        public int ConsumeCount
+        {
+            get; private set;
+        }
 
         /// <inheritdoc />
         public bool IsDone
@@ -263,10 +269,16 @@ public sealed class CoroutineWaitCompletionRaceTests
     private sealed class DisposableWait(Exception? failure = null) : IYieldInstruction, IDisposable
     {
         /// <summary>获取推进次数。</summary>
-        public int UpdateCount { get; private set; }
+        public int UpdateCount
+        {
+            get; private set;
+        }
 
         /// <summary>获取释放次数。</summary>
-        public int DisposeCount { get; private set; }
+        public int DisposeCount
+        {
+            get; private set;
+        }
 
         /// <inheritdoc />
         public bool IsDone => false;
@@ -318,10 +330,16 @@ public sealed class CoroutineWaitCompletionRaceTests
     private sealed class RecordingEnumerator : IEnumerator<IYieldInstruction>
     {
         /// <summary>获取执行次数。</summary>
-        public int MoveNextCount { get; private set; }
+        public int MoveNextCount
+        {
+            get; private set;
+        }
 
         /// <summary>获取释放次数。</summary>
-        public int DisposeCount { get; private set; }
+        public int DisposeCount
+        {
+            get; private set;
+        }
 
         /// <inheritdoc />
         public IYieldInstruction Current => new WaitOneFrame();

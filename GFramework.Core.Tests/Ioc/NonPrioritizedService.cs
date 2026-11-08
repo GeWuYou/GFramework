@@ -11,5 +11,8 @@ public sealed class NonPrioritizedService : IMixedService
     /// <summary>
     ///     获取或设置服务名称
     /// </summary>
-    public string? Name { get; set; }
+    public string? Name
+    {
+        get; set;
+    }
 }

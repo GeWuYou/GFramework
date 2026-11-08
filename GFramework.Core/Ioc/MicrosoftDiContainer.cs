@@ -49,7 +49,8 @@ public partial class MicrosoftDiContainer(
     /// <exception cref="ObjectDisposedException">当容器已释放时抛出。</exception>
     private void ThrowIfDisposed()
     {
-        if (!_disposed) return;
+        if (!_disposed)
+            return;
         ThrowDisposedException();
     }
 
@@ -166,7 +167,8 @@ public partial class MicrosoftDiContainer(
     /// <exception cref="InvalidOperationException">当容器已冻结时抛出</exception>
     private void ThrowIfFrozen()
     {
-        if (!_frozen) return;
+        if (!_frozen)
+            return;
         const string errorMsg = "MicrosoftDiContainer is frozen";
         _logger.LogError(errorMsg);
         throw new InvalidOperationException(errorMsg);
@@ -187,7 +189,7 @@ public partial class MicrosoftDiContainer(
     /// <summary>
     /// 服务提供者，在容器冻结后构建，用于解析服务实例
     /// </summary>
-    private IServiceProvider? _provider;
+    private ServiceProvider? _provider;
 
     /// <summary>
     ///     冻结后可复用的服务类型可见性索引。
@@ -251,13 +253,19 @@ public partial class MicrosoftDiContainer(
             if (GetServicesUnsafe.Any(s => s.ServiceType == type))
             {
                 var errorMsg = $"Singleton already registered for type: {type.Name}";
-                _logger.LogError(errorMsg);
+                if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Error))
+                {
+                    _logger.LogError("Singleton already registered for type: {ServiceType}", type.Name);
+                }
                 throw new InvalidOperationException(errorMsg);
             }
 
             GetServicesUnsafe.AddSingleton(type, instance!);
             _registeredInstances.Add(instance!);
-            _logger.LogDebug($"Singleton registered: {type.Name}");
+            if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+            {
+                _logger.LogDebug("Singleton registered: {ServiceType}", type.Name);
+            }
         }
         finally
         {
@@ -281,7 +289,10 @@ public partial class MicrosoftDiContainer(
         {
             ThrowIfFrozen();
             GetServicesUnsafe.AddSingleton<TService, TImpl>();
-            _logger.LogDebug($"Singleton registered: {typeof(TService).Name}");
+            if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+            {
+                _logger.LogDebug("Singleton registered: {ServiceType}", typeof(TService).Name);
+            }
         }
         finally
         {
@@ -305,7 +316,10 @@ public partial class MicrosoftDiContainer(
         {
             ThrowIfFrozen();
             GetServicesUnsafe.AddTransient<TService, TImpl>();
-            _logger.LogDebug($"Transient registered: {typeof(TService).Name}");
+            if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+            {
+                _logger.LogDebug("Transient registered: {ServiceType}", typeof(TService).Name);
+            }
         }
         finally
         {
@@ -329,7 +343,10 @@ public partial class MicrosoftDiContainer(
         {
             ThrowIfFrozen();
             GetServicesUnsafe.AddScoped<TService, TImpl>();
-            _logger.LogDebug($"Scoped registered: {typeof(TService).Name}");
+            if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+            {
+                _logger.LogDebug("Scoped registered: {ServiceType}", typeof(TService).Name);
+            }
         }
         finally
         {
@@ -368,7 +385,10 @@ public partial class MicrosoftDiContainer(
             }
 
             _registeredInstances.Add(instance);
-            _logger.LogDebug($"Plurality registered: {concreteType.Name} with {interfaces.Length} interfaces");
+            if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+            {
+                _logger.LogDebug("Plurality registered: {ServiceType} with {InterfaceCount} interfaces", concreteType.Name, interfaces.Length);
+            }
         }
         finally
         {
@@ -409,7 +429,10 @@ public partial class MicrosoftDiContainer(
                 GetServicesUnsafe.AddSingleton(interfaceType, sp => sp.GetRequiredService<T>());
             }
 
-            _logger.LogDebug($"Type registered: {concreteType.Name} with {interfaces.Length} interfaces");
+            if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+            {
+                _logger.LogDebug("Type registered: {ServiceType} with {InterfaceCount} interfaces", concreteType.Name, interfaces.Length);
+            }
         }
         finally
         {
@@ -442,7 +465,10 @@ public partial class MicrosoftDiContainer(
             ThrowIfFrozen();
             GetServicesUnsafe.AddSingleton(typeof(T), instance!);
             _registeredInstances.Add(instance!);
-            _logger.LogDebug($"Registered: {typeof(T).Name}");
+            if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+            {
+                _logger.LogDebug("Registered: {ServiceType}", typeof(T).Name);
+            }
         }
         finally
         {
@@ -465,7 +491,10 @@ public partial class MicrosoftDiContainer(
             ThrowIfFrozen();
             GetServicesUnsafe.AddSingleton(type, instance);
             _registeredInstances.Add(instance);
-            _logger.LogDebug($"Registered: {type.Name}");
+            if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+            {
+                _logger.LogDebug("Registered: {ServiceType}", type.Name);
+            }
         }
         finally
         {
@@ -564,9 +593,7 @@ public partial class MicrosoftDiContainer(
             }
 
             var result = _provider!.GetService<T>();
-            _logger.LogDebug(result != null
-                ? $"Retrieved instance: {typeof(T).Name}"
-                : $"No instance found for type: {typeof(T).Name}");
+            LogLookupResult(result != null, typeof(T).Name);
             return result;
         }
         finally
@@ -596,9 +623,7 @@ public partial class MicrosoftDiContainer(
             var result = _provider!.GetService(type);
             if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
             {
-                _logger.LogDebug(result != null
-                    ? $"Retrieved instance: {type.Name}"
-                    : $"No instance found for type: {type.Name}");
+                LogLookupResult(result != null, type.Name);
             }
             return result;
         }
@@ -623,16 +648,25 @@ public partial class MicrosoftDiContainer(
         {
             case 0:
                 var notFoundMsg = $"No instance registered for {typeof(T).Name}";
-                _logger.LogError(notFoundMsg);
+                if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Error))
+                {
+                    _logger.LogError("No instance registered for {ServiceType}", typeof(T).Name);
+                }
                 throw new InvalidOperationException(notFoundMsg);
 
             case 1:
-                _logger.LogDebug($"Retrieved required instance: {typeof(T).Name}");
+                if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+                {
+                    _logger.LogDebug("Retrieved required instance: {ServiceType}", typeof(T).Name);
+                }
                 return list[0];
 
             default:
                 var multipleMsg = $"Multiple instances registered for {typeof(T).Name}";
-                _logger.LogError(multipleMsg);
+                if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Error))
+                {
+                    _logger.LogError("Multiple instances registered for {ServiceType}", typeof(T).Name);
+                }
                 throw new InvalidOperationException(multipleMsg);
         }
     }
@@ -652,16 +686,25 @@ public partial class MicrosoftDiContainer(
         {
             case 0:
                 var notFoundMsg = $"No instance registered for {type.Name}";
-                _logger.LogError(notFoundMsg);
+                if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Error))
+                {
+                    _logger.LogError("No instance registered for {ServiceType}", type.Name);
+                }
                 throw new InvalidOperationException(notFoundMsg);
 
             case 1:
-                _logger.LogDebug($"Retrieved required instance: {type.Name}");
+                if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+                {
+                    _logger.LogDebug("Retrieved required instance: {ServiceType}", type.Name);
+                }
                 return list[0];
 
             default:
                 var multipleMsg = $"Multiple instances registered for {type.Name}";
-                _logger.LogError(multipleMsg);
+                if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Error))
+                {
+                    _logger.LogError("Multiple instances registered for {ServiceType}", type.Name);
+                }
                 throw new InvalidOperationException(multipleMsg);
         }
     }
@@ -679,13 +722,16 @@ public partial class MicrosoftDiContainer(
         {
             if (_provider == null)
             {
-                return CollectRegisteredImplementationInstances(typeof(T)).Cast<T>().ToList();
+                return [.. CollectRegisteredImplementationInstances(typeof(T)).Cast<T>()];
             }
 
             var services = _provider!.GetServices<T>().ToList();
             if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
             {
-                _logger.LogDebug($"Retrieved {services.Count} instances of {typeof(T).Name}");
+                if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+                {
+                    _logger.LogDebug("Retrieved {ServiceCount} instances of {ServiceType}", services.Count, typeof(T).Name);
+                }
             }
             return services;
         }
@@ -717,9 +763,12 @@ public partial class MicrosoftDiContainer(
             var services = _provider!.GetServices(type).ToList();
             if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
             {
-                _logger.LogDebug($"Retrieved {services.Count} instances of {type.Name}");
+                if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+                {
+                    _logger.LogDebug("Retrieved {ServiceCount} instances of {ServiceType}", services.Count, type.Name);
+                }
             }
-            return services.Where(o => o != null).Cast<object>().ToList();
+            return [.. services.Where(o => o != null).Cast<object>()];
         }
         finally
         {
@@ -817,7 +866,7 @@ public partial class MicrosoftDiContainer(
             .ToList();
 
         // 若调用方请求的正是其中一个服务类型，优先保留它，使未冻结行为尽量贴近冻结后的精确服务解析口径。
-        var requestedGroup = serviceTypeGroups.FirstOrDefault(group => group.ServiceType == requestedServiceType);
+        var requestedGroup = serviceTypeGroups.Find(group => group.ServiceType == requestedServiceType);
         if (requestedGroup is not null)
             return requestedGroup.ServiceType;
 
@@ -882,15 +931,14 @@ public partial class MicrosoftDiContainer(
             return services;
 
         // 使用 OrderBy 确保稳定排序（相同优先级保持原有顺序）
-        return services
+        return [.. services
             .Select((service, index) => new { Service = service, Index = index })
             .OrderBy(x =>
             {
                 var priority = x.Service is IPrioritized p ? p.Priority : 0;
                 return (priority, x.Index); // 先按优先级，再按索引
             })
-            .Select(x => x.Service)
-            .ToList();
+            .Select(x => x.Service)];
     }
 
     #endregion
@@ -1062,7 +1110,7 @@ public partial class MicrosoftDiContainer(
             _provider = GetServicesUnsafe.BuildServiceProvider(new ServiceProviderOptions
             {
                 ValidateScopes = true,
-                ValidateOnBuild = true
+                ValidateOnBuild = true,
             });
             _frozenServiceTypeIndex = FrozenServiceTypeIndex.Create(GetServicesUnsafe);
             _frozen = true;
@@ -1161,6 +1209,25 @@ public partial class MicrosoftDiContainer(
         finally
         {
             _lock.ExitReadLock();
+        }
+    }
+
+    /// <summary>Records one lookup outcome with a stable structured template and the existing display name.</summary>
+    private void LogLookupResult(bool found, string serviceTypeName)
+    {
+        if (found)
+        {
+            if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+            {
+                _logger.LogDebug("Retrieved instance: {ServiceType}", serviceTypeName);
+            }
+        }
+        else
+        {
+            if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+            {
+                _logger.LogDebug("No instance found for type: {ServiceType}", serviceTypeName);
+            }
         }
     }
 

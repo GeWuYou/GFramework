@@ -110,7 +110,10 @@ public sealed class ArchitectureRuntimeOwnershipTests
         {
             services.AddSingleton(_ => dependency);
             owner.RegisterSystem(component);
-        }) { Started = () => throw new InvalidOperationException("host failed") };
+        })
+        {
+            Started = () => throw new InvalidOperationException("host failed"),
+        };
         architecture.Started = () =>
         {
             _ = architecture.Context.GetService<OwnedDependency>();
@@ -158,9 +161,9 @@ public sealed class ArchitectureRuntimeOwnershipTests
         });
         using var cancellation = new CancellationTokenSource();
         var startup = architecture.InitializeAsync(cancellation.Token);
-        await hook.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+        await hook.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false);
         _ = architecture.Context.GetService<OwnedDependency>();
-        cancellation.Cancel();
+        await cancellation.CancelAsync().ConfigureAwait(false);
         Assert.That(async () => await startup.ConfigureAwait(false), Throws.InstanceOf<OperationCanceledException>());
         Assert.That(async () => await architecture.WaitUntilReadyAsync().ConfigureAwait(false), Throws.InstanceOf<OperationCanceledException>());
         Assert.That(resource.DisposeCalls, Is.EqualTo(1));
@@ -195,7 +198,8 @@ public sealed class ArchitectureRuntimeOwnershipTests
         var architecture = new OwnedArchitecture((owner, _) => owner.RegisterSystem(component));
         component.Stop = () => Assert.Throws<InvalidOperationException>(() =>
         {
-            _ = architecture.DestroyAsync();
+            // Preserve the immediate-throw assertion; AsTask consumes any unexpectedly returned ValueTask without blocking.
+            _ = architecture.DestroyAsync().AsTask();
         });
         await architecture.InitializeAsync().ConfigureAwait(false);
         await architecture.DestroyAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
@@ -230,23 +234,20 @@ public sealed class ArchitectureRuntimeOwnershipTests
     }
 
     /// <summary>测试用架构只在配置阶段声明依赖，按实际宿主钩子触发成功或故障。</summary>
-    private sealed class OwnedArchitecture : Architecture
+    /// <remarks>创建使用独立日志和服务集合的架构。</remarks>
+    /// <param name="configure">配置描述回调。</param>
+    /// <param name="factory">实例日志工厂。</param>
+    private sealed class OwnedArchitecture(
+        Action<ArchitectureRuntimeOwnershipTests.OwnedArchitecture, IServiceCollection> configure,
+        ILoggerFactory? factory = null) : Architecture(configuration: CreateConfiguration(factory))
     {
-        private readonly Action<OwnedArchitecture, IServiceCollection> _configure;
-
-        /// <summary>创建使用独立日志和服务集合的架构。</summary>
-        /// <param name="configure">配置描述回调。</param>
-        /// <param name="factory">实例日志工厂。</param>
-        public OwnedArchitecture(
-            Action<OwnedArchitecture, IServiceCollection> configure,
-            ILoggerFactory? factory = null)
-            : base(configuration: CreateConfiguration(factory))
-        {
-            _configure = configure;
-        }
+        private readonly Action<OwnedArchitecture, IServiceCollection> _configure = configure;
 
         /// <summary>Ready 前的同步宿主行为。</summary>
-        public Action? Started { get; set; }
+        public Action? Started
+        {
+            get; set;
+        }
 
         /// <summary>仅记录服务描述。</summary>
         /// <param name="services">当前正式集合。</param>
@@ -271,7 +272,10 @@ public sealed class ArchitectureRuntimeOwnershipTests
     private sealed class OwnedDependency : IDisposable
     {
         /// <summary>已观察到的资源释放次数。</summary>
-        public int DisposeCalls { get; private set; }
+        public int DisposeCalls
+        {
+            get; private set;
+        }
 
         /// <summary>只记录资源责任，不使用外部资源。</summary>
         public void Dispose() => DisposeCalls++;
@@ -285,26 +289,41 @@ public sealed class ArchitectureRuntimeOwnershipTests
         public OwnedDependency Dependency { get; } = dependency;
 
         /// <summary>该测试只关注激活与所有权。</summary>
-        protected override void OnInit() { }
+        protected override void OnInit()
+        {
+        }
 
         /// <summary>业务停止不直接释放其 DI 拥有的依赖。</summary>
-        protected override void OnDestroy() { }
+        protected override void OnDestroy()
+        {
+        }
     }
 
     /// <summary>外部组件以业务停止和 Dispose 两个计数区分责任。</summary>
     private sealed class BorrowedSystem : AbstractSystem, IDisposable
     {
         /// <summary>业务停止次数。</summary>
-        public int StopCalls { get; private set; }
+        public int StopCalls
+        {
+            get; private set;
+        }
 
         /// <summary>外部资源释放次数。</summary>
-        public int DisposeCalls { get; private set; }
+        public int DisposeCalls
+        {
+            get; private set;
+        }
 
         /// <summary>可选停止动作。</summary>
-        public Action? Stop { get; set; }
+        public Action? Stop
+        {
+            get; set;
+        }
 
         /// <summary>无异步工作。</summary>
-        protected override void OnInit() { }
+        protected override void OnInit()
+        {
+        }
 
         /// <summary>业务停止与外部 Dispose 保持分离。</summary>
         protected override void OnDestroy()
@@ -337,7 +356,10 @@ public sealed class ArchitectureRuntimeOwnershipTests
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         /// <summary>释放调用次数。</summary>
-        public int DisposeCalls { get; private set; }
+        public int DisposeCalls
+        {
+            get; private set;
+        }
 
         /// <summary>等待测试释放 barrier。</summary>
         /// <returns>已完整释放。</returns>
@@ -356,7 +378,10 @@ public sealed class ArchitectureRuntimeOwnershipTests
         public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         /// <summary>模拟不遵守约定的用户取消回调。</summary>
-        public bool ThrowOnCancellation { get; init; }
+        public bool ThrowOnCancellation
+        {
+            get; init;
+        }
 
         /// <summary>同步模式不可使用该钩子。</summary>
         /// <param name="phase">阶段。</param>
@@ -374,11 +399,11 @@ public sealed class ArchitectureRuntimeOwnershipTests
         {
             if (phase != ArchitecturePhase.BeforeUtilityInit)
                 return;
-            using var callback = cancellationToken.Register(() =>
+            await using var callback = cancellationToken.Register(() =>
             {
                 if (ThrowOnCancellation)
                     throw new InvalidOperationException("cancel callback failed");
-            });
+            }).ConfigureAwait(false);
             Entered.TrySetResult();
             await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
         }

@@ -4,7 +4,7 @@
 namespace GFramework.Game.Config;
 
 /// <summary>
-///     表示一个对象节点上声明的 object-focused <c>if</c> / <c>then</c> / <c>else</c> 条件约束。
+///     表示一个对象节点上声明的 object-focused <c language="json">if</c> / <c>then</c> / <c language="json">else</c> 条件约束。
 ///     三个分支都共享父对象已声明字段集合，不会把分支 schema 扩展成新的生成类型形状。
 /// </summary>
 internal sealed class YamlConfigConditionalSchemas
@@ -31,15 +31,24 @@ internal sealed class YamlConfigConditionalSchemas
     /// <summary>
     ///     获取条件判断 schema。
     /// </summary>
-    public YamlConfigSchemaNode IfSchema { get; }
+    public YamlConfigSchemaNode IfSchema
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取条件命中时需要满足的 schema。
     /// </summary>
-    public YamlConfigSchemaNode? ThenSchema { get; }
+    public YamlConfigSchemaNode? ThenSchema
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取条件未命中时需要满足的 schema。
     /// </summary>
-    public YamlConfigSchemaNode? ElseSchema { get; }
+    public YamlConfigSchemaNode? ElseSchema
+    {
+        get;
+    }
 }

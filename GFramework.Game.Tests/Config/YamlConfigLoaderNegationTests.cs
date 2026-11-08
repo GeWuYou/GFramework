@@ -33,7 +33,7 @@ public sealed class YamlConfigLoaderNegationTests
     {
         if (Directory.Exists(_rootPath))
         {
-            Directory.Delete(_rootPath, true);
+            Directory.Delete(_rootPath, recursive: true);
         }
     }
 
@@ -353,7 +353,10 @@ public sealed class YamlConfigLoaderNegationTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置名称。
@@ -363,7 +366,10 @@ public sealed class YamlConfigLoaderNegationTests
         /// <summary>
         ///     获取或设置生命值。
         /// </summary>
-        public int Hp { get; set; }
+        public int Hp
+        {
+            get; set;
+        }
     }
 
     /// <summary>
@@ -374,7 +380,10 @@ public sealed class YamlConfigLoaderNegationTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置奖励对象。
@@ -390,11 +399,17 @@ public sealed class YamlConfigLoaderNegationTests
         /// <summary>
         ///     获取或设置金币数量。
         /// </summary>
-        public int Gold { get; set; }
+        public int Gold
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置额外奖励数量。
         /// </summary>
-        public int Bonus { get; set; }
+        public int Bonus
+        {
+            get; set;
+        }
     }
 }

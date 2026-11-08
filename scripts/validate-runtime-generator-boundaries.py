@@ -147,7 +147,8 @@ def compile_attribute_patterns() -> dict[str, re.Pattern[str]]:
     for attribute_name in FORBIDDEN_ATTRIBUTE_NAMES:
         escaped_attribute_name = re.escape(attribute_name)
         patterns[attribute_name] = re.compile(
-            rf"\[[^\]]*(?:(?<=\[)|(?<=[\s,(]))(?:global::)?(?:[A-Za-z_][A-Za-z0-9_]*\.)*{escaped_attribute_name}(?:Attribute)?(?=\s*(?:\(|,|\]))[^\]]*\]",
+            # A C# collection expression may spread provider.GetServices; no attribute list can start with .. .
+            rf"\[(?!\s*\.\.)[^\]]*(?:(?<=\[)|(?<=[\s,(]))(?:global::)?(?:[A-Za-z_][A-Za-z0-9_]*\.)*{escaped_attribute_name}(?:Attribute)?(?=\s*(?:\(|,|\]))[^\]]*\]",
             re.MULTILINE,
         )
 

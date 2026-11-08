@@ -87,7 +87,7 @@ public class SpanExtensionsTests
     public void CountOccurrences_Should_Return_Correct_Count()
     {
         // Arrange
-        ReadOnlySpan<int> span = stackalloc int[] { 1, 2, 3, 2, 1 };
+        ReadOnlySpan<int> span = [1, 2, 3, 2, 1];
 
         // Act
         var count = span.CountOccurrences(2);
@@ -100,7 +100,7 @@ public class SpanExtensionsTests
     public void CountOccurrences_Should_Return_Zero_When_Value_Not_Found()
     {
         // Arrange
-        ReadOnlySpan<int> span = stackalloc int[] { 1, 2, 3 };
+        ReadOnlySpan<int> span = [1, 2, 3];
 
         // Act
         var count = span.CountOccurrences(5);
@@ -113,7 +113,7 @@ public class SpanExtensionsTests
     public void CountOccurrences_Should_Return_Zero_For_Empty_Span()
     {
         // Arrange
-        ReadOnlySpan<int> span = ReadOnlySpan<int>.Empty;
+        ReadOnlySpan<int> span = [];
 
         // Act
         var count = span.CountOccurrences(1);
@@ -142,7 +142,7 @@ public class SpanExtensionsTests
         var item1 = new TestItem(1);
         var item2 = new TestItem(2);
         var item3 = new TestItem(2);
-        ReadOnlySpan<TestItem> span = new[] { item1, item2, item3 };
+        ReadOnlySpan<TestItem> span = [item1, item2, item3];
 
         // Act
         var count = span.CountOccurrences(new TestItem(2));
@@ -151,5 +151,5 @@ public class SpanExtensionsTests
         Assert.That(count, Is.EqualTo(2));
     }
 
-    private record TestItem(int Value);
+    private sealed record TestItem(int Value);
 }

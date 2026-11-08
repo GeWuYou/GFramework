@@ -49,15 +49,24 @@ internal sealed class YamlConfigArrayContainsConstraints
     /// <summary>
     ///     获取 contains 子 schema。
     /// </summary>
-    public YamlConfigSchemaNode ContainsNode { get; }
+    public YamlConfigSchemaNode ContainsNode
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取最小匹配数量；未显式声明时返回空，由调用方按默认值 1 解释。
     /// </summary>
-    public int? MinContains { get; }
+    public int? MinContains
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取最大匹配数量。
     /// </summary>
-    public int? MaxContains { get; }
+    public int? MaxContains
+    {
+        get;
+    }
 }

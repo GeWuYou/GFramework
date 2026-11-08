@@ -46,7 +46,7 @@ public class ArchitectureConstantsTests
             ArchitecturePhase.AfterSystemInit,
             ArchitecturePhase.Ready,
             ArchitecturePhase.Destroying,
-            ArchitecturePhase.Destroyed
+            ArchitecturePhase.Destroyed,
         };
 
         Assert.That(ArchitectureConstants.PhaseOrder.Length, Is.EqualTo(expectedPhases.Length));
@@ -182,9 +182,8 @@ public class ArchitectureConstantsTests
             var currentPhase = phaseOrder[i];
             var nextPhase = phaseOrder[i + 1];
 
-            if (transitions.ContainsKey(currentPhase))
+            if (transitions.TryGetValue(currentPhase, out ArchitecturePhase[]? possibleNextPhases))
             {
-                var possibleNextPhases = transitions[currentPhase];
                 Assert.That(possibleNextPhases, Does.Contain(nextPhase),
                     $"Transition from {currentPhase} should include {nextPhase}");
             }

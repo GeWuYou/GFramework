@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Core.Abstractions.Coroutine;
@@ -11,7 +11,10 @@ public interface IYieldInstruction
     /// <summary>
     ///     获取当前等待指令是否已完成执行
     /// </summary>
-    bool IsDone { get; }
+    bool IsDone
+    {
+        get;
+    }
 
     /// <summary>
     ///     每帧由调度器调用，用于更新当前等待指令的状态

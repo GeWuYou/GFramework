@@ -15,7 +15,7 @@ public static class StringBuilderPool
     private const int MaxRetainedCapacity = 4096;
 
     // 使用 ConcurrentBag 实现线程安全的对象池
-    private static readonly ConcurrentBag<StringBuilder> Pool = new();
+    private static readonly ConcurrentBag<StringBuilder> Pool = [];
 
     /// <summary>
     ///     从池中租用一个 StringBuilder
@@ -121,7 +121,10 @@ public static class StringBuilderPool
         /// <summary>
         ///     获取 StringBuilder 实例
         /// </summary>
-        public StringBuilder Value { get; }
+        public StringBuilder Value
+        {
+            get;
+        }
 
         internal ScopedStringBuilder(StringBuilder value)
         {

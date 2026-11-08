@@ -31,5 +31,5 @@ public enum InputBindingKind
     /// <summary>
     ///     手柄轴向。
     /// </summary>
-    GamepadAxis = 4
+    GamepadAxis = 4,
 }

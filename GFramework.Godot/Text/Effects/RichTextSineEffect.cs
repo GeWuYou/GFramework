@@ -6,20 +6,15 @@ namespace GFramework.Godot.Text.Effects;
 /// <summary>
 ///     为文本提供正弦波形的上下漂浮效果。
 /// </summary>
+/// <remarks>
+///     初始化正弦效果。
+/// </remarks>
+/// <param name="animatedEffectsEnabled">是否允许动态效果实际生效。</param>
 [GlobalClass]
 [Tool]
-public partial class RichTextSineEffect : RichTextEffectBase
+public partial class RichTextSineEffect(bool animatedEffectsEnabled = true) : RichTextEffectBase
 {
-    private readonly bool _animatedEffectsEnabled;
-
-    /// <summary>
-    ///     初始化正弦效果。
-    /// </summary>
-    /// <param name="animatedEffectsEnabled">是否允许动态效果实际生效。</param>
-    public RichTextSineEffect(bool animatedEffectsEnabled = true)
-    {
-        _animatedEffectsEnabled = animatedEffectsEnabled;
-    }
+    private readonly bool _animatedEffectsEnabled = animatedEffectsEnabled;
 
     /// <summary>
     ///     获取标签名。

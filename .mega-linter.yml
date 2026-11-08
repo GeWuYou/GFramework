@@ -55,6 +55,11 @@ CSHARP_DOTNET_FORMAT_ARGUMENTS:
   - "info"
   - "--verify-no-changes"
 
+# MegaLinter 10.2.0 默认追加的 shell glob 只匹配一层目录；移除此 include，
+# 让 dotnet format 按 solution 完整遍历全部 C#，保留 info 级别和失败门禁。
+CSHARP_DOTNET_FORMAT_COMMAND_REMOVE_ARGUMENTS:
+  - "--include **/*.cs"
+
 # ========================
 # YAML 文件检查过滤配置
 # 定义 YAML 文件的包含和排除正则表达式模式

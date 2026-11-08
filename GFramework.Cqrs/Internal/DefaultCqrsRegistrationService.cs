@@ -47,8 +47,10 @@ internal sealed class DefaultCqrsRegistrationService(ICqrsHandlerRegistrar regis
 
             if (_registeredAssemblyKeys.Contains(assemblyKey))
             {
-                _logger.LogDebug(
-                    $"Skipping CQRS handler registration for assembly {assemblyKey} because it was already registered.");
+                if (_logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Debug))
+                {
+                    _logger.LogDebug("Skipping CQRS handler registration for assembly {Assembly} because it was already registered.", assemblyKey);
+                }
                 continue;
             }
 

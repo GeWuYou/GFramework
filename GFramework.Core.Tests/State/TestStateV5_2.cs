@@ -13,7 +13,10 @@ public class TestStateV5_2 : IState
     /// <summary>
     ///     获取或设置测试状态标识符。
     /// </summary>
-    public int Id { get; set; }
+    public int Id
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     判断是否允许转换到下一个状态。

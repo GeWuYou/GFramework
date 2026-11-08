@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -54,7 +54,8 @@ public class LocalizationSettings : ISettingsData
     /// </remarks>
     public void LoadFrom(ISettingsData source)
     {
-        if (source is not LocalizationSettings settings) return;
+        if (source is not LocalizationSettings settings)
+            return;
 
         Language = settings.Language;
         Version = settings.Version;

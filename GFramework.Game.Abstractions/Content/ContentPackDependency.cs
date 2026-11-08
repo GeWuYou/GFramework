@@ -13,5 +13,8 @@ public sealed class ContentPackDependency
     public ContentVersionRange Versions { get; init; } = new();
 
     /// <summary>Gets whether absence is allowed; an enabled optional dependency still constrains order and version.</summary>
-    public bool Optional { get; init; }
+    public bool Optional
+    {
+        get; init;
+    }
 }

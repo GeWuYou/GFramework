@@ -19,7 +19,10 @@ public interface ISettingsModel
     /// <returns>
     /// 如果对象已初始化，则返回 true；否则返回 false。
     /// </returns>
-    public bool IsInitialized { get; }
+    public bool IsInitialized
+    {
+        get;
+    }
     // =========================
     // Data
     // =========================

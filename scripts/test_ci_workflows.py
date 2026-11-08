@@ -107,6 +107,9 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("FAIL_ON_ERROR: true", scan)
         self.assertIn("FAIL_ON_ERROR: true", config)
         self.assertNotIn("DISABLE_ERRORS: true", config)
+        # Drop the upstream single-depth shell glob so nested source participates in the solution scan.
+        self.assertIn('CSHARP_DOTNET_FORMAT_COMMAND_REMOVE_ARGUMENTS:\n  - "--include **/*.cs"', config)
+        self.assertIn('  - "--severity"\n  - "info"', config)
 
     def test_megalinter_reports_on_main_and_reuses_the_pr_scanner(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()

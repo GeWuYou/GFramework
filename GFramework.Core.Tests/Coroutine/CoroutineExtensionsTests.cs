@@ -42,7 +42,8 @@ public class CoroutineExtensionsTests
         var callCount = 0;
         var coroutine = CoroutineExtensions.RepeatEvery(0.1, () => callCount++, 3);
 
-        while (coroutine.MoveNext()) coroutine.Current.Update(0.1);
+        while (coroutine.MoveNext())
+            coroutine.Current.Update(0.1);
 
         Assert.That(callCount, Is.EqualTo(3));
     }
@@ -98,11 +99,12 @@ public class CoroutineExtensionsTests
     [Test]
     public void RepeatEvery_Should_Handle_Null_Action()
     {
-        var coroutine = CoroutineExtensions.RepeatEvery(0.1, null, 3);
+        var coroutine = CoroutineExtensions.RepeatEvery(0.1, action: null, 3);
 
         Assert.DoesNotThrow(() =>
         {
-            while (coroutine.MoveNext()) coroutine.Current.Update(0.1);
+            while (coroutine.MoveNext())
+                coroutine.Current.Update(0.1);
         });
     }
 
@@ -173,7 +175,7 @@ public class CoroutineExtensionsTests
     [Test]
     public void ExecuteAfter_Should_Handle_Null_Action()
     {
-        var coroutine = CoroutineExtensions.ExecuteAfter(1.0, null);
+        var coroutine = CoroutineExtensions.ExecuteAfter(1.0, action: null);
 
         Assert.DoesNotThrow(() =>
         {
@@ -208,7 +210,8 @@ public class CoroutineExtensionsTests
 
         var sequence = CoroutineExtensions.Sequence(coroutine1, coroutine2, coroutine3);
 
-        while (sequence.MoveNext()) sequence.Current.Update(0.1);
+        while (sequence.MoveNext())
+            sequence.Current.Update(0.1);
 
         Assert.That(executionOrder, Is.EqualTo(new List<int> { 1, 2, 3 }));
     }
@@ -325,7 +328,7 @@ public class CoroutineExtensionsTests
         {
             captured = context;
             return CreateDelayedCoroutine(() => { }, 10);
-        });
+        }, cancellationToken: global::System.Threading.CancellationToken.None);
 
         Assert.Throws<ArgumentNullException>(() => captured!.ParallelCoroutines(null!));
         scheduler.Clear();
@@ -349,7 +352,7 @@ public class CoroutineExtensionsTests
     [Test]
     public void WaitForSecondsWithProgress_Should_Complete_After_Duration()
     {
-        var coroutine = CoroutineExtensions.WaitForSecondsWithProgress(1.0, null);
+        var coroutine = CoroutineExtensions.WaitForSecondsWithProgress(1.0, onProgress: null);
 
         coroutine.MoveNext();
         coroutine.Current.Update(0.5);
@@ -370,7 +373,8 @@ public class CoroutineExtensionsTests
 
         coroutine.MoveNext();
 
-        while (!coroutine.Current.IsDone) coroutine.Current.Update(0.1);
+        while (!coroutine.Current.IsDone)
+            coroutine.Current.Update(0.1);
 
         Assert.That(progressValues.Count, Is.GreaterThan(0));
         Assert.That(progressValues[0], Is.EqualTo(0.0f).Within(0.01f));
@@ -410,7 +414,7 @@ public class CoroutineExtensionsTests
     public void WaitForSecondsWithProgress_Should_Handle_Null_Callback()
     {
         // 测试传入null回调参数时不会抛出异常
-        var coroutine = CoroutineExtensions.WaitForSecondsWithProgress(1.0, null);
+        var coroutine = CoroutineExtensions.WaitForSecondsWithProgress(1.0, onProgress: null);
 
         // 验证协程可以正常启动和执行
         Assert.That(coroutine, Is.Not.Null);
@@ -462,7 +466,8 @@ public class CoroutineExtensionsTests
 
         var sequence = CoroutineExtensions.Sequence(coroutine1, coroutine2);
 
-        while (sequence.MoveNext()) sequence.Current.Update(0.1);
+        while (sequence.MoveNext())
+            sequence.Current.Update(0.1);
 
         Assert.That(sequence.MoveNext(), Is.False);
     }
@@ -540,10 +545,16 @@ public class CoroutineExtensionsTests
     /// <summary>
     ///     测试用时间源类
     /// </summary>
-    private class TestTimeSource : ITimeSource
+    private sealed class TestTimeSource : ITimeSource
     {
-        public double CurrentTime { get; private set; }
-        public double DeltaTime { get; private set; }
+        public double CurrentTime
+        {
+            get; private set;
+        }
+        public double DeltaTime
+        {
+            get; private set;
+        }
 
         public void Update()
         {

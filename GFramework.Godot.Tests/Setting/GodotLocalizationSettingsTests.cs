@@ -108,7 +108,7 @@ public sealed class GodotLocalizationSettingsTests
         var settingsModel = new Mock<ISettingsModel>(MockBehavior.Strict);
         settingsModel.Setup(it => it.GetData<LocalizationSettings>()).Returns(new LocalizationSettings
         {
-            Language = language
+            Language = language,
         });
 
         return new GodotLocalizationSettings(settingsModel.Object, new LocalizationMap(), manager,

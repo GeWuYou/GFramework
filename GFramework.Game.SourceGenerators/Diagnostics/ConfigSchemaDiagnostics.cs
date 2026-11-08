@@ -21,7 +21,7 @@ public static class ConfigSchemaDiagnostics
         "Schema file '{0}' could not be parsed: {1}",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 顶层必须是 object。
@@ -32,7 +32,7 @@ public static class ConfigSchemaDiagnostics
         "Schema file '{0}' must declare a root object schema",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 必须声明 id 字段作为主键。
@@ -43,7 +43,7 @@ public static class ConfigSchemaDiagnostics
         "Schema file '{0}' must declare a required 'id' property for table generation",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 包含暂不支持的字段类型。
@@ -54,7 +54,7 @@ public static class ConfigSchemaDiagnostics
         "Property '{1}' in schema file '{0}' uses unsupported type '{2}'",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 的 id 字段类型不支持作为主键。
@@ -65,7 +65,7 @@ public static class ConfigSchemaDiagnostics
         "Schema file '{0}' uses unsupported id type '{1}'. Supported key types are 'integer' and 'string'.",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 字段名无法安全映射为 C# 标识符。
@@ -76,7 +76,7 @@ public static class ConfigSchemaDiagnostics
         "Property '{1}' in schema file '{0}' uses schema key '{2}', which generates invalid C# identifier '{3}'",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 顶层自定义配置目录元数据无效。
@@ -87,7 +87,7 @@ public static class ConfigSchemaDiagnostics
         "Schema file '{0}' uses invalid '{1}' metadata: {2}",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 字段的查询索引元数据无效。
@@ -98,7 +98,7 @@ public static class ConfigSchemaDiagnostics
         "Property '{1}' in schema file '{0}' uses invalid '{2}' metadata: {3}",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 字段的字符串 format 元数据无效。
@@ -109,7 +109,7 @@ public static class ConfigSchemaDiagnostics
         "Property '{1}' in schema file '{0}' uses invalid 'format' metadata: {2}",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 对象节点的 dependentRequired 元数据无效。
@@ -120,7 +120,7 @@ public static class ConfigSchemaDiagnostics
         "Property '{1}' in schema file '{0}' uses invalid 'dependentRequired' metadata: {2}",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 对象节点的 dependentSchemas 元数据无效。
@@ -131,7 +131,7 @@ public static class ConfigSchemaDiagnostics
         "Property '{1}' in schema file '{0}' uses invalid 'dependentSchemas' metadata: {2}",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 对象节点的 allOf 元数据无效。
@@ -142,7 +142,7 @@ public static class ConfigSchemaDiagnostics
         "Property '{1}' in schema file '{0}' uses invalid 'allOf' metadata: {2}",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 对象节点的 if/then/else 条件元数据无效。
@@ -153,7 +153,7 @@ public static class ConfigSchemaDiagnostics
         "Property '{1}' in schema file '{0}' uses invalid 'if/then/else' metadata: {2}",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 字段名在标识符归一化后发生冲突。
@@ -164,7 +164,7 @@ public static class ConfigSchemaDiagnostics
         "Property '{1}' in schema file '{0}' uses schema key '{2}', which generates duplicate C# identifier '{3}' already produced by schema key '{4}'",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 节点声明了当前共享子集尚未支持的组合关键字。
@@ -175,7 +175,7 @@ public static class ConfigSchemaDiagnostics
         "Property '{1}' in schema file '{0}' uses unsupported combinator keyword '{2}': {3}",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 节点声明了当前共享子集尚未支持的开放对象关键字形状。
@@ -186,7 +186,7 @@ public static class ConfigSchemaDiagnostics
         "Property '{1}' in schema file '{0}' uses unsupported open-object keyword '{2}': {3}",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     schema 节点声明了当前共享子集尚未支持的数组形状关键字。
@@ -197,5 +197,5 @@ public static class ConfigSchemaDiagnostics
         "Property '{1}' in schema file '{0}' uses unsupported array-shape keyword '{2}': {3}",
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 }

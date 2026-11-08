@@ -125,7 +125,7 @@ public static class RichTextMarkup
     /// <exception cref="ArgumentException">
     ///     当参数键包含 BBCode token 不允许的控制字符时抛出。
     /// </exception>
-    private static IReadOnlyList<KeyValuePair<string, object>> CollectEnvironmentPairs(
+    private static List<KeyValuePair<string, object>> CollectEnvironmentPairs(
         IReadOnlyDictionary<string, object?> env)
     {
         var pairs = new List<KeyValuePair<string, object>>(env.Count);
@@ -178,8 +178,8 @@ public static class RichTextMarkup
         return value switch
         {
             string text => text,
-            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
-            _ => value.ToString() ?? string.Empty
+            IFormattable formattable => formattable.ToString(format: null, CultureInfo.InvariantCulture),
+            _ => value.ToString() ?? string.Empty,
         };
     }
 }

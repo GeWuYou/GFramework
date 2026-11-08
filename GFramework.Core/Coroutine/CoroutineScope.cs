@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Diagnostics.CodeAnalysis;
 using GFramework.Core.Abstractions.Coroutine;
 
 namespace GFramework.Core.Coroutine;
@@ -11,7 +12,7 @@ namespace GFramework.Core.Coroutine;
 /// </summary>
 public sealed class CoroutineScope : IDisposable
 {
-    private readonly HashSet<CoroutineHandle> _members = new();
+    private readonly HashSet<CoroutineHandle> _members = [];
     private bool _cancelling;
 
     /// <summary>Creates a lifetime container attached to exactly one scheduler.</summary>
@@ -22,11 +23,20 @@ public sealed class CoroutineScope : IDisposable
     }
 
     /// <summary>The scheduler responsible for this scope's execution and cleanup.</summary>
-    public CoroutineScheduler Scheduler { get; }
+    public CoroutineScheduler Scheduler
+    {
+        get;
+    }
     /// <summary>The immutable failure behavior between independent member tasks.</summary>
-    public CoroutineFailurePolicy FailurePolicy { get; }
+    public CoroutineFailurePolicy FailurePolicy
+    {
+        get;
+    }
     /// <summary>Whether this container has been closed to new tasks.</summary>
-    public bool IsDisposed { get; private set; }
+    public bool IsDisposed
+    {
+        get; private set;
+    }
     /// <summary>Number of live member tasks, including descendants.</summary>
     public int ActiveCount => _members.Count;
 
@@ -40,13 +50,15 @@ public sealed class CoroutineScope : IDisposable
     /// <param name="ignorePause">Whether host pause leaves this task running.</param>
     /// <param name="childFailurePolicy">Failure behavior inside the task's owned flow.</param>
     /// <returns>The new identity, or default for null or already-cancelled input.</returns>
+    [SuppressMessage("Design", "CA1068:CancellationToken parameters must come last",
+        Justification = "Preserve the published positional parameter order; reordering would break source and binary consumers.")]
     public CoroutineHandle Run(IEnumerator<IYieldInstruction>? coroutine, string? tag = null,
         CoroutinePriority priority = CoroutinePriority.Normal, string? group = null,
         CancellationToken cancellationToken = default, CoroutineExecutionStage? stage = null,
         bool ignorePause = false, CoroutineFailurePolicy childFailurePolicy = CoroutineFailurePolicy.FailFast)
     {
-        return Scheduler.Start(this, default, coroutine, null, tag, priority, group, cancellationToken, stage,
-            ignorePause, childFailurePolicy);
+        return Scheduler.Start(this, default, coroutine, factory: null, tag, priority, group, stage,
+            ignorePause, childFailurePolicy, cancellationToken: cancellationToken);
     }
 
     /// <summary>Starts a flow which can create explicitly owned children through its context.</summary>
@@ -59,14 +71,16 @@ public sealed class CoroutineScope : IDisposable
     /// <param name="ignorePause">Whether host pause leaves this task running.</param>
     /// <param name="childFailurePolicy">Failure behavior inside the task's owned flow.</param>
     /// <returns>The identity, including when the factory fails synchronously.</returns>
+    [SuppressMessage("Design", "CA1068:CancellationToken parameters must come last",
+        Justification = "Preserve the published positional parameter order; reordering would break source and binary consumers.")]
     public CoroutineHandle Run(Func<CoroutineContext, IEnumerator<IYieldInstruction>> factory, string? tag = null,
         CoroutinePriority priority = CoroutinePriority.Normal, string? group = null,
         CancellationToken cancellationToken = default, CoroutineExecutionStage? stage = null,
         bool ignorePause = false, CoroutineFailurePolicy childFailurePolicy = CoroutineFailurePolicy.FailFast)
     {
         ArgumentNullException.ThrowIfNull(factory);
-        return Scheduler.Start(this, default, null, factory, tag, priority, group, cancellationToken, stage,
-            ignorePause, childFailurePolicy);
+        return Scheduler.Start(this, default, coroutine: null, factory, tag, priority, group, stage,
+            ignorePause, childFailurePolicy, cancellationToken: cancellationToken);
     }
 
     /// <summary>Cancels current members while keeping the scope reusable. New work during cancellation is rejected.</summary>

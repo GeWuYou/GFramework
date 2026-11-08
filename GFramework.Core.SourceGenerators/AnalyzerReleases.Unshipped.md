@@ -5,7 +5,6 @@
 
  Rule ID                    | Category                                 | Severity | Notes                          
 ----------------------------|------------------------------------------|----------|--------------------------------
- GF_Logging_001             | GFramework.Godot.logging                 | Warning  | LoggerDiagnostics              
  GF_Rule_001                | GFramework.SourceGenerators.rule         | Error    | ContextAwareDiagnostic         
  GF_ContextGet_001          | GFramework.SourceGenerators.rule         | Error    | ContextGetDiagnostics          
  GF_ContextGet_002          | GFramework.SourceGenerators.rule         | Error    | ContextGetDiagnostics          

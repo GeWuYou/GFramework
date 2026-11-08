@@ -6,6 +6,7 @@
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
         <AssemblyName>FixturePrivate</AssemblyName>
+        <RootNamespace>FixturePrivate</RootNamespace>
         <AssemblyVersion>1.0.0.0</AssemblyVersion>
         <IsPackable>false</IsPackable>
         <ImplicitUsings>disable</ImplicitUsings>

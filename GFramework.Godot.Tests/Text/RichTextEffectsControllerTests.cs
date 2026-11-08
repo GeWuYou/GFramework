@@ -28,8 +28,8 @@ public sealed class RichTextEffectsControllerTests
         Assert.That(host.CapturedAnimatedEffectsEnabled, Has.Count.EqualTo(1));
         Assert.That(host.CapturedAnimatedEffectsEnabled[0], Is.False);
         Assert.That(host.CapturedProfiles, Has.Count.EqualTo(1));
-        Assert.That(host.CapturedProfiles[0].Effects.Select(static entry => entry.Key), Is.EqualTo(new[]
-        {
+        Assert.That(host.CapturedProfiles[0].Effects.Select(static entry => entry.Key), Is.EqualTo(
+        [
             "green",
             "red",
             "gold",
@@ -37,8 +37,8 @@ public sealed class RichTextEffectsControllerTests
             "fade_in",
             "sine",
             "jitter",
-            "fly_in"
-        }));
+            "fly_in",
+        ]));
     }
 
     /// <summary>
@@ -49,7 +49,7 @@ public sealed class RichTextEffectsControllerTests
     {
         var host = new FakeRichTextEffectHost
         {
-            BbcodeEnabled = true
+            BbcodeEnabled = true,
         };
         host.SimulateInstalledEffects();
         var controller = new RichTextEffectsController(
@@ -75,11 +75,11 @@ public sealed class RichTextEffectsControllerTests
         var host = new FakeRichTextEffectHost();
         var firstProfile = new RichTextEffectPlan(
         [
-            new RichTextEffectPlanEntry("green")
+            new RichTextEffectPlanEntry("green"),
         ]);
         var secondProfile = new RichTextEffectPlan(
         [
-            new RichTextEffectPlanEntry("gold")
+            new RichTextEffectPlanEntry("gold"),
         ]);
         RichTextEffectPlan? currentProfile = firstProfile;
 
@@ -104,10 +104,19 @@ public sealed class RichTextEffectsControllerTests
 
         public List<bool> CapturedAnimatedEffectsEnabled { get; } = [];
 
-        public bool CustomEffectsInstalled { get; private set; }
+        public bool CustomEffectsInstalled
+        {
+            get; private set;
+        }
 
-        public int ClearCustomEffectsCallCount { get; private set; }
-        public bool BbcodeEnabled { get; set; }
+        public int ClearCustomEffectsCallCount
+        {
+            get; private set;
+        }
+        public bool BbcodeEnabled
+        {
+            get; set;
+        }
 
         public void ApplyEffects(RichTextEffectPlan profile, bool animatedEffectsEnabled)
         {

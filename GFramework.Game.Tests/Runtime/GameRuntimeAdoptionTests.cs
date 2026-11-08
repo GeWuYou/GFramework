@@ -89,7 +89,10 @@ public sealed class GameRuntimeAdoptionTests
     private sealed class AdoptionHost : IUiHost
     {
         /// <summary>Gets or sets whether host detachment has happened.</summary>
-        public bool Released { get; set; }
+        public bool Released
+        {
+            get; set;
+        }
         /// <inheritdoc />
         public void Attach(IUiView view, int layer, long order) => Assert.That(Released, Is.False);
         /// <inheritdoc />
@@ -97,20 +100,33 @@ public sealed class GameRuntimeAdoptionTests
         /// <inheritdoc />
         public object? CaptureFocus() => null;
         /// <inheritdoc />
-        public void Focus(IUiView view) { }
+        public void Focus(IUiView view)
+        {
+        }
         /// <inheritdoc />
-        public void RestoreFocus(object? bookmark) { }
+        public void RestoreFocus(object? bookmark)
+        {
+        }
     }
 
     /// <summary>Records business and resource cleanup separately.</summary>
     private sealed class AdoptionView : IUiView
     {
         /// <summary>Gets the close callback count.</summary>
-        public int CloseCount { get; private set; }
+        public int CloseCount
+        {
+            get; private set;
+        }
         /// <summary>Gets the native lease release count.</summary>
-        public int DisposeCount { get; private set; }
+        public int DisposeCount
+        {
+            get; private set;
+        }
         /// <summary>Gets the assertion run while the host must still be available.</summary>
-        public Action? BeforeClose { get; init; }
+        public Action? BeforeClose
+        {
+            get; init;
+        }
         /// <inheritdoc />
         public bool IsAlive => DisposeCount == 0;
         /// <inheritdoc />
@@ -123,11 +139,19 @@ public sealed class GameRuntimeAdoptionTests
             return Task.CompletedTask;
         }
         /// <inheritdoc />
-        public void SetVisible(bool visible) { }
+        public void SetVisible(bool visible)
+        {
+        }
         /// <inheritdoc />
-        public void SetActive(bool active) { }
+        public void SetActive(bool active)
+        {
+        }
         /// <inheritdoc />
-        public ValueTask DisposeAsync() { DisposeCount++; return ValueTask.CompletedTask; }
+        public ValueTask DisposeAsync()
+        {
+            DisposeCount++;
+            return ValueTask.CompletedTask;
+        }
     }
 
     /// <summary>Uses only the service module to integrate ordinary services into Architecture.</summary>

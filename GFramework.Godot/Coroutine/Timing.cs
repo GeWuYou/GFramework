@@ -16,7 +16,7 @@ namespace GFramework.Godot.Coroutine;
 /// </remarks>
 public partial class Timing : Node
 {
-    private static readonly Dictionary<long, WeakReference<Timing>> ActiveInstances = new();
+    private static readonly Dictionary<long, WeakReference<Timing>> ActiveInstances = [];
     private static readonly CoroutineExecutionStage[] SupportedStages =
         [CoroutineExecutionStage.Update, CoroutineExecutionStage.FixedUpdate, CoroutineExecutionStage.Deferred];
     private static Timing? _instance;
@@ -60,10 +60,10 @@ public partial class Timing : Node
     }
 
     /// <summary>Gets normal Update task count, including paused and waiting tasks.</summary>
-    public int ProcessCoroutines => CountCoroutines(CoroutineExecutionStage.Update, false);
+    public int ProcessCoroutines => CountCoroutines(CoroutineExecutionStage.Update, ignorePause: false);
 
     /// <summary>Gets Update task count for tasks that ignore scene pause.</summary>
-    public int ProcessIgnorePauseCoroutines => CountCoroutines(CoroutineExecutionStage.Update, true);
+    public int ProcessIgnorePauseCoroutines => CountCoroutines(CoroutineExecutionStage.Update, ignorePause: true);
 
     /// <summary>Gets tasks currently assigned to physics, regardless of pause policy.</summary>
     public int PhysicsCoroutines => CountCoroutines(CoroutineExecutionStage.FixedUpdate);
@@ -291,7 +291,7 @@ public partial class Timing : Node
             throw new InvalidOperationException("An exiting Timing host cannot be initialized again before tree re-entry.");
         if (_scheduler != null)
             return;
-        _ownerScopes ??= new Dictionary<ulong, OwnedCoroutineScope>();
+        _ownerScopes ??= [];
         _processRealtime = GodotTimeSource.CreateRealtime();
         _physicsRealtime = GodotTimeSource.CreateRealtime();
         _deferredRealtime = GodotTimeSource.CreateRealtime();
@@ -353,7 +353,7 @@ public partial class Timing : Node
         }
         catch (Exception exception)
         {
-            (failures ??= new List<Exception>()).Add(exception);
+            (failures ??= []).Add(exception);
         }
     }
 
@@ -375,9 +375,9 @@ public partial class Timing : Node
 
     /// <summary>Copies hosts before callbacks can mutate the registry.</summary>
     /// <returns>The hosts whose managed schedulers remain active.</returns>
-    private static Timing[] EnumerateActiveInstances() => ActiveInstances.Values
+    private static Timing[] EnumerateActiveInstances() => [.. ActiveInstances.Values
         .Select(reference => reference.TryGetTarget(out var timing) ? timing : null)
-        .Where(timing => timing?._scheduler != null).Cast<Timing>().ToArray();
+        .Where(timing => timing?._scheduler != null).Cast<Timing>()];
 
     /// <summary>Counts snapshots for diagnostics; it is deliberately outside the frame hot path.</summary>
     /// <param name="stage">The current stage to count.</param>
@@ -395,7 +395,7 @@ public partial class Timing : Node
         Segment.Process or Segment.ProcessIgnorePause => CoroutineExecutionStage.Update,
         Segment.PhysicsProcess => CoroutineExecutionStage.FixedUpdate,
         Segment.DeferredProcess => CoroutineExecutionStage.Deferred,
-        _ => throw new ArgumentOutOfRangeException(nameof(segment), segment, "Unsupported coroutine segment.")
+        _ => throw new ArgumentOutOfRangeException(nameof(segment), segment, "Unsupported coroutine segment."),
     };
 
     /// <summary>Executes one action when its delay completes.</summary>

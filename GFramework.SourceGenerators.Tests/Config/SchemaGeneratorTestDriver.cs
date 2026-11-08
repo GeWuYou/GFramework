@@ -44,13 +44,13 @@ public static class SchemaGeneratorTestDriver
         var syntaxTree = CSharpSyntaxTree.ParseText(source);
         var compilation = CSharpCompilation.Create(
             "SchemaConfigGeneratorTests",
-            new[] { syntaxTree },
+            [syntaxTree],
             GetMetadataReferences(),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            generators: new[] { new SchemaConfigGenerator().AsSourceGenerator() },
-            additionalTexts: additionalTexts.ToImmutableArray(),
+            generators: [new SchemaConfigGenerator().AsSourceGenerator()],
+            additionalTexts: [.. additionalTexts],
             parseOptions: (CSharpParseOptions)syntaxTree.Options);
 
         driver = driver.RunGenerators(compilation);
@@ -65,7 +65,7 @@ public static class SchemaGeneratorTestDriver
     {
         var trustedPlatformAssemblies = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?
                                         .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-                                        ?? Array.Empty<string>();
+                                        ?? [];
 
         return trustedPlatformAssemblies
             .Select(static path => MetadataReference.CreateFromFile(path));
@@ -74,25 +74,19 @@ public static class SchemaGeneratorTestDriver
     /// <summary>
     ///     用于测试 AdditionalFiles 的内存实现。
     /// </summary>
-    private sealed class InMemoryAdditionalText : AdditionalText
+    /// <remarks>
+    ///     创建内存 AdditionalText。
+    /// </remarks>
+    /// <param name="path">虚拟文件路径。</param>
+    /// <param name="content">文件内容。</param>
+    private sealed class InMemoryAdditionalText(
+        string path,
+        string content) : AdditionalText
     {
-        private readonly SourceText _text;
-
-        /// <summary>
-        ///     创建内存 AdditionalText。
-        /// </summary>
-        /// <param name="path">虚拟文件路径。</param>
-        /// <param name="content">文件内容。</param>
-        public InMemoryAdditionalText(
-            string path,
-            string content)
-        {
-            Path = path;
-            _text = SourceText.From(content);
-        }
+        private readonly SourceText _text = SourceText.From(content);
 
         /// <inheritdoc />
-        public override string Path { get; }
+        public override string Path { get; } = path;
 
         /// <inheritdoc />
         public override SourceText GetText(CancellationToken cancellationToken = default)

@@ -13,23 +13,17 @@ namespace GFramework.Core.Tests.Logging;
 /// <remarks>
 ///     并发写入会通过内部锁串行化；<see cref="Logs" /> 每次返回快照，避免断言观察到正在被修改的可变集合。
 /// </remarks>
-public sealed class TestLogger : ILogger
+/// <remarks>
+///     初始化 <see cref="TestLogger" /> 的新实例。
+/// </remarks>
+/// <param name="categoryName">记录器类别名。</param>
+/// <param name="onLogged">每条条目捕获后的可选回调，供聚合容器使用。</param>
+public sealed class TestLogger(string categoryName = "TestLogger", Action<LogEntry>? onLogged = null) : ILogger
 {
-    private readonly string _categoryName;
-    private readonly Action<LogEntry>? _onLogged;
-    private readonly List<LogEntry> _logs = new();
+    private readonly string _categoryName = categoryName;
+    private readonly Action<LogEntry>? _onLogged = onLogged;
+    private readonly List<LogEntry> _logs = [];
     private readonly Lock _sync = new();
-
-    /// <summary>
-    ///     初始化 <see cref="TestLogger" /> 的新实例。
-    /// </summary>
-    /// <param name="categoryName">记录器类别名。</param>
-    /// <param name="onLogged">每条条目捕获后的可选回调，供聚合容器使用。</param>
-    public TestLogger(string categoryName = "TestLogger", Action<LogEntry>? onLogged = null)
-    {
-        _categoryName = categoryName;
-        _onLogged = onLogged;
-    }
 
     /// <summary>
     ///     获取按写入顺序保存的日志条目快照。
@@ -40,7 +34,7 @@ public sealed class TestLogger : ILogger
         {
             lock (_sync)
             {
-                return _logs.ToArray();
+                return [.. _logs];
             }
         }
     }
@@ -98,7 +92,7 @@ public sealed class TestLogger : ILogger
     }
 
     /// <summary>识别标准结构化状态（键值对列表）并提取为属性字典；其余状态返回 null。</summary>
-    private static IReadOnlyDictionary<string, object?>? ExtractProperties<TState>(TState state)
+    private static Dictionary<string, object?>? ExtractProperties<TState>(TState state)
     {
         if (state is not IEnumerable<KeyValuePair<string, object?>> pairs)
             return null;

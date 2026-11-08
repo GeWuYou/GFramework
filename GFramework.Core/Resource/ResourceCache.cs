@@ -193,7 +193,7 @@ internal sealed class ResourceCache
     /// <returns>资源路径集合</returns>
     public IEnumerable<string> GetAllPaths()
     {
-        return _cache.Keys.ToList();
+        return [.. _cache.Keys];
     }
 
     /// <summary>

@@ -11,6 +11,8 @@ namespace GFramework.Core.Tests.Architectures;
 /// </summary>
 /// <typeparam name="TRequest">流式请求类型。</typeparam>
 /// <typeparam name="TResponse">流式响应元素类型。</typeparam>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0018",
+    Justification = "Static tracking state is intentionally isolated per closed stream request/response type in this fixture.")]
 public sealed class TrackingStreamPipelineBehavior<TRequest, TResponse> : IStreamPipelineBehavior<TRequest, TResponse>
     where TRequest : IStreamRequest<TResponse>
 {

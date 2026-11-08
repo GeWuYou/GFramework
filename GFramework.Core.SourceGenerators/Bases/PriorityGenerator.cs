@@ -112,7 +112,7 @@ public sealed class PriorityGenerator : MetadataAttributeClassGeneratorBase
 
         if (ns is not null)
         {
-            sb.AppendLine($"namespace {ns};");
+            sb.Append("namespace ").Append(ns).Append(';').AppendLine();
             sb.AppendLine();
         }
 
@@ -124,13 +124,12 @@ public sealed class PriorityGenerator : MetadataAttributeClassGeneratorBase
         sb.AppendLine("/// <summary>");
         sb.AppendLine("/// 为当前分部类型补充自动生成的优先级契约实现。");
         sb.AppendLine("/// </summary>");
-        sb.AppendLine(
-            $"partial class {symbol.Name}{typeParameters} : global::GFramework.Core.Abstractions.Bases.IPrioritized");
+        sb.Append("partial class ").Append(symbol.Name).Append(typeParameters).AppendLine(" : global::GFramework.Core.Abstractions.Bases.IPrioritized");
         sb.AppendLine("{");
         sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// 获取优先级值: {priorityValue}");
+        sb.Append("    /// 获取优先级值: ").Append(priorityValue).AppendLine();
         sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    public int Priority => {priorityValue};");
+        sb.Append("    public int Priority => ").Append(priorityValue).Append(';').AppendLine();
         sb.AppendLine("}");
 
         return sb.ToString().TrimEnd();
@@ -144,11 +143,11 @@ public sealed class PriorityGenerator : MetadataAttributeClassGeneratorBase
         // 使用完整的元数据名称以避免冲突
         var metadataName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
             .Replace("global::", "")
-            .Replace("<", "_")
-            .Replace(">", "_")
-            .Replace(",", "_")
+            .Replace('<', '_')
+            .Replace('>', '_')
+            .Replace(',', '_')
             .Replace(" ", "")
-            .Replace(".", "_");
+            .Replace('.', '_');
 
         return $"{metadataName}.Priority.g.cs";
     }

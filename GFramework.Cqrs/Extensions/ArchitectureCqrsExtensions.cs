@@ -15,6 +15,7 @@ public static class ArchitectureCqrsExtensions
 {
     /// <summary>
     ///     为当前架构安装 <see cref="CqrsRuntimeModule" />。
+    ///     只能在 ConfigureServices 或其配置回调窗口内调用，不能在启动前直接修改架构。
     /// </summary>
     /// <param name="architecture">目标架构。</param>
     /// <param name="additionalHandlerAssemblies">
@@ -34,7 +35,7 @@ public static class ArchitectureCqrsExtensions
         // 使生成注册表或反射扫描能覆盖随架构一起发布的处理器。
         var handlerAssemblies = new List<Assembly>(additionalHandlerAssemblies.Length + 1)
         {
-            architecture.GetType().Assembly
+            architecture.GetType().Assembly,
         };
         handlerAssemblies.AddRange(additionalHandlerAssemblies);
 

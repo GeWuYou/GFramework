@@ -3,6 +3,7 @@
 
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Cqrs.Abstractions.Cqrs;
@@ -107,7 +108,10 @@ internal sealed class CqrsDispatcher(
 
         if (handlers.Count == 0)
         {
-            logger.LogDebug($"No CQRS notification handler registered for {notificationType.FullName}.");
+            if (logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Debug))
+            {
+                logger.LogDebug("No CQRS notification handler registered for {NotificationType}.", notificationType.FullName);
+            }
             return;
         }
 
@@ -236,7 +240,7 @@ internal sealed class CqrsDispatcher(
     /// <returns>已解析实例的只读列表；无注册时为空列表。</returns>
     private IReadOnlyList<object> ResolveHandlers(Type serviceType)
     {
-        return provider.GetServices(serviceType).OfType<object>().ToArray();
+        return [.. provider.GetServices(serviceType).OfType<object>()];
     }
 
     /// <summary>
@@ -274,7 +278,7 @@ internal sealed class CqrsDispatcher(
                 IArchitectureContext directContext => directContext,
                 _ => throw new InvalidOperationException(
                     "The current CQRS context does not provide an IArchitectureContext, so it cannot be injected into IContextAware handlers. " +
-                    "Use the architecture context extensions from GFramework.Cqrs.Extensions, or remove the IContextAware declaration and use constructor injection.")
+                    "Use the architecture context extensions from GFramework.Cqrs.Extensions, or remove the IContextAware declaration and use constructor injection."),
             };
 
             contextAware.SetContext(architectureContext);
@@ -308,13 +312,10 @@ internal sealed class CqrsDispatcher(
             0 => new SequentialNotificationPublisher(),
             1 => (INotificationPublisher)registeredPublishers[0],
             _ => throw new InvalidOperationException(
-                $"Multiple {typeof(INotificationPublisher).FullName} instances are registered. Remove duplicate notification publisher strategies before publishing notifications.")
+                $"Multiple {typeof(INotificationPublisher).FullName} instances are registered. Remove duplicate notification publisher strategies before publishing notifications."),
         };
 
-        Interlocked.CompareExchange(
-            ref _resolvedNotificationPublisher,
-            resolvedNotificationPublisher,
-            comparand: null);
+        LazyInitializer.EnsureInitialized(ref _resolvedNotificationPublisher, () => resolvedNotificationPublisher);
 
         return _resolvedNotificationPublisher;
     }
@@ -358,7 +359,7 @@ internal sealed class CqrsDispatcher(
     /// <summary>
     ///     为弱键请求缓存创建强类型 binding 盒子，避免 value-type 响应走 object 结果桥接。
     /// </summary>
-    private static RequestDispatchBindingBox CreateRequestDispatchBindingBox<TResponse>(
+    private static RequestDispatchBindingBox<TResponse> CreateRequestDispatchBindingBox<TResponse>(
         Type requestType,
         Type responseType)
     {
@@ -476,7 +477,7 @@ internal sealed class CqrsDispatcher(
     /// <param name="requestType">流式请求运行时类型。</param>
     /// <param name="responseType">缓存命中的响应运行时类型。</param>
     /// <returns>可放入弱键缓存的强类型 binding 盒子。</returns>
-    private static StreamDispatchBindingBox CreateStreamDispatchBindingBox<TResponse>(
+    private static StreamDispatchBindingBox<TResponse> CreateStreamDispatchBindingBox<TResponse>(
         Type requestType,
         Type responseType)
     {
@@ -533,7 +534,7 @@ internal sealed class CqrsDispatcher(
             // generated stream descriptor 的公开契约仍以 object 返回值暴露异步流；
             // 这里在 binding 创建时只做一次适配，把后续 CreateStream 热路径保持为强类型调用。
             var adapter = new GeneratedStreamInvokerAdapter<TResponse>(weakInvoker);
-            StreamInvoker<TResponse> invoker = (handler, request, cancellationToken) =>
+            IAsyncEnumerable<TResponse> invoker(object handler, object request, CancellationToken cancellationToken) =>
                 adapter.Invoke(handler, request, cancellationToken);
             return new StreamInvokerDescriptor<TResponse>(descriptor.HandlerType, invoker);
         }
@@ -737,7 +738,7 @@ internal sealed class CqrsDispatcher(
         /// <summary>
         ///     创建一个新的强类型 dispatch binding 盒子。
         /// </summary>
-        public static RequestDispatchBindingBox Create<TResponse>(RequestDispatchBinding<TResponse> binding)
+        public static RequestDispatchBindingBox<TResponse> Create<TResponse>(RequestDispatchBinding<TResponse> binding)
         {
             ArgumentNullException.ThrowIfNull(binding);
             return new RequestDispatchBindingBox<TResponse>(binding);
@@ -782,7 +783,7 @@ internal sealed class CqrsDispatcher(
         /// <summary>
         ///     创建一个新的强类型 stream dispatch binding 盒子。
         /// </summary>
-        public static StreamDispatchBindingBox Create<TResponse>(StreamDispatchBinding<TResponse> binding)
+        public static StreamDispatchBindingBox<TResponse> Create<TResponse>(StreamDispatchBinding<TResponse> binding)
         {
             ArgumentNullException.ThrowIfNull(binding);
             return new StreamDispatchBindingBox<TResponse>(binding);
@@ -911,7 +912,7 @@ internal sealed class CqrsDispatcher(
         /// <summary>
         ///     仅供测试读取指定行为数量是否已存在缓存 executor。
         /// </summary>
-        public object? GetPipelineExecutorForTesting(int behaviorCount)
+        public StreamPipelineExecutor<TResponse>? GetPipelineExecutorForTesting(int behaviorCount)
         {
             _pipelineExecutors.TryGetValue(behaviorCount, out var executor);
             return executor;
@@ -966,7 +967,7 @@ internal sealed class CqrsDispatcher(
         /// <summary>
         ///     仅供测试读取指定行为数量是否已存在缓存 executor。
         /// </summary>
-        public object? GetPipelineExecutorForTesting(int behaviorCount)
+        public RequestPipelineExecutor<TResponse>? GetPipelineExecutorForTesting(int behaviorCount)
         {
             _pipelineExecutors.TryGetValue(behaviorCount, out var executor);
             return executor;
@@ -1024,7 +1025,7 @@ internal sealed class CqrsDispatcher(
             if (behaviors.Count != BehaviorCount)
             {
                 throw new InvalidOperationException(
-                    $"Cached request pipeline executor expected {BehaviorCount} behaviors, but received {behaviors.Count}.");
+                    string.Create(CultureInfo.InvariantCulture, $"Cached request pipeline executor expected {BehaviorCount} behaviors, but received {behaviors.Count}."));
             }
 
             return invoker(handler, behaviors, requestInvoker, request, cancellationToken);
@@ -1123,7 +1124,7 @@ internal sealed class CqrsDispatcher(
             if (behaviors.Count != BehaviorCount)
             {
                 throw new InvalidOperationException(
-                    $"Cached stream pipeline executor expected {BehaviorCount} behaviors, but received {behaviors.Count}.");
+                    string.Create(CultureInfo.InvariantCulture, $"Cached stream pipeline executor expected {BehaviorCount} behaviors, but received {behaviors.Count}."));
             }
 
             return invoker(handler, behaviors, streamInvoker, request, cancellationToken);

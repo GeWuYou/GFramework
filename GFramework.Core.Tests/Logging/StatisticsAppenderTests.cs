@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Appenders;
 using GFramework.Core.Tests.Time;
@@ -161,12 +162,12 @@ public class StatisticsAppenderTests
                 for (int j = 0; j < 100; j++)
                 {
                     var level = j % 2 == 0 ? LogLevel.Information : LogLevel.Error;
-                    _appender.Append(CreateLogEntry(level, $"Logger{loggerId}", "Message"));
+                    _appender.Append(CreateLogEntry(level, string.Create(CultureInfo.InvariantCulture, $"Logger{loggerId}"), "Message"));
                 }
             }));
         }
 
-        Task.WaitAll(tasks.ToArray());
+        Task.WaitAll([.. tasks]);
 
         Assert.That(_appender.TotalCount, Is.EqualTo(1000));
         Assert.That(_appender.ErrorCount, Is.EqualTo(500));
@@ -187,8 +188,8 @@ public class StatisticsAppenderTests
             level,
             loggerName,
             message,
-            null,
-            null
+Exception: null,
+Properties: null
         );
     }
 }

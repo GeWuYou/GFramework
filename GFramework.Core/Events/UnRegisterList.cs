@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Events;
@@ -32,7 +32,8 @@ public class UnRegisterList : IUnRegisterList
     public void UnRegisterAll()
     {
         // 遍历所有注册项并执行取消注册
-        foreach (var t in _unRegisterList) t.UnRegister();
+        foreach (var t in _unRegisterList)
+            t.UnRegister();
 
         // 清空列表
         _unRegisterList.Clear();

@@ -16,7 +16,7 @@ public class OrEvent : IUnRegisterList
     /// <summary>
     ///     获取取消注册列表
     /// </summary>
-    public IList<IUnRegister> UnregisterList { get; } = new List<IUnRegister>();
+    public IList<IUnRegister> UnregisterList { get; } = [];
 
     /// <summary>
     ///     将指定的事件与当前OrEvent进行或逻辑组合

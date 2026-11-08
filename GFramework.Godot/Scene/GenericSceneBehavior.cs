@@ -19,15 +19,9 @@ namespace GFramework.Godot.Scene;
 ///     通用场景行为类，用于管理任意 Node 类型场景节点的生命周期。
 ///     当场景节点不属于 Node2D、Node3D 或 Control 时使用此类。
 /// </summary>
-public sealed class GenericSceneBehavior : SceneBehaviorBase<Node>
-{
-    /// <summary>
-    ///     初始化 GenericSceneBehavior 实例。
-    /// </summary>
-    /// <param name="owner">场景节点的所有者实例。</param>
-    /// <param name="key">场景的唯一标识键。</param>
-    public GenericSceneBehavior(Node owner, string key)
-        : base(owner, key)
-    {
-    }
-}
+/// <remarks>
+///     初始化 GenericSceneBehavior 实例。
+/// </remarks>
+/// <param name="owner">场景节点的所有者实例。</param>
+/// <param name="key">场景的唯一标识键。</param>
+public sealed class GenericSceneBehavior(Node owner, string key) : SceneBehaviorBase<Node>(owner, key);

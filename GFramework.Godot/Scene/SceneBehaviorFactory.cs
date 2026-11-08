@@ -37,7 +37,7 @@ public static class SceneBehaviorFactory
             Node2D node2D => new Node2DSceneBehavior(node2D, key),
             Node3D node3D => new Node3DSceneBehavior(node3D, key),
             Control control => new ControlSceneBehavior(control, key),
-            _ => new GenericSceneBehavior(owner, key)
+            _ => new GenericSceneBehavior(owner, key),
         };
     }
 }

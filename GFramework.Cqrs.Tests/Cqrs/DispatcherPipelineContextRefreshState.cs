@@ -27,7 +27,7 @@ internal static class DispatcherPipelineContextRefreshState
         {
             lock (SyncRoot)
             {
-                return _behaviorSnapshots.ToArray();
+                return [.. _behaviorSnapshots];
             }
         }
     }
@@ -42,7 +42,7 @@ internal static class DispatcherPipelineContextRefreshState
         {
             lock (SyncRoot)
             {
-                return _handlerSnapshots.ToArray();
+                return [.. _handlerSnapshots];
             }
         }
     }

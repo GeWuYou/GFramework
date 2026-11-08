@@ -8,7 +8,7 @@
 
 | 层 | 当前依赖与责任 | 源码 |
 | --- | --- | --- |
-| 聚合包 | 直接聚合 Core 与 Game；不包含 CQRS、Godot 或生成器 | [聚合项目](../../GFramework.csproj) |
+| 聚合包 | 直接聚合 Core、Game、CQRS runtime 与契约；不包含 Godot 或生成器 | [聚合项目](../../GFramework.csproj) |
 | Core | 依赖 Core.Abstractions；承载架构、容器适配及通用子系统，不含 CQRS 引用 | [Core 项目](../../GFramework.Core/GFramework.Core.csproj) |
 | Core.Abstractions | 依赖 Microsoft DI 抽象；上下文与容器契约不再包含 CQRS 能力 | [契约项目](../../GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj) |
 | CQRS | Runtime 依赖 Core.Abstractions 与 Cqrs.Abstractions，运行在标准 DI 上；消息契约包可单独引用 | [CQRS 项目](../../GFramework.Cqrs/GFramework.Cqrs.csproj)、[运行时工厂](../../GFramework.Cqrs/CqrsRuntimeFactory.cs) |
@@ -31,7 +31,7 @@
 5. 服务模块按稳定优先级启动，组件按 Utility → Model → System 初始化；异步阶段 hook 接收取消令牌。
 6. OnStarted/OnStartedAsync 完成宿主准备后进入 Ready。同步启动拒绝异步组件、钩子与宿主。
 
-CQRS runtime 使用标准服务解析：`services.AddCqrsRuntime()` 创建单例 runtime，handler、pipeline 行为与通知发布策略通过 `IServiceCollection` 扩展登记。旧注册期解析器与单例缓存已移除，Context 不再把普通 Transient/Scoped 服务缓存为单例。
+CQRS runtime 使用标准服务解析：`services.AddCqrsRuntime()` 创建根单例 runtime；请求宿主可显式使用 `AddScopedCqrsRuntime()`，从调用方作用域解析 runtime 并隔离 Scoped handler 与依赖。handler、pipeline 行为与通知发布策略通过 `IServiceCollection` 扩展登记。旧注册期解析器与单例缓存已移除，Context 不再把普通 Transient/Scoped 服务缓存为单例。
 
 ## 停止、失败与资源责任
 

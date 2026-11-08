@@ -15,27 +15,26 @@ namespace GFramework.Core.Tests.Architectures;
 /// <summary>
 ///     为 <see cref="RegistryInitializationHookBaseTests" /> 提供已挂接 <see cref="TestRegistry" /> 的架构测试替身。
 /// </summary>
-public class TestArchitectureWithRegistry : IArchitecture
+/// <remarks>
+///     使用给定测试注册表创建架构测试替身。
+/// </remarks>
+/// <param name="registry">要通过架构上下文暴露给钩子的测试注册表。</param>
+public class TestArchitectureWithRegistry(TestRegistry registry) : IArchitecture
 {
-    /// <summary>
-    ///     使用给定测试注册表创建架构测试替身。
-    /// </summary>
-    /// <param name="registry">要通过架构上下文暴露给钩子的测试注册表。</param>
-    public TestArchitectureWithRegistry(TestRegistry registry)
-    {
-        Context = new TestArchitectureContextWithRegistry(registry);
-    }
 
     /// <summary>
     ///     获取测试替身公开的服务配置入口。
     ///     当前切片不验证服务配置流程，因此始终保持为空。
     /// </summary>
-    public Action<IServiceCollection>? Configurator { get; }
+    public Action<IServiceCollection>? Configurator
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取当前测试替身使用的架构上下文。
     /// </summary>
-    public IArchitectureContext Context { get; }
+    public IArchitectureContext Context { get; } = new TestArchitectureContextWithRegistry(registry);
 
     Action<IServiceCollection>? IArchitecture.Configurator => Configurator;
 
@@ -71,6 +70,7 @@ public class TestArchitectureWithRegistry : IArchitecture
     /// <returns>已完成的资源释放操作。</returns>
     public ValueTask DisposeAsync()
     {
+        GC.SuppressFinalize(this);
         return ValueTask.CompletedTask;
     }
 
@@ -161,7 +161,7 @@ public class TestArchitectureWithRegistry : IArchitecture
     /// </summary>
     /// <returns>此方法始终抛出异常，不返回等待任务。</returns>
     /// <exception cref="NotSupportedException">该测试替身不参与就绪等待路径验证。</exception>
-    public Task WaitUntilReadyAsync()
+    public static Task WaitUntilReadyAsync()
     {
         throw new NotSupportedException();
     }
@@ -171,8 +171,9 @@ public class TestArchitectureWithRegistry : IArchitecture
     ///     当前切片不依赖生命周期钩子执行，因此保持空实现。
     /// </summary>
     /// <param name="hook">要忽略的生命周期钩子。</param>
-    public void RegisterLifecycleHook(IArchitectureLifecycleHook hook)
+    public static void RegisterLifecycleHook(IArchitectureLifecycleHook hook)
     {
+        _ = hook;
     }
 
     /// <summary>
@@ -181,7 +182,7 @@ public class TestArchitectureWithRegistry : IArchitecture
     /// <param name="cancellationToken">本替身不执行初始化，因此不消费该令牌。</param>
     /// <returns>此方法始终抛出异常，不返回初始化任务。</returns>
     /// <exception cref="NotSupportedException">该测试替身不参与异步初始化验证。</exception>
-    public Task InitializeAsync(CancellationToken cancellationToken = default)
+    public static Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         throw new NotSupportedException();
     }
@@ -191,7 +192,7 @@ public class TestArchitectureWithRegistry : IArchitecture
     /// </summary>
     /// <returns>此方法始终抛出异常，不返回销毁任务。</returns>
     /// <exception cref="NotSupportedException">该测试替身不参与异步销毁验证。</exception>
-    public ValueTask DestroyAsync()
+    public static ValueTask DestroyAsync()
     {
         throw new NotSupportedException();
     }

@@ -10,23 +10,17 @@ namespace GFramework.Core.Events;
 ///     使用装饰器模式为任何 IEvent 实现添加统计功能
 /// </summary>
 /// <typeparam name="T">事件数据类型</typeparam>
-internal sealed class StatisticsEventDecorator<T>
+/// <remarks>
+///     构造函数
+/// </remarks>
+/// <param name="innerEvent">被装饰的事件对象</param>
+/// <param name="statistics">统计对象</param>
+[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
+internal sealed class StatisticsEventDecorator<T>(IEvent innerEvent, EventStatistics statistics)
 {
-    private readonly string _eventTypeName;
-    private readonly IEvent _innerEvent;
-    private readonly EventStatistics _statistics;
-
-    /// <summary>
-    ///     构造函数
-    /// </summary>
-    /// <param name="innerEvent">被装饰的事件对象</param>
-    /// <param name="statistics">统计对象</param>
-    public StatisticsEventDecorator(IEvent innerEvent, EventStatistics statistics)
-    {
-        _innerEvent = innerEvent ?? throw new ArgumentNullException(nameof(innerEvent));
-        _statistics = statistics ?? throw new ArgumentNullException(nameof(statistics));
-        _eventTypeName = typeof(T).Name;
-    }
+    private readonly string _eventTypeName = typeof(T).Name;
+    private readonly IEvent _innerEvent = innerEvent ?? throw new ArgumentNullException(nameof(innerEvent));
+    private readonly EventStatistics _statistics = statistics ?? throw new ArgumentNullException(nameof(statistics));
 
     /// <summary>
     ///     注册事件监听器（带统计）
@@ -36,7 +30,7 @@ internal sealed class StatisticsEventDecorator<T>
     public IUnRegister Register(Action<T> onEvent)
     {
         // 包装回调以添加统计
-        Action<T> wrappedHandler = data =>
+        void wrappedHandler(T data)
         {
             try
             {
@@ -48,7 +42,7 @@ internal sealed class StatisticsEventDecorator<T>
                 _statistics.RecordFailure();
                 throw;
             }
-        };
+        }
 
         var unregister = _innerEvent.Register(() => { }); // 占位，实际不使用
 

@@ -142,12 +142,14 @@ internal sealed class ArchitectureLifecycle(
     public async ValueTask MarkAsReadyAsync(bool asyncMode, CancellationToken cancellationToken)
     {
         await EnterPhaseAsync(ArchitecturePhase.Ready, asyncMode, cancellationToken).ConfigureAwait(false);
+        // 最后一个 Ready 回调或 PhaseChanged 观察者也可能取消启动，不能再向等待者报告成功。
+        cancellationToken.ThrowIfCancellationRequested();
         _ready.TrySetResult();
     }
 
     /// <summary>先标记失败；等待者由外层在自动清理完成后唤醒。</summary>
     /// <returns>失败阶段广播完成。</returns>
-    public ValueTask MarkAsFailedAsync() => EnterPhaseAsync(ArchitecturePhase.FailedInitialization, true);
+    public ValueTask MarkAsFailedAsync() => EnterPhaseAsync(ArchitecturePhase.FailedInitialization, asyncMode: true);
 
     /// <summary>失败清理完成后让 Ready 等待者观察原失败或取消。</summary>
     /// <param name="exception">启动失败。</param>
@@ -220,7 +222,7 @@ internal sealed class ArchitectureLifecycle(
         var errors = new List<Exception>();
         try
         {
-            await EnterPhaseAsync(ArchitecturePhase.Destroying, true).ConfigureAwait(false);
+            await EnterPhaseAsync(ArchitecturePhase.Destroying, asyncMode: true).ConfigureAwait(false);
         }
         catch (Exception error)
         {
@@ -236,7 +238,7 @@ internal sealed class ArchitectureLifecycle(
         }
         try
         {
-            await EnterPhaseAsync(ArchitecturePhase.Destroyed, true).ConfigureAwait(false);
+            await EnterPhaseAsync(ArchitecturePhase.Destroyed, asyncMode: true).ConfigureAwait(false);
         }
         catch (Exception error)
         {

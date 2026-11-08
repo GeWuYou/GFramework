@@ -13,5 +13,8 @@ public sealed class ArchitectureProperties
     ///     严格阶段验证开关，当设置为 true 时启用严格的阶段验证机制。
     ///     默认值为 false，表示不启用严格验证。
     /// </summary>
-    public bool StrictPhaseValidation { get; set; }
+    public bool StrictPhaseValidation
+    {
+        get; set;
+    }
 }

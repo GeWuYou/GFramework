@@ -13,9 +13,9 @@ internal sealed class CoroutineChildrenEnumerator : IEnumerator<IYieldInstructio
 {
     private CoroutineContext? _context;
     private readonly IEnumerator<IYieldInstruction>?[] _pending;
-    private readonly List<CoroutineHandle> _handles = new();
-    private readonly List<JoinCoroutine> _joins = new();
-    private readonly List<Task<CoroutineResult>> _retainedResults = new();
+    private readonly List<CoroutineHandle> _handles = [];
+    private readonly List<JoinCoroutine> _joins = [];
+    private readonly List<Task<CoroutineResult>> _retainedResults = [];
     private IYieldInstruction? _current;
     private int _waitIndex;
     private bool _started;
@@ -31,7 +31,7 @@ internal sealed class CoroutineChildrenEnumerator : IEnumerator<IYieldInstructio
         {
             throw new ArgumentException("Child coroutine entries must not be null.", nameof(coroutines));
         }
-        _pending = coroutines.Cast<IEnumerator<IYieldInstruction>?>().ToArray();
+        _pending = [.. coroutines.Cast<IEnumerator<IYieldInstruction>?>()];
     }
 
     /// <inheritdoc />
@@ -125,7 +125,7 @@ internal sealed class CoroutineChildrenEnumerator : IEnumerator<IYieldInstructio
             if (join.Result.Status == CoroutineCompletionStatus.Faulted)
             {
                 _terminalStatus = CoroutineCompletionStatus.Faulted;
-                (failures ??= new List<Exception>()).Add(join.Result.Exception
+                (failures ??= []).Add(join.Result.Exception
                     ?? new InvalidOperationException("A child failed without retaining an exception."));
             }
         }
@@ -147,7 +147,7 @@ internal sealed class CoroutineChildrenEnumerator : IEnumerator<IYieldInstructio
         }
         _disposed = true;
         _current = null;
-        List<Exception>? failures = primaryException == null ? null : new List<Exception> { primaryException };
+        List<Exception>? failures = primaryException == null ? null : [primaryException];
         for (var index = 0; index < _pending.Length; index++)
         {
             var pending = _pending[index];
@@ -159,7 +159,7 @@ internal sealed class CoroutineChildrenEnumerator : IEnumerator<IYieldInstructio
             catch (Exception exception)
             {
                 _terminalStatus = CoroutineCompletionStatus.Faulted;
-                (failures ??= new List<Exception>()).Add(exception);
+                (failures ??= []).Add(exception);
             }
         }
         CancelRemainingChildren(ref failures);
@@ -171,7 +171,7 @@ internal sealed class CoroutineChildrenEnumerator : IEnumerator<IYieldInstructio
         {
             null => null,
             { Count: 1 } => failures[0],
-            _ => new AggregateException(failures)
+            _ => new AggregateException(failures),
         };
     }
 
@@ -190,7 +190,7 @@ internal sealed class CoroutineChildrenEnumerator : IEnumerator<IYieldInstructio
                     if (context.Scheduler.TryGetResult(handle, out var result) && result.Exception != null)
                     {
                         _terminalStatus = CoroutineCompletionStatus.Faulted;
-                        (failures ??= new List<Exception>()).Add(result.Exception);
+                        (failures ??= []).Add(result.Exception);
                     }
                 }
             }

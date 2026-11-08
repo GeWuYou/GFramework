@@ -27,10 +27,16 @@ internal readonly record struct GodotYamlConfigDirectoryEntry
     /// <summary>
     ///     获取当前目录项的名称，不包含父目录路径。
     /// </summary>
-    public string Name { get; }
+    public string Name
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取一个值，指示当前目录项是否为子目录。
     /// </summary>
-    public bool IsDirectory { get; }
+    public bool IsDirectory
+    {
+        get;
+    }
 }

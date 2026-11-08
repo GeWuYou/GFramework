@@ -14,12 +14,18 @@ namespace GFramework.Core.Tests.Systems;
 public sealed class AsyncTestSystem : ISystem, IAsyncInitializable
 {
     private IArchitectureContext _context = null!;
-    public bool Initialized { get; private set; }
-    public bool DestroyCalled { get; private set; }
+    public bool Initialized
+    {
+        get; private set;
+    }
+    public bool DestroyCalled
+    {
+        get; private set;
+    }
 
     public async Task InitializeAsync(global::System.Threading.CancellationToken cancellationToken = default)
     {
-        await Task.Delay(10).ConfigureAwait(false);
+        await Task.Delay(10, cancellationToken).ConfigureAwait(false);
         Initialized = true;
     }
 

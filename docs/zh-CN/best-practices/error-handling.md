@@ -82,12 +82,12 @@ public async Task&lt;SaveData&gt; LoadSaveFileAsync(string path)
     }
     catch (FileNotFoundException ex)
     {
-        _logger.LogError($"存档文件不存在: {path}", ex);
+        _logger.LogError(ex, "存档文件不存在: {Path}", path);
         throw new SaveSystemException("无法加载存档文件", ex);
     }
     catch (JsonException ex)
     {
-        _logger.LogError($"存档文件格式错误: {path}", ex);
+        _logger.LogError(ex, "存档文件格式错误: {Path}", path);
         throw new SaveSystemException("存档文件已损坏", ex);
     }
 }
@@ -238,7 +238,7 @@ var result = Result&lt;int&gt;.Success(42)
 // OnSuccess/OnFailure：执行副作用
 result
     .OnSuccess(value =&gt; _logger.LogInformation($"成功: {value}"))
-    .OnFailure(ex =&gt; _logger.LogError($"失败: {ex.Message}"));
+    .OnFailure(ex =&gt; _logger.LogError(ex, "操作失败"));
 ```
 
 ### 实际应用示例
@@ -356,7 +356,7 @@ public class TradingSystem : AbstractSystem
                 this.SendEvent(new TradeCompletedEvent { Trade = trade });
             })
             .OnFailure(ex =&gt; {
-                _logger.LogError($"交易失败: {ex.Message}");
+                _logger.LogError(ex, "交易失败");
                 RollbackTrade(sellerId, buyerId, itemId, price);
             });
     }
@@ -442,7 +442,7 @@ if (combinedResult.IsSuccess)
 }
 else
 {
-    _logger.LogError($"验证失败: {combinedResult.Exception.Message}");
+    _logger.LogError(combinedResult.Exception, "验证失败");
 }
 ```
 
@@ -738,7 +738,7 @@ public class NetworkSystem : AbstractSystem
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError($"网络请求失败: {playerId}", ex);
+            _logger.LogError(ex, "网络请求失败: {PlayerId}", playerId);
             throw new NetworkException("网络连接失败", 0, ex);
         }
     }
@@ -855,7 +855,7 @@ _logger.LogInformation("游戏启动成功");
 _logger.LogWarning("配置文件不存在，使用默认配置");
 
 // Error：错误信息
-_logger.LogError("保存游戏失败", exception);
+_logger.LogError(exception, "保存游戏失败");
 
 // Fatal：致命错误
 _logger.LogError(exception, "无法初始化渲染系统");
@@ -927,7 +927,7 @@ public class SaveSystem : AbstractSystem
         }
         catch (Exception ex)
         {
-            _logger.LogError($"加载存档失败: {saveId}", ex);
+            _logger.LogError(ex, "加载存档失败: {SaveId}", saveId);
             return Result&lt;SaveData&gt;.Failure(ex);
         }
     }

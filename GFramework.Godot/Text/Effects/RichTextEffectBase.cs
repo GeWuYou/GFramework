@@ -13,12 +13,17 @@ public abstract partial class RichTextEffectBase : RichTextEffect
     /// <summary>
     ///     获取当前效果对应的 BBCode 标签名。
     /// </summary>
-    protected abstract string TagName { get; }
+    protected abstract string TagName
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取 Godot 识别当前效果所需的 `bbcode` 属性。
     ///     属性名使用小写是 Godot `RichTextEffect` 的约定，不是框架对公共成员命名的放宽。
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles",
+        Justification = "Godot resolves RichTextEffect tags through the exact lowercase bbcode member name.")]
     public string bbcode => TagName;
 
     /// <summary>
@@ -28,6 +33,10 @@ public abstract partial class RichTextEffectBase : RichTextEffect
     /// <param name="key">参数键。</param>
     /// <param name="defaultValue">读取失败时使用的默认值。</param>
     /// <returns>最终布尔值；当环境参数不存在或类型不是 <see cref="Variant.Type.Bool" /> 时返回默认值。</returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static",
+        Justification = "Keep the existing protected instance helper contract for derived RichTextEffect implementations.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "MA0038:Make method static",
+        Justification = "Keep the existing protected instance helper contract for derived RichTextEffect implementations.")]
     protected bool GetBool(CharFXTransform transform, string key, bool defaultValue = false)
     {
         if (transform.Env.TryGetValue(Variant.From(key), out var value) &&
@@ -49,6 +58,10 @@ public abstract partial class RichTextEffectBase : RichTextEffect
     ///     最终浮点值；当环境参数不存在，或类型既不是 <see cref="Variant.Type.Float" /> 也不是
     ///     <see cref="Variant.Type.Int" /> 时返回默认值。
     /// </returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static",
+        Justification = "Keep the existing protected instance helper contract for derived RichTextEffect implementations.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "MA0038:Make method static",
+        Justification = "Keep the existing protected instance helper contract for derived RichTextEffect implementations.")]
     protected float GetFloat(CharFXTransform transform, string key, float defaultValue)
     {
         if (transform.Env.TryGetValue(Variant.From(key), out var value) &&
@@ -67,6 +80,10 @@ public abstract partial class RichTextEffectBase : RichTextEffect
     /// <param name="key">参数键。</param>
     /// <param name="defaultValue">读取失败时使用的默认值。</param>
     /// <returns>最终颜色值。</returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static",
+        Justification = "Keep the existing protected instance helper contract for derived RichTextEffect implementations.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "MA0038:Make method static",
+        Justification = "Keep the existing protected instance helper contract for derived RichTextEffect implementations.")]
     protected Color GetColor(CharFXTransform transform, string key, Color defaultValue)
     {
         if (transform.Env.TryGetValue(Variant.From(key), out var value) &&

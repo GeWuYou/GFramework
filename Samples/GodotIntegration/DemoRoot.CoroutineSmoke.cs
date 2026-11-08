@@ -27,35 +27,74 @@ public partial class DemoRoot
         /// <summary>The external cancellation used while physics is paused.</summary>
         public CancellationTokenSource PausedCancellation { get; } = new();
         /// <summary>Every explicitly started task, retained for failure-path cleanup.</summary>
-        public List<CoroutineHandle> Handles { get; } = new();
+        public List<CoroutineHandle> Handles { get; } = [];
         /// <summary>The node-owned parent flow.</summary>
-        public CoroutineHandle Parent { get; set; }
+        public CoroutineHandle Parent
+        {
+            get; set;
+        }
         /// <summary>The independently started node-bound wrapper.</summary>
-        public CoroutineHandle Wrapper { get; set; }
+        public CoroutineHandle Wrapper
+        {
+            get; set;
+        }
         /// <summary>The node-bound wrapper produced inside a context factory.</summary>
-        public CoroutineHandle FactoryWrapper { get; set; }
+        public CoroutineHandle FactoryWrapper
+        {
+            get; set;
+        }
         /// <summary>The scene-pausable physics task.</summary>
-        public CoroutineHandle GamePhysics { get; set; }
+        public CoroutineHandle GamePhysics
+        {
+            get; set;
+        }
         /// <summary>The ignore-pause task after it switches into physics.</summary>
-        public CoroutineHandle UiPhysics { get; set; }
+        public CoroutineHandle UiPhysics
+        {
+            get; set;
+        }
         /// <summary>Whether the parent's actual iterator finally block ran.</summary>
-        public bool ParentDisposed { get; set; }
+        public bool ParentDisposed
+        {
+            get; set;
+        }
         /// <summary>Whether the owned child's actual iterator finally block ran.</summary>
-        public bool ChildDisposed { get; set; }
+        public bool ChildDisposed
+        {
+            get; set;
+        }
         /// <summary>Whether the direct wrapper released its underlying iterator.</summary>
-        public bool WrapperDisposed { get; set; }
+        public bool WrapperDisposed
+        {
+            get; set;
+        }
         /// <summary>Whether the factory-returned wrapper released its underlying iterator.</summary>
-        public bool FactoryWrapperDisposed { get; set; }
+        public bool FactoryWrapperDisposed
+        {
+            get; set;
+        }
         /// <summary>Game physics steps observed after the initial yield.</summary>
-        public int GamePhysicsSteps { get; set; }
+        public int GamePhysicsSteps
+        {
+            get; set;
+        }
         /// <summary>Ignore-pause physics steps observed after the initial yield.</summary>
-        public int UiPhysicsSteps { get; set; }
+        public int UiPhysicsSteps
+        {
+            get; set;
+        }
         /// <summary>Scope and child starts whose additional node lifetime must cancel their blocked waits.</summary>
-        public List<CoroutineHandle> IntrinsicHandles { get; } = new();
+        public List<CoroutineHandle> IntrinsicHandles { get; } = [];
         /// <summary>Actual iterator finally blocks executed by those intrinsic lifetime cancellations.</summary>
-        public int IntrinsicDisposed { get; set; }
+        public int IntrinsicDisposed
+        {
+            get; set;
+        }
         /// <summary>Success continuations that must never run after their bound node exits.</summary>
-        public int IntrinsicContinuations { get; set; }
+        public int IntrinsicContinuations
+        {
+            get; set;
+        }
     }
 
     /// <summary>Checks native stage transitions, paused physics, nested ownership and iterator cleanup.</summary>
@@ -87,9 +126,9 @@ public partial class DemoRoot
     private async Task VerifyCoroutineStageSwitchesAsync(CoroutineSmokeProbe probe)
     {
         var order = new List<string>();
-        probe.Handles.Add(probe.Owner.RunCoroutine(CoroutineStageFlow(order), tag: "smoke-stage-flow"));
+        probe.Handles.Add(probe.Owner.RunCoroutine(CoroutineStageFlow(order), tag: "smoke-stage-flow", cancellationToken: global::System.Threading.CancellationToken.None));
         await WaitSecondsAsync(0.15).ConfigureAwait(true);
-        Require(order.SequenceEqual(new[] { "physics", "deferred", "update" }, StringComparer.Ordinal),
+        Require(order.SequenceEqual(["physics", "deferred", "update"], StringComparer.Ordinal),
             "coroutine did not resume across native physics, deferred and process stages");
     }
 
@@ -97,24 +136,24 @@ public partial class DemoRoot
     /// <param name="probe">The isolated native probe.</param>
     private static void StartCoroutineOwnershipProbe(CoroutineSmokeProbe probe)
     {
-        probe.Parent = probe.Owner.RunCoroutine(context => CoroutineParentFlow(context, probe), tag: "smoke-owned-parent");
+        probe.Parent = probe.Owner.RunCoroutine(context => CoroutineParentFlow(context, probe), tag: "smoke-owned-parent", cancellationToken: global::System.Threading.CancellationToken.None);
         probe.Handles.Add(probe.Parent);
         Require(Timing.GetOwnedCoroutineCount(probe.Owner) == 2,
             "node-owned scope did not include the structured descendant");
         probe.Wrapper = Timing.Instance.RunCoroutineOnInstance(
             CoroutineBlockedWait(() => probe.WrapperDisposed = true).CancelWith(probe.SecondaryOwner),
-            tag: "smoke-bound-wait");
+            tag: "smoke-bound-wait", cancellationToken: global::System.Threading.CancellationToken.None);
         probe.Handles.Add(probe.Wrapper);
         probe.FactoryWrapper = probe.Owner.RunCoroutine(_ =>
             CoroutineBlockedWait(() => probe.FactoryWrapperDisposed = true).CancelWith(probe.SecondaryOwner),
-            tag: "smoke-factory-bound-wait");
+            tag: "smoke-factory-bound-wait", cancellationToken: global::System.Threading.CancellationToken.None);
         probe.Handles.Add(probe.FactoryWrapper);
         probe.GamePhysics = probe.Owner.RunCoroutine(
             CoroutinePhysicsCounter(() => probe.GamePhysicsSteps++, switchFromUpdate: false),
             Segment.PhysicsProcess, cancellationToken: probe.PausedCancellation.Token);
         probe.Handles.Add(probe.GamePhysics);
         probe.UiPhysics = probe.Owner.RunCoroutine(
-            CoroutinePhysicsCounter(() => probe.UiPhysicsSteps++, switchFromUpdate: true), Segment.ProcessIgnorePause);
+            CoroutinePhysicsCounter(() => probe.UiPhysicsSteps++, switchFromUpdate: true), Segment.ProcessIgnorePause, cancellationToken: global::System.Threading.CancellationToken.None);
         probe.Handles.Add(probe.UiPhysics);
     }
 
@@ -125,16 +164,16 @@ public partial class DemoRoot
         var scope = probe.Owner.CreateCoroutineScope();
         probe.IntrinsicHandles.Add(scope.Run(
             CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner),
-            stage: CoroutineExecutionStage.FixedUpdate));
+            stage: CoroutineExecutionStage.FixedUpdate, cancellationToken: global::System.Threading.CancellationToken.None));
         probe.IntrinsicHandles.Add(scope.Run(_ =>
             CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner).CancelWith(probe.Owner),
-            stage: CoroutineExecutionStage.FixedUpdate));
+            stage: CoroutineExecutionStage.FixedUpdate, cancellationToken: global::System.Threading.CancellationToken.None));
         probe.IntrinsicHandles.Add(scope.Run(
             CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner)
                 .Then(() => probe.IntrinsicContinuations++),
-            stage: CoroutineExecutionStage.FixedUpdate));
+            stage: CoroutineExecutionStage.FixedUpdate, cancellationToken: global::System.Threading.CancellationToken.None));
         probe.Handles.Add(probe.Owner.RunCoroutine(context => CoroutineIntrinsicChildFlow(context, probe),
-            Segment.PhysicsProcess));
+            Segment.PhysicsProcess, cancellationToken: global::System.Threading.CancellationToken.None));
         probe.Handles.AddRange(probe.IntrinsicHandles);
     }
 
@@ -149,7 +188,7 @@ public partial class DemoRoot
         await WaitSecondsAsync(0.12).ConfigureAwait(true);
         Require(probe.GamePhysicsSteps == frozenGameSteps, "game physics coroutine advanced while scene-paused");
         Require(probe.UiPhysicsSteps > priorUiSteps, "ignore-pause coroutine lost its policy after switching to physics");
-        probe.PausedCancellation.Cancel();
+        await probe.PausedCancellation.CancelAsync().ConfigureAwait(false);
         probe.SecondaryOwner.QueueFree();
         await WaitFramesAsync(3).ConfigureAwait(true);
         Require(!Timing.TryGetCoroutineSnapshot(probe.GamePhysics, out _),
@@ -159,7 +198,7 @@ public partial class DemoRoot
         Require(probe.FactoryWrapperDisposed && !Timing.TryGetCoroutineSnapshot(probe.FactoryWrapper, out _),
             "a factory-returned CancelWith iterator did not cancel during its long wait");
         Require(probe.IntrinsicDisposed == 6 && probe.IntrinsicContinuations == 0 &&
-            probe.IntrinsicHandles.All(handle => !Timing.TryGetCoroutineSnapshot(handle, out _)),
+            probe.IntrinsicHandles.TrueForAll(handle => !Timing.TryGetCoroutineSnapshot(handle, out _)),
             "scope or child starts did not honor CancelWith during a paused long wait");
         GD.Print("GFRAMEWORK_SMOKE_CHECKS coroutine-intrinsic-scope-child-lifetimes: PASS");
     }
@@ -210,7 +249,7 @@ public partial class DemoRoot
     {
         try
         {
-            context.RunChild(CoroutineBlockedWait(() => probe.ChildDisposed = true));
+            context.RunChild(CoroutineBlockedWait(() => probe.ChildDisposed = true), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new SwitchTo(CoroutineExecutionStage.FixedUpdate);
             yield return new Delay(100);
         }
@@ -227,12 +266,12 @@ public partial class DemoRoot
     private static IEnumerator<IYieldInstruction> CoroutineIntrinsicChildFlow(CoroutineContext context, CoroutineSmokeProbe probe)
     {
         probe.IntrinsicHandles.Add(context.RunChild(
-            CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner)));
+            CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner), cancellationToken: global::System.Threading.CancellationToken.None));
         probe.IntrinsicHandles.Add(context.RunChild(_ =>
-            CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner).CancelWith(probe.Owner)));
+            CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner).CancelWith(probe.Owner), cancellationToken: global::System.Threading.CancellationToken.None));
         probe.IntrinsicHandles.Add(context.RunChild(
             CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner)
-                .Then(() => probe.IntrinsicContinuations++)));
+                .Then(() => probe.IntrinsicContinuations++), cancellationToken: global::System.Threading.CancellationToken.None));
         yield return new Delay(100);
     }
 

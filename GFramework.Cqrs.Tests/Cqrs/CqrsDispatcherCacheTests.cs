@@ -158,7 +158,7 @@ internal sealed class CqrsDispatcherCacheTests
         var secondContext = new ArchitectureContext(_container!);
         var firstDispatcher = GetDispatcherFromContext(firstContext);
         var secondDispatcher = GetDispatcherFromContext(secondContext);
-        using var isolatedContainer = CreateFrozenContainer();
+        await using var isolatedContainer = CreateFrozenContainer();
         var isolatedContext = new ArchitectureContext(isolatedContainer);
         var isolatedDispatcher = GetDispatcherFromContext(isolatedContext);
 
@@ -191,7 +191,7 @@ internal sealed class CqrsDispatcherCacheTests
         AssertRequestBehaviorPresenceEquals(
             isolatedDispatcher,
             typeof(IPipelineBehavior<DispatcherCacheRequest, int>),
-            false);
+expected: false);
     }
 
     /// <summary>
@@ -205,7 +205,7 @@ internal sealed class CqrsDispatcherCacheTests
         var secondContext = new ArchitectureContext(_container!);
         var firstDispatcher = GetDispatcherFromContext(firstContext);
         var secondDispatcher = GetDispatcherFromContext(secondContext);
-        using var isolatedContainer = CreateFrozenContainer();
+        await using var isolatedContainer = CreateFrozenContainer();
         var isolatedContext = new ArchitectureContext(isolatedContainer);
         var isolatedDispatcher = GetDispatcherFromContext(isolatedContext);
         var zeroPipelineBehaviorType = typeof(IStreamPipelineBehavior<DispatcherZeroPipelineStreamRequest, int>);
@@ -317,10 +317,10 @@ internal sealed class CqrsDispatcherCacheTests
     {
         var requestBindings = GetCacheField("RequestDispatchBindings");
         var behaviorType = typeof(IPipelineBehavior<DispatcherPipelineCacheRequest, int>);
-        using var zeroBehaviorContainer = CreateFrozenContainer(
+        await using var zeroBehaviorContainer = CreateFrozenContainer(
             new DispatcherCacheFixtureOptions
             {
-                IncludeRequestPipelineCacheBehavior = false
+                IncludeRequestPipelineCacheBehavior = false,
             });
         var zeroBehaviorContext = new ArchitectureContext(zeroBehaviorContainer);
         var behaviorContext = new ArchitectureContext(_container!);
@@ -357,8 +357,8 @@ internal sealed class CqrsDispatcherCacheTests
             Assert.That(bindingAfterBehaviorDispatch, Is.SameAs(bindingAfterZeroBehaviorDispatch));
             Assert.That(executorAfterZeroBehaviorDispatch, Is.Null);
             Assert.That(executorAfterBehaviorDispatch, Is.Not.Null);
-            AssertRequestBehaviorPresenceEquals(zeroBehaviorDispatcher, behaviorType, false);
-            AssertRequestBehaviorPresenceEquals(behaviorDispatcher, behaviorType, true);
+            AssertRequestBehaviorPresenceEquals(zeroBehaviorDispatcher, behaviorType, expected: false);
+            AssertRequestBehaviorPresenceEquals(behaviorDispatcher, behaviorType, expected: true);
         });
     }
 
@@ -436,10 +436,10 @@ internal sealed class CqrsDispatcherCacheTests
     {
         var streamBindings = GetCacheField("StreamDispatchBindings");
         var behaviorType = typeof(IStreamPipelineBehavior<DispatcherCacheStreamRequest, int>);
-        using var zeroBehaviorContainer = CreateFrozenContainer(
+        await using var zeroBehaviorContainer = CreateFrozenContainer(
             new DispatcherCacheFixtureOptions
             {
-                IncludeStreamPipelineCacheBehavior = false
+                IncludeStreamPipelineCacheBehavior = false,
             });
         var zeroBehaviorContext = new ArchitectureContext(zeroBehaviorContainer);
         var behaviorContext = new ArchitectureContext(_container!);
@@ -476,8 +476,8 @@ internal sealed class CqrsDispatcherCacheTests
             Assert.That(bindingAfterBehaviorDispatch, Is.SameAs(bindingAfterZeroBehaviorDispatch));
             Assert.That(executorAfterZeroBehaviorDispatch, Is.Null);
             Assert.That(executorAfterBehaviorDispatch, Is.Not.Null);
-            AssertStreamBehaviorPresenceEquals(zeroBehaviorDispatcher, behaviorType, false);
-            AssertStreamBehaviorPresenceEquals(behaviorDispatcher, behaviorType, true);
+            AssertStreamBehaviorPresenceEquals(zeroBehaviorDispatcher, behaviorType, expected: false);
+            AssertStreamBehaviorPresenceEquals(behaviorDispatcher, behaviorType, expected: true);
         });
     }
 
@@ -503,7 +503,7 @@ internal sealed class CqrsDispatcherCacheTests
             "Inner:Before",
             "Handler",
             "Inner:After",
-            "Outer:After"
+            "Outer:After",
         };
 
         Assert.Multiple(() =>
@@ -535,7 +535,7 @@ internal sealed class CqrsDispatcherCacheTests
             "Inner:Before",
             "Handler",
             "Inner:After",
-            "Outer:After"
+            "Outer:After",
         };
 
         Assert.Multiple(() =>
@@ -609,10 +609,10 @@ internal sealed class CqrsDispatcherCacheTests
         DispatcherPipelineContextRefreshState.Reset();
 
         var requestBindings = GetCacheField("RequestDispatchBindings");
-        using var zeroBehaviorContainer = CreateFrozenContainer(
+        await using var zeroBehaviorContainer = CreateFrozenContainer(
             new DispatcherCacheFixtureOptions
             {
-                IncludeRequestPipelineContextRefreshBehavior = false
+                IncludeRequestPipelineContextRefreshBehavior = false,
             });
         var zeroBehaviorContext = new ArchitectureContext(zeroBehaviorContainer);
         var behaviorContext = new ArchitectureContext(_container!);
@@ -814,10 +814,10 @@ internal sealed class CqrsDispatcherCacheTests
         DispatcherStreamContextRefreshState.Reset();
 
         var streamBindings = GetCacheField("StreamDispatchBindings");
-        using var zeroBehaviorContainer = CreateFrozenContainer(
+        await using var zeroBehaviorContainer = CreateFrozenContainer(
             new DispatcherCacheFixtureOptions
             {
-                IncludeStreamPipelineContextRefreshBehavior = false
+                IncludeStreamPipelineContextRefreshBehavior = false,
             });
         var zeroBehaviorContext = new ArchitectureContext(zeroBehaviorContainer);
         var behaviorContext = new ArchitectureContext(_container!);
@@ -1123,12 +1123,12 @@ internal sealed class CqrsDispatcherCacheTests
         Assert.Multiple(() =>
         {
             Assert.That(secondDispatcher, Is.SameAs(firstDispatcher));
-            Assert.That(zeroPipelinePresence, Is.EqualTo(false));
-            Assert.That(onePipelinePresence, Is.EqualTo(true));
+            Assert.That(zeroPipelinePresence, Is.EqualTo(expected: false));
+            Assert.That(onePipelinePresence, Is.EqualTo(expected: true));
             AssertRequestBehaviorPresenceEquals(
                 secondDispatcher,
                 typeof(IPipelineBehavior<DispatcherCacheRequest, int>),
-                false);
+expected: false);
             AssertRequestBehaviorPresenceIsUnset(
                 isolatedDispatcher,
                 typeof(IPipelineBehavior<DispatcherCacheRequest, int>));
@@ -1243,7 +1243,7 @@ internal sealed class CqrsDispatcherCacheTests
 
         return method!
             .MakeGenericMethod(responseType)
-            .Invoke(bindingBox, Array.Empty<object>());
+            .Invoke(bindingBox, []);
     }
 
     /// <summary>
@@ -1269,7 +1269,7 @@ internal sealed class CqrsDispatcherCacheTests
 
         return method!
             .MakeGenericMethod(responseType)
-            .Invoke(bindingBox, Array.Empty<object>());
+            .Invoke(bindingBox, []);
     }
 
     /// <summary>

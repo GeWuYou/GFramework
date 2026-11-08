@@ -43,7 +43,10 @@ public class NotificationLifetimeBenchmarks
     ///     控制当前 benchmark 使用的 handler 生命周期。
     /// </summary>
     [Params(HandlerLifetime.Singleton, HandlerLifetime.Scoped, HandlerLifetime.Transient)]
-    public HandlerLifetime Lifetime { get; set; }
+    public HandlerLifetime Lifetime
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     可公平比较的 benchmark handler 生命周期集合。
@@ -63,7 +66,7 @@ public class NotificationLifetimeBenchmarks
         /// <summary>
         ///     每次 publish 都重新解析新的 handler 实例。
         /// </summary>
-        Transient
+        Transient,
     }
 
     /// <summary>
@@ -219,7 +222,7 @@ public class NotificationLifetimeBenchmarks
             HandlerLifetime.Singleton => ServiceLifetime.Singleton,
             HandlerLifetime.Scoped => ServiceLifetime.Scoped,
             HandlerLifetime.Transient => ServiceLifetime.Transient,
-            _ => throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Unsupported benchmark handler lifetime.")
+            _ => throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Unsupported benchmark handler lifetime."),
         };
     }
 
@@ -260,6 +263,8 @@ public class NotificationLifetimeBenchmarks
     /// <remarks>
     ///     这里显式从新的 scope 解析 <see cref="IPublisher" />，确保 <c>Scoped</c> handler 与依赖绑定到 publish 边界。
     /// </remarks>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "This matched benchmark workload deliberately measures synchronous scope disposal on both frameworks; changing only the baseline to async disposal would alter the comparison.")]
     private static async Task PublishScopedMediatRNotificationAsync(
         ServiceProvider rootServiceProvider,
         BenchmarkNotification notification,

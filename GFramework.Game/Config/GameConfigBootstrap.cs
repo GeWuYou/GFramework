@@ -71,13 +71,19 @@ public sealed class GameConfigBootstrap : IDisposable
     /// <summary>
     ///     获取配置根目录。
     /// </summary>
-    public string RootPath { get; }
+    public string RootPath
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取当前配置生命周期共享的注册表。
     ///     默认情况下该实例由启动帮助器创建；如调用方传入自定义注册表，则返回同一个对象。
     /// </summary>
-    public IConfigRegistry Registry { get; }
+    public IConfigRegistry Registry
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取一个值，指示启动帮助器是否已经成功完成初次加载。
@@ -282,10 +288,7 @@ public sealed class GameConfigBootstrap : IDisposable
 
     private void ThrowIfDisposedCore()
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(GameConfigBootstrap));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
     }
 
     private YamlConfigLoader BeginHotReloadStart()

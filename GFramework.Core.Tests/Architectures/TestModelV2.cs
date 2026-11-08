@@ -17,7 +17,10 @@ public sealed class TestModelV2 : IModel
     /// <summary>
     ///     获取或设置测试用标识。
     /// </summary>
-    public int Id { get; init; }
+    public int Id
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     关联当前模型所属的架构上下文。
@@ -55,7 +58,7 @@ public sealed class TestModelV2 : IModel
     /// <summary>
     ///     销毁测试模型。
     /// </summary>
-    public void Destroy()
+    public static void Destroy()
     {
     }
 }

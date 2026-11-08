@@ -24,12 +24,12 @@ public sealed class CoroutineSchedulerAdvancedTests
         var scheduler = new CoroutineScheduler(
             scaledTime,
             realtimeTimeSource: realtimeTime);
-        var completed = false;
+        var completed = new global::System.Runtime.CompilerServices.StrongBox<bool>(value: false);
 
         IEnumerator<IYieldInstruction> Coroutine()
         {
             yield return new WaitForSecondsRealtime(1.0);
-            completed = true;
+            completed.Value = true;
         }
 
         scheduler.Run(Coroutine());
@@ -38,14 +38,14 @@ public sealed class CoroutineSchedulerAdvancedTests
         realtimeTime.Advance(0.4);
         scheduler.Update();
 
-        Assert.That(completed, Is.False);
+        Assert.That(completed.Value, Is.False);
         Assert.That(scheduler.ActiveCoroutineCount, Is.EqualTo(1));
 
         scaledTime.Advance(0.1);
         realtimeTime.Advance(0.6);
         scheduler.Update();
 
-        Assert.That(completed, Is.True);
+        Assert.That(completed.Value, Is.True);
         Assert.That(scheduler.ActiveCoroutineCount, Is.EqualTo(0));
     }
 
@@ -61,19 +61,19 @@ public sealed class CoroutineSchedulerAdvancedTests
         var fixedScheduler = new CoroutineScheduler(
             fixedTime,
             executionStage: CoroutineExecutionStage.FixedUpdate);
-        var defaultCompleted = false;
-        var fixedCompleted = false;
+        var defaultCompleted = new global::System.Runtime.CompilerServices.StrongBox<bool>(value: false);
+        var fixedCompleted = new global::System.Runtime.CompilerServices.StrongBox<bool>(value: false);
 
         IEnumerator<IYieldInstruction> DefaultCoroutine()
         {
             yield return new SwitchTo(CoroutineExecutionStage.FixedUpdate);
-            defaultCompleted = true;
+            defaultCompleted.Value = true;
         }
 
         IEnumerator<IYieldInstruction> FixedCoroutine()
         {
             yield return new SwitchTo(CoroutineExecutionStage.FixedUpdate);
-            fixedCompleted = true;
+            fixedCompleted.Value = true;
         }
 
         var unsupportedHandle = defaultScheduler.Run(DefaultCoroutine());
@@ -84,11 +84,11 @@ public sealed class CoroutineSchedulerAdvancedTests
         defaultScheduler.Update();
         fixedScheduler.Update();
 
-        Assert.That(defaultCompleted, Is.False);
+        Assert.That(defaultCompleted.Value, Is.False);
         Assert.That(defaultScheduler.ActiveCoroutineCount, Is.EqualTo(0));
         Assert.That(defaultScheduler.TryGetCompletionStatus(unsupportedHandle, out var status), Is.True);
         Assert.That(status, Is.EqualTo(CoroutineCompletionStatus.Faulted));
-        Assert.That(fixedCompleted, Is.True);
+        Assert.That(fixedCompleted.Value, Is.True);
         Assert.That(fixedScheduler.ActiveCoroutineCount, Is.EqualTo(0));
     }
 
@@ -96,13 +96,15 @@ public sealed class CoroutineSchedulerAdvancedTests
     ///     验证取消令牌会在下一次调度循环中终止协程并记录结果。
     /// </summary>
     [Test]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042:Do not use blocking synchronous methods when an asynchronous method is available",
+        Justification = "The scheduler must stay on its construction thread; synchronous token callbacks only enqueue cancellation.")]
     public async Task CancellationToken_Should_Cancel_Coroutine_On_Next_Update()
     {
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource);
         using var cancellationTokenSource = new CancellationTokenSource();
 
-        IEnumerator<IYieldInstruction> Coroutine()
+        static IEnumerator<IYieldInstruction> Coroutine()
         {
             yield return new Delay(10);
         }
@@ -130,7 +132,7 @@ public sealed class CoroutineSchedulerAdvancedTests
             timeSource,
             executionStage: CoroutineExecutionStage.Deferred);
 
-        IEnumerator<IYieldInstruction> Coroutine()
+        static IEnumerator<IYieldInstruction> Coroutine()
         {
             yield return new SwitchTo(CoroutineExecutionStage.Deferred);
         }
@@ -157,7 +159,7 @@ public sealed class CoroutineSchedulerAdvancedTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource);
 
-        IEnumerator<IYieldInstruction> Coroutine()
+        static IEnumerator<IYieldInstruction> Coroutine()
         {
             yield return new WaitOneFrame();
             throw new InvalidOperationException("boom");
@@ -187,7 +189,7 @@ public sealed class CoroutineSchedulerAdvancedTests
         var scheduler = new CoroutineScheduler(timeSource);
         var handles = new List<CoroutineHandle>();
 
-        IEnumerator<IYieldInstruction> ImmediateCoroutine()
+        static IEnumerator<IYieldInstruction> ImmediateCoroutine()
         {
             yield break;
         }
@@ -206,6 +208,8 @@ public sealed class CoroutineSchedulerAdvancedTests
     ///     验证作为首个等待指令的 WaitForCoroutine 会立即启动子协程，并沿用父协程取消令牌。
     /// </summary>
     [Test]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042:Do not use blocking synchronous methods when an asynchronous method is available",
+        Justification = "The scheduler must stay on its construction thread; synchronous token callbacks only enqueue cancellation.")]
     public async Task WaitForCoroutine_Should_Start_Child_During_Prewarm_And_Propagate_Cancellation()
     {
         var timeSource = new FakeTimeSource();
@@ -225,7 +229,6 @@ public sealed class CoroutineSchedulerAdvancedTests
         var handle = scheduler.Run(ParentCoroutine(), cancellationToken: cancellationTokenSource.Token);
 
         Assert.That(scheduler.ActiveCoroutineCount, Is.EqualTo(2));
-
         cancellationTokenSource.Cancel();
         timeSource.Advance(0.1);
         scheduler.Update();

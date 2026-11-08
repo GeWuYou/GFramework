@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using System.IO;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Appenders;
@@ -43,7 +44,7 @@ public class ConsoleAppenderTests
     [Test]
     public void Append_ShouldWriteToWriter()
     {
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, Properties: null);
 
         _appender.Append(entry);
 
@@ -58,8 +59,8 @@ public class ConsoleAppenderTests
         var filter = new LogLevelFilter(LogLevel.Warning);
         var appender = new ConsoleAppender(new DefaultLogFormatter(), _stringWriter, useColors: false, filter: filter);
 
-        var infoEntry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Info message", null, null);
-        var warningEntry = new LogEntry(DateTime.UtcNow, LogLevel.Warning, "TestLogger", "Warning message", null, null);
+        var infoEntry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Info message", Exception: null, Properties: null);
+        var warningEntry = new LogEntry(DateTime.UtcNow, LogLevel.Warning, "TestLogger", "Warning message", Exception: null, Properties: null);
 
         appender.Append(infoEntry);
         appender.Append(warningEntry);
@@ -74,7 +75,7 @@ public class ConsoleAppenderTests
     [Test]
     public void Flush_ShouldFlushWriter()
     {
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, Properties: null);
 
         _appender.Append(entry);
         _appender.Flush();
@@ -86,7 +87,7 @@ public class ConsoleAppenderTests
     [Test]
     public void Dispose_ShouldFlushWriter()
     {
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, Properties: null);
 
         _appender.Append(entry);
         _appender.Dispose();
@@ -100,14 +101,14 @@ public class ConsoleAppenderTests
     {
         for (int i = 0; i < 10; i++)
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", string.Create(CultureInfo.InvariantCulture, $"Message {i}"), Exception: null, Properties: null);
             _appender.Append(entry);
         }
 
         var output = _stringWriter.ToString();
         for (int i = 0; i < 10; i++)
         {
-            Assert.That(output, Does.Contain($"Message {i}"));
+            Assert.That(output, Does.Contain(string.Create(CultureInfo.InvariantCulture, $"Message {i}")));
         }
     }
 }

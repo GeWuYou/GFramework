@@ -25,7 +25,7 @@ public partial class DodgeWorld : Node2D
 {
     private const float ArenaWidth = 480;
     private const float ArenaHeight = 720;
-    private readonly List<DodgeMob> _mobs = new();
+    private readonly List<DodgeMob> _mobs = [];
     private readonly RandomNumberGenerator _random = new();
     private DodgePlayer _player = null!;
     private AudioStreamPlayer _music = null!;
@@ -46,7 +46,8 @@ public partial class DodgeWorld : Node2D
     /// <summary>Assigns one immutable content session before this world enters the scene tree.</summary>
     internal void ConfigureContent(DodgeContent content, DodgeArenaDefinition arena)
     {
-        if (_ready) throw new InvalidOperationException("Configure the arena before attaching the world.");
+        if (_ready)
+            throw new InvalidOperationException("Configure the arena before attaching the world.");
         _content = content;
         _arena = arena;
     }
@@ -58,10 +59,16 @@ public partial class DodgeWorld : Node2D
     public event EventHandler? RunEnded;
 
     /// <summary>Gets the number of unpaused seconds survived in the current run.</summary>
-    public int Score { get; private set; }
+    public int Score
+    {
+        get; private set;
+    }
 
     /// <summary>Gets whether movement, spawning, scoring, and collision checks are enabled.</summary>
-    public bool IsRunning { get; private set; }
+    public bool IsRunning
+    {
+        get; private set;
+    }
 
     /// <summary>Gets the player position in logical arena pixels for an explicit save operation.</summary>
     public Vector2 PlayerPosition => _ready ? _player.Position : new Vector2(240, 580);
@@ -81,19 +88,20 @@ public partial class DodgeWorld : Node2D
             Name = "Music",
             Bus = "BGM",
             Stream = _content?.Music(_arena?.Music ?? string.Empty) ?? GD.Load<AudioStream>("res://art/House In a Forest Loop.ogg"),
-            VolumeDb = -15
+            VolumeDb = -15,
         };
         _gameOverSound = new AudioStreamPlayer
         {
             Name = "GameOverSound",
             Bus = "SFX",
             Stream = GD.Load<AudioStream>("res://art/gameover.wav"),
-            VolumeDb = -9
+            VolumeDb = -9,
         };
         AddChild(_music);
         AddChild(_gameOverSound);
         var decoration = _content?.CreateOfficialScene(_arena?.OfficialScene ?? string.Empty);
-        if (decoration is not null) AddChild(decoration);
+        if (decoration is not null)
+            AddChild(decoration);
         _music.Finished += OnMusicFinished;
         _ready = true;
         QueueRedraw();
@@ -111,7 +119,7 @@ public partial class DodgeWorld : Node2D
             return;
         _music.Stop();
         _gameOverSound.Stop();
-        _player.SetInvulnerable(false);
+        _player.SetInvulnerable(enabled: false);
         _player.StopMoving();
         foreach (var mob in _mobs)
             mob.StopMoving();
@@ -134,15 +142,23 @@ public partial class DodgeWorld : Node2D
     public DodgeProgress CaptureProgress()
     {
         RequireHostThread();
-        if (!IsRunning) throw new InvalidOperationException("Only a live run can be saved.");
+        if (!IsRunning)
+            throw new InvalidOperationException("Only a live run can be saved.");
         var save = new DodgeProgress
         {
-            Score = Score, X = _player.Position.X, Y = _player.Position.Y,
-            ArenaId = _arena?.Id ?? "base:yard", PlayerFacing = _player.FacingDirection,
-            ScoreElapsed = _scoreElapsed, SpawnRemaining = _spawnRemaining, GraceRemaining = _graceRemaining,
-            RandomSeed = _random.Seed, RandomState = _random.State
+            Score = Score,
+            X = _player.Position.X,
+            Y = _player.Position.Y,
+            ArenaId = _arena?.Id ?? "base:yard",
+            PlayerFacing = _player.FacingDirection,
+            ScoreElapsed = _scoreElapsed,
+            SpawnRemaining = _spawnRemaining,
+            GraceRemaining = _graceRemaining,
+            RandomSeed = _random.Seed,
+            RandomState = _random.State,
         };
-        foreach (var enemy in _mobs) save.Enemies.Add(enemy.CaptureProgress());
+        foreach (var enemy in _mobs)
+            save.Enemies.Add(enemy.CaptureProgress());
         DodgeProgress.ValidateSnapshot(save);
         return save;
     }
@@ -196,9 +212,13 @@ public partial class DodgeWorld : Node2D
                     definition = _content.Catalog.GetTable<DodgeEnemyDefinition>("enemies").Get(new ContentId(progress.EnemyId));
                 var mob = new DodgeMob
                 {
-                    Name = "Creep", EnemyId = progress.EnemyId, Position = new Vector2(progress.X, progress.Y),
-                    Velocity = new Vector2(progress.VelocityX, progress.VelocityY), Appearance = progress.Appearance,
-                    Texture = _content?.Texture(definition?.Texture ?? string.Empty), ZIndex = 2
+                    Name = "Creep",
+                    EnemyId = progress.EnemyId,
+                    Position = new Vector2(progress.X, progress.Y),
+                    Velocity = new Vector2(progress.VelocityX, progress.VelocityY),
+                    Appearance = progress.Appearance,
+                    Texture = _content?.Texture(definition?.Texture ?? string.Empty),
+                    ZIndex = 2,
                 };
                 prepared.Add((mob, progress));
                 mob.PreparePresentation();
@@ -208,7 +228,8 @@ public partial class DodgeWorld : Node2D
         }
         catch
         {
-            foreach (var enemy in prepared) enemy.Item1.Free();
+            foreach (var enemy in prepared)
+                enemy.Item1.Free();
             throw;
         }
     }
@@ -274,7 +295,7 @@ public partial class DodgeWorld : Node2D
                 DrawCircle(new Vector2(x, y), 1, grid);
         }
 
-        DrawRect(new Rect2(12, 68, 456, 640), new Color(0.2f, 0.55f, 0.62f, 0.25f), false, 1);
+        DrawRect(new Rect2(12, 68, 456, 640), new Color(0.2f, 0.55f, 0.62f, 0.25f), filled: false, 1);
     }
 
     private void BeginRun(int score, Vector2 position, int seed)
@@ -295,7 +316,7 @@ public partial class DodgeWorld : Node2D
         _graceRemaining = 1.5;
         _player.Position = position.Clamp(new Vector2(26, 82), new Vector2(454, 686));
         _player.RestoreFacingDirection(0);
-        _player.SetInvulnerable(true);
+        _player.SetInvulnerable(enabled: true);
         _player.Show();
         IsRunning = true;
         _music.Play();
@@ -309,7 +330,8 @@ public partial class DodgeWorld : Node2D
         {
             _scoreElapsed -= 1;
             var increment = _modifyScore?.Invoke(DodgeScoreRules.Calculate()) ?? DodgeScoreRules.Calculate();
-            if (increment < 1 || increment > 1000) throw new InvalidOperationException("A score mod returned an invalid increment.");
+            if (increment < 1 || increment > 1000)
+                throw new InvalidOperationException("A score mod returned an invalid increment.");
             Score = checked(Score + increment);
             ScoreChanged?.Invoke(this, new ScoreChangedEventArgs(Score));
         }
@@ -319,13 +341,14 @@ public partial class DodgeWorld : Node2D
     private void SpawnCreep()
     {
         // Keep the live board within the same bounded allocation contract as durable snapshots.
-        if (_mobs.Count >= DodgeProgress.MaxSavedEnemies) return;
+        if (_mobs.Count >= DodgeProgress.MaxSavedEnemies)
+            return;
         var position = _random.RandiRange(0, 3) switch
         {
             0 => new Vector2(_random.RandfRange(0, ArenaWidth), -70),
             1 => new Vector2(ArenaWidth + 70, _random.RandfRange(68, ArenaHeight)),
             2 => new Vector2(_random.RandfRange(0, ArenaWidth), ArenaHeight + 70),
-            _ => new Vector2(-70, _random.RandfRange(68, ArenaHeight))
+            _ => new Vector2(-70, _random.RandfRange(68, ArenaHeight)),
         };
         var target = new Vector2(_random.RandfRange(90, 390), _random.RandfRange(160, 620));
         var direction = (target - position).Normalized().Rotated(_random.RandfRange(-0.2f, 0.2f));
@@ -344,7 +367,7 @@ public partial class DodgeWorld : Node2D
             Velocity = direction * speed,
             Appearance = definition?.Appearance ?? _random.RandiRange(0, 2),
             Texture = _content?.Texture(definition?.Texture ?? string.Empty),
-            ZIndex = 2
+            ZIndex = 2,
         };
         AddChild(mob);
         _mobs.Add(mob);

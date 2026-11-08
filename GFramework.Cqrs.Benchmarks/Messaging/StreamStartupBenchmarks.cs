@@ -92,7 +92,7 @@ public class StreamStartupBenchmarks
     ///     在每次 cold-start 迭代前清空 dispatcher 静态缓存，确保首次绑定路径可重复观察。
     /// </summary>
     [IterationSetup]
-    public void ResetColdStartCaches()
+    public static void ResetColdStartCaches()
     {
         BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
     }
@@ -156,11 +156,14 @@ public class StreamStartupBenchmarks
     /// <returns>首个 stream 响应元素。</returns>
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("ColdStart")]
-    public async Task<BenchmarkResponse> ColdStart_MediatR()
+    public static async Task<BenchmarkResponse> ColdStart_MediatR()
     {
-        using var serviceProvider = CreateMediatRServiceProvider();
-        var mediator = serviceProvider.GetRequiredService<IMediator>();
-        return await ConsumeFirstItemAsync(mediator.CreateStream(Request, CancellationToken.None), CancellationToken.None).ConfigureAwait(false);
+        var serviceProvider = CreateMediatRServiceProvider();
+        await using (serviceProvider.ConfigureAwait(false))
+        {
+            var mediator = serviceProvider.GetRequiredService<IMediator>();
+            return await ConsumeFirstItemAsync(mediator.CreateStream(Request, CancellationToken.None), CancellationToken.None).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -169,14 +172,17 @@ public class StreamStartupBenchmarks
     /// <returns>首个 stream 响应元素。</returns>
     [Benchmark]
     [BenchmarkCategory("ColdStart")]
-    public async ValueTask<BenchmarkResponse> ColdStart_GFrameworkReflection()
+    public static async ValueTask<BenchmarkResponse> ColdStart_GFrameworkReflection()
     {
-        using var container = CreateReflectionContainer();
-        var runtime = CreateRuntime(container, ReflectionRuntimeLogger);
-        return await ConsumeFirstItemAsync(
-                runtime.CreateStream(Request, CancellationToken.None),
-                CancellationToken.None)
-            .ConfigureAwait(false);
+        var container = CreateReflectionContainer();
+        await using (container.ConfigureAwait(false))
+        {
+            var runtime = CreateRuntime(container, ReflectionRuntimeLogger);
+            return await ConsumeFirstItemAsync(
+                    runtime.CreateStream(Request, CancellationToken.None),
+                    CancellationToken.None)
+                .ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -185,14 +191,17 @@ public class StreamStartupBenchmarks
     /// <returns>首个 stream 响应元素。</returns>
     [Benchmark]
     [BenchmarkCategory("ColdStart")]
-    public async ValueTask<BenchmarkResponse> ColdStart_GFrameworkGenerated()
+    public static async ValueTask<BenchmarkResponse> ColdStart_GFrameworkGenerated()
     {
-        using var container = CreateGeneratedContainer();
-        var runtime = CreateRuntime(container, GeneratedRuntimeLogger);
-        return await ConsumeFirstItemAsync(
-                runtime.CreateStream(Request, CancellationToken.None),
-                CancellationToken.None)
-            .ConfigureAwait(false);
+        var container = CreateGeneratedContainer();
+        await using (container.ConfigureAwait(false))
+        {
+            var runtime = CreateRuntime(container, GeneratedRuntimeLogger);
+            return await ConsumeFirstItemAsync(
+                    runtime.CreateStream(Request, CancellationToken.None),
+                    CancellationToken.None)
+                .ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -201,11 +210,14 @@ public class StreamStartupBenchmarks
     /// <returns>首个 stream 响应元素。</returns>
     [Benchmark]
     [BenchmarkCategory("ColdStart")]
-    public async ValueTask<BenchmarkResponse> ColdStart_Mediator()
+    public static async ValueTask<BenchmarkResponse> ColdStart_Mediator()
     {
-        using var serviceProvider = CreateMediatorServiceProvider();
-        var mediator = serviceProvider.GetRequiredService<GeneratedMediator>();
-        return await ConsumeFirstItemAsync(mediator.CreateStream(Request, CancellationToken.None), CancellationToken.None).ConfigureAwait(false);
+        var serviceProvider = CreateMediatorServiceProvider();
+        await using (serviceProvider.ConfigureAwait(false))
+        {
+            var mediator = serviceProvider.GetRequiredService<GeneratedMediator>();
+            return await ConsumeFirstItemAsync(mediator.CreateStream(Request, CancellationToken.None), CancellationToken.None).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -405,7 +417,7 @@ public class StreamStartupBenchmarks
             new GFramework.Cqrs.CqrsStreamInvokerDescriptorEntry(
                 typeof(BenchmarkStreamRequest),
                 typeof(BenchmarkResponse),
-                Descriptor)
+                Descriptor),
         ];
 
         /// <summary>
@@ -418,11 +430,7 @@ public class StreamStartupBenchmarks
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddTransient(
-                typeof(GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<
-                    BenchmarkStreamRequest,
-                    BenchmarkResponse>),
-                typeof(BenchmarkStreamHandler));
+            services.AddTransient<Abstractions.Cqrs.IStreamRequestHandler<BenchmarkStreamRequest, BenchmarkResponse>, BenchmarkStreamHandler>();
             logger.LogDebug("Registered generated stream startup benchmark handler.");
         }
 

@@ -22,7 +22,7 @@ public class LocalizationIntegrationTests
             FallbackLanguage = "eng",
             LocalizationPath = _testDataPath,
             EnableHotReload = false,
-            ValidateOnLoad = false
+            ValidateOnLoad = false,
         };
 
         _manager = new LocalizationManager(config);

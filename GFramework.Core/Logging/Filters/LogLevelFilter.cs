@@ -9,18 +9,13 @@ namespace GFramework.Core.Logging.Filters;
 /// <summary>
 ///     按日志级别过滤的过滤器
 /// </summary>
-public sealed class LogLevelFilter : ILogFilter
+/// <remarks>
+///     创建日志级别过滤器
+/// </remarks>
+/// <param name="minLevel">最小日志级别</param>
+public sealed class LogLevelFilter(LogLevel minLevel) : ILogFilter
 {
-    private readonly LogLevel _minLevel;
-
-    /// <summary>
-    ///     创建日志级别过滤器
-    /// </summary>
-    /// <param name="minLevel">最小日志级别</param>
-    public LogLevelFilter(LogLevel minLevel)
-    {
-        _minLevel = minLevel;
-    }
+    private readonly LogLevel _minLevel = minLevel;
 
     /// <summary>
     ///     判断日志级别是否满足最小级别要求

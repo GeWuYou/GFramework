@@ -16,5 +16,8 @@ public interface IPrioritized
     ///     默认优先级为 0。
     ///     建议范围：-1000 到 1000。
     /// </summary>
-    int Priority { get; }
+    int Priority
+    {
+        get;
+    }
 }

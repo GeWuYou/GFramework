@@ -7,7 +7,7 @@ namespace GFramework.Game.Abstractions.Content;
 public sealed class ContentPackProfile
 {
     /// <summary>Gets enabled optional package IDs; the host's base package remains enabled independently.</summary>
-    public IReadOnlyList<string> EnabledPackages { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> EnabledPackages { get; init; } = [];
     /// <summary>Gets preferred order; dependencies constrain this preference, and later packages win field conflicts.</summary>
-    public IReadOnlyList<string> LoadOrder { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> LoadOrder { get; init; } = [];
 }

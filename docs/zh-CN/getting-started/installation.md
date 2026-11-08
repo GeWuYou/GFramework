@@ -35,6 +35,8 @@ GFramework 采用模块化设计，不同包提供不同的功能：
 
 - `GFramework.Core`
 - `GFramework.Game`
+- `GFramework.Cqrs`
+- `GFramework.Cqrs.Abstractions`
 
 Game、Godot 和聚合元包均不自动安装 Harmony；需要方法补丁时显式添加 `GeWuYou.GFramework.Game.Harmony`。DLL 模组通过公开 API 扩展游戏时，只需要 Game 的模组宿主，接入见[代码模组与 Harmony](../game/code-mods.md)。
 

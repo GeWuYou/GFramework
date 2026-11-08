@@ -32,10 +32,10 @@ public class LocalizationManager : AbstractSystem, ILocalizationManager
         _config = config ?? new LocalizationConfig();
         _tables = new Dictionary<string, Dictionary<string, ILocalizationTable>>(StringComparer.Ordinal);
         _formatters = new Dictionary<string, ILocalizationFormatter>(StringComparer.Ordinal);
-        _languageChangeCallbacks = new List<Action<string>>();
+        _languageChangeCallbacks = [];
         _currentLanguage = _config.DefaultLanguage;
         _currentCulture = GetCultureInfo(_currentLanguage);
-        _availableLanguages = new List<string>();
+        _availableLanguages = [];
         RegisterBuiltInFormatters();
     }
 
@@ -143,10 +143,7 @@ public class LocalizationManager : AbstractSystem, ILocalizationManager
     /// <inheritdoc/>
     public void SubscribeToLanguageChange(Action<string> callback)
     {
-        if (callback == null)
-        {
-            throw new ArgumentNullException(nameof(callback));
-        }
+        ArgumentNullException.ThrowIfNull(callback);
 
         if (!_languageChangeCallbacks.Contains(callback))
         {
@@ -157,10 +154,7 @@ public class LocalizationManager : AbstractSystem, ILocalizationManager
     /// <inheritdoc/>
     public void UnsubscribeFromLanguageChange(Action<string> callback)
     {
-        if (callback == null)
-        {
-            throw new ArgumentNullException(nameof(callback));
-        }
+        ArgumentNullException.ThrowIfNull(callback);
 
         _languageChangeCallbacks.Remove(callback);
     }
@@ -289,7 +283,7 @@ public class LocalizationManager : AbstractSystem, ILocalizationManager
                 "deu" => "de-DE",
                 "spa" => "es-ES",
                 "rus" => "ru-RU",
-                _ => languageCode
+                _ => languageCode,
             };
 
             return new CultureInfo(cultureCode);

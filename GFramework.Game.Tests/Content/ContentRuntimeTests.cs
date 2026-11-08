@@ -23,7 +23,8 @@ public sealed class ContentRuntimeTests
     [TestCase("base:", false)]
     public void ContentIds_AreCanonical(string value, bool valid)
     {
-        if (!valid) Assert.Throws<ArgumentException>(() => new ContentId(value));
+        if (!valid)
+            Assert.Throws<ArgumentException>(() => new ContentId(value));
         else
         {
             var id = new ContentId(value);
@@ -55,18 +56,18 @@ public sealed class ContentRuntimeTests
         using var workspace = new PackageWorkspace();
         workspace.Add("base", BaseData);
         workspace.Add("library", "[]");
-        workspace.Add("dependent", "[]", new[] { new ContentPackDependency { Id = "library" } });
+        workspace.Add("dependent", "[]", [new ContentPackDependency { Id = "library" }]);
         workspace.Add("other", "[]");
         var packages = await workspace.DiscoverAsync().ConfigureAwait(false);
         var basic = ContentPackResolver.Resolve(packages, new ContentPackProfile(), Host);
-        Assert.That(basic.Packages.Select(static pack => pack.Manifest.Id), Is.EqualTo(new[] { "base" }));
+        Assert.That(basic.Packages.Select(static pack => pack.Manifest.Id), Is.EqualTo(["base"]));
         var plan = ContentPackResolver.Resolve(packages, new ContentPackProfile
         {
-            EnabledPackages = new[] { "dependent", "library", "other" },
-            LoadOrder = new[] { "dependent", "other", "library", "base" }
+            EnabledPackages = ["dependent", "library", "other"],
+            LoadOrder = ["dependent", "other", "library", "base"],
         }, Host);
         Assert.That(plan.Packages.Select(static pack => pack.Manifest.Id),
-            Is.EqualTo(new[] { "base", "other", "library", "dependent" }));
+            Is.EqualTo(["base", "other", "library", "dependent"]));
     }
 
     /// <summary>Unmet dependencies and explicit incompatibilities fail with package-local diagnostics.</summary>
@@ -75,24 +76,24 @@ public sealed class ContentRuntimeTests
     {
         using var workspace = new PackageWorkspace();
         workspace.Add("base", BaseData);
-        workspace.Add("needs", "[]", new[] { new ContentPackDependency { Id = "library" } });
+        workspace.Add("needs", "[]", [new ContentPackDependency { Id = "library" }]);
         var packages = await workspace.DiscoverAsync().ConfigureAwait(false);
         AssertFailure("MissingDependency", () => ContentPackResolver.Resolve(packages,
-            new ContentPackProfile { EnabledPackages = new[] { "needs" } }, Host));
+            new ContentPackProfile { EnabledPackages = ["needs"] }, Host));
         AssertFailure("MissingPackage", () => ContentPackResolver.Resolve(packages,
-            new ContentPackProfile { EnabledPackages = new[] { "gone" } }, Host));
+            new ContentPackProfile { EnabledPackages = ["gone"] }, Host));
         workspace.Add("library", "[]");
-        workspace.Add("needs", "[]", new[] { new ContentPackDependency
+        workspace.Add("needs", "[]", [ new ContentPackDependency
         {
-            Id = "library", Versions = new ContentVersionRange { MinimumInclusive = "2.0.0" }
-        } });
+            Id = "library", Versions = new ContentVersionRange { MinimumInclusive = "2.0.0" },
+        } ]);
         packages = await workspace.DiscoverAsync().ConfigureAwait(false);
         AssertFailure("DependencyVersionMismatch", () => ContentPackResolver.Resolve(packages,
-            new ContentPackProfile { EnabledPackages = new[] { "needs", "library" } }, Host));
-        workspace.Add("needs", "[]", incompatible: new[] { "library" });
+            new ContentPackProfile { EnabledPackages = ["needs", "library"] }, Host));
+        workspace.Add("needs", "[]", incompatible: ["library"]);
         packages = await workspace.DiscoverAsync().ConfigureAwait(false);
         AssertFailure("IncompatiblePackages", () => ContentPackResolver.Resolve(packages,
-            new ContentPackProfile { EnabledPackages = new[] { "needs", "library" } }, Host));
+            new ContentPackProfile { EnabledPackages = ["needs", "library"] }, Host));
     }
 
     /// <summary>Optional dependencies are optional only while absent; their enabled versions and cycles still matter.</summary>
@@ -101,14 +102,14 @@ public sealed class ContentRuntimeTests
     {
         using var workspace = new PackageWorkspace();
         workspace.Add("base", BaseData);
-        workspace.Add("first", "[]", new[] { new ContentPackDependency { Id = "second", Optional = true } });
+        workspace.Add("first", "[]", [new ContentPackDependency { Id = "second", Optional = true }]);
         var packages = await workspace.DiscoverAsync().ConfigureAwait(false);
         Assert.That(ContentPackResolver.Resolve(packages,
-            new ContentPackProfile { EnabledPackages = new[] { "first" } }, Host).Packages.Count, Is.EqualTo(2));
-        workspace.Add("second", "[]", new[] { new ContentPackDependency { Id = "first" } });
+            new ContentPackProfile { EnabledPackages = ["first"] }, Host).Packages.Count, Is.EqualTo(2));
+        workspace.Add("second", "[]", [new ContentPackDependency { Id = "first" }]);
         packages = await workspace.DiscoverAsync().ConfigureAwait(false);
         AssertFailure("DependencyCycle", () => ContentPackResolver.Resolve(packages,
-            new ContentPackProfile { EnabledPackages = new[] { "first", "second" } }, Host));
+            new ContentPackProfile { EnabledPackages = ["first", "second"] }, Host));
     }
 
     /// <summary>Multiple installed versions never cause an implicit, potentially save-breaking selection.</summary>
@@ -156,10 +157,10 @@ public sealed class ContentRuntimeTests
             Assert.That(row.Speed, Is.EqualTo(80));
             Assert.That(row.Stats.Color, Is.EqualTo("red"));
             Assert.That(row.Stats.Armor, Is.EqualTo(5));
-            Assert.That(row.Weights, Is.EqualTo(new[] { 9 }));
+            Assert.That(row.Weights, Is.EqualTo([9]));
             Assert.That(row.Note, Is.Null);
             Assert.That(catalog.GetSources(reference).Select(static source => source.PackId),
-                Is.EqualTo(new[] { "base", "fast", "slow" }));
+                Is.EqualTo(["base", "fast", "slow"]));
             Assert.That(catalog.GetFieldSource(reference, "stats.color")?.PackId, Is.EqualTo("fast"));
             Assert.That(catalog.GetFieldSource(reference, "speed")?.PackId, Is.EqualTo("slow"));
             Assert.That(catalog.GetFieldSource(reference, "weights[0]")?.PackId, Is.EqualTo("fast"));
@@ -205,8 +206,8 @@ public sealed class ContentRuntimeTests
         workspace.Add("patch", "- op: patch\n  table: appearance\n  id: base:row\n  value:\n    appearance: " + patch);
         var packages = await workspace.DiscoverAsync().ConfigureAwait(false);
         var plan = ContentPackResolver.Resolve(packages,
-            new ContentPackProfile { EnabledPackages = new[] { "patch" } }, Host);
-        var catalog = await new ContentCatalogLoader().RegisterTable<AppearanceRow>("appearance", null,
+            new ContentPackProfile { EnabledPackages = ["patch"] }, Host);
+        var catalog = await new ContentCatalogLoader().RegisterTable<AppearanceRow>("appearance", schemaPath: null,
             static row => row.Id).LoadAsync(plan).ConfigureAwait(false);
         var reference = new ContentReference("appearance", new ContentId("base:row"));
         Assert.That(catalog.GetFieldSource(reference, "appearance")?.PackId, Is.EqualTo(containerOwner));
@@ -282,7 +283,7 @@ public sealed class ContentRuntimeTests
         using var workspace = new PackageWorkspace();
         workspace.Add("base", BaseData);
         var packages = await workspace.DiscoverAsync().ConfigureAwait(false);
-        File.AppendAllText(Path.Combine(workspace.Root, "base", "content.yaml"), "\n# package edited after discovery\n");
+        await File.AppendAllTextAsync(Path.Combine(workspace.Root, "base", "content.yaml"), "\n# package edited after discovery\n").ConfigureAwait(false);
         var exception = await Assert.ThrowsAsync<ContentLoadException>(() => workspace.LoadAsync(packages))
             .ConfigureAwait(false);
         Assert.That(exception!.Diagnostic.Code, Is.EqualTo("PackageChanged"));
@@ -298,9 +299,10 @@ public sealed class ContentRuntimeTests
         Assert.Throws<ArgumentException>(() => packages[0].GetFilePath("../secret.yaml"));
         Assert.Throws<ArgumentException>(() => packages[0].GetFilePath("C:/secret.yaml"));
         Assert.Throws<ArgumentException>(() => packages[0].GetFilePath("res://secret.yaml"));
-        if (OperatingSystem.IsWindows()) return; // Windows link creation may require an unavailable developer privilege.
+        if (OperatingSystem.IsWindows())
+            return; // Windows link creation may require an unavailable developer privilege.
         var external = Path.Combine(workspace.Root, "external.yaml");
-        File.WriteAllText(external, "[]");
+        await File.WriteAllTextAsync(external, "[]").ConfigureAwait(false);
         File.CreateSymbolicLink(Path.Combine(workspace.Root, "base", "redirect.yaml"), external);
         await Assert.ThrowsAsync<ContentLoadException>(() => workspace.DiscoverAsync()).ConfigureAwait(false);
     }
@@ -309,13 +311,14 @@ public sealed class ContentRuntimeTests
     [Test]
     public async Task Discovery_LinkedPackageRootHasStructuredDiagnostic()
     {
-        if (OperatingSystem.IsWindows()) return;
+        if (OperatingSystem.IsWindows())
+            return;
         using var workspace = new PackageWorkspace();
         workspace.Add("base", BaseData);
         var link = Path.Combine(workspace.Root, "linked-package");
         Directory.CreateSymbolicLink(link, Path.Combine(workspace.Root, "base"));
         var exception = await Assert.ThrowsAsync<ContentLoadException>(() =>
-            new ContentPackDiscovery().DiscoverAsync(new[] { link })).ConfigureAwait(false);
+            new ContentPackDiscovery().DiscoverAsync([link])).ConfigureAwait(false);
         Assert.That(exception!.Diagnostic.Code, Is.EqualTo("InvalidPackagePath"));
         Assert.That(exception.Diagnostic.FilePath, Is.EqualTo(link));
     }
@@ -352,6 +355,12 @@ public sealed class ContentRuntimeTests
 
     private sealed class PackageWorkspace : IDisposable
     {
+        private static readonly JsonSerializerOptions _manifestOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        };
+
+
         internal string Root { get; } = Path.Combine(Path.GetTempPath(), "gframework-content", Guid.NewGuid().ToString("N"));
         private readonly string _schemaPath;
 
@@ -382,28 +391,32 @@ public sealed class ContentRuntimeTests
             Directory.CreateDirectory(directory);
             var manifest = new ContentPackManifest
             {
-                Id = id, Name = id, GameId = "test", ContentFiles = new[] { "content.yaml" },
-                Dependencies = dependencies ?? Array.Empty<ContentPackDependency>(),
-                IncompatiblePackages = incompatible ?? Array.Empty<string>()
+                Id = id,
+                Name = id,
+                GameId = "test",
+                ContentFiles = ["content.yaml"],
+                Dependencies = dependencies ?? [],
+                IncompatiblePackages = incompatible ?? [],
             };
             File.WriteAllText(Path.Combine(directory, "content-pack.json"), JsonSerializer.Serialize(manifest,
-                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+                _manifestOptions));
             File.WriteAllText(Path.Combine(directory, "content.yaml"), data);
         }
 
         internal Task<IReadOnlyList<ContentPack>> DiscoverAsync()
-            => new ContentPackDiscovery().DiscoverAsync(new[] { Root });
+            => new ContentPackDiscovery().DiscoverAsync([Root]);
 
         internal Task<ContentCatalog> LoadAsync(IEnumerable<ContentPack> packages, params string[] enabled)
         {
             var plan = ContentPackResolver.Resolve(packages, new ContentPackProfile
             {
-                EnabledPackages = enabled, LoadOrder = enabled
+                EnabledPackages = enabled,
+                LoadOrder = enabled,
             }, Host);
             return new ContentCatalogLoader().RegisterTable<Enemy>("enemies", _schemaPath, static row => row.Id).LoadAsync(plan);
         }
 
-        public void Dispose() => Directory.Delete(Root, true);
+        public void Dispose() => Directory.Delete(Root, recursive: true);
     }
 
     /// <summary>Game-owned sample DTO whose shape is fixed before loading external content.</summary>
@@ -412,15 +425,24 @@ public sealed class ContentRuntimeTests
         /// <summary>Gets or sets the stable namespaced ID.</summary>
         public string Id { get; set; } = string.Empty;
         /// <summary>Gets or sets game-validated speed.</summary>
-        public int Speed { get; set; }
+        public int Speed
+        {
+            get; set;
+        }
         /// <summary>Gets or sets nested content fields.</summary>
         public EnemyStats Stats { get; set; } = new();
         /// <summary>Gets or sets an array replaced as a whole by patches.</summary>
-        public int[] Weights { get; set; } = Array.Empty<int>();
+        public int[] Weights { get; set; } = [];
         /// <summary>Gets or sets an optional field removed by a null patch.</summary>
-        public string? Note { get; set; }
+        public string? Note
+        {
+            get; set;
+        }
         /// <summary>Gets or sets a declared cross-table reference.</summary>
-        public string? Target { get; set; }
+        public string? Target
+        {
+            get; set;
+        }
     }
 
     /// <summary>Nested fields used to verify recursive merge and field provenance.</summary>
@@ -429,7 +451,10 @@ public sealed class ContentRuntimeTests
         /// <summary>Gets or sets an appearance field.</summary>
         public string Color { get; set; } = string.Empty;
         /// <summary>Gets or sets an independent numeric field.</summary>
-        public int Armor { get; set; }
+        public int Armor
+        {
+            get; set;
+        }
     }
 
     /// <summary>Permits scalar-to-object patch tests independently of a game-specific schema shape.</summary>
@@ -438,6 +463,9 @@ public sealed class ContentRuntimeTests
         /// <summary>Gets or sets the stable content ID.</summary>
         public string Id { get; set; } = string.Empty;
         /// <summary>Gets or sets the deliberately flexible field under test.</summary>
-        public object? Appearance { get; set; }
+        public object? Appearance
+        {
+            get; set;
+        }
     }
 }

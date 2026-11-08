@@ -11,5 +11,5 @@ public enum SceneOperationResult
     /// <summary>A guard refused the transition; the scene stack was retained.</summary>
     Rejected,
     /// <summary>The requested stack state already existed.</summary>
-    NoOp
+    NoOp,
 }

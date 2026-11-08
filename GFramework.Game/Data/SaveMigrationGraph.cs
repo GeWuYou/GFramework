@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Collections.ObjectModel;
 namespace GFramework.Game.Data;
 
 /// <summary>
@@ -32,9 +33,13 @@ public sealed class SaveMigrationGraph
     /// <returns>Immutable selected conversion edges.</returns>
     public IReadOnlyList<SaveMigrationStep> Plan(int fromVersion, int toVersion, IReadOnlyList<int>? versionPath = null)
     {
-        if (fromVersion < 1 || toVersion < 1) throw new ArgumentOutOfRangeException(nameof(fromVersion));
-        if (versionPath is not null) return ResolveExplicitPath(fromVersion, toVersion, versionPath);
-        if (fromVersion == toVersion) return Array.Empty<SaveMigrationStep>();
+        if (fromVersion < 1 || toVersion < 1)
+            throw new ArgumentOutOfRangeException(nameof(fromVersion));
+        if (versionPath is not null)
+            return ResolveExplicitPath(fromVersion, toVersion, versionPath);
+
+        if (fromVersion == toVersion)
+            return [];
         return ResolveExplicitPath(fromVersion, toVersion, FindShortestPath(fromVersion, toVersion));
     }
 
@@ -42,7 +47,7 @@ public sealed class SaveMigrationGraph
     /// Visits each schema node once and counts shortest routes up to two. This avoids enumerating exponentially
     /// many paths in a branching schema DAG, including the important missing-target case.
     /// </summary>
-    private IReadOnlyList<int> FindShortestPath(int fromVersion, int toVersion)
+    private ReadOnlyCollection<int> FindShortestPath(int fromVersion, int toVersion)
     {
         var outgoing = _steps.Values.GroupBy(static edge => edge.FromVersion)
             .ToDictionary(static group => group.Key, static group => group.OrderBy(static edge => edge.ToVersion).ToArray());
@@ -53,11 +58,14 @@ public sealed class SaveMigrationGraph
         pending.Enqueue(fromVersion);
         while (pending.TryDequeue(out var version))
         {
-            if (version == toVersion) break;
-            if (!outgoing.TryGetValue(version, out var edges)) continue;
+            if (version == toVersion)
+                break;
+            if (!outgoing.TryGetValue(version, out var edges))
+                continue;
             foreach (var edge in edges)
             {
-                if (!MovesToward(version, edge.ToVersion, toVersion)) continue;
+                if (!MovesToward(version, edge.ToVersion, toVersion))
+                    continue;
                 var distance = distances[version] + 1;
                 if (!distances.TryGetValue(edge.ToVersion, out var known))
                 {
@@ -71,10 +79,12 @@ public sealed class SaveMigrationGraph
             }
         }
         if (!routeCounts.TryGetValue(toVersion, out var count))
-            throw new InvalidOperationException($"No migration path exists from {fromVersion} to {toVersion}.");
-        if (count != 1) throw new InvalidOperationException("Migration path is ambiguous; supply an explicit version path.");
+            throw new InvalidOperationException(string.Create(CultureInfo.InvariantCulture, $"No migration path exists from {fromVersion} to {toVersion}."));
+        if (count != 1)
+            throw new InvalidOperationException("Migration path is ambiguous; supply an explicit version path.");
         var result = new List<int> { toVersion };
-        while (result[^1] != fromVersion) result.Add(predecessor[result[^1]]);
+        while (result[^1] != fromVersion)
+            result.Add(predecessor[result[^1]]);
         result.Reverse();
         return result.AsReadOnly();
     }
@@ -87,7 +97,8 @@ public sealed class SaveMigrationGraph
         foreach (var step in path)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (current.Version != step.FromVersion) throw new InvalidOperationException("Migration source version changed.");
+            if (current.Version != step.FromVersion)
+                throw new InvalidOperationException("Migration source version changed.");
             var converted = await step.ConvertAsync(current.Clone(), cancellationToken).ConfigureAwait(false);
             if (converted is null || converted.Data is null || converted.Version != step.ToVersion)
                 throw new InvalidOperationException("A migration returned null data or the wrong declared version.");
@@ -97,7 +108,7 @@ public sealed class SaveMigrationGraph
     }
 
     /// <summary>Validates every explicit edge instead of treating a caller-selected route as trusted configuration.</summary>
-    private IReadOnlyList<SaveMigrationStep> ResolveExplicitPath(int fromVersion, int toVersion, IReadOnlyList<int> versions)
+    private ReadOnlyCollection<SaveMigrationStep> ResolveExplicitPath(int fromVersion, int toVersion, IReadOnlyList<int> versions)
     {
         if (versions.Count == 0 || versions[0] != fromVersion || versions[^1] != toVersion)
             throw new ArgumentException("An explicit path must include the source and target versions.", nameof(versions));

@@ -115,13 +115,13 @@ public class LoggingConfigurationTests
     {
         var config = new LoggingConfiguration
         {
-            MinLevel = LogLevel.Warning
+            MinLevel = LogLevel.Warning,
         };
         config.Appenders.Add(new AppenderConfiguration
         {
             Type = "Console",
             Formatter = "Default",
-            UseColors = false
+            UseColors = false,
         });
 
         using var factory = LoggingConfigurationLoader.CreateFactory(config);
@@ -140,13 +140,13 @@ public class LoggingConfigurationTests
     {
         var config = new LoggingConfiguration
         {
-            MinLevel = LogLevel.Information
+            MinLevel = LogLevel.Information,
         };
         config.Appenders.Add(new AppenderConfiguration
         {
             Type = "Console",
             Formatter = "Default",
-            UseColors = false
+            UseColors = false,
         });
         config.LoggerLevels["MyApp"] = LogLevel.Critical;
 
@@ -167,13 +167,13 @@ public class LoggingConfigurationTests
     {
         var config = new LoggingConfiguration
         {
-            MinLevel = LogLevel.Information
+            MinLevel = LogLevel.Information,
         };
         config.Appenders.Add(new AppenderConfiguration
         {
             Type = "Console",
             Formatter = "Default",
-            UseColors = false
+            UseColors = false,
         });
         config.LoggerLevels["GFramework"] = LogLevel.Warning;
         config.LoggerLevels["GFramework.Core"] = LogLevel.Trace;
@@ -200,7 +200,7 @@ public class LoggingConfigurationTests
                 ""appenders"": [
                     {{
                         ""type"": ""File"",
-                        ""filePath"": ""{testFile.Replace("\\", "\\\\")}"",
+                        ""filePath"": ""{testFile.Replace("\\", "\\\\", StringComparison.Ordinal)}"",
                         ""formatter"": ""Json""
                     }}
                 ]
@@ -262,7 +262,7 @@ public class LoggingConfigurationTests
                 ""appenders"": [
                     {{
                         ""type"": ""File"",
-                        ""filePath"": ""{testFile.Replace("\\", "\\\\")}"",
+                        ""filePath"": ""{testFile.Replace("\\", "\\\\", StringComparison.Ordinal)}"",
                         ""formatter"": ""Default"",
                         ""filter"": {{
                             ""type"": ""LogLevel"",

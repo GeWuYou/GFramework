@@ -106,7 +106,7 @@ internal sealed class OwnedCoroutineEnumerator : IEnumerator<IYieldInstruction>,
         {
             if (_index < _coroutines.Length
                 && _coroutines[_index] is ICoroutineCompletionStatusSource
-                { CompletionStatus: CoroutineCompletionStatus.Faulted })
+                { CompletionStatus: CoroutineCompletionStatus.Faulted, })
             {
                 _terminalStatus = CoroutineCompletionStatus.Faulted;
             }
@@ -215,14 +215,14 @@ internal sealed class OwnedCoroutineEnumerator : IEnumerator<IYieldInstruction>,
         _disposed = true;
         _current = null;
         _onCompleted = null;
-        List<Exception>? exceptions = primaryException == null ? null : new List<Exception> { primaryException };
+        List<Exception>? exceptions = primaryException == null ? null : [primaryException];
         for (var i = 0; i < _coroutines.Length; i++)
         {
             var failure = ReleaseComponent(i);
             if (failure != null)
             {
                 _terminalStatus = CoroutineCompletionStatus.Faulted;
-                (exceptions ??= new List<Exception>()).Add(failure);
+                (exceptions ??= []).Add(failure);
             }
         }
         var cancellation = _cancellation;
@@ -235,13 +235,13 @@ internal sealed class OwnedCoroutineEnumerator : IEnumerator<IYieldInstruction>,
         catch (Exception exception)
         {
             _terminalStatus = CoroutineCompletionStatus.Faulted;
-            (exceptions ??= new List<Exception>()).Add(exception);
+            (exceptions ??= []).Add(exception);
         }
         return exceptions?.Count switch
         {
             null or 0 => null,
             1 => exceptions[0],
-            _ => new AggregateException(exceptions)
+            _ => new AggregateException(exceptions),
         };
     }
 }

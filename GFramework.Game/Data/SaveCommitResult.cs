@@ -16,7 +16,13 @@ public sealed class SaveCommitResult<TSaveData> where TSaveData : class, IData, 
         BackupKey = backupKey;
     }
     /// <summary>Gets a fresh game DTO decoded from the approved candidate.</summary>
-    public TSaveData Data { get; }
+    public TSaveData Data
+    {
+        get;
+    }
     /// <summary>Gets the slot-relative backup key.</summary>
-    public string BackupKey { get; }
+    public string BackupKey
+    {
+        get;
+    }
 }

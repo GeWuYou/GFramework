@@ -70,16 +70,16 @@ public sealed partial class CoroutineScheduler
                 {
                     continue;
                 }
-                AdvanceSlot(slot, false);
+                AdvanceSlot(slot, initial: false);
             }
         }
         finally
         {
             _updateSnapshot.Clear();
             _updating = false;
-            if (_statistics != null)
+            if (_statistics is { } statistics)
             {
-                _statistics.LastUpdateElapsedMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+                statistics.LastUpdateElapsedMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
             }
             RefreshStatistics();
         }
@@ -88,9 +88,9 @@ public sealed partial class CoroutineScheduler
     /// <summary>Creates and registers a generation before running factory or iterator code.</summary>
     internal CoroutineHandle Start(CoroutineScope scope, CoroutineHandle parent,
         IEnumerator<IYieldInstruction>? coroutine, Func<CoroutineContext, IEnumerator<IYieldInstruction>>? factory,
-        string? tag, CoroutinePriority priority, string? group, CancellationToken cancellationToken,
+        string? tag, CoroutinePriority priority, string? group,
         CoroutineExecutionStage? stage, bool ignorePause, CoroutineFailurePolicy childFailurePolicy,
-        TaskCompletionSource<CoroutineResult>? resultSource = null)
+        TaskCompletionSource<CoroutineResult>? resultSource = null, CancellationToken cancellationToken = default)
     {
         AssertDriverThread();
         if (IsDisposed || _clearing || scope.IsDisposed)
@@ -118,7 +118,7 @@ public sealed partial class CoroutineScheduler
             Group = group,
             CancellationToken = cancellationToken,
             StartedTimestamp = Stopwatch.GetTimestamp(),
-            ChildFailurePolicy = childFailurePolicy
+            ChildFailurePolicy = childFailurePolicy,
         };
         try
         {
@@ -261,16 +261,17 @@ public sealed partial class CoroutineScheduler
     /// <summary>Starts a child after checking that its parent is still accepting owned work.</summary>
     internal CoroutineHandle StartChild(CoroutineHandle parent, IEnumerator<IYieldInstruction>? coroutine,
         Func<CoroutineContext, IEnumerator<IYieldInstruction>>? factory, string? tag, CoroutinePriority priority,
-        string? group, CancellationToken cancellationToken, CoroutineExecutionStage? stage, bool? ignorePause,
-        CoroutineFailurePolicy childFailurePolicy, TaskCompletionSource<CoroutineResult>? resultSource = null)
+        string? group, CoroutineExecutionStage? stage, bool? ignorePause,
+        CoroutineFailurePolicy childFailurePolicy, TaskCompletionSource<CoroutineResult>? resultSource = null,
+        CancellationToken cancellationToken = default)
     {
         AssertDriverThread();
         if (!TryGetSlot(parent, out var slot) || slot.PendingResult != null || slot.BodyCompleted)
         {
             throw new InvalidOperationException("The parent flow no longer accepts child tasks.");
         }
-        return Start(slot.Scope, parent, coroutine, factory, tag, priority, group, cancellationToken,
-            stage ?? slot.Stage, ignorePause ?? slot.IgnorePause, childFailurePolicy, resultSource);
+        return Start(slot.Scope, parent, coroutine, factory, tag, priority, group,
+            stage ?? slot.Stage, ignorePause ?? slot.IgnorePause, childFailurePolicy, resultSource, cancellationToken);
     }
 
     /// <summary>Creates cancellation infrastructure only when user code requests a token for an asynchronous operation.</summary>
@@ -279,7 +280,7 @@ public sealed partial class CoroutineScheduler
         AssertDriverThread();
         if (!TryGetSlot(handle, out var slot))
         {
-            return new CancellationToken(true);
+            return new CancellationToken(canceled: true);
         }
         slot.CancellationSource ??= slot.CancellationToken.CanBeCanceled
             ? CancellationTokenSource.CreateLinkedTokenSource(slot.CancellationToken)
@@ -300,7 +301,8 @@ public sealed partial class CoroutineScheduler
             return;
         }
         var registration = cancellationToken.Register(() => _pendingKills.Enqueue(handle));
-        (slot.AdditionalCancellationRegistrations ??= new List<CancellationTokenRegistration>()).Add(registration);
+        (slot.AdditionalCancellationRegistrations ??= []).Add(registration);
+        (slot.AdditionalCancellationTokens ??= []).Add(cancellationToken);
         if (cancellationToken.IsCancellationRequested)
         {
             RequestTermination(slot, new CoroutineResult(CoroutineCompletionStatus.Cancelled));
@@ -334,7 +336,7 @@ public sealed partial class CoroutineScheduler
             {
                 if (TryGetSlot(handle, out var slot))
                 {
-                    AdvanceSlot(slot, true);
+                    AdvanceSlot(slot, initial: true);
                 }
             }
         }
@@ -346,7 +348,7 @@ public sealed partial class CoroutineScheduler
 
     private void AdvanceSlot(CoroutineSlot slot, bool initial)
     {
-        if (slot.BodyCompleted || slot.PendingResult != null)
+        if (slot.PendingResult != null || CancelIfRequested(slot) || slot.BodyCompleted)
         {
             return;
         }
@@ -355,20 +357,11 @@ public sealed partial class CoroutineScheduler
         var started = _statistics == null ? 0 : Stopwatch.GetTimestamp();
         try
         {
-            if ((!initial && !AdvanceWait(slot)) || slot.PendingResult != null)
+            if ((!initial && !AdvanceWait(slot)) || slot.PendingResult != null || CancelIfRequested(slot))
             {
                 return;
             }
-            if (!slot.Enumerator!.MoveNext())
-            {
-                slot.BodyCompleted = true;
-                if (slot.Children.Count == 0)
-                {
-                    slot.PendingResult = new CoroutineResult(CoroutineCompletionStatus.Completed);
-                }
-                return;
-            }
-            AcquireYieldedInstruction(slot, slot.Enumerator.Current);
+            AdvanceIterator(slot);
         }
         catch (Exception ex)
         {
@@ -388,6 +381,46 @@ public sealed partial class CoroutineScheduler
             }
             DrainPrewarm();
         }
+    }
+
+    private void AdvanceIterator(CoroutineSlot slot)
+    {
+        if (!slot.Enumerator!.MoveNext())
+        {
+            CancelIfRequested(slot);
+            slot.BodyCompleted = true;
+            if (slot.Children.Count == 0 && slot.PendingResult == null)
+            {
+                slot.PendingResult = new CoroutineResult(CoroutineCompletionStatus.Completed);
+            }
+            return;
+        }
+        var instruction = slot.Enumerator.Current;
+        CancelIfRequested(slot);
+        AcquireYieldedInstruction(slot, instruction);
+    }
+
+    private bool CancelIfRequested(CoroutineSlot slot)
+    {
+        var requested = slot.CancellationToken.IsCancellationRequested;
+        if (!requested && slot.AdditionalCancellationTokens != null)
+        {
+            foreach (var token in slot.AdditionalCancellationTokens)
+            {
+                if (token.IsCancellationRequested)
+                {
+                    requested = true;
+                    break;
+                }
+            }
+        }
+        if (!requested)
+        {
+            return false;
+        }
+        // The queue was drained at tick start, but an earlier slot may have cancelled this lifetime during this same tick.
+        RequestTermination(slot, new CoroutineResult(CoroutineCompletionStatus.Cancelled));
+        return true;
     }
 
     /// <summary>
@@ -417,7 +450,12 @@ public sealed partial class CoroutineScheduler
             return true;
         }
         waiting.Update(waiting is WaitForSecondsRealtime ? RealtimeDeltaTime : DeltaTime);
-        if (slot.PendingResult != null || !waiting.IsDone)
+        if (slot.PendingResult != null || CancelIfRequested(slot))
+        {
+            return false;
+        }
+        var isDone = waiting.IsDone;
+        if (CancelIfRequested(slot) || !isDone)
         {
             return false;
         }
@@ -464,8 +502,8 @@ public sealed partial class CoroutineScheduler
                 break;
             case WaitForCoroutine child:
                 // The parent owns the child before child prewarming, including immediate completion/failure.
-                var handle = StartChild(slot.Handle, child.Coroutine, null, null, slot.Priority, null,
-                    slot.CancellationToken, slot.Stage, slot.IgnorePause, slot.ChildFailurePolicy);
+                var handle = StartChild(slot.Handle, child.Coroutine, factory: null, tag: null, slot.Priority, group: null,
+                    slot.Stage, slot.IgnorePause, slot.ChildFailurePolicy, cancellationToken: slot.CancellationToken);
                 if (TryGetSlot(handle, out var target))
                 {
                     slot.WaitTarget = handle;
@@ -510,7 +548,7 @@ public sealed partial class CoroutineScheduler
         {
             return;
         }
-        if (DependsOn(join.Handle, slot.Handle, new HashSet<CoroutineHandle>()))
+        if (DependsOn(join.Handle, slot.Handle, []))
         {
             throw new InvalidOperationException("Coroutine wait would create an ownership/dependency cycle.");
         }

@@ -20,14 +20,17 @@ public sealed class LoggingConfiguration
     ///     Appender 配置列表
     /// </summary>
 #pragma warning disable MA0016 // Preserve the established concrete configuration API surface.
-    public List<AppenderConfiguration> Appenders { get; set; } = new();
+    public List<AppenderConfiguration> Appenders { get; set; } = [];
 #pragma warning restore MA0016
 
     /// <summary>
     ///     特定 Logger 的日志级别配置
     /// </summary>
 #pragma warning disable MA0016 // Preserve the established concrete configuration API surface.
-    public Dictionary<string, LogLevel> LoggerLevels { get; set; } =
+    public Dictionary<string, LogLevel> LoggerLevels
+    {
+        get; set;
+    } =
         new Dictionary<string, LogLevel>(StringComparer.Ordinal);
 #pragma warning restore MA0016
 }

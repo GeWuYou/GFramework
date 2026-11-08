@@ -18,22 +18,34 @@ public class TestPoolableObject : IPoolableObject
     /// <summary>
     ///     获取或设置测试中写入的整数值。
     /// </summary>
-    public int TestValue { get; set; }
+    public int TestValue
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     获取或设置对象获取回调是否已执行。
     /// </summary>
-    public bool OnAcquireCalled { get; set; }
+    public bool OnAcquireCalled
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     获取或设置对象释放回调是否已执行。
     /// </summary>
-    public bool OnReleaseCalled { get; set; }
+    public bool OnReleaseCalled
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     获取或设置对象销毁回调是否已执行。
     /// </summary>
-    public bool OnPoolDestroyCalled { get; set; }
+    public bool OnPoolDestroyCalled
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     在对象被对象池取出时记录回调执行状态。

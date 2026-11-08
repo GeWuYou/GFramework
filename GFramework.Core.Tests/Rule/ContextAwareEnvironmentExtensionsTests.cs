@@ -84,7 +84,7 @@ public class ContextAwareEnvironmentExtensionsTests
         Assert.That(result, Is.Null);
     }
 
-    private class TestEnvironment : IEnvironment
+    private sealed class TestEnvironment : IEnvironment
     {
         public string Name { get; set; } = string.Empty;
 
@@ -107,7 +107,7 @@ public class ContextAwareEnvironmentExtensionsTests
         }
     }
 
-    private class AnotherEnvironment : IEnvironment
+    private sealed class AnotherEnvironment : IEnvironment
     {
         public string Name => "Another";
         public T? Get<T>(string key) where T : class => default;
@@ -129,7 +129,5 @@ public class ContextAwareEnvironmentExtensionsTests
         }
     }
 
-    private class TestContextAware : ContextAwareBase
-    {
-    }
+    private sealed class TestContextAware : ContextAwareBase;
 }

@@ -24,26 +24,38 @@ public interface ISceneBehavior : IRoute
     /// <summary>
     /// 获取场景的原始对象。
     /// </summary>
-    object Original { get; }
+    object Original
+    {
+        get;
+    }
 
 
     /// <summary>
     /// 获取场景是否已加载完成的状态。
     /// true表示场景资源已加载，false表示未加载或正在加载中。
     /// </summary>
-    bool IsLoaded { get; }
+    bool IsLoaded
+    {
+        get;
+    }
 
     /// <summary>
     /// 获取场景是否处于活跃运行状态。
     /// true表示场景正在前台运行，false表示场景已暂停或未激活。
     /// </summary>
-    bool IsActive { get; }
+    bool IsActive
+    {
+        get;
+    }
 
     /// <summary>
     /// 获取场景是否正在进行切换操作。
     /// true表示场景正在加载、卸载或过渡中，false表示场景状态稳定。
     /// </summary>
-    bool IsTransitioning { get; }
+    bool IsTransitioning
+    {
+        get;
+    }
 
     /// <summary>
     /// 异步加载场景所需资源。

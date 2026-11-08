@@ -68,17 +68,7 @@ public static class CqrsServiceCollectionExtensions
             services.TryAddSingleton(typeof(ILogger<>), typeof(Logger<>));
         }
 
-        // 同一容器只允许一个 runtime 描述;重复安装属于组合根配置错误，显式拒绝避免工厂叠加出多个单例。
-        if (services.Any(static descriptor => descriptor.ServiceType == typeof(ICqrsRuntime)))
-        {
-            throw new InvalidOperationException(
-                $"An {typeof(ICqrsRuntime).FullName} registration already exists. Remove the duplicate " +
-                $"{nameof(AddCqrsRuntime)} call before building the provider.");
-        }
-
-        services.AddSingleton<ICqrsRuntime>(static serviceProvider =>
-            CqrsRuntimeFactory.CreateRuntime(serviceProvider, notificationPublisher: null));
-        return services;
+        return RegisterRuntime(services, ServiceLifetime.Singleton);
     }
 
     /// <summary>
@@ -102,7 +92,37 @@ public static class CqrsServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(dispatcherLogger);
 
-        // 同一容器只允许一个 runtime 描述;重复安装属于组合根配置错误，显式拒绝避免工厂叠加出多个单例。
+        return RegisterRuntime(services, ServiceLifetime.Singleton, dispatcherLogger);
+    }
+
+    /// <summary>
+    ///     安装绑定到调用方 DI 作用域的 CQRS runtime，适用于具有 Scoped handler 或依赖的请求宿主。
+    /// </summary>
+    /// <param name="services">目标服务集合；handler 与依赖的生命周期仍由调用方明确登记。</param>
+    /// <param name="loggerFactory">可选的宿主日志工厂；不覆盖已存在的日志配置。</param>
+    /// <returns>同一服务集合。</returns>
+    /// <exception cref="ArgumentNullException">服务集合为空。</exception>
+    /// <exception cref="InvalidOperationException">已经登记单例或作用域 CQRS runtime。</exception>
+    /// <remarks>
+    ///     从每个作用域的 ServiceProvider 解析 ICqrsRuntime；不能从根 provider 解析 Scoped runtime。
+    ///     同一作用域内复用 runtime，跨作用域隔离 handler 解析，依赖由各自作用域释放。
+    ///     Architecture 的根单例默认仍使用 AddCqrsRuntime，不与此注册混用。
+    /// </remarks>
+    public static IServiceCollection AddScopedCqrsRuntime(this IServiceCollection services, ILoggerFactory? loggerFactory = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        if (loggerFactory != null)
+        {
+            services.TryAddSingleton(loggerFactory);
+            services.TryAddSingleton(typeof(ILogger<>), typeof(Logger<>));
+        }
+        return RegisterRuntime(services, ServiceLifetime.Scoped);
+    }
+
+    private static IServiceCollection RegisterRuntime(IServiceCollection services, ServiceLifetime lifetime,
+        ILogger? dispatcherLogger = null)
+    {
+        // 单例与作用域模式共享重复检查，避免同一容器出现两个相互覆盖的 runtime 配置。
         if (services.Any(static descriptor => descriptor.ServiceType == typeof(ICqrsRuntime)))
         {
             throw new InvalidOperationException(
@@ -110,8 +130,10 @@ public static class CqrsServiceCollectionExtensions
                 $"{nameof(AddCqrsRuntime)} call before building the provider.");
         }
 
-        services.AddSingleton<ICqrsRuntime>(serviceProvider =>
-            CqrsRuntimeFactory.CreateRuntime(serviceProvider, dispatcherLogger));
+        Func<IServiceProvider, object> create = dispatcherLogger == null
+            ? static provider => CqrsRuntimeFactory.CreateRuntime(provider, notificationPublisher: null)
+            : provider => CqrsRuntimeFactory.CreateRuntime(provider, dispatcherLogger);
+        services.Add(ServiceDescriptor.Describe(typeof(ICqrsRuntime), create, lifetime));
         return services;
     }
 

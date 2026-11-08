@@ -30,15 +30,24 @@ public sealed record CqrsStreamInvokerDescriptorEntry
     /// <summary>
     ///     获取流式请求运行时类型。
     /// </summary>
-    public Type RequestType { get; }
+    public Type RequestType
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取流式响应元素类型。
     /// </summary>
-    public Type ResponseType { get; }
+    public Type ResponseType
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取对应的 generated stream invoker 描述符。
     /// </summary>
-    public CqrsStreamInvokerDescriptor Descriptor { get; }
+    public CqrsStreamInvokerDescriptor Descriptor
+    {
+        get;
+    }
 }

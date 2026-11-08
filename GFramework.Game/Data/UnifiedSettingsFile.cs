@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025 GeWuYou
+// Copyright (c) 2025 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -38,5 +38,8 @@ internal sealed class UnifiedSettingsFile : IVersioned
     /// <summary>
     ///     配置文件版本号，用于版本控制和兼容性检查
     /// </summary>
-    public int Version { get; set; }
+    public int Version
+    {
+        get; set;
+    }
 }

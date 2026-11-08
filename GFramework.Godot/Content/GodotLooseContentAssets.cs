@@ -12,18 +12,12 @@ namespace GFramework.Godot.Content;
 /// This entry point never accepts scenes, resources, scripts or assemblies. Call it on
 /// the Godot thread and release returned resources after their final native consumer.
 /// </summary>
-public sealed class GodotLooseContentAssets
+/// <remarks>Creates an asset reader restricted to one package directory.</remarks>
+/// <param name="rootDirectory">Host-selected physical package directory.</param>
+public sealed class GodotLooseContentAssets(string rootDirectory)
 {
-    private readonly GodotContentFileResolver _files;
-    private readonly int _threadId;
-
-    /// <summary>Creates an asset reader restricted to one package directory.</summary>
-    /// <param name="rootDirectory">Host-selected physical package directory.</param>
-    public GodotLooseContentAssets(string rootDirectory)
-    {
-        _files = new GodotContentFileResolver(rootDirectory);
-        _threadId = System.Environment.CurrentManagedThreadId;
-    }
+    private readonly GodotContentFileResolver _files = new(rootDirectory);
+    private readonly int _threadId = System.Environment.CurrentManagedThreadId;
 
     /// <summary>Decodes a PNG as a texture without invoking script-bearing resource loaders.</summary>
     /// <param name="relativePath">The PNG path relative to the package.</param>

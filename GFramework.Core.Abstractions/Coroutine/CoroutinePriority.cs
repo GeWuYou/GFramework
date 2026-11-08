@@ -32,5 +32,5 @@ public enum CoroutinePriority
     /// <summary>
     ///     最高优先级
     /// </summary>
-    Highest = 4
+    Highest = 4,
 }

@@ -89,17 +89,11 @@ public sealed class AppenderLoggerProvider : ILoggerProvider
     }
 
     /// <summary>把标准 <see cref="ILogger"/> 调用转换为 <see cref="LogEntry"/> 的适配记录器。</summary>
-    private sealed class AppenderLogger : ILogger
+    /// <remarks>创建绑定到指定类别与 provider 的适配记录器。</remarks>
+    private sealed class AppenderLogger(string categoryName, AppenderLoggerProvider provider) : ILogger
     {
-        private readonly string _categoryName;
-        private readonly AppenderLoggerProvider _provider;
-
-        /// <summary>创建绑定到指定类别与 provider 的适配记录器。</summary>
-        public AppenderLogger(string categoryName, AppenderLoggerProvider provider)
-        {
-            _categoryName = categoryName;
-            _provider = provider;
-        }
+        private readonly string _categoryName = categoryName;
+        private readonly AppenderLoggerProvider _provider = provider;
 
         /// <inheritdoc />
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
@@ -135,7 +129,7 @@ public sealed class AppenderLoggerProvider : ILoggerProvider
         }
 
         /// <summary>识别标准结构化状态（键值对列表）并提取为属性字典；其余状态返回 null。</summary>
-        private static IReadOnlyDictionary<string, object?>? ExtractProperties<TState>(TState state)
+        private static Dictionary<string, object?>? ExtractProperties<TState>(TState state)
         {
             if (state is not IEnumerable<KeyValuePair<string, object?>> pairs)
                 return null;

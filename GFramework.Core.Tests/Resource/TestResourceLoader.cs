@@ -24,7 +24,10 @@ public class TestResourceLoader : IResourceLoader<TestResource>
     /// <exception cref="ArgumentNullException"><paramref name="path" /> 为 <see langword="null" />。</exception>
     /// <exception cref="ArgumentException"><paramref name="path" /> 为空字符串。</exception>
     /// <exception cref="FileNotFoundException">指定路径的测试资源不存在。</exception>
-    public TestResource Load(string path)
+    public TestResource Load(string path) => LoadResource(path);
+
+    // Both contracts share one synchronous fake implementation; calling LoadAsync from itself would recurse.
+    private TestResource LoadResource(string path)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
 
@@ -46,7 +49,7 @@ public class TestResourceLoader : IResourceLoader<TestResource>
     /// <exception cref="FileNotFoundException">指定路径的测试资源不存在。</exception>
     public Task<TestResource> LoadAsync(string path)
     {
-        return Task.FromResult(Load(path));
+        return Task.FromResult(LoadResource(path));
     }
 
     /// <summary>

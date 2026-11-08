@@ -11,7 +11,10 @@ public interface ILocalizationFormatter
     /// <summary>
     /// 格式化器名称
     /// </summary>
-    string Name { get; }
+    string Name
+    {
+        get;
+    }
 
     /// <summary>
     /// 尝试格式化值

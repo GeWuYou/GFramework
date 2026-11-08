@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Coroutine;
@@ -26,12 +26,18 @@ public sealed class WaitForCoroutine(IEnumerator<IYieldInstruction> coroutine) :
     /// <summary>
     /// 获取当前等待的协程是否已完成
     /// </summary>
-    public bool IsDone { get; private set; }
+    public bool IsDone
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取子协程的终结结果；结束前为 Unknown。
     /// </summary>
-    public CoroutineResult Result { get; private set; }
+    public CoroutineResult Result
+    {
+        get; private set;
+    }
 
     /// <summary>
     /// 更新方法，用于处理协程等待逻辑

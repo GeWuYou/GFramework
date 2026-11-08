@@ -11,17 +11,26 @@ public interface ILocalizationTable
     /// <summary>
     /// 表名
     /// </summary>
-    string Name { get; }
+    string Name
+    {
+        get;
+    }
 
     /// <summary>
     /// 语言代码
     /// </summary>
-    string Language { get; }
+    string Language
+    {
+        get;
+    }
 
     /// <summary>
     /// 回退表（当前表中找不到键时使用）
     /// </summary>
-    ILocalizationTable? Fallback { get; }
+    ILocalizationTable? Fallback
+    {
+        get;
+    }
 
     /// <summary>
     /// 获取原始文本（不进行格式化）

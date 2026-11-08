@@ -12,49 +12,82 @@ public interface ICoroutineStatistics
     /// <summary>
     ///     获取总协程启动数量
     /// </summary>
-    long TotalStarted { get; }
+    long TotalStarted
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取总协程完成数量
     /// </summary>
-    long TotalCompleted { get; }
+    long TotalCompleted
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取总协程失败数量
     /// </summary>
-    long TotalFailed { get; }
+    long TotalFailed
+    {
+        get;
+    }
 
     /// <summary>取消结束的协程总数。</summary>
-    long TotalCancelled { get; }
+    long TotalCancelled
+    {
+        get;
+    }
 
     /// <summary>完成协程的平均存活时间，包含等待和暂停，单位毫秒。</summary>
-    double AverageLifetimeMs { get; }
+    double AverageLifetimeMs
+    {
+        get;
+    }
 
     /// <summary>完成协程的最大存活时间，单位毫秒。</summary>
-    double MaxLifetimeMs { get; }
+    double MaxLifetimeMs
+    {
+        get;
+    }
 
     /// <summary>最近一次阶段推进的实际调度耗时，单位毫秒。</summary>
-    double LastUpdateElapsedMs { get; }
+    double LastUpdateElapsedMs
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取当前活跃协程数量
     /// </summary>
-    int ActiveCount { get; }
+    int ActiveCount
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取当前暂停协程数量
     /// </summary>
-    int PausedCount { get; }
+    int PausedCount
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取协程平均执行时间（毫秒）
     /// </summary>
-    double AverageExecutionTimeMs { get; }
+    double AverageExecutionTimeMs
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取协程最大执行时间（毫秒）
     /// </summary>
-    double MaxExecutionTimeMs { get; }
+    double MaxExecutionTimeMs
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取按优先级分组的协程数量

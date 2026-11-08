@@ -24,7 +24,7 @@ public sealed class CoroutineCancellationSourceTests
         using var scope = scheduler.CreateScope(CoroutineFailurePolicy.Supervisor);
         using var lifetime = new CancellationTokenSource();
         var iterator = new BoundEnumerator(lifetime.Token);
-        var handle = scope.Run(iterator);
+        var handle = scope.Run(iterator, cancellationToken: global::System.Threading.CancellationToken.None);
         Assert.That(iterator.MoveNextCount, Is.EqualTo(1));
 
         lifetime.Cancel();
@@ -44,8 +44,8 @@ public sealed class CoroutineCancellationSourceTests
     public void Already_Cancelled_Lifetime_Should_Prevent_First_Step(bool fromFactory)
     {
         using var scheduler = new CoroutineScheduler(new FakeTimeSource());
-        var iterator = new BoundEnumerator(new CancellationToken(true));
-        var handle = fromFactory ? scheduler.Run(_ => iterator) : scheduler.Run(iterator);
+        var iterator = new BoundEnumerator(new CancellationToken(canceled: true));
+        var handle = fromFactory ? scheduler.Run(_ => iterator, cancellationToken: global::System.Threading.CancellationToken.None) : scheduler.Run(iterator, cancellationToken: global::System.Threading.CancellationToken.None);
 
         Assert.That(scheduler.TryGetResult(handle, out var result), Is.True);
         Assert.That(result.Status, Is.EqualTo(CoroutineCompletionStatus.Cancelled));
@@ -67,11 +67,11 @@ public sealed class CoroutineCancellationSourceTests
 
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            child = context.RunChild(iterator);
+            child = context.RunChild(iterator, cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
 
-        var parent = scheduler.Run(Parent);
+        var parent = scheduler.Run(Parent, cancellationToken: global::System.Threading.CancellationToken.None);
         lifetime.Cancel();
         scheduler.Update();
 
@@ -115,7 +115,7 @@ public sealed class CoroutineCancellationSourceTests
             ? new OperationCanceledException("lifetime getter failed")
             : new InvalidOperationException("lifetime getter failed");
         var iterator = new BoundEnumerator(default, failure);
-        var handle = scheduler.Run(iterator);
+        var handle = scheduler.Run(iterator, cancellationToken: global::System.Threading.CancellationToken.None);
 
         Assert.That(scheduler.TryGetResult(handle, out var result), Is.True);
         Assert.That(result.Status, Is.EqualTo(CoroutineCompletionStatus.Faulted));
@@ -129,10 +129,16 @@ public sealed class CoroutineCancellationSourceTests
         : IEnumerator<IYieldInstruction>, ICoroutineCancellationSource
     {
         /// <summary>获取执行次数。</summary>
-        public int MoveNextCount { get; private set; }
+        public int MoveNextCount
+        {
+            get; private set;
+        }
 
         /// <summary>获取释放次数。</summary>
-        public int DisposeCount { get; private set; }
+        public int DisposeCount
+        {
+            get; private set;
+        }
 
         /// <inheritdoc />
         public CancellationToken CancellationToken => tokenFailure == null ? token : throw tokenFailure;

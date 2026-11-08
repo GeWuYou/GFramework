@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.ObjectModel;
@@ -12,23 +12,17 @@ namespace GFramework.Core.Abstractions.Registries;
 /// </summary>
 /// <typeparam name="TKey">键的类型</typeparam>
 /// <typeparam name="TValue">值的类型</typeparam>
-public abstract class KeyValueRegistryBase<TKey, TValue>
+/// <remarks>
+///     初始化KeyValueRegistryBase的新实例
+/// </remarks>
+/// <param name="comparer">用于比较键的相等性的比较器，如果为null则使用默认比较器</param>
+public abstract class KeyValueRegistryBase<TKey, TValue>(IEqualityComparer<TKey>? comparer = null)
     : IRegistry<TKey, TValue>
 {
     /// <summary>
     ///     存储键值对映射关系的字典
     /// </summary>
-    protected readonly IDictionary<TKey, TValue> Map;
-
-    /// <summary>
-    ///     初始化KeyValueRegistryBase的新实例
-    /// </summary>
-    /// <param name="comparer">用于比较键的相等性的比较器，如果为null则使用默认比较器</param>
-    protected KeyValueRegistryBase(IEqualityComparer<TKey>? comparer = null)
-    {
-        // 使用指定的比较器或默认比较器创建字典
-        Map = new Dictionary<TKey, TValue>(comparer ?? EqualityComparer<TKey>.Default);
-    }
+    protected readonly IDictionary<TKey, TValue> Map = new Dictionary<TKey, TValue>(comparer ?? EqualityComparer<TKey>.Default);
 
     /// <summary>
     ///     根据指定的键获取对应的值
@@ -101,7 +95,7 @@ public abstract class KeyValueRegistryBase<TKey, TValue>
     /// <returns>包含所有注册值的只读集合</returns>
     public IReadOnlyCollection<TValue> Values()
     {
-        return Map.Values as IReadOnlyCollection<TValue> ?? new ReadOnlyCollection<TValue>(Map.Values.ToList());
+        return Map.Values as IReadOnlyCollection<TValue> ?? new ReadOnlyCollection<TValue>([.. Map.Values]);
     }
 
     /// <summary>

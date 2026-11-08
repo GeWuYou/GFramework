@@ -59,8 +59,7 @@ public class ArchitectureInitializationPipelineTests
         var environment = new TrackingEnvironment();
         var marker = new BootstrapMarker();
         var architecture = new InitializationPipelineTestArchitecture(environment, marker);
-
-        architecture.Initialize();
+        await architecture.InitializeAsync();
 
         AssertRuntimePrepared(architecture, environment, marker);
         await architecture.DestroyAsync();
@@ -93,49 +92,57 @@ public class ArchitectureInitializationPipelineTests
     /// <summary>
     ///     跟踪初始化期间关键可观察状态的测试架构。
     /// </summary>
-    private sealed class InitializationPipelineTestArchitecture : Architecture
+    /// <remarks>
+    ///     使用可观察环境和标记服务创建测试架构。
+    /// </remarks>
+    /// <param name="environment">用于验证初始化时序的环境对象。</param>
+    /// <param name="marker">用于验证服务钩子执行结果的标记服务。</param>
+    private sealed class InitializationPipelineTestArchitecture(
+ArchitectureInitializationPipelineTests.TrackingEnvironment environment,
+ArchitectureInitializationPipelineTests.BootstrapMarker marker) : Architecture(environment: environment)
     {
-        private readonly TrackingEnvironment _environment;
-        private readonly BootstrapMarker _marker;
-
-        /// <summary>
-        ///     使用可观察环境和标记服务创建测试架构。
-        /// </summary>
-        /// <param name="environment">用于验证初始化时序的环境对象。</param>
-        /// <param name="marker">用于验证服务钩子执行结果的标记服务。</param>
-        public InitializationPipelineTestArchitecture(
-            TrackingEnvironment environment,
-            BootstrapMarker marker)
-            : base(environment: environment)
-        {
-            _environment = environment;
-            _marker = marker;
-        }
+        private readonly TrackingEnvironment _environment = environment;
+        private readonly BootstrapMarker _marker = marker;
 
         /// <summary>
         ///     记录用户初始化逻辑执行时环境是否已经准备完成。
         /// </summary>
-        public bool ObservedEnvironmentInitialized { get; private set; }
+        public bool ObservedEnvironmentInitialized
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录自定义服务是否已在用户初始化前注册到容器。
         /// </summary>
-        public bool ObservedConfiguredServiceAvailable { get; private set; }
+        public bool ObservedConfiguredServiceAvailable
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录内置事件总线是否已在用户初始化前可用。
         /// </summary>
-        public bool ObservedEventBusAvailable { get; private set; }
+        public bool ObservedEventBusAvailable
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录启动后没有自动绑定全局游戏上下文，避免不同实例互相占用全局入口。
         /// </summary>
-        public bool ObservedGlobalContextWasAbsent { get; private set; }
+        public bool ObservedGlobalContextWasAbsent
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录环境对象是否已在用户初始化前注册到架构上下文。
         /// </summary>
-        public bool ObservedEnvironmentRegistered { get; private set; }
+        public bool ObservedEnvironmentRegistered
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     为容器注册测试标记服务，用于验证初始化前的服务钩子是否执行。
@@ -176,7 +183,10 @@ public class ArchitectureInitializationPipelineTests
         /// <summary>
         ///     获取环境初始化调用次数。
         /// </summary>
-        public int InitializeCallCount { get; private set; }
+        public int InitializeCallCount
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录环境初始化次数。
@@ -190,7 +200,5 @@ public class ArchitectureInitializationPipelineTests
     /// <summary>
     ///     通过服务配置委托注册到容器的测试标记对象。
     /// </summary>
-    private sealed class BootstrapMarker
-    {
-    }
+    private sealed class BootstrapMarker;
 }

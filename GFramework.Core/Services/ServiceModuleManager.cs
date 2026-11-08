@@ -15,21 +15,16 @@ namespace GFramework.Core.Services;
 ///     当前架构的服务模块集合：配置时登记描述，正式 provider 构建后按优先级启动，
 ///     停止时逆序处理并聚合失败。不保存跨架构运行态，也不吞掉清理错误。
 /// </summary>
-public sealed class ServiceModuleManager : IServiceModuleManager
+/// <remarks>使用实例工厂创建管理器；缺省不访问全局日志解析器。</remarks>
+/// <param name="loggerFactory">当前实例日志工厂。</param>
+public sealed class ServiceModuleManager(ILoggerFactory? loggerFactory = null) : IServiceModuleManager
 {
-    private readonly ILogger _logger;
+    private readonly ILogger _logger = (loggerFactory ?? NullLoggerFactory.Instance)
+            .CreateLogger(nameof(ServiceModuleManager));
     private readonly List<IServiceModule> _modules = [];
     private bool _builtInModulesRegistered;
     private bool _initializationStarted;
     private IIocContainer? _container;
-
-    /// <summary>使用实例工厂创建管理器；缺省不访问全局日志解析器。</summary>
-    /// <param name="loggerFactory">当前实例日志工厂。</param>
-    public ServiceModuleManager(ILoggerFactory? loggerFactory = null)
-    {
-        _logger = (loggerFactory ?? NullLoggerFactory.Instance)
-            .CreateLogger(nameof(ServiceModuleManager));
-    }
 
     /// <summary>登记模块；默认基础描述已登记时立即加入同一未冻结服务集合。</summary>
     /// <param name="module">当前实例拥有的模块。</param>
@@ -38,7 +33,7 @@ public sealed class ServiceModuleManager : IServiceModuleManager
         ArgumentNullException.ThrowIfNull(module);
         if (_initializationStarted)
             throw new InvalidOperationException("Service module registration is closed.");
-        if (_modules.Any(existing => string.Equals(existing.ModuleName, module.ModuleName, StringComparison.Ordinal)))
+        if (_modules.Exists(existing => string.Equals(existing.ModuleName, module.ModuleName, StringComparison.Ordinal)))
             return;
         var insertion = _modules.FindIndex(existing => existing.Priority > module.Priority);
         if (insertion < 0)
@@ -107,7 +102,10 @@ public sealed class ServiceModuleManager : IServiceModuleManager
             }
             catch (Exception error)
             {
-                _logger.LogError(error, $"Module {_modules[i].ModuleName} cleanup failed.");
+                if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Error))
+                {
+                    _logger.LogError(error, "Module {ModuleName} cleanup failed.", _modules[i].ModuleName);
+                }
                 errors.Add(error);
             }
         }

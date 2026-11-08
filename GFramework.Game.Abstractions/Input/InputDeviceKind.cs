@@ -30,5 +30,5 @@ public enum InputDeviceKind
     /// <summary>
     ///     触摸输入。
     /// </summary>
-    Touch = 3
+    Touch = 3,
 }

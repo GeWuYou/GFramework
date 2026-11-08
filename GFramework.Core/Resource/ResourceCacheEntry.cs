@@ -26,7 +26,10 @@ internal sealed class ResourceCacheEntry(object resource, Type resourceType, Act
     /// <summary>
     ///     获取或设置当前引用计数。
     /// </summary>
-    public int ReferenceCount { get; set; }
+    public int ReferenceCount
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     获取或设置最近访问时间。

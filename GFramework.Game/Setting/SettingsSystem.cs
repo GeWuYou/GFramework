@@ -89,7 +89,7 @@ public sealed class SettingsSystem : ISettingsSystem
         try
         {
             await _dispatcher.InvokeAsync(() => applicator.ApplyAsync(cancellationToken), cancellationToken).ConfigureAwait(false);
-            _publishEvent?.Invoke(new SettingsAppliedEvent<ISettingsSection>(section, true));
+            _publishEvent?.Invoke(new SettingsAppliedEvent<ISettingsSection>(section, success: true));
             return null;
         }
         catch (OperationCanceledException)
@@ -98,7 +98,7 @@ public sealed class SettingsSystem : ISettingsSystem
         }
         catch (Exception exception)
         {
-            _publishEvent?.Invoke(new SettingsAppliedEvent<ISettingsSection>(section, false, exception));
+            _publishEvent?.Invoke(new SettingsAppliedEvent<ISettingsSection>(section, success: false, exception));
             return exception;
         }
     }

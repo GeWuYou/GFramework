@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.SourceGenerators.Common.Diagnostics;
@@ -25,7 +25,7 @@ public static class CommonDiagnostics
             "Class '{0}' must be declared partial for code generation",
             "GFramework.Common",
             DiagnosticSeverity.Error,
-            true
+isEnabledByDefault: true
         );
 
     /// <summary>
@@ -42,7 +42,7 @@ public static class CommonDiagnostics
             "Class '{0}' already defines method '{1}()', which conflicts with generated code",
             "GFramework.Common",
             DiagnosticSeverity.Error,
-            true
+isEnabledByDefault: true
         );
 
     /// <summary>
@@ -62,7 +62,7 @@ public static class CommonDiagnostics
             "{0}",
             "GFramework.Trace",
             DiagnosticSeverity.Info,
-            true
+isEnabledByDefault: true
         );
 
     /// <summary>

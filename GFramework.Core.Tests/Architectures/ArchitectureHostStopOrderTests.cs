@@ -42,7 +42,7 @@ public sealed class ArchitectureHostStopOrderTests
         var repeated = architecture.DestroyAsync().AsTask();
         Assert.Multiple(() =>
         {
-            Assert.That(architecture.Events, Is.EqualTo(new[] { "host-stop-admission" }));
+            Assert.That(architecture.Events, Is.EqualTo(["host-stop-admission"]));
             Assert.That(architecture.ResourceDisposed, Is.False);
             Assert.That(stopping.IsCompleted, Is.False);
             Assert.That(repeated.IsCompleted, Is.False);
@@ -85,7 +85,7 @@ public sealed class ArchitectureHostStopOrderTests
         var architecture = new HostArchitecture
         {
             FailStartup = true,
-            FailingStep = failFinalization ? "host-detach" : null
+            FailingStep = failFinalization ? "host-detach" : null,
         };
 
         await Assert.CatchAsync<Exception>(async () =>
@@ -134,13 +134,22 @@ public sealed class ArchitectureHostStopOrderTests
         public bool ResourceDisposed => _resource.Disposed;
 
         /// <summary>Optional asynchronous work performed by the registered component.</summary>
-        public Func<ValueTask>? ComponentStop { get; set; }
+        public Func<ValueTask>? ComponentStop
+        {
+            get; set;
+        }
 
         /// <summary>The cleanup stage that deliberately reports an error.</summary>
-        public string? FailingStep { get; init; }
+        public string? FailingStep
+        {
+            get; init;
+        }
 
         /// <summary>Whether startup fails after components and host resources were started.</summary>
-        public bool FailStartup { get; init; }
+        public bool FailStartup
+        {
+            get; init;
+        }
 
         /// <summary>Registers a normal component, a service module and a provider-owned dependency.</summary>
         /// <param name="services">The architecture's service collection.</param>
@@ -202,7 +211,9 @@ public sealed class ArchitectureHostStopOrderTests
     private sealed class AsyncStopSystem(Func<ValueTask> stop) : AbstractSystem, IAsyncDestroyable
     {
         /// <summary>No initialization work is needed for this test participant.</summary>
-        protected override void OnInit() { }
+        protected override void OnInit()
+        {
+        }
 
         /// <summary>Waits for the test-controlled asynchronous cleanup.</summary>
         /// <returns>The component has fully stopped.</returns>
@@ -223,10 +234,14 @@ public sealed class ArchitectureHostStopOrderTests
         public bool IsEnabled => true;
 
         /// <inheritdoc />
-        public void Register(IIocContainer container) { }
+        public void Register(IIocContainer container)
+        {
+        }
 
         /// <inheritdoc />
-        public void Initialize() { }
+        public void Initialize()
+        {
+        }
 
         /// <inheritdoc />
         public ValueTask DestroyAsync()
@@ -241,7 +256,10 @@ public sealed class ArchitectureHostStopOrderTests
     private sealed class OwnedResource(Action dispose) : IDisposable
     {
         /// <summary>Whether the provider has released this dependency.</summary>
-        public bool Disposed { get; private set; }
+        public bool Disposed
+        {
+            get; private set;
+        }
 
         /// <inheritdoc />
         public void Dispose()

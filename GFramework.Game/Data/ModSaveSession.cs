@@ -25,14 +25,18 @@ public sealed class ModSaveSession
     }
 
     /// <summary>Gets the issuing repository, preventing cross-game draft substitution.</summary>
-    internal Guid Owner { get; }
+    internal Guid Owner
+    {
+        get;
+    }
 
     /// <summary>Returns a capability bound to one active mod; callers cannot choose another namespace on that handle.</summary>
     /// <param name="modId">Active mod ID.</param>
     /// <returns>A scoped data handle.</returns>
     public ModSaveScope ForMod(string modId)
     {
-        if (!_policies.ContainsKey(modId)) throw new InvalidOperationException("Mod data was not enabled for: " + modId);
+        if (!_policies.ContainsKey(modId))
+            throw new InvalidOperationException("Mod data was not enabled for: " + modId);
         return new ModSaveScope(this, modId);
     }
 

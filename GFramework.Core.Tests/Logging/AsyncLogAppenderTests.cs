@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Appenders;
 using Microsoft.Extensions.Logging;
@@ -36,7 +37,7 @@ public class AsyncLogAppenderTests
         var startTime = DateTime.UtcNow;
         for (int i = 0; i < 10; i++)
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", string.Create(CultureInfo.InvariantCulture, $"Message {i}"), Exception: null, Properties: null);
             asyncAppender.Append(entry);
         }
 
@@ -54,7 +55,7 @@ public class AsyncLogAppenderTests
         {
             for (int i = 0; i < 10; i++)
             {
-                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", string.Create(CultureInfo.InvariantCulture, $"Message {i}"), Exception: null, Properties: null);
                 asyncAppender.Append(entry);
             }
 
@@ -72,7 +73,7 @@ public class AsyncLogAppenderTests
 
         for (int i = 0; i < 100; i++)
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", string.Create(CultureInfo.InvariantCulture, $"Message {i}"), Exception: null, Properties: null);
             asyncAppender.Append(entry);
         }
 
@@ -89,7 +90,7 @@ public class AsyncLogAppenderTests
         object? observedSender = null;
         AsyncLogFlushCompletedEventArgs? observedArgs = null;
 
-        asyncAppender.Append(new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Flush check", null, null));
+        asyncAppender.Append(new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Flush check", Exception: null, Properties: null));
 
         asyncAppender.OnFlushCompleted += (sender, eventArgs) =>
         {
@@ -115,7 +116,7 @@ public class AsyncLogAppenderTests
         ILogAppender logAppender = asyncAppender;
         var observedResults = new List<bool>();
 
-        asyncAppender.Append(new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Interface flush check", null, null));
+        asyncAppender.Append(new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Interface flush check", Exception: null, Properties: null));
         asyncAppender.OnFlushCompleted += (_, eventArgs) => observedResults.Add(eventArgs.Success);
 
         logAppender.Flush();
@@ -132,7 +133,7 @@ public class AsyncLogAppenderTests
         using var asyncAppender = new AsyncLogAppender(innerAppender, bufferSize: 10);
         var observedResults = new List<bool>();
 
-        asyncAppender.Append(new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Already processed", null, null));
+        asyncAppender.Append(new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Already processed", Exception: null, Properties: null));
         Assert.That(appendCompleted.Wait(TimeSpan.FromSeconds(1)), Is.True);
 
         asyncAppender.OnFlushCompleted += (_, eventArgs) => observedResults.Add(eventArgs.Success);
@@ -156,7 +157,7 @@ public class AsyncLogAppenderTests
         {
             for (int i = 0; i < 50; i++)
             {
-                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", string.Create(CultureInfo.InvariantCulture, $"Message {i}"), Exception: null, Properties: null);
                 asyncAppender.Append(entry);
             }
         } // Dispose 会等待所有日志处理完成
@@ -171,7 +172,7 @@ public class AsyncLogAppenderTests
         var asyncAppender = new AsyncLogAppender(innerAppender);
         asyncAppender.Dispose();
 
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test", Exception: null, Properties: null);
 
         Assert.Throws<ObjectDisposedException>(() => asyncAppender.Append(entry));
     }
@@ -184,7 +185,7 @@ public class AsyncLogAppenderTests
 
         for (int i = 0; i < 10; i++)
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", string.Create(CultureInfo.InvariantCulture, $"Message {i}"), Exception: null, Properties: null);
             asyncAppender.Append(entry);
         }
 
@@ -207,7 +208,7 @@ public class AsyncLogAppenderTests
                 for (int i = 0; i < 100; i++)
                 {
                     var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger",
-                        $"Thread {threadId} Message {i}", null, null);
+                        string.Create(CultureInfo.InvariantCulture, $"Thread {threadId} Message {i}"), Exception: null, Properties: null);
                     asyncAppender.Append(entry);
                 }
             });
@@ -234,7 +235,7 @@ public class AsyncLogAppenderTests
         {
             for (int i = 0; i < 10; i++)
             {
-                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", string.Create(CultureInfo.InvariantCulture, $"Message {i}"), Exception: null, Properties: null);
                 asyncAppender.Append(entry);
             }
         });
@@ -260,7 +261,7 @@ public class AsyncLogAppenderTests
         {
             for (int i = 0; i < 10; i++)
             {
-                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", string.Create(CultureInfo.InvariantCulture, $"Message {i}"), Exception: null, Properties: null);
                 asyncAppender.Append(entry);
             }
         });
@@ -282,7 +283,7 @@ public class AsyncLogAppenderTests
         {
             for (int i = 0; i < 10; i++)
             {
-                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", string.Create(CultureInfo.InvariantCulture, $"Message {i}"), Exception: null, Properties: null);
                 asyncAppender.Append(entry);
             }
         });
@@ -292,9 +293,9 @@ public class AsyncLogAppenderTests
     }
 
     // 辅助测试类
-    private class TestAppender : ILogAppender
+    private sealed class TestAppender : ILogAppender
     {
-        public List<LogEntry> Entries { get; } = new();
+        public List<LogEntry> Entries { get; } = [];
 
         public void Append(LogEntry entry)
         {
@@ -313,14 +314,9 @@ public class AsyncLogAppenderTests
         }
     }
 
-    private class SlowAppender : ILogAppender
+    private sealed class SlowAppender(int delayMs) : ILogAppender
     {
-        private readonly int _delayMs;
-
-        public SlowAppender(int delayMs)
-        {
-            _delayMs = delayMs;
-        }
+        private readonly int _delayMs = delayMs;
 
         public void Append(LogEntry entry)
         {
@@ -336,16 +332,14 @@ public class AsyncLogAppenderTests
         }
     }
 
-    private sealed class SignalingAppender : ILogAppender
+    private sealed class SignalingAppender(ManualResetEventSlim appendCompleted) : ILogAppender
     {
-        private readonly ManualResetEventSlim _appendCompleted;
+        private readonly ManualResetEventSlim _appendCompleted = appendCompleted;
 
-        public SignalingAppender(ManualResetEventSlim appendCompleted)
+        public int FlushCount
         {
-            _appendCompleted = appendCompleted;
+            get; private set;
         }
-
-        public int FlushCount { get; private set; }
 
         public void Append(LogEntry entry)
         {
@@ -362,7 +356,7 @@ public class AsyncLogAppenderTests
         }
     }
 
-    private class ThrowingAppender : ILogAppender
+    private sealed class ThrowingAppender : ILogAppender
     {
         public void Append(LogEntry entry)
         {
@@ -378,7 +372,7 @@ public class AsyncLogAppenderTests
         }
     }
 
-    private class CancellationAppender : ILogAppender
+    private sealed class CancellationAppender : ILogAppender
     {
         public void Append(LogEntry entry)
         {

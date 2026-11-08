@@ -51,7 +51,7 @@ public class FunctionExtensionsTests
     public void Compose_Should_Apply_Functions_In_Reverse_Order()
     {
         // Arrange
-        int AddOne(int x) => x + 1;
+        static int AddOne(int x) => x + 1;
         Func<int, int> multiplyTwo = x => x * 2;
 
         // Act
@@ -65,11 +65,11 @@ public class FunctionExtensionsTests
     public void Compose_WithNullOuterFunction_Should_Throw_ArgumentNullException()
     {
         // Arrange
-        Func<int, int> addOne = x => x + 1;
+        static int addOne(int x) => x + 1;
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            ((Func<int, int>)null!).Compose(addOne));
+            ((Func<int, int>)null!).Compose((Func<int, int>)addOne));
     }
 
     [Test]
@@ -88,7 +88,7 @@ public class FunctionExtensionsTests
     {
         // Arrange
         Func<int, int> addOne = x => x + 1;
-        int MultiplyTwo(int x) => x * 2;
+        static int MultiplyTwo(int x) => x * 2;
 
         // Act
         var chained = addOne.AndThen((Func<int, int>)MultiplyTwo); // (x + 1) * 2
@@ -101,7 +101,7 @@ public class FunctionExtensionsTests
     public void AndThen_WithNullFirstFunction_Should_Throw_ArgumentNullException()
     {
         // Arrange
-        Func<int, int> multiplyTwo = x => x * 2;
+        static int multiplyTwo(int x) => x * 2;
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
@@ -270,7 +270,7 @@ public class FunctionExtensionsTests
             .Select(_ => Task.Run(() => once()))
             .ToArray();
 
-        Task.WaitAll(tasks.Cast<Task>().ToArray());
+        Task.WaitAll([.. tasks.Cast<Task>()]);
 
         // Assert
         Assert.That(counter, Is.EqualTo(1));

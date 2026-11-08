@@ -23,7 +23,10 @@ public sealed class InputDeviceTracker : IInputDeviceTracker
     ///     该属性不提供额外同步原语。
     ///     宿主应在同一输入线程内调用 <see cref="Update" /> 并读取当前值，例如 Godot 的主线程或输入事件线程。
     /// </remarks>
-    public InputDeviceContext CurrentDevice { get; private set; }
+    public InputDeviceContext CurrentDevice
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     使用新的宿主设备上下文覆盖当前状态。

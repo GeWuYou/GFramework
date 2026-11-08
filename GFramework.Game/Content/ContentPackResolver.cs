@@ -25,7 +25,8 @@ public static class ContentPackResolver
         ArgumentException.ThrowIfNullOrWhiteSpace(host.GameId, nameof(host));
         _ = ContentVersionRules.Parse(host.GameVersion);
         _ = ContentVersionRules.Parse(host.ContentApiVersion);
-        if (host.CodeApiVersion is not null) _ = ContentVersionRules.Parse(host.CodeApiVersion);
+        if (host.CodeApiVersion is not null)
+            _ = ContentVersionRules.Parse(host.CodeApiVersion);
         if (!ContentId.IsCanonicalSegment(host.BasePackId))
             throw new ArgumentException("Base package ID must be canonical.", nameof(host));
         ArgumentNullException.ThrowIfNull(profile.EnabledPackages, nameof(profile));
@@ -48,13 +49,18 @@ public static class ContentPackResolver
         foreach (var pack in packages)
         {
             ArgumentNullException.ThrowIfNull(pack, nameof(packages));
-            try { ContentPackDiscovery.ValidateManifest(pack.Manifest); }
+            try
+            {
+                ContentPackDiscovery.ValidateManifest(pack.Manifest);
+            }
             catch (ArgumentException exception)
             {
                 throw new ContentLoadException(new ContentLoadDiagnostic
                 {
-                    Code = "InvalidManifest", PackId = pack.Manifest.Id, PackVersion = pack.Manifest.Version,
-                    Detail = exception.Message
+                    Code = "InvalidManifest",
+                    PackId = pack.Manifest.Id,
+                    PackVersion = pack.Manifest.Version,
+                    Detail = exception.Message,
                 }, exception);
             }
             if (!installed.TryAdd(pack.Manifest.Id, pack))
@@ -64,7 +70,7 @@ public static class ContentPackResolver
         return installed;
     }
 
-    private static void ValidateSelectedPackage(ContentPack pack, IReadOnlyDictionary<string, ContentPack> selected,
+    private static void ValidateSelectedPackage(ContentPack pack, Dictionary<string, ContentPack> selected,
         ContentHostCompatibility host)
     {
         var manifest = pack.Manifest;
@@ -81,7 +87,8 @@ public static class ContentPackResolver
         {
             if (!selected.TryGetValue(dependency.Id, out var target))
             {
-                if (dependency.Optional) continue;
+                if (dependency.Optional)
+                    continue;
                 throw Failure("MissingDependency", manifest.Id,
                     $"Package '{manifest.Id}' requires enabled package '{dependency.Id}'.", dependency.Id);
             }
@@ -95,7 +102,7 @@ public static class ContentPackResolver
                     $"Packages '{manifest.Id}' and '{incompatible}' cannot be enabled together.", incompatible);
     }
 
-    private static IReadOnlyList<ContentPack> Sort(IReadOnlyDictionary<string, ContentPack> selected,
+    private static List<ContentPack> Sort(Dictionary<string, ContentPack> selected,
         IReadOnlyList<string> preferences, string baseId)
     {
         var priorities = preferences.Select((id, index) => (id, index))
@@ -112,10 +119,8 @@ public static class ContentPackResolver
                         !selected.ContainsKey(dependency.Id) || loaded.Contains(dependency.Id)))
                 .OrderBy(id => string.Equals(id, baseId, StringComparison.Ordinal) ? int.MinValue :
                     priorities.TryGetValue(id, out var priority) ? priority : int.MaxValue)
-                .ThenBy(static id => id, StringComparer.Ordinal).FirstOrDefault();
-            if (candidate is null)
-                throw Failure("DependencyCycle", remaining.OrderBy(static id => id, StringComparer.Ordinal).First(),
-                    "Enabled package dependencies form a cycle: " + string.Join(", ", remaining.OrderBy(static id => id, StringComparer.Ordinal)));
+                .ThenBy(static id => id, StringComparer.Ordinal).FirstOrDefault() ?? throw Failure("DependencyCycle", remaining.Order(StringComparer.Ordinal).First(),
+                    "Enabled package dependencies form a cycle: " + string.Join(", ", remaining.Order(StringComparer.Ordinal)));
             remaining.Remove(candidate);
             loaded.Add(candidate);
             result.Add(selected[candidate]);

@@ -17,8 +17,8 @@ internal sealed class GameModContext : IGameModContext, IAsyncDisposable, IServi
 #else
     private readonly object _gate = new();
 #endif
-    private readonly List<Func<ValueTask>> _cleanup = new();
-    private readonly List<IGameModServiceScope> _extensions = new();
+    private readonly List<Func<ValueTask>> _cleanup = [];
+    private readonly List<IGameModServiceScope> _extensions = [];
     private readonly IServiceProvider _shared;
     private IServiceProvider? _local;
     private bool _closed;
@@ -33,15 +33,27 @@ internal sealed class GameModContext : IGameModContext, IAsyncDisposable, IServi
         _shared = options.Services;
     }
     /// <inheritdoc />
-    public string GameId { get; }
+    public string GameId
+    {
+        get;
+    }
     /// <inheritdoc />
-    public ContentPackStamp Package { get; }
+    public ContentPackStamp Package
+    {
+        get;
+    }
     /// <inheritdoc />
     public IServiceProvider Services => this;
     /// <inheritdoc />
-    public IGameDispatcher Dispatcher { get; }
+    public IGameDispatcher Dispatcher
+    {
+        get;
+    }
     /// <inheritdoc />
-    public ILogger Logger { get; }
+    public ILogger Logger
+    {
+        get;
+    }
     /// <summary>Configures host adapters before the mod receives its context.</summary>
     internal void Configure(GameModHostOptions options, IReadOnlyList<IGameModExtension> extensions)
     {
@@ -57,11 +69,12 @@ internal sealed class GameModContext : IGameModContext, IAsyncDisposable, IServi
     public object? GetService(Type serviceType)
     {
         ArgumentNullException.ThrowIfNull(serviceType);
-        if (_closed) throw new ObjectDisposedException(nameof(GameModContext));
+        ObjectDisposedException.ThrowIf(_closed, this);
         foreach (var extension in _extensions)
         {
             var service = extension.GetService(serviceType);
-            if (service is not null) return service;
+            if (service is not null)
+                return service;
         }
         return _local?.GetService(serviceType) ?? _shared.GetService(serviceType);
     }
@@ -98,19 +111,24 @@ internal sealed class GameModContext : IGameModContext, IAsyncDisposable, IServi
         Func<ValueTask>[] cleanup;
         lock (_gate)
         {
-            if (_closed) return;
+            if (_closed)
+                return;
             _closed = true;
-            cleanup = _cleanup.ToArray();
+            cleanup = [.. _cleanup];
             _cleanup.Clear();
         }
         var failures = new List<Exception>();
         for (var index = cleanup.Length - 1; index >= 0; index--)
         {
-            try { await cleanup[index]().ConfigureAwait(true); }
+            try
+            {
+                await cleanup[index]().ConfigureAwait(true);
+            }
             catch (Exception exception) { failures.Add(exception); }
         }
         _extensions.Clear();
         _local = null;
-        if (failures.Count != 0) throw new AggregateException("Mod resource cleanup failed.", failures);
+        if (failures.Count != 0)
+            throw new AggregateException("Mod resource cleanup failed.", failures);
     }
 }

@@ -14,7 +14,7 @@ namespace GFramework.Core.Tests.Logging;
 public sealed class TestLoggerProvider : ILoggerProvider
 {
     private readonly ConcurrentDictionary<string, TestLogger> _loggers = new(StringComparer.Ordinal);
-    private readonly List<LogEntry> _logs = new();
+    private readonly List<LogEntry> _logs = [];
     private readonly Lock _sync = new();
 
     /// <summary>
@@ -40,7 +40,7 @@ public sealed class TestLoggerProvider : ILoggerProvider
         {
             lock (_sync)
             {
-                return _logs.ToArray();
+                return [.. _logs];
             }
         }
     }

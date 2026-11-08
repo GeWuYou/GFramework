@@ -20,16 +20,16 @@ public sealed class CoroutineCompositionCancellationTests
     {
         var scheduler = Create();
         using var source = new CancellationTokenSource();
-        var first = new LifetimeProbe(source.Token, new Delay(3600));
+        var first = new LifetimeProbe(new Delay(3600), token: source.Token);
         var continued = false;
         var operation = composition switch
         {
             "then" => first.Then(() => continued = true),
             "sequence" => CoroutineExtensions.Sequence(first, Call(() => continued = true)),
-            _ => first.Then(() => continued = true).Then(Call(() => continued = true))
+            _ => first.Then(() => continued = true).Then(Call(() => continued = true)),
         };
-        var handle = scheduler.Run(operation);
-        Task.Run(source.Cancel).GetAwaiter().GetResult();
+        var handle = scheduler.Run(operation, cancellationToken: global::System.Threading.CancellationToken.None);
+        Task.Run(source.Cancel, cancellationToken: global::System.Threading.CancellationToken.None).GetAwaiter().GetResult();
         scheduler.Update(CoroutineExecutionStage.Update, 0, 0, isPaused: true);
         Assert.That(Result(scheduler, handle).Status, Is.EqualTo(CoroutineCompletionStatus.Cancelled));
         Assert.That(continued, Is.False);
@@ -44,9 +44,9 @@ public sealed class CoroutineCompositionCancellationTests
     {
         var scheduler = Create();
         using var source = new CancellationTokenSource();
-        var first = new LifetimeProbe(default, new Delay(3600));
-        var future = new LifetimeProbe(source.Token, new Delay(3600));
-        var handle = scheduler.Run(CoroutineExtensions.Sequence(first, future));
+        var first = new LifetimeProbe(new Delay(3600));
+        var future = new LifetimeProbe(new Delay(3600), token: source.Token);
+        var handle = scheduler.Run(CoroutineExtensions.Sequence(first, future), cancellationToken: global::System.Threading.CancellationToken.None);
         source.Cancel();
         scheduler.Update(CoroutineExecutionStage.Update, 0, 0, isPaused: true);
         Assert.That(Result(scheduler, handle).Status, Is.EqualTo(CoroutineCompletionStatus.Cancelled));
@@ -61,9 +61,9 @@ public sealed class CoroutineCompositionCancellationTests
     {
         var scheduler = Create();
         using var source = new CancellationTokenSource();
-        var first = new LifetimeProbe(source.Token, null, cleanup: source.Cancel);
-        var second = new LifetimeProbe(default, new Delay(3600));
-        var handle = scheduler.Run(first.Then(second));
+        var first = new LifetimeProbe(instruction: null, cleanup: source.Cancel, token: source.Token);
+        var second = new LifetimeProbe(new Delay(3600));
+        var handle = scheduler.Run(first.Then(second), cancellationToken: global::System.Threading.CancellationToken.None);
         scheduler.Update(CoroutineExecutionStage.Update, 0, 0, isPaused: true);
         Assert.That(source.IsCancellationRequested, Is.True);
         Assert.That(first.DisposeCount, Is.EqualTo(1));
@@ -80,9 +80,9 @@ public sealed class CoroutineCompositionCancellationTests
     {
         var scheduler = Create();
         using var source = new CancellationTokenSource();
-        var first = new LifetimeProbe(source.Token, null, firstStep: source.Cancel);
+        var first = new LifetimeProbe(instruction: null, firstStep: source.Cancel, token: source.Token);
         var continued = false;
-        var handle = scheduler.Run(first.Then(() => continued = true));
+        var handle = scheduler.Run(first.Then(() => continued = true), cancellationToken: global::System.Threading.CancellationToken.None);
         Assert.That(Result(scheduler, handle).Status, Is.EqualTo(CoroutineCompletionStatus.Cancelled));
         Assert.That(continued, Is.False);
         Assert.That(first.DisposeCount, Is.EqualTo(1));
@@ -100,15 +100,21 @@ public sealed class CoroutineCompositionCancellationTests
         yield break;
     }
 
-    private sealed class LifetimeProbe(CancellationToken token, IYieldInstruction? instruction,
-        Action? firstStep = null, Action? cleanup = null) : IEnumerator<IYieldInstruction>, ICoroutineCancellationSource
+    private sealed class LifetimeProbe(IYieldInstruction? instruction,
+        Action? firstStep = null, Action? cleanup = null, CancellationToken token = default) : IEnumerator<IYieldInstruction>, ICoroutineCancellationSource
     {
         /// <inheritdoc />
         public CancellationToken CancellationToken => token;
         /// <summary>Number of component advances.</summary>
-        public int MoveCount { get; private set; }
+        public int MoveCount
+        {
+            get; private set;
+        }
         /// <summary>Number of ownership releases.</summary>
-        public int DisposeCount { get; private set; }
+        public int DisposeCount
+        {
+            get; private set;
+        }
         /// <inheritdoc />
         public IYieldInstruction Current => instruction!;
         /// <inheritdoc />
@@ -117,7 +123,10 @@ public sealed class CoroutineCompositionCancellationTests
         public bool MoveNext()
         {
             MoveCount++;
-            if (MoveCount != 1) { return false; }
+            if (MoveCount != 1)
+            {
+                return false;
+            }
             firstStep?.Invoke();
             return instruction != null;
         }

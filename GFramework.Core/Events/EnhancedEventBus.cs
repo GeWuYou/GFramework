@@ -10,22 +10,17 @@ namespace GFramework.Core.Events;
 ///     增强的事件总线，支持统计和过滤器
 ///     线程安全：使用 ConcurrentDictionary 存储事件
 /// </summary>
-public sealed class EnhancedEventBus : IEventBus
+/// <remarks>
+///     构造函数
+/// </remarks>
+/// <param name="enableStatistics">是否启用统计功能</param>
+public sealed class EnhancedEventBus(bool enableStatistics = false) : IEventBus
 {
     private readonly EasyEvents _mEvents = new();
     private readonly ConcurrentDictionary<Type, object> _mFilterableEvents = new();
     private readonly EasyEvents _mPriorityEvents = new();
     private readonly ConcurrentDictionary<Type, object> _mWeakEvents = new();
-    private readonly EventStatistics? _statistics;
-
-    /// <summary>
-    ///     构造函数
-    /// </summary>
-    /// <param name="enableStatistics">是否启用统计功能</param>
-    public EnhancedEventBus(bool enableStatistics = false)
-    {
-        _statistics = enableStatistics ? new EventStatistics() : null;
-    }
+    private readonly EventStatistics? _statistics = enableStatistics ? new EventStatistics() : null;
 
     /// <summary>
     ///     获取事件统计信息（如果启用）
@@ -87,7 +82,7 @@ public sealed class EnhancedEventBus : IEventBus
         if (_statistics != null)
         {
             // 包装回调以添加统计
-            Action<T> wrappedHandler = data =>
+            void wrappedHandler(T data)
             {
                 try
                 {
@@ -99,7 +94,7 @@ public sealed class EnhancedEventBus : IEventBus
                     _statistics.RecordFailure();
                     throw;
                 }
-            };
+            }
 
             var unregister = _mEvents.GetOrAddEvent<Event<T>>().Register(wrappedHandler);
             UpdateEventListenerCount<T>();
@@ -125,7 +120,7 @@ public sealed class EnhancedEventBus : IEventBus
         if (_statistics != null)
         {
             // 包装回调以添加统计
-            Action<T> wrappedHandler = data =>
+            void wrappedHandler(T data)
             {
                 try
                 {
@@ -137,7 +132,7 @@ public sealed class EnhancedEventBus : IEventBus
                     _statistics.RecordFailure();
                     throw;
                 }
-            };
+            }
 
             var unregister = _mPriorityEvents.GetOrAddEvent<PriorityEvent<T>>().Register(wrappedHandler, priority);
             UpdatePriorityEventListenerCount<T>();
@@ -173,7 +168,7 @@ public sealed class EnhancedEventBus : IEventBus
         if (_statistics != null)
         {
             // 包装回调以添加统计
-            Action<EventContext<T>> wrappedHandler = context =>
+            void wrappedHandler(EventContext<T> context)
             {
                 try
                 {
@@ -185,7 +180,7 @@ public sealed class EnhancedEventBus : IEventBus
                     _statistics.RecordFailure();
                     throw;
                 }
-            };
+            }
 
             var unregister = _mPriorityEvents.GetOrAddEvent<PriorityEvent<T>>().RegisterWithContext(wrappedHandler);
             UpdatePriorityEventListenerCount<T>();
@@ -211,7 +206,7 @@ public sealed class EnhancedEventBus : IEventBus
         if (_statistics != null)
         {
             // 包装回调以添加统计
-            Action<EventContext<T>> wrappedHandler = context =>
+            void wrappedHandler(EventContext<T> context)
             {
                 try
                 {
@@ -223,7 +218,7 @@ public sealed class EnhancedEventBus : IEventBus
                     _statistics.RecordFailure();
                     throw;
                 }
-            };
+            }
 
             var unregister = _mPriorityEvents.GetOrAddEvent<PriorityEvent<T>>()
                 .RegisterWithContext(wrappedHandler, priority);
@@ -251,7 +246,7 @@ public sealed class EnhancedEventBus : IEventBus
     {
         var evt = (FilterableEvent<T>)_mFilterableEvents.GetOrAdd(
             typeof(T),
-            _ => new FilterableEvent<T>(_statistics));
+            static (_, bus) => new FilterableEvent<T>(bus._statistics), this);
         evt.Trigger(e);
     }
 
@@ -265,7 +260,7 @@ public sealed class EnhancedEventBus : IEventBus
     {
         var evt = (FilterableEvent<T>)_mFilterableEvents.GetOrAdd(
             typeof(T),
-            _ => new FilterableEvent<T>(_statistics));
+            static (_, bus) => new FilterableEvent<T>(bus._statistics), this);
         return evt.Register(onEvent);
     }
 
@@ -278,7 +273,7 @@ public sealed class EnhancedEventBus : IEventBus
     {
         var evt = (FilterableEvent<T>)_mFilterableEvents.GetOrAdd(
             typeof(T),
-            _ => new FilterableEvent<T>(_statistics));
+            static (_, bus) => new FilterableEvent<T>(bus._statistics), this);
         evt.AddFilter(filter);
     }
 
@@ -322,7 +317,7 @@ public sealed class EnhancedEventBus : IEventBus
     {
         var evt = (WeakEvent<T>)_mWeakEvents.GetOrAdd(
             typeof(T),
-            _ => new WeakEvent<T>(_statistics));
+            static (_, bus) => new WeakEvent<T>(bus._statistics), this);
         evt.Trigger(e);
     }
 
@@ -336,7 +331,7 @@ public sealed class EnhancedEventBus : IEventBus
     {
         var evt = (WeakEvent<T>)_mWeakEvents.GetOrAdd(
             typeof(T),
-            _ => new WeakEvent<T>(_statistics));
+            static (_, bus) => new WeakEvent<T>(bus._statistics), this);
         return evt.Register(onEvent);
     }
 

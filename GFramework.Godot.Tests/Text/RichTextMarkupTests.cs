@@ -32,7 +32,7 @@ public sealed class RichTextMarkupTests
         var env = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
             ["tick"] = 0.1f,
-            ["speed"] = 4
+            ["speed"] = 4,
         };
 
         var result = RichTextMarkup.Effect("Hello", "fade_in", env);
@@ -59,7 +59,7 @@ public sealed class RichTextMarkupTests
     {
         var env = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
-            ["bad key"] = 1
+            ["bad key"] = 1,
         };
 
         var exception = Assert.Throws<ArgumentException>(() => RichTextMarkup.Effect("Hello", "fade_in", env));

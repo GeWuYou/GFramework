@@ -21,5 +21,5 @@ public enum EventPropagation
     /// <summary>
     ///     仅传播到最高优先级的处理器
     /// </summary>
-    Highest
+    Highest,
 }

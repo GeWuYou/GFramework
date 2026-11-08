@@ -41,7 +41,7 @@ public sealed class CoroutineStatisticsTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource, enableStatistics: true);
 
-        IEnumerator<IYieldInstruction> TestCoroutine()
+        static IEnumerator<IYieldInstruction> TestCoroutine()
         {
             yield return new WaitOneFrame();
         }
@@ -62,7 +62,7 @@ public sealed class CoroutineStatisticsTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource, enableStatistics: true);
 
-        IEnumerator<IYieldInstruction> TestCoroutine()
+        static IEnumerator<IYieldInstruction> TestCoroutine()
         {
             yield break; // 立即完成
         }
@@ -83,7 +83,7 @@ public sealed class CoroutineStatisticsTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource, enableStatistics: true);
 
-        IEnumerator<IYieldInstruction> FailingCoroutine()
+        static IEnumerator<IYieldInstruction> FailingCoroutine()
         {
             throw new InvalidOperationException("Test exception");
 #pragma warning disable CS0162 // 检测到无法访问的代码
@@ -107,7 +107,7 @@ public sealed class CoroutineStatisticsTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource, enableStatistics: true);
 
-        IEnumerator<IYieldInstruction> LongRunningCoroutine()
+        static IEnumerator<IYieldInstruction> LongRunningCoroutine()
         {
             for (var i = 0; i < 10; i++)
                 yield return new WaitOneFrame();
@@ -129,7 +129,7 @@ public sealed class CoroutineStatisticsTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource, enableStatistics: true);
 
-        IEnumerator<IYieldInstruction> TestCoroutine()
+        static IEnumerator<IYieldInstruction> TestCoroutine()
         {
             yield return new WaitOneFrame();
         }
@@ -152,7 +152,7 @@ public sealed class CoroutineStatisticsTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource, enableStatistics: true);
 
-        IEnumerator<IYieldInstruction> TestCoroutine()
+        static IEnumerator<IYieldInstruction> TestCoroutine()
         {
             yield return new WaitOneFrame();
             yield return new WaitOneFrame();
@@ -216,7 +216,7 @@ public sealed class CoroutineStatisticsTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource, enableStatistics: true);
 
-        IEnumerator<IYieldInstruction> TestCoroutine()
+        static IEnumerator<IYieldInstruction> TestCoroutine()
         {
             yield return new WaitOneFrame();
         }
@@ -239,7 +239,7 @@ public sealed class CoroutineStatisticsTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource, enableStatistics: true);
 
-        IEnumerator<IYieldInstruction> TestCoroutine()
+        static IEnumerator<IYieldInstruction> TestCoroutine()
         {
             yield return new WaitOneFrame();
         }
@@ -262,7 +262,7 @@ public sealed class CoroutineStatisticsTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource, enableStatistics: true);
 
-        IEnumerator<IYieldInstruction> TestCoroutine()
+        static IEnumerator<IYieldInstruction> TestCoroutine()
         {
             yield break;
         }
@@ -291,7 +291,7 @@ public sealed class CoroutineStatisticsTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource, enableStatistics: true);
 
-        IEnumerator<IYieldInstruction> TestCoroutine()
+        static IEnumerator<IYieldInstruction> TestCoroutine()
         {
             yield break;
         }
@@ -316,7 +316,7 @@ public sealed class CoroutineStatisticsTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource, enableStatistics: true);
 
-        IEnumerator<IYieldInstruction> TestCoroutine()
+        static IEnumerator<IYieldInstruction> TestCoroutine()
         {
             yield break;
         }
@@ -345,7 +345,7 @@ public sealed class CoroutineStatisticsTests
 
         scheduler.Update();
 
-        Task.WaitAll(tasks.ToArray());
+        Task.WaitAll([.. tasks]);
 
         // Assert - 不应该抛出异常
         Assert.That(scheduler.Statistics!.TotalStarted, Is.EqualTo(100));
@@ -357,7 +357,10 @@ public sealed class CoroutineStatisticsTests
     public void Cancellation_ClearsActivePriorityAndTagCounts()
     {
         var scheduler = new CoroutineScheduler(new FakeTimeSource(), enableStatistics: true);
-        IEnumerator<IYieldInstruction> Routine() { yield return new Delay(100); }
+        static IEnumerator<IYieldInstruction> Routine()
+        {
+            yield return new Delay(100);
+        }
         var handle = scheduler.Run(Routine(), tag: "cancelled", priority: CoroutinePriority.High);
         scheduler.Pause(handle);
         scheduler.Kill(handle);

@@ -47,7 +47,10 @@ internal sealed class GodotLogConfigurationSource : IDisposable
     /// <summary>
     ///     Gets the discovered configuration file path, or null when no supported location contains a file.
     /// </summary>
-    public string? ConfigurationPath { get; }
+    public string? ConfigurationPath
+    {
+        get;
+    }
 
     /// <summary>
     ///     Gets the last successfully loaded settings snapshot.
@@ -96,7 +99,7 @@ internal sealed class GodotLogConfigurationSource : IDisposable
             NotifyFilter = NotifyFilters.CreationTime
                            | NotifyFilters.FileName
                            | NotifyFilters.LastWrite
-                           | NotifyFilters.Size
+                           | NotifyFilters.Size,
         };
 
         watcher.Changed += OnConfigurationChanged;
@@ -208,7 +211,7 @@ internal sealed class GodotLogConfigurationSource : IDisposable
             ReleaseOutputTemplate = options.ReleaseOutputTemplate,
             Colors = options.Colors is { } colors
                 ? new Dictionary<LogLevel, string>(colors)
-                : []
+                : [],
         }.CreateNormalizedCopy();
     }
 
@@ -217,7 +220,7 @@ internal sealed class GodotLogConfigurationSource : IDisposable
     /// </summary>
     /// <param name="settings">The source settings snapshot.</param>
     /// <returns>A copy that preserves exact and prefix matching semantics.</returns>
-    private static IReadOnlyDictionary<string, LogLevel> CopyLoggerLevels(
+    private static Dictionary<string, LogLevel> CopyLoggerLevels(
         GodotLoggerSettings settings)
     {
         var levels = new Dictionary<string, LogLevel>(StringComparer.Ordinal);
