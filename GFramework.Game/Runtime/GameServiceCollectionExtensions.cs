@@ -23,7 +23,8 @@ public static class GameServiceCollectionExtensions
     public static IServiceCollection AddGamePause(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.TryAddSingleton<IPauseStackManager, PauseStackManager>();
+        services.TryAddSingleton<IPauseStackManager>(provider =>
+            new PauseStackManager(provider.GetService<ILogger<PauseStackManager>>()));
         return services;
     }
 
@@ -60,7 +61,8 @@ public static class GameServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(dispatcher);
         if (services.Any(descriptor => descriptor.ServiceType == typeof(ISceneRouter)))
             throw new InvalidOperationException("A scene navigator is already registered in this collection.");
-        services.AddSingleton<ISceneRouter>(_ => new SceneRouter(factory, root, dispatcher));
+        services.AddSingleton<ISceneRouter>(provider =>
+            new SceneRouter(factory, root, dispatcher, provider.GetService<ILogger<SceneRouter>>()));
         return services;
     }
 }

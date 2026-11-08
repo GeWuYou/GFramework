@@ -227,12 +227,18 @@ public class ArchitectureModulesBehaviorTests
         /// <summary>
         ///     获取模块安装调用次数。
         /// </summary>
-        public int InstallCallCount { get; private set; }
+        public int InstallCallCount
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     获取最近一次接收到的架构实例。
         /// </summary>
-        public IArchitecture? InstalledArchitecture { get; private set; }
+        public IArchitecture? InstalledArchitecture
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录安装调用，并在安装阶段注册一个工具验证调用链可用。
@@ -249,9 +255,7 @@ public class ArchitectureModulesBehaviorTests
     /// <summary>
     ///     由测试模块安装时注册的简单工具。
     /// </summary>
-    private sealed class InstalledByModuleUtility : IUtility
-    {
-    }
+    private sealed class InstalledByModuleUtility : IUtility;
 
     /// <summary>
     ///     创建一个仅暴露程序集级 CQRS registry 元数据的 mocked Assembly。
@@ -265,7 +269,7 @@ public class ArchitectureModulesBehaviorTests
             .SetupGet(static assembly => assembly.FullName)
             .Returns("GFramework.Core.Tests.Architectures.ExplicitAdditionalHandlers, Version=1.0.0.0");
         generatedAssembly
-            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false))
             .Returns([new CqrsHandlerRegistryAttribute(typeof(AdditionalAssemblyNotificationHandlerRegistry))]);
         return generatedAssembly;
     }
@@ -278,7 +282,10 @@ public class ArchitectureModulesBehaviorTests
         /// <summary>
         ///     获取 probe 是否已被 publisher 标记为执行过。
         /// </summary>
-        public bool WasCalled { get; private set; }
+        public bool WasCalled
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录当前 publish 调用已经命中了自定义 publisher。

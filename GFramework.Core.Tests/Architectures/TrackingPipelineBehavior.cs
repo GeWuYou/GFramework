@@ -11,6 +11,8 @@ namespace GFramework.Core.Tests.Architectures;
 /// </summary>
 /// <typeparam name="TRequest">请求类型。</typeparam>
 /// <typeparam name="TResponse">响应类型。</typeparam>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0018",
+    Justification = "Static tracking state is intentionally isolated per closed request/response type in this fixture.")]
 public sealed class TrackingPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {

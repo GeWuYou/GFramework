@@ -15,5 +15,8 @@ public class TestArchitectureContextV3 : TestArchitectureContextBase
     /// <summary>
     ///     获取或初始化用于区分测试上下文实例的标识。
     /// </summary>
-    public int Id { get; init; }
+    public int Id
+    {
+        get; init;
+    }
 }

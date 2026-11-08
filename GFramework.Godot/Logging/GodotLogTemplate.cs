@@ -148,9 +148,9 @@ internal sealed class GodotLogTemplate
                 CultureInfo.InvariantCulture)),
             not null when key.StartsWith("category:", StringComparison.Ordinal) => CreateCategorySegment(key[9..]),
             not null when key.StartsWith("level:", StringComparison.Ordinal) => CreateLevelSegment(key[6..]),
-            not null when key.StartsWith("timestamp:", StringComparison.Ordinal) => CreateTimestampSegment(key[10..]),
+            not null when key.StartsWith("timestamp:", StringComparison.Ordinal) => GodotLogTemplate.CreateTimestampSegment(key[10..]),
             // Preserve unknown placeholders so configuration errors are visible in the rendered log line.
-            _ => (builder, _) => builder.Append('{').Append(key).Append('}')
+            _ => (builder, _) => builder.Append('{').Append(key).Append('}'),
         };
     }
 
@@ -159,7 +159,7 @@ internal sealed class GodotLogTemplate
     /// </summary>
     /// <param name="format">The optional .NET timestamp format.</param>
     /// <returns>A delegate that appends the formatted timestamp using invariant culture.</returns>
-    private Action<StringBuilder, GodotLogRenderContext> CreateTimestampSegment(string format)
+    private static Action<StringBuilder, GodotLogRenderContext> CreateTimestampSegment(string format)
     {
         if (string.IsNullOrWhiteSpace(format))
         {
@@ -183,7 +183,7 @@ internal sealed class GodotLogTemplate
             "u3" or "U3" => static (builder, context) => builder.Append(ToShortLevel(context.Level, upper: true)),
             "l3" or "L3" => static (builder, context) => builder.Append(ToShortLevel(context.Level, upper: false)),
             "padded" or "Padded" => static (builder, context) => builder.Append(ToPaddedLevel(context.Level)),
-            _ => static (builder, context) => builder.Append(context.Level)
+            _ => static (builder, context) => builder.Append(context.Level),
         };
     }
 
@@ -265,7 +265,7 @@ internal sealed class GodotLogTemplate
         var start = 0;
         while (start < parts.Length - 1)
         {
-            var joined = string.Join(".", parts, start, parts.Length - start);
+            var joined = string.Join('.', parts, start, parts.Length - start);
             if (joined.Length <= maxLength)
             {
                 return joined;
@@ -294,7 +294,7 @@ internal sealed class GodotLogTemplate
             LogLevel.Warning => "wrn",
             LogLevel.Error => "err",
             LogLevel.Critical => "ftl",
-            _ => "unk"
+            _ => "unk",
         };
 
         return upper ? value.ToUpperInvariant() : value;
@@ -315,7 +315,7 @@ internal sealed class GodotLogTemplate
             LogLevel.Warning => "WARNING",
             LogLevel.Error => "ERROR  ",
             LogLevel.Critical => "FATAL  ",
-            _ => level.ToString()
+            _ => level.ToString(),
         };
     }
 

@@ -66,7 +66,7 @@ public sealed class MicrosoftDiContainerOwnershipTests
     [Test]
     public async Task NonDisposablePlurality_Should_Share_Instance_AcrossAliases()
     {
-        using var container = new MicrosoftDiContainer();
+        await using var container = new MicrosoftDiContainer();
         container.RegisterPlurality<SharedService>();
         container.Freeze();
 
@@ -125,10 +125,10 @@ public sealed class MicrosoftDiContainerOwnershipTests
         var cleanup = container.DisposeAsync().AsTask();
         await resource.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
         var entered = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var syncCleanup = Task.Run(() =>
+        var syncCleanup = Task.Run(async () =>
         {
             entered.TrySetResult(null);
-            container.Dispose();
+            await container.DisposeAsync().ConfigureAwait(false);
         });
         await entered.Task.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
 
@@ -217,7 +217,10 @@ public sealed class MicrosoftDiContainerOwnershipTests
         /// <summary>
         ///     已执行的资源释放次数。
         /// </summary>
-        public int DisposeCount { get; private set; }
+        public int DisposeCount
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录同步资源释放。
@@ -262,13 +265,19 @@ public sealed class MicrosoftDiContainerOwnershipTests
         /// <summary>
         ///     资源已进入清理阶段的信号。
         /// </summary>
-        public TaskCompletionSource<object?> Entered { get; } =
+        public TaskCompletionSource<object?> Entered
+        {
+            get;
+        } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         /// <summary>
         ///     允许资源完成清理的信号。
         /// </summary>
-        public TaskCompletionSource<object?> Release { get; } =
+        public TaskCompletionSource<object?> Release
+        {
+            get;
+        } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         /// <summary>
@@ -300,7 +309,10 @@ public sealed class MicrosoftDiContainerOwnershipTests
         /// <summary>
         ///     实际执行资源清理的次数。
         /// </summary>
-        public int DisposeCount { get; private set; }
+        public int DisposeCount
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     生成需要向每个清理等待者传递的失败。

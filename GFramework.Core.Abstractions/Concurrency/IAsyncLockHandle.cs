@@ -21,10 +21,16 @@ public interface IAsyncLockHandle : IAsyncDisposable, IDisposable
     /// <summary>
     ///     锁的键
     /// </summary>
-    string Key { get; }
+    string Key
+    {
+        get;
+    }
 
     /// <summary>
     ///     锁获取时的时间戳（Environment.TickCount64）
     /// </summary>
-    long AcquiredTicks { get; }
+    long AcquiredTicks
+    {
+        get;
+    }
 }

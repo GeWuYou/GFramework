@@ -19,7 +19,7 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
     /// <summary>
     ///  日志记录器
     /// </summary>
-    protected ILogger Logger = null !;
+    protected ILogger Logger = null!;
 
     /// <summary>
     ///     初始化上下文工具类
@@ -29,13 +29,19 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
         var name = GetType().Name;
         // 获取上下文中的日志记录器
         Logger = CreateInstanceLogger(name);
-        Logger.LogDebug($"Initializing Context Utility: {name}");
+        if (Logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+        {
+            Logger.LogDebug("Initializing Context Utility: {UtilityName}", name);
+        }
 
         // 执行子类实现的初始化逻辑
         OnInit();
 
         // 记录初始化完成信息
-        Logger.LogInformation($"Context Utility initialized: {name}");
+        if (Logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Information))
+        {
+            Logger.LogInformation("Context Utility initialized: {UtilityName}", name);
+        }
     }
 
     /// <summary>
@@ -45,9 +51,15 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
     {
         Logger ??= CreateInstanceLogger(GetType().Name);
         var name = GetType().Name;
-        Logger.LogDebug($"Destroying Context Utility: {name}");
+        if (Logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+        {
+            Logger.LogDebug("Destroying Context Utility: {UtilityName}", name);
+        }
         OnDestroy();
-        Logger.LogInformation($"Context Utility destroyed: {name}");
+        if (Logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Information))
+        {
+            Logger.LogInformation("Context Utility destroyed: {UtilityName}", name);
+        }
     }
 
     /// <summary>

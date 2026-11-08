@@ -5,19 +5,14 @@ namespace GFramework.Game.Abstractions.UI;
 
 /// <summary>Allows a dialog view to submit one typed result through its owning service.</summary>
 /// <typeparam name="TResult">Business result type.</typeparam>
-public sealed class UiDialogContext<TResult> : UiViewContext
+/// <remarks>Creates a typed dialog context.</remarks>
+/// <param name="handle">Instance identity.</param>
+/// <param name="close">Dismiss callback.</param>
+/// <param name="complete">Accepted-result callback.</param>
+public sealed class UiDialogContext<TResult>(UiInstanceHandle handle, Func<CancellationToken, Task<UiOperationResult>> close,
+    Func<TResult, CancellationToken, Task<UiOperationResult>> complete) : UiViewContext(handle, close)
 {
-    private readonly Func<TResult, CancellationToken, Task<UiOperationResult>> _complete;
-
-    /// <summary>Creates a typed dialog context.</summary>
-    /// <param name="handle">Instance identity.</param>
-    /// <param name="close">Dismiss callback.</param>
-    /// <param name="complete">Accepted-result callback.</param>
-    public UiDialogContext(UiInstanceHandle handle, Func<CancellationToken, Task<UiOperationResult>> close,
-        Func<TResult, CancellationToken, Task<UiOperationResult>> complete) : base(handle, close)
-    {
-        _complete = complete ?? throw new ArgumentNullException(nameof(complete));
-    }
+    private readonly Func<TResult, CancellationToken, Task<UiOperationResult>> _complete = complete ?? throw new ArgumentNullException(nameof(complete));
 
     /// <summary>Closes this dialog with a business result, completing its waiter after cleanup.</summary>
     /// <param name="result">Accepted result.</param>

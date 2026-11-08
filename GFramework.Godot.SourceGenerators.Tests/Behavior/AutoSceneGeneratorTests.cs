@@ -106,9 +106,9 @@ public class AutoSceneGeneratorTests
         {
             TestState =
             {
-                Sources = { source }
+                Sources = { source },
             },
-            DisabledDiagnostics = { "GF_Common_Trace_001" }
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
         };
 
         test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_AutoBehavior_004", DiagnosticSeverity.Error)
@@ -205,10 +205,10 @@ public class AutoSceneGeneratorTests
         {
             TestState =
             {
-                Sources = { source }
+                Sources = { source },
             },
             DisabledDiagnostics = { "GF_Common_Trace_001" },
-            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck,
         };
 
         test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Common_Class_002", DiagnosticSeverity.Error)
@@ -264,10 +264,10 @@ public class AutoSceneGeneratorTests
         {
             TestState =
             {
-                Sources = { source }
+                Sources = { source },
             },
             DisabledDiagnostics = { "GF_Common_Trace_001" },
-            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck,
         };
 
         test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Common_Class_002", DiagnosticSeverity.Error)

@@ -42,5 +42,8 @@ public sealed class AutoLoadAttribute : Attribute
     /// <summary>
     ///     获取在 <c>project.godot</c> 中声明的 AutoLoad 名称。
     /// </summary>
-    public string Name { get; }
+    public string Name
+    {
+        get;
+    }
 }

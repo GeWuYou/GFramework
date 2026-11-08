@@ -277,7 +277,7 @@ public class GodotProjectMetadataGeneratorTests
         var diagnostics = result.Results.Single().Diagnostics;
         var generatedSources = AdditionalTextGeneratorTestDriver.ToGeneratedSourceMap(result);
 
-        Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(new[] { "GF_Godot_Project_004" }));
+        Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(["GF_Godot_Project_004"]));
         Assert.That(
             generatedSources["GFramework_Godot_Generated_InputActions.g.cs"],
             Does.Contain("public const string MoveUp = \"move_up\";"));
@@ -322,7 +322,7 @@ public class GodotProjectMetadataGeneratorTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(new[] { "GF_Godot_Project_002" }));
+            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(["GF_Godot_Project_002"]));
             Assert.That(diagnostics.Single().GetMessage(), Does.Contain("PrimaryAudioBus"));
             Assert.That(diagnostics.Single().GetMessage(), Does.Contain("SecondaryAudioBus"));
             Assert.That(
@@ -368,7 +368,7 @@ public class GodotProjectMetadataGeneratorTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(new[] { "GF_Godot_Project_002" }));
+            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(["GF_Godot_Project_002"]));
             Assert.That(diagnostics.Single().GetMessage(), Does.Contain("Audio.AudioBus"));
             Assert.That(diagnostics.Single().GetMessage(), Does.Contain("Debug.AudioBus"));
             Assert.That(
@@ -396,7 +396,7 @@ public class GodotProjectMetadataGeneratorTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(new[] { "GF_Godot_Project_003" }));
+            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(["GF_Godot_Project_003"]));
             Assert.That(
                 generatedSources["GFramework_Godot_Generated_AutoLoads.g.cs"],
                 Does.Contain("public static global::Godot.Node AudioBus => GetRequiredNode<global::Godot.Node>(\"audio_bus\");"));
@@ -425,7 +425,7 @@ public class GodotProjectMetadataGeneratorTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(new[] { "GF_Godot_Project_005" }));
+            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(["GF_Godot_Project_005"]));
             Assert.That(diagnostics.Single().GetMessage(), Does.Contain("GameServices"));
             Assert.That(
                 generatedSources["GFramework_Godot_Generated_AutoLoads.g.cs"],
@@ -457,7 +457,7 @@ public class GodotProjectMetadataGeneratorTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(new[] { "GF_Godot_Project_006" }));
+            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(["GF_Godot_Project_006"]));
             Assert.That(diagnostics.Single().GetMessage(), Does.Contain("move_up"));
             Assert.That(
                 generatedSources["GFramework_Godot_Generated_InputActions.g.cs"],

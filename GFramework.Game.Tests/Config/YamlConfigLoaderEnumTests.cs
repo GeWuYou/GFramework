@@ -8,7 +8,7 @@ using GFramework.Game.Config;
 namespace GFramework.Game.Tests.Config;
 
 /// <summary>
-///     验证 YAML 配置加载器对对象 / 数组 <c>enum</c> 约束的运行时行为。
+///     验证 YAML 配置加载器对对象 / 数组 <c language="json">enum</c> 约束的运行时行为。
 /// </summary>
 [TestFixture]
 public class YamlConfigLoaderEnumTests
@@ -31,14 +31,14 @@ public class YamlConfigLoaderEnumTests
     {
         if (Directory.Exists(_rootPath))
         {
-            Directory.Delete(_rootPath, true);
+            Directory.Delete(_rootPath, recursive: true);
         }
     }
 
     private string _rootPath = null!;
 
     /// <summary>
-    ///     验证对象 <c>enum</c> 会按字段名排序后的稳定比较键匹配，而不是依赖 schema 内的 JSON 字段顺序。
+    ///     验证对象 <c language="json">enum</c> 会按字段名排序后的稳定比较键匹配，而不是依赖 schema 内的 JSON 字段顺序。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Accept_Object_Value_Declared_In_Schema_Enum_When_Property_Order_Differs()
@@ -90,7 +90,7 @@ public class YamlConfigLoaderEnumTests
     }
 
     /// <summary>
-    ///     验证对象 <c>enum</c> 不匹配时，运行时会拒绝整个对象值并输出候选 JSON 文本。
+    ///     验证对象 <c language="json">enum</c> 不匹配时，运行时会拒绝整个对象值并输出候选 JSON 文本。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Throw_When_Object_Value_Is_Not_Declared_In_Schema_Enum()
@@ -143,7 +143,7 @@ public class YamlConfigLoaderEnumTests
     }
 
     /// <summary>
-    ///     验证数组 <c>enum</c> 会保留元素顺序；同一批元素但顺序不同仍视为不同候选值。
+    ///     验证数组 <c language="json">enum</c> 会保留元素顺序；同一批元素但顺序不同仍视为不同候选值。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Throw_When_Array_Value_Order_Does_Not_Match_Schema_Enum()
@@ -245,18 +245,24 @@ public class YamlConfigLoaderEnumTests
         /// <summary>
         ///     获取配置主键。
         /// </summary>
-        int Id { get; }
+        int Id
+        {
+            get;
+        }
     }
 
     /// <summary>
-    ///     供对象 <c>enum</c> 测试使用的配置桩。
+    ///     供对象 <c language="json">enum</c> 测试使用的配置桩。
     /// </summary>
     private sealed class MonsterRewardConfigStub : IHasMonsterId
     {
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置奖励对象。
@@ -265,30 +271,36 @@ public class YamlConfigLoaderEnumTests
     }
 
     /// <summary>
-    ///     供数组 <c>enum</c> 测试使用的配置桩。
+    ///     供数组 <c language="json">enum</c> 测试使用的配置桩。
     /// </summary>
     private sealed class MonsterDropItemIdsConfigStub : IHasMonsterId
     {
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置掉落物数组。
         /// </summary>
-        public IReadOnlyList<string> DropItemIds { get; set; } = Array.Empty<string>();
+        public IReadOnlyList<string> DropItemIds { get; set; } = [];
     }
 
     /// <summary>
-    ///     供对象 <c>enum</c> 测试使用的奖励配置桩。
+    ///     供对象 <c language="json">enum</c> 测试使用的奖励配置桩。
     /// </summary>
     private sealed class RewardConfigStub
     {
         /// <summary>
         ///     获取或设置金币数量。
         /// </summary>
-        public int Gold { get; set; }
+        public int Gold
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置道具标识。

@@ -10,9 +10,15 @@ namespace GFramework.Game.Abstractions.Modding;
 public interface IGameModExtension
 {
     /// <summary>Gets the canonical capability name accepted by code manifests.</summary>
-    string Capability { get; }
+    string Capability
+    {
+        get;
+    }
     /// <summary>Gets assemblies that must share host type identity instead of loading private mod copies.</summary>
-    IReadOnlyList<Assembly> SharedAssemblies { get; }
+    IReadOnlyList<Assembly> SharedAssemblies
+    {
+        get;
+    }
     /// <summary>Creates one scope; constructors must not patch or otherwise start the mod.</summary>
     /// <param name="context">The approved mod context.</param>
     /// <returns>A scope whose services are visible only to this mod.</returns>

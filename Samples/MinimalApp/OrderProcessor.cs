@@ -15,6 +15,9 @@ internal sealed class OrderProcessor(OrderService orders, ILogger<OrderProcessor
     public void Process(string orderId)
     {
         orders.Register(orderId);
-        logger.LogInformation("Order {OrderId} processed", orderId);
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation("Order {OrderId} processed", orderId);
+        }
     }
 }

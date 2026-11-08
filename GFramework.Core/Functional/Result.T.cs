@@ -18,6 +18,8 @@ namespace GFramework.Core.Functional;
 /// <summary>
 ///     表示一个操作的结果，可能是成功值或异常
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0018",
+    Justification = "Result<A> factories and Bottom preserve the established typed result API; no consumer migration is needed for formatting.")]
 public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
 {
     private readonly A? _value;
@@ -43,7 +45,7 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
         /// <summary>
         ///     成功状态，表示操作执行成功并包含返回值
         /// </summary>
-        Success
+        Success,
     }
 
     private readonly ResultState _state;
@@ -147,7 +149,8 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     /// <param name="f">处理异常的副作用委托</param>
     public void IfFail(Action<Exception> f)
     {
-        if (IsFaulted) f(Exception);
+        if (IsFaulted)
+            f(Exception);
     }
 
     /// <summary>
@@ -156,7 +159,8 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     /// <param name="f">处理成功值的副作用委托</param>
     public void IfSucc(Action<A> f)
     {
-        if (IsSuccess) f(_value!);
+        if (IsSuccess)
+            f(_value!);
     }
 
     // ------------------------------------------------------------------ 变换
@@ -197,7 +201,8 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     public async Task<Result<B>> MapAsync<B>(Func<A, Task<B>> f)
     {
         ArgumentNullException.ThrowIfNull(f);
-        if (!IsSuccess) return new Result<B>(Exception);
+        if (!IsSuccess)
+            return new Result<B>(Exception);
 
         try
         {
@@ -229,8 +234,10 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     /// <param name="fail">处理异常的副作用委托</param>
     public void Match(Action<A> succ, Action<Exception> fail)
     {
-        if (IsSuccess) succ(_value!);
-        else fail(Exception);
+        if (IsSuccess)
+            succ(_value!);
+        else
+            fail(Exception);
     }
 
     // ------------------------------------------------------------------ 静态工厂（语义更清晰）
@@ -303,8 +310,10 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     [Pure]
     public bool Equals(Result<A> other)
     {
-        if (_state != other._state) return false;
-        if (IsSuccess) return EqualityComparer<A>.Default.Equals(_value, other._value);
+        if (_state != other._state)
+            return false;
+        if (IsSuccess)
+            return EqualityComparer<A>.Default.Equals(_value, other._value);
         if (IsFaulted)
             return Exception.GetType() == other.Exception.GetType()
                    && string.Equals(Exception.Message, other.Exception.Message, StringComparison.Ordinal);
@@ -337,8 +346,10 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     public int CompareTo(Result<A> other)
     {
         // Bottom < Faulted < Success
-        if (_state != other._state) return _state.CompareTo(other._state);
-        if (!IsSuccess) return 0;
+        if (_state != other._state)
+            return _state.CompareTo(other._state);
+        if (!IsSuccess)
+            return 0;
 
         try
         {
@@ -416,6 +427,6 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     {
         ResultState.Success => _value?.ToString() ?? "(null)",
         ResultState.Faulted => $"Fail({Exception.Message})",
-        _ => "(Bottom)"
+        _ => "(Bottom)",
     };
 }

@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using System.IO;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Appenders;
@@ -30,7 +31,7 @@ public class RollingFileAppenderTests
         {
             try
             {
-                Directory.Delete(_testDir, true);
+                Directory.Delete(_testDir, recursive: true);
             }
             catch
             {
@@ -64,7 +65,7 @@ public class RollingFileAppenderTests
             for (int i = 0; i < 20; i++)
             {
                 var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger",
-                    $"This is a test message number {i} with some padding to increase size", null, null);
+                    string.Create(CultureInfo.InvariantCulture, $"This is a test message number {i} with some padding to increase size"), Exception: null, Properties: null);
                 appender.Append(entry);
             }
 
@@ -86,7 +87,7 @@ public class RollingFileAppenderTests
             for (int i = 0; i < 50; i++)
             {
                 var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger",
-                    $"This is a test message number {i} with some padding to increase size significantly", null, null);
+                    string.Create(CultureInfo.InvariantCulture, $"This is a test message number {i} with some padding to increase size significantly"), Exception: null, Properties: null);
                 appender.Append(entry);
             }
 
@@ -105,7 +106,7 @@ public class RollingFileAppenderTests
             for (int i = 0; i < 30; i++)
             {
                 var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger",
-                    $"Test message {i} with padding to trigger rolling", null, null);
+                    string.Create(CultureInfo.InvariantCulture, $"Test message {i} with padding to trigger rolling"), Exception: null, Properties: null);
                 appender.Append(entry);
             }
 
@@ -114,7 +115,7 @@ public class RollingFileAppenderTests
 
         var files = Directory.GetFiles(_testDir, "*.log")
             .Select(static path => Path.GetFileName(path) ?? string.Empty)
-            .OrderBy(f => f, System.StringComparer.Ordinal)
+            .Order(System.StringComparer.Ordinal)
             .ToArray();
 
         // 应该有 app.log, app.1.log, app.2.log 等
@@ -136,7 +137,7 @@ public class RollingFileAppenderTests
         var appender = new RollingFileAppender(_testFilePath);
         appender.Dispose();
 
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, Properties: null);
 
         Assert.Throws<ObjectDisposedException>(() => appender.Append(entry));
     }
@@ -149,7 +150,7 @@ public class RollingFileAppenderTests
             for (int i = 0; i < 10; i++)
             {
                 var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger",
-                    "This is a longer message to trigger rolling more frequently", null, null);
+                    "This is a longer message to trigger rolling more frequently", Exception: null, Properties: null);
                 appender.Append(entry);
             }
 
@@ -165,7 +166,7 @@ public class RollingFileAppenderTests
     {
         using (var appender = new RollingFileAppender(_testFilePath))
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, Properties: null);
 
             appender.Append(entry);
             appender.Flush();

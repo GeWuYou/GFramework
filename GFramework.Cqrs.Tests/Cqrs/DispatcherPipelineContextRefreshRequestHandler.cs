@@ -10,6 +10,7 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 /// <summary>
 ///     记录缓存 executor 复用场景下每次分发注入到 request handler 的上下文与实例身份。
 /// </summary>
+[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
 internal sealed class DispatcherPipelineContextRefreshRequestHandler
     : CqrsContextAwareHandlerBase,
         IRequestHandler<DispatcherPipelineContextRefreshRequest, int>

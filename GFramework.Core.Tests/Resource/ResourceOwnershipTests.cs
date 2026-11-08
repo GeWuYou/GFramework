@@ -77,7 +77,7 @@ public class ResourceOwnershipTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(manager.GetLoadedResourcePaths(), Is.EquivalentTo(new[] { "retained" }));
+            Assert.That(manager.GetLoadedResourcePaths(), Is.EquivalentTo(["retained"]));
             Assert.That(handle.IsValid, Is.True);
             Assert.That(retained!.DisposeCount, Is.Zero);
             Assert.That(unused!.DisposeCount, Is.EqualTo(1));
@@ -102,7 +102,7 @@ public class ResourceOwnershipTests
         var pending = new TaskCompletionSource<OwnedResource>(TaskCreationOptions.RunContinuationsAsynchronously);
         var loader = new OwnedLoader<OwnedResource>(() => throw new InvalidOperationException())
         {
-            LoadAsyncCallback = () => pending.Task
+            LoadAsyncCallback = () => pending.Task,
         };
         var manager = new ResourceManager();
         manager.RegisterLoader(loader);
@@ -138,7 +138,7 @@ public class ResourceOwnershipTests
         pending.Enqueue(secondSource);
         var loader = new OwnedLoader<OwnedResource>(() => throw new InvalidOperationException())
         {
-            LoadAsyncCallback = () => pending.Dequeue().Task
+            LoadAsyncCallback = () => pending.Dequeue().Task,
         };
         var manager = new ResourceManager();
         manager.RegisterLoader(loader);
@@ -204,16 +204,17 @@ public class ResourceOwnershipTests
     private class OwnedResource : IDisposable
     {
         /// <summary>获取 Dispose 调用次数。</summary>
-        public int DisposeCount { get; private set; }
+        public int DisposeCount
+        {
+            get; private set;
+        }
 
         /// <summary>记录资源释放次数。</summary>
         public void Dispose() => DisposeCount++;
     }
 
     /// <summary>用于验证加载类型与资源实际类型不同的合法场景。</summary>
-    private sealed class DerivedResource : OwnedResource
-    {
-    }
+    private sealed class DerivedResource : OwnedResource;
 
     /// <summary>
     ///     持有资源释放责任的测试加载器，支持可控异步结果和重入清理。
@@ -223,13 +224,22 @@ public class ResourceOwnershipTests
     private sealed class OwnedLoader<T>(Func<T> create) : IResourceLoader<T> where T : OwnedResource
     {
         /// <summary>获取卸载次数。</summary>
-        public int UnloadCount { get; private set; }
+        public int UnloadCount
+        {
+            get; private set;
+        }
 
         /// <summary>获取或设置可控异步加载操作。</summary>
-        public Func<Task<T>>? LoadAsyncCallback { get; init; }
+        public Func<Task<T>>? LoadAsyncCallback
+        {
+            get; init;
+        }
 
         /// <summary>获取或设置卸载过程中的回调。</summary>
-        public Action? UnloadCallback { get; set; }
+        public Action? UnloadCallback
+        {
+            get; set;
+        }
 
         /// <inheritdoc />
         public T Load(string path) => create();

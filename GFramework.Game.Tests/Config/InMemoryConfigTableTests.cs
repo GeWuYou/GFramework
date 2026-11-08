@@ -18,11 +18,10 @@ public class InMemoryConfigTableTests
     public void Get_Should_Return_Config_When_Key_Exists()
     {
         var table = new InMemoryConfigTable<int, MonsterConfigStub>(
-            new[]
-            {
+            [
                 new MonsterConfigStub(1, "Slime"),
-                new MonsterConfigStub(2, "Goblin")
-            },
+                new MonsterConfigStub(2, "Goblin"),
+            ],
             static config => config.Id);
 
         var result = table.Get(2);
@@ -38,11 +37,10 @@ public class InMemoryConfigTableTests
     {
         Assert.Throws<InvalidOperationException>(() =>
             new InMemoryConfigTable<int, MonsterConfigStub>(
-                new[]
-                {
+                [
                     new MonsterConfigStub(1, "Slime"),
-                    new MonsterConfigStub(1, "Goblin")
-                },
+                    new MonsterConfigStub(1, "Goblin"),
+                ],
                 static config => config.Id));
     }
 
@@ -53,17 +51,16 @@ public class InMemoryConfigTableTests
     public void All_Should_Return_All_Configs()
     {
         var table = new InMemoryConfigTable<int, MonsterConfigStub>(
-            new[]
-            {
+            [
                 new MonsterConfigStub(1, "Slime"),
-                new MonsterConfigStub(2, "Goblin")
-            },
+                new MonsterConfigStub(2, "Goblin"),
+            ],
             static config => config.Id);
 
         var all = table.All();
 
         Assert.That(all, Has.Count.EqualTo(2));
-        Assert.That(all.Select(static config => config.Name), Is.EquivalentTo(new[] { "Slime", "Goblin" }));
+        Assert.That(all.Select(static config => config.Name), Is.EquivalentTo(["Slime", "Goblin"]));
     }
 
     /// <summary>

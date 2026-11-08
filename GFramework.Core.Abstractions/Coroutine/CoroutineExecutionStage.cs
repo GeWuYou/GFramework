@@ -27,5 +27,5 @@ public enum CoroutineExecutionStage
     /// <summary>
     ///     宿主延迟调用阶段，不承诺渲染已经完成。
     /// </summary>
-    Deferred
+    Deferred,
 }

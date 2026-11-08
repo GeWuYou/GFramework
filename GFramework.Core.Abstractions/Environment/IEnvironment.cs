@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Core.Abstractions.Environment;
@@ -11,7 +11,10 @@ public interface IEnvironment
     /// <summary>
     ///     获取环境名称
     /// </summary>
-    public string Name { get; }
+    public string Name
+    {
+        get;
+    }
 
 
     /// <summary>

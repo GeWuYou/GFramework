@@ -57,7 +57,7 @@ public sealed class SamplingFilter : ILogFilter
         // 如果超过最大日志记录器数量，使用共享状态
         var key = _samplingStates.Count >= _maxLoggers ? "*" : entry.LoggerName;
 
-        var state = _samplingStates.GetOrAdd(key, _ => new SamplingState(_timeProvider));
+        var state = _samplingStates.GetOrAdd(key, static (_, filter) => new SamplingState(filter._timeProvider), this);
 
         return state.ShouldLog(_sampleRate, _timeWindow);
     }

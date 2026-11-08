@@ -50,20 +50,32 @@ internal sealed class YamlConfigArrayConstraints
     /// <summary>
     ///     获取最小元素数量约束。
     /// </summary>
-    public int? MinItems { get; }
+    public int? MinItems
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取最大元素数量约束。
     /// </summary>
-    public int? MaxItems { get; }
+    public int? MaxItems
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取是否要求数组元素唯一。
     /// </summary>
-    public bool UniqueItems { get; }
+    public bool UniqueItems
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取数组 contains 约束；未声明时返回空。
     /// </summary>
-    public YamlConfigArrayContainsConstraints? ContainsConstraints { get; }
+    public YamlConfigArrayContainsConstraints? ContainsConstraints
+    {
+        get;
+    }
 }

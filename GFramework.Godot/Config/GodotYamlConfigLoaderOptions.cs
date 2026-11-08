@@ -27,13 +27,18 @@ public sealed class GodotYamlConfigLoaderOptions
     ///     获取或设置本次启动会访问到的配置表来源描述。
     ///     Godot 导出态无法假设任意文本目录都可被枚举，因此调用方应显式提供参与本轮加载的配置目录与 schema 文件。
     /// </summary>
-    public IReadOnlyCollection<GodotYamlConfigTableSource> TableSources { get; init; } =
-        Array.Empty<GodotYamlConfigTableSource>();
+    public IReadOnlyCollection<GodotYamlConfigTableSource> TableSources
+    {
+        get; init;
+    } = [];
 
     /// <summary>
     ///     获取或设置用于配置底层 <see cref="YamlConfigLoader" /> 的回调。
     ///     调用方通常应在这里调用生成器产出的 <c>RegisterAllGeneratedConfigTables()</c>，
     ///     或显式注册当前场景所需的手写表定义。
     /// </summary>
-    public Action<YamlConfigLoader>? ConfigureLoader { get; init; }
+    public Action<YamlConfigLoader>? ConfigureLoader
+    {
+        get; init;
+    }
 }

@@ -31,7 +31,7 @@ public sealed class YamlConfigTextValidatorTests
     {
         if (Directory.Exists(_rootPath))
         {
-            Directory.Delete(_rootPath, true);
+            Directory.Delete(_rootPath, recursive: true);
         }
     }
 

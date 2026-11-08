@@ -104,7 +104,7 @@ public class PriorityEventTests
         evt.Trigger(42, EventPropagation.UntilHandled);
 
         // Assert
-        Assert.That(executionOrder, Is.EqualTo(new[] { 1 }));
+        Assert.That(executionOrder, Is.EqualTo([1]));
     }
 
     [Test]
@@ -121,7 +121,7 @@ public class PriorityEventTests
         evt.Trigger(1, EventPropagation.All);
 
         // Assert
-        Assert.That(executionOrder, Is.EqualTo(new[] { "context", "normal" }));
+        Assert.That(executionOrder, Is.EqualTo(["context", "normal"]));
     }
 
     [Test]
@@ -143,7 +143,7 @@ public class PriorityEventTests
         evt.Trigger(1, EventPropagation.UntilHandled);
 
         // Assert
-        Assert.That(executionOrder, Is.EqualTo(new[] { "context-high" }));
+        Assert.That(executionOrder, Is.EqualTo(["context-high"]));
     }
 
     [Test]

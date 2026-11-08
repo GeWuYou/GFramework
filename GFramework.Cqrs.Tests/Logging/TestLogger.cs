@@ -19,23 +19,17 @@ namespace GFramework.Cqrs.Tests.Logging;
 ///     供 CQRS 测试项目复用的最小标准日志记录器实现。
 ///     基于标准 <see cref="ILogger" />，把日志调用捕获到内存中供断言使用。
 /// </summary>
-public sealed class TestLogger : ILogger
+/// <remarks>
+///     初始化测试日志记录器。
+/// </remarks>
+/// <param name="name">日志类别名称。</param>
+/// <param name="minLevel">最小日志级别；低于该级别的日志调用会被忽略。</param>
+public sealed class TestLogger(string? name = null, LogLevel minLevel = LogLevel.Information) : ILogger
 {
-    private readonly string _name;
+    private readonly string _name = name ?? nameof(TestLogger);
     private readonly List<LogEntry> _logs = [];
     private readonly Lock _sync = new();
-    private LogLevel _minLevel;
-
-    /// <summary>
-    ///     初始化测试日志记录器。
-    /// </summary>
-    /// <param name="name">日志类别名称。</param>
-    /// <param name="minLevel">最小日志级别；低于该级别的日志调用会被忽略。</param>
-    public TestLogger(string? name = null, LogLevel minLevel = LogLevel.Information)
-    {
-        _name = name ?? nameof(TestLogger);
-        _minLevel = minLevel;
-    }
+    private LogLevel _minLevel = minLevel;
 
     /// <summary>
     ///     获取当前日志器的类别名称。
@@ -73,7 +67,7 @@ public sealed class TestLogger : ILogger
         {
             lock (_sync)
             {
-                return _logs.ToArray();
+                return [.. _logs];
             }
         }
     }

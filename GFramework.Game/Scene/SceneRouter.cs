@@ -3,6 +3,7 @@
 
 using GFramework.Game.Abstractions.Runtime;
 using GFramework.Game.Abstractions.Scene;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Game.Scene;
 
@@ -12,12 +13,22 @@ namespace GFramework.Game.Scene;
 /// </summary>
 public sealed class SceneRouter : SceneRouterBase
 {
-    /// <summary>Creates the default scene navigator without an Architecture dependency.</summary>
+    /// <summary>Creates the navigator with optional transition extensions.</summary>
     /// <param name="factory">Scene construction adapter.</param>
     /// <param name="root">Host attachment adapter.</param>
     /// <param name="dispatcher">Host callback dispatcher.</param>
     public SceneRouter(ISceneFactory factory, ISceneRoot root, IGameDispatcher dispatcher)
         : base(factory, root, dispatcher)
+    {
+    }
+
+    /// <summary>Creates the navigator with standard DI-compatible transition diagnostics.</summary>
+    /// <param name="factory">Scene construction adapter.</param>
+    /// <param name="root">Host attachment adapter.</param>
+    /// <param name="dispatcher">Host callback dispatcher.</param>
+    /// <param name="logger">Host-configured logger, forwarded to the private transition pipeline; null keeps logging disabled.</param>
+    public SceneRouter(ISceneFactory factory, ISceneRoot root, IGameDispatcher dispatcher, ILogger<SceneRouter>? logger)
+        : base(factory, root, dispatcher, logger)
     {
     }
 }

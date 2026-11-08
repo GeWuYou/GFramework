@@ -36,11 +36,10 @@ public sealed class CqrsReflectionFallbackAttribute : Attribute
     {
         ArgumentNullException.ThrowIfNull(fallbackHandlerTypeNames);
 
-        FallbackHandlerTypeNames = fallbackHandlerTypeNames
+        FallbackHandlerTypeNames = [.. fallbackHandlerTypeNames
             .Where(static typeName => !string.IsNullOrWhiteSpace(typeName))
             .Distinct(StringComparer.Ordinal)
-            .OrderBy(static typeName => typeName, StringComparer.Ordinal)
-            .ToArray();
+            .Order(StringComparer.Ordinal)];
         FallbackHandlerTypes = [];
     }
 
@@ -57,20 +56,25 @@ public sealed class CqrsReflectionFallbackAttribute : Attribute
         ArgumentNullException.ThrowIfNull(fallbackHandlerTypes);
 
         FallbackHandlerTypeNames = [];
-        FallbackHandlerTypes = fallbackHandlerTypes
+        FallbackHandlerTypes = [.. fallbackHandlerTypes
             .Where(static type => type is not null)
             .Distinct()
-            .OrderBy(static type => type.FullName ?? type.Name, StringComparer.Ordinal)
-            .ToArray();
+            .OrderBy(static type => type.FullName ?? type.Name, StringComparer.Ordinal)];
     }
 
     /// <summary>
     ///     获取需要运行时补充反射注册的处理器类型全名集合。
     /// </summary>
-    public IReadOnlyList<string> FallbackHandlerTypeNames { get; }
+    public IReadOnlyList<string> FallbackHandlerTypeNames
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取可直接供运行时补充反射注册的处理器类型集合。
     /// </summary>
-    public IReadOnlyList<Type> FallbackHandlerTypes { get; }
+    public IReadOnlyList<Type> FallbackHandlerTypes
+    {
+        get;
+    }
 }

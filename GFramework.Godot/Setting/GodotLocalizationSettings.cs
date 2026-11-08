@@ -9,26 +9,18 @@ using GFramework.Godot.Setting.Data;
 namespace GFramework.Godot.Setting;
 
 /// <summary>Applies persisted language to Godot and an explicitly injected localization manager.</summary>
-public sealed class GodotLocalizationSettings : IResetApplyAbleSettings
+/// <remarks>Creates a language applicator without resolving an architecture context.</remarks>
+/// <param name="model">Settings data service.</param>
+/// <param name="localizationMap">Display name to language-code mapping.</param>
+/// <param name="manager">Optional framework localization manager.</param>
+/// <param name="applyGodotLocale">Optional engine bridge, defaulting to TranslationServer.SetLocale.</param>
+public sealed class GodotLocalizationSettings(ISettingsModel model, LocalizationMap localizationMap,
+    ILocalizationManager? manager = null, Action<string>? applyGodotLocale = null) : IResetApplyAbleSettings
 {
-    private readonly ISettingsModel _model;
-    private readonly LocalizationMap _map;
-    private readonly ILocalizationManager? _manager;
-    private readonly Action<string> _applyLocale;
-
-    /// <summary>Creates a language applicator without resolving an architecture context.</summary>
-    /// <param name="model">Settings data service.</param>
-    /// <param name="localizationMap">Display name to language-code mapping.</param>
-    /// <param name="manager">Optional framework localization manager.</param>
-    /// <param name="applyGodotLocale">Optional engine bridge, defaulting to TranslationServer.SetLocale.</param>
-    public GodotLocalizationSettings(ISettingsModel model, LocalizationMap localizationMap,
-        ILocalizationManager? manager = null, Action<string>? applyGodotLocale = null)
-    {
-        _model = model ?? throw new ArgumentNullException(nameof(model));
-        _map = localizationMap ?? throw new ArgumentNullException(nameof(localizationMap));
-        _manager = manager;
-        _applyLocale = applyGodotLocale ?? TranslationServer.SetLocale;
-    }
+    private readonly ISettingsModel _model = model ?? throw new ArgumentNullException(nameof(model));
+    private readonly LocalizationMap _map = localizationMap ?? throw new ArgumentNullException(nameof(localizationMap));
+    private readonly ILocalizationManager? _manager = manager;
+    private readonly Action<string> _applyLocale = applyGodotLocale ?? TranslationServer.SetLocale;
 
     /// <inheritdoc />
     public Task ApplyAsync(CancellationToken cancellationToken = default)

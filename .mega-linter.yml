@@ -1,11 +1,11 @@
-﻿# Copyright (c) 2025-2026 GeWuYou
+# Copyright (c) 2025-2026 GeWuYou
 # SPDX-License-Identifier: Apache-2.0
 
 # 配置文件用于设置代码质量检查工具的各项参数和规则
 # 包含全局排除目录、启用/禁用的检查器、特定语言配置等设置
 
 APPLY_FIXES: none
-FAIL_ON_ERROR: false
+FAIL_ON_ERROR: true
 
 # ========================
 # 全局排除目录配置
@@ -55,6 +55,11 @@ CSHARP_DOTNET_FORMAT_ARGUMENTS:
   - "info"
   - "--verify-no-changes"
 
+# MegaLinter 10.2.0 默认追加的 shell glob 只匹配一层目录；移除此 include，
+# 让 dotnet format 按 solution 完整遍历全部 C#，保留 info 级别和失败门禁。
+CSHARP_DOTNET_FORMAT_COMMAND_REMOVE_ARGUMENTS:
+  - "--include **/*.cs"
+
 # ========================
 # YAML 文件检查过滤配置
 # 定义 YAML 文件的包含和排除正则表达式模式
@@ -72,7 +77,7 @@ JSON_JSONLINT_FILTER_REGEX_INCLUDE: '.*\.json$'
 # GitHub Actions 工作流检查配置
 # 控制 GitHub Actions 文件检查的错误报告行为
 # ========================
-ACTION_ACTIONLINT_DISABLE_ERRORS: true
+ACTION_ACTIONLINT_DISABLE_ERRORS: false
 
 # ========================
 # 报告输出配置

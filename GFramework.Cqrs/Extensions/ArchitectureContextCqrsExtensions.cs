@@ -21,7 +21,7 @@ public static class ArchitectureContextCqrsExtensions
     // 同一架构上下文的分发包装复用同一实例；ConditionalWeakTable 保证架构销毁后包装随之可回收，
     // 不把包装生命周期强加给宿主。
     private static readonly ConditionalWeakTable<IArchitectureContext, ArchitectureCqrsDispatchContext>
-        DispatchContextCache = new();
+        DispatchContextCache = [];
 
     /// <summary>
     ///     发送请求并返回响应。

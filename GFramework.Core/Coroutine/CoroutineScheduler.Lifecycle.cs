@@ -17,7 +17,7 @@ public sealed partial class CoroutineScheduler
             JoinCoroutine { IsDone: true, PropagateFailure: true } join => join.Result.Status,
             WaitForCoroutine { IsDone: true } owned => owned.Result.Status,
             ICoroutineCompletionStatusSource source => source.CompletionStatus,
-            _ => (slot?.Enumerator as ICoroutineCompletionStatusSource)?.CompletionStatus ?? CoroutineCompletionStatus.Unknown
+            _ => (slot?.Enumerator as ICoroutineCompletionStatusSource)?.CompletionStatus ?? CoroutineCompletionStatus.Unknown,
         };
         // A faulted Task may hold an OCE, and cleanup may throw OCE. Their explicit fault outcome wins over exception type.
         var cancelled = exception is OperationCanceledException && known != CoroutineCompletionStatus.Faulted;
@@ -128,6 +128,7 @@ public sealed partial class CoroutineScheduler
             }
             slot.AdditionalCancellationRegistrations.Clear();
         }
+        slot.AdditionalCancellationTokens?.Clear();
         var enumerator = slot.Enumerator;
         slot.Enumerator = null;
         if (enumerator != null)
@@ -257,7 +258,7 @@ public sealed partial class CoroutineScheduler
             if (OnCoroutineException is { } errorHandlers)
             {
                 var args = new CoroutineExceptionEventArgs(handle, result.Exception);
-                foreach (EventHandler<CoroutineExceptionEventArgs> handler in errorHandlers.GetInvocationList())
+                foreach (EventHandler<CoroutineExceptionEventArgs> handler in errorHandlers.GetInvocationList().Cast<EventHandler<CoroutineExceptionEventArgs>>())
                 {
                     try
                     {
@@ -273,7 +274,7 @@ public sealed partial class CoroutineScheduler
         if (OnCoroutineFinished is { } finishHandlers)
         {
             var args = new CoroutineFinishedEventArgs(handle, result.Status, result.Exception);
-            foreach (EventHandler<CoroutineFinishedEventArgs> handler in finishHandlers.GetInvocationList())
+            foreach (EventHandler<CoroutineFinishedEventArgs> handler in finishHandlers.GetInvocationList().Cast<EventHandler<CoroutineFinishedEventArgs>>())
             {
                 try
                 {
@@ -291,7 +292,14 @@ public sealed partial class CoroutineScheduler
     {
         try
         {
-            _logger.LogError(exception, message, handle);
+            if (string.Equals(message, "Coroutine {Handle} failed.", StringComparison.Ordinal))
+            {
+                _logger.LogError(exception, "Coroutine {Handle} failed.", handle);
+            }
+            else
+            {
+                _logger.LogError(exception, "{DiagnosticMessage}", message);
+            }
         }
         catch (Exception)
         {

@@ -28,21 +28,21 @@ internal static class GodotInputBindingCodec
                 binding = new InputBindingDescriptor(
                     InputDeviceKind.KeyboardMouse,
                     InputBindingKind.Key,
-                    FormattableString.Invariant($"key:{(int)keyCode}"),
+string.Create(CultureInfo.InvariantCulture, $"key:{(int)keyCode}"),
                     keyCode.ToString());
                 return true;
             case InputEventMouseButton mouseButtonEvent:
                 binding = new InputBindingDescriptor(
                     InputDeviceKind.KeyboardMouse,
                     InputBindingKind.MouseButton,
-                    FormattableString.Invariant($"mouse:{(int)mouseButtonEvent.ButtonIndex}"),
+string.Create(CultureInfo.InvariantCulture, $"mouse:{(int)mouseButtonEvent.ButtonIndex}"),
                     mouseButtonEvent.ButtonIndex.ToString());
                 return true;
             case InputEventJoypadButton joypadButtonEvent:
                 binding = new InputBindingDescriptor(
                     InputDeviceKind.Gamepad,
                     InputBindingKind.GamepadButton,
-                    FormattableString.Invariant($"joy-button:{(int)joypadButtonEvent.ButtonIndex}"),
+string.Create(CultureInfo.InvariantCulture, $"joy-button:{(int)joypadButtonEvent.ButtonIndex}"),
                     joypadButtonEvent.ButtonIndex.ToString());
                 return true;
             case InputEventJoypadMotion joypadMotionEvent:
@@ -50,7 +50,7 @@ internal static class GodotInputBindingCodec
                 binding = new InputBindingDescriptor(
                     InputDeviceKind.Gamepad,
                     InputBindingKind.GamepadAxis,
-                    FormattableString.Invariant($"joy-axis:{(int)joypadMotionEvent.Axis}:{direction.ToString(CultureInfo.InvariantCulture)}"),
+string.Create(CultureInfo.InvariantCulture, $"joy-axis:{(int)joypadMotionEvent.Axis}:{direction}"),
                     GetAxisDisplayName(joypadMotionEvent.Axis, direction),
                     direction);
                 return true;
@@ -76,7 +76,7 @@ internal static class GodotInputBindingCodec
             InputBindingKind.MouseButton => CreateMouseButtonEvent(binding),
             InputBindingKind.GamepadButton => CreateGamepadButtonEvent(binding),
             InputBindingKind.GamepadAxis => CreateGamepadAxisEvent(binding),
-            _ => throw new ArgumentException($"Unsupported binding kind '{binding.BindingKind}'.", nameof(binding))
+            _ => throw new ArgumentException($"Unsupported binding kind '{binding.BindingKind}'.", nameof(binding)),
         };
     }
 
@@ -96,7 +96,7 @@ internal static class GodotInputBindingCodec
             InputEventJoypadButton joypadButtonEvent => CreateGamepadContext(joypadButtonEvent.Device),
             InputEventJoypadMotion joypadMotionEvent => CreateGamepadContext(joypadMotionEvent.Device),
             InputEventScreenTouch => new InputDeviceContext(InputDeviceKind.Touch),
-            _ => new InputDeviceContext(InputDeviceKind.Unknown)
+            _ => new InputDeviceContext(InputDeviceKind.Unknown),
         };
     }
 
@@ -114,7 +114,7 @@ internal static class GodotInputBindingCodec
         return new InputEventKey
         {
             Keycode = (Key)code,
-            PhysicalKeycode = (Key)code
+            PhysicalKeycode = (Key)code,
         };
     }
 
@@ -123,7 +123,7 @@ internal static class GodotInputBindingCodec
         var buttonIndex = ParseSingleSegment(binding.Code, "mouse");
         return new InputEventMouseButton
         {
-            ButtonIndex = (MouseButton)buttonIndex
+            ButtonIndex = (MouseButton)buttonIndex,
         };
     }
 
@@ -132,7 +132,7 @@ internal static class GodotInputBindingCodec
         var buttonIndex = ParseSingleSegment(binding.Code, "joy-button");
         return new InputEventJoypadButton
         {
-            ButtonIndex = (JoyButton)buttonIndex
+            ButtonIndex = (JoyButton)buttonIndex,
         };
     }
 
@@ -157,7 +157,7 @@ internal static class GodotInputBindingCodec
         return new InputEventJoypadMotion
         {
             Axis = (JoyAxis)axis,
-            AxisValue = direction
+            AxisValue = direction,
         };
     }
 
@@ -185,7 +185,6 @@ internal static class GodotInputBindingCodec
     private static string GetAxisDisplayName(JoyAxis axis, float direction)
     {
         return direction >= 0f
-            ? FormattableString.Invariant($"{axis} Positive")
-            : FormattableString.Invariant($"{axis} Negative");
+            ? $"{axis} Positive" : $"{axis} Negative";
     }
 }

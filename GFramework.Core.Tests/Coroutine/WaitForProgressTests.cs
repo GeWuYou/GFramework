@@ -69,7 +69,8 @@ public class WaitForProgressTests
         var progressValues = new List<float>();
         var wait = new WaitForProgress(1.0, progressValues.Add);
 
-        while (!wait.IsDone) wait.Update(0.1);
+        while (!wait.IsDone)
+            wait.Update(0.1);
 
         foreach (var progress in progressValues)
         {
@@ -207,7 +208,8 @@ public class WaitForProgressTests
         var progressValues = new List<float>();
         var wait = new WaitForProgress(1.0, progressValues.Add);
 
-        while (!wait.IsDone) wait.Update(0.1);
+        while (!wait.IsDone)
+            wait.Update(0.1);
 
         Assert.That(progressValues[^1], Is.EqualTo(1.0f).Within(0.01f));
     }

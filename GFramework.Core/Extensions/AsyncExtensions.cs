@@ -1,6 +1,8 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
+
 namespace GFramework.Core.Extensions;
 
 /// <summary>
@@ -45,7 +47,7 @@ public static class AsyncExtensions
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时", ex);
+            throw new TimeoutException(string.Create(CultureInfo.InvariantCulture, $"操作在 {timeout.TotalSeconds} 秒后超时"), ex);
         }
 
         try
@@ -56,7 +58,7 @@ public static class AsyncExtensions
                                                  && linkedCts.IsCancellationRequested)
         {
             // linkedCts 触发但外部未取消 → 超时
-            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时", ex);
+            throw new TimeoutException(string.Create(CultureInfo.InvariantCulture, $"操作在 {timeout.TotalSeconds} 秒后超时"), ex);
         }
     }
 
@@ -86,7 +88,7 @@ public static class AsyncExtensions
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时", ex);
+            throw new TimeoutException(string.Create(CultureInfo.InvariantCulture, $"操作在 {timeout.TotalSeconds} 秒后超时"), ex);
         }
 
         try
@@ -96,7 +98,7 @@ public static class AsyncExtensions
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested
                                                  && linkedCts.IsCancellationRequested)
         {
-            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时", ex);
+            throw new TimeoutException(string.Create(CultureInfo.InvariantCulture, $"操作在 {timeout.TotalSeconds} 秒后超时"), ex);
         }
     }
 

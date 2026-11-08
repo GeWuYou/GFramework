@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 // IsExternalInit.cs
@@ -10,14 +10,16 @@ using System.ComponentModel;
 
 // ReSharper disable CheckNamespace
 
+#pragma warning disable IDE0130 // The compiler requires the exact System.Runtime.CompilerServices.IsExternalInit identity.
 namespace System.Runtime.CompilerServices;
+#pragma warning restore IDE0130
 
 /// <summary>
 /// 提供一个占位符类型，用于支持 C# 9.0 的 init 访问器功能。
 /// 该类型在 .NET 5.0 及更高版本中已内置，因此仅在较低版本的 .NET 中定义。
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
-internal static class IsExternalInit
-{
-}
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "MA0182",
+    Justification = "The C# compiler references this required init/record marker implicitly on netstandard; ordinary source-reference analysis cannot see that dependency.")]
+internal static class IsExternalInit;
 #endif

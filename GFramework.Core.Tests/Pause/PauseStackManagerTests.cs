@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using GFramework.Core.Abstractions.Pause;
 using GFramework.Core.Pause;
 
@@ -326,7 +327,7 @@ public class PauseStackManagerTests
 
         _manager.Push("Test");
 
-        Assert.That(calls, Is.EqualTo(new[] { 2, 1, 3 }));
+        Assert.That(calls, Is.EqualTo([2, 1, 3]));
     }
 
     /// <summary>
@@ -423,7 +424,7 @@ public class PauseStackManagerTests
 
         Assert.That(mockHandler.CallCount, Is.EqualTo(2));
         Assert.That(mockHandler.LastIsPaused, Is.False);
-        Assert.That(resumedGroups, Is.EquivalentTo(new[] { PauseGroup.Global, PauseGroup.Gameplay }));
+        Assert.That(resumedGroups, Is.EquivalentTo([PauseGroup.Global, PauseGroup.Gameplay]));
     }
 
     /// <summary>
@@ -445,7 +446,7 @@ public class PauseStackManagerTests
             var index = i;
             tasks.Add(Task.Run(() =>
             {
-                var token = _manager.Push($"Pause {index}");
+                var token = _manager.Push(string.Create(CultureInfo.InvariantCulture, $"Pause {index}"));
                 lock (lockObj)
                 {
                     tokens.Add(token);
@@ -453,7 +454,7 @@ public class PauseStackManagerTests
             }));
         }
 
-        Task.WaitAll(tasks.ToArray());
+        Task.WaitAll([.. tasks]);
 
         Assert.That(_manager.GetPauseDepth(), Is.EqualTo(100));
         Assert.That(tokens.Count, Is.EqualTo(100));
@@ -468,7 +469,7 @@ public class PauseStackManagerTests
         var tokens = new List<PauseToken>();
         for (int i = 0; i < 100; i++)
         {
-            tokens.Add(_manager.Push($"Pause {i}"));
+            tokens.Add(_manager.Push(string.Create(CultureInfo.InvariantCulture, $"Pause {i}")));
         }
 
         var tasks = tokens.Select(token => Task.Run(() => _manager.Pop(token))).ToList();
@@ -482,12 +483,24 @@ public class PauseStackManagerTests
     /// <summary>
     /// 测试用的暂停处理器实现
     /// </summary>
-    private class MockPauseHandler : IPauseHandler
+    private sealed class MockPauseHandler : IPauseHandler
     {
-        public int CallCount { get; private set; }
-        public PauseGroup? LastGroup { get; private set; }
-        public bool? LastIsPaused { get; private set; }
-        public Action? OnCall { get; set; }
+        public int CallCount
+        {
+            get; private set;
+        }
+        public PauseGroup? LastGroup
+        {
+            get; private set;
+        }
+        public bool? LastIsPaused
+        {
+            get; private set;
+        }
+        public Action? OnCall
+        {
+            get; set;
+        }
         public int Priority { get; set; } = 0;
 
         public void OnPauseStateChanged(PauseGroup group, bool isPaused)

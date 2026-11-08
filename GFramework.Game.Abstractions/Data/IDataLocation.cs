@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025 GeWuYou
+// Copyright (c) 2025 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -23,20 +23,32 @@ public interface IDataLocation
     /// <summary>
     ///     存储键（文件路径 / redis key / db key）
     /// </summary>
-    string Key { get; }
+    string Key
+    {
+        get;
+    }
 
     /// <summary>
     ///     存储类型（Local / Remote / Database / Memory）
     /// </summary>
-    StorageKinds Kinds { get; }
+    StorageKinds Kinds
+    {
+        get;
+    }
 
     /// <summary>
     ///     命名空间/分区
     /// </summary>
-    string? Namespace { get; }
+    string? Namespace
+    {
+        get;
+    }
 
     /// <summary>
     ///     扩展元数据（用于存储额外信息，如压缩、加密等）
     /// </summary>
-    IReadOnlyDictionary<string, string>? Metadata { get; }
+    IReadOnlyDictionary<string, string>? Metadata
+    {
+        get;
+    }
 }

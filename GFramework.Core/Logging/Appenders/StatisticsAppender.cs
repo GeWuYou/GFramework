@@ -156,28 +156,27 @@ public sealed class StatisticsAppender : ILogAppender
         var startTime = StartTime;
         var now = _timeProvider.UtcNow;
 
-        report.AppendLine(FormattableString.Invariant($"=== 日志统计报告 ==="));
-        report.AppendLine(FormattableString.Invariant(
-            $"统计时间: {startTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)} - {now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}"));
-        report.AppendLine(FormattableString.Invariant($"运行时长: {Uptime}"));
-        report.AppendLine(FormattableString.Invariant($"总日志数: {TotalCount}"));
-        report.AppendLine(FormattableString.Invariant($"错误日志数: {ErrorCount}"));
-        report.AppendLine(FormattableString.Invariant($"错误率: {ErrorRate:P2}"));
+        report.AppendLine($"=== 日志统计报告 ===");
+        report.AppendLine(string.Create(CultureInfo.InvariantCulture, $"统计时间: {startTime:yyyy-MM-dd HH:mm:ss} - {now:yyyy-MM-dd HH:mm:ss}"));
+        report.AppendLine($"运行时长: {Uptime}");
+        report.AppendLine(string.Create(CultureInfo.InvariantCulture, $"总日志数: {TotalCount}"));
+        report.AppendLine(string.Create(CultureInfo.InvariantCulture, $"错误日志数: {ErrorCount}"));
+        report.AppendLine(string.Create(CultureInfo.InvariantCulture, $"错误率: {ErrorRate:P2}"));
         report.AppendLine();
 
-        report.AppendLine(FormattableString.Invariant($"按级别统计:"));
+        report.AppendLine($"按级别统计:");
         foreach (var level in Enum.GetValues<LogLevel>())
         {
             var count = GetCountByLevel(level);
             if (count > 0)
             {
                 var percentage = (double)count / TotalCount;
-                report.AppendLine(FormattableString.Invariant($"  {level}: {count} ({percentage:P2})"));
+                report.AppendLine(string.Create(CultureInfo.InvariantCulture, $"  {level}: {count} ({percentage:P2})"));
             }
         }
 
         report.AppendLine();
-        report.AppendLine(FormattableString.Invariant($"按日志记录器统计 (Top 10):"));
+        report.AppendLine($"按日志记录器统计 (Top 10):");
         var topLoggers = _loggerCounts
             .OrderByDescending(kvp => kvp.Value)
             .Take(10);
@@ -185,7 +184,7 @@ public sealed class StatisticsAppender : ILogAppender
         foreach (var (logger, count) in topLoggers)
         {
             var percentage = (double)count / TotalCount;
-            report.AppendLine(FormattableString.Invariant($"  {logger}: {count} ({percentage:P2})"));
+            report.AppendLine(string.Create(CultureInfo.InvariantCulture, $"  {logger}: {count} ({percentage:P2})"));
         }
 
         return report.ToString();

@@ -29,10 +29,16 @@ internal sealed class YamlConfigStringFormatConstraint
     /// <summary>
     ///     获取 schema 中声明的 format 名称。
     /// </summary>
-    public string SchemaName { get; }
+    public string SchemaName
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取归一化后的共享 format 枚举。
     /// </summary>
-    public YamlConfigStringFormatKind Kind { get; }
+    public YamlConfigStringFormatKind Kind
+    {
+        get;
+    }
 }

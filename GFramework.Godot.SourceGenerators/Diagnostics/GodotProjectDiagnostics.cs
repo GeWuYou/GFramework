@@ -19,7 +19,7 @@ public static class GodotProjectDiagnostics
         "Type '{0}' uses [AutoLoad] but does not derive from Godot.Node",
         PathContests.GodotNamespace,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     多个类型映射到同一 AutoLoad 名称时会退化为非强类型访问。
@@ -30,7 +30,7 @@ public static class GodotProjectDiagnostics
         "AutoLoad '{0}' is mapped by multiple types ({1}); the generated accessor falls back to Godot.Node until the mapping is unique",
         PathContests.GodotNamespace,
         DiagnosticSeverity.Warning,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     多个 AutoLoad 名称映射到同一个标识符时会追加稳定后缀。
@@ -41,7 +41,7 @@ public static class GodotProjectDiagnostics
         "AutoLoad '{0}' collides with another generated identifier '{1}'; a stable numeric suffix was appended",
         PathContests.GodotNamespace,
         DiagnosticSeverity.Warning,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     多个 Input Action 名称映射到同一个标识符时会追加稳定后缀。
@@ -52,7 +52,7 @@ public static class GodotProjectDiagnostics
         "Input action '{0}' collides with another generated identifier '{1}'; a stable numeric suffix was appended",
         PathContests.GodotNamespace,
         DiagnosticSeverity.Warning,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     同一个 <c>project.godot</c> 中存在重复 AutoLoad 条目。
@@ -63,7 +63,7 @@ public static class GodotProjectDiagnostics
         "AutoLoad '{0}' is declared multiple times in project.godot; only the first declaration is used",
         PathContests.GodotNamespace,
         DiagnosticSeverity.Warning,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     同一个 <c>project.godot</c> 中存在重复 Input Action 条目。
@@ -74,5 +74,5 @@ public static class GodotProjectDiagnostics
         "Input action '{0}' is declared multiple times in project.godot; only the first declaration is used",
         PathContests.GodotNamespace,
         DiagnosticSeverity.Warning,
-        true);
+isEnabledByDefault: true);
 }

@@ -45,11 +45,13 @@ internal static class GameModPlatformAssemblies
     /// <summary>Visits every RID target because a neutral target may contain no runtime assets.</summary>
     private static void ReadRuntimeAssets(JsonElement root, HashSet<string> runtimeNames)
     {
-        if (!root.TryGetProperty("libraries", out var libraries) || !root.TryGetProperty("targets", out var targets)) return;
+        if (!root.TryGetProperty("libraries", out var libraries) || !root.TryGetProperty("targets", out var targets))
+            return;
         var runtimeLibraries = new HashSet<string>(StringComparer.Ordinal);
         foreach (var library in libraries.EnumerateObject())
         {
-            if (!library.Value.TryGetProperty("type", out var type)) continue;
+            if (!library.Value.TryGetProperty("type", out var type))
+                continue;
             var kind = type.GetString();
             if ((string.Equals(kind, "runtimepack", StringComparison.Ordinal) || string.Equals(kind, "package", StringComparison.Ordinal)) &&
                 (library.Name.StartsWith("runtimepack.Microsoft.NETCore.App.Runtime.", StringComparison.Ordinal) ||
@@ -60,7 +62,8 @@ internal static class GameModPlatformAssemblies
         {
             foreach (var library in target.Value.EnumerateObject())
             {
-                if (!runtimeLibraries.Contains(library.Name) || !library.Value.TryGetProperty("runtime", out var assets)) continue;
+                if (!runtimeLibraries.Contains(library.Name) || !library.Value.TryGetProperty("runtime", out var assets))
+                    continue;
                 foreach (var asset in assets.EnumerateObject())
                     if (asset.Name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
                         runtimeNames.Add(Path.GetFileNameWithoutExtension(asset.Name));

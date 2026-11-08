@@ -19,14 +19,18 @@ public sealed class StorageSnapshot
     /// <param name="bytes">Complete original file bytes.</param>
     public StorageSnapshot(byte[] bytes)
     {
-        if (bytes is null) throw new ArgumentNullException(nameof(bytes));
+        if (bytes is null)
+            throw new ArgumentNullException(nameof(bytes));
         _bytes = (byte[])bytes.Clone();
         using var algorithm = SHA256.Create();
-        Fingerprint = BitConverter.ToString(algorithm.ComputeHash(_bytes)).Replace("-", string.Empty);
+        Fingerprint = BitConverter.ToString(algorithm.ComputeHash(_bytes)).Replace("-", string.Empty, StringComparison.Ordinal);
     }
 
     /// <summary>Gets the SHA-256 fingerprint of the original file bytes.</summary>
-    public string Fingerprint { get; }
+    public string Fingerprint
+    {
+        get;
+    }
 
     /// <summary>Returns a copy suitable for an atomic raw-file write.</summary>
     /// <returns>Original bytes, with independent ownership.</returns>

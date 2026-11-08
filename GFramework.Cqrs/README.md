@@ -60,7 +60,7 @@ runtime 运行在标准 `Microsoft.Extensions.DependencyInjection` 容器上，�
   - `Extensions/ArchitectureContextCqrsExtensions.cs`
   - `Extensions/ContextAwareCqrsExtensions.cs`
   - `Extensions/NotificationPublisherRegistrationExtensions.cs`
-  - `Integration/ArchitectureCqrsDispatchContext.cs`
+  - `ArchitectureCqrsDispatchContext.cs`
 
 ## 最小接入路径
 
@@ -86,21 +86,25 @@ using GFramework.Cqrs.Cqrs.Request;
 
 public sealed record CreatePlayerRequest(string Name) : IRequest<int>;
 
-public sealed class CreatePlayerHandler
-    : AbstractRequestHandler<CreatePlayerRequest, int>
+public sealed class CreatePlayerHandler(PlayerModel playerModel)
+    : IRequestHandler<CreatePlayerRequest, int>
 {
-    public override ValueTask<int> Handle(
+    public ValueTask<int> Handle(
         CreatePlayerRequest request,
         CancellationToken cancellationToken)
     {
-        // 通过构造函数注入获取依赖；上下文感知处理器才使用 Context
-        var playerModel = Context.GetModel<PlayerModel>();
         var playerId = playerModel.Create(request.Name);
         return ValueTask.FromResult(playerId);
     }
 }
 
+```
+
+然后在应用组合根登记业务模型与处理器，再分发请求：
+
+```csharp
 var services = new ServiceCollection();
+services.AddSingleton<PlayerModel>();
 services.AddCqrsRuntime();
 services.AddCqrsHandlersFromAssembly(typeof(CreatePlayerHandler).Assembly);
 
@@ -111,23 +115,50 @@ var playerId = await runtime.SendAsync(new CreatePlayerRequest("Alice"));
 
 ## 在 Architecture 中集成
 
-走标准 `GFramework.Core` 架构启动路径时，在启动前安装 runtime 模块：
+示例中的 `PlayerModel` 是应用提供的业务模型，包含 `Create(string)` 操作；处理器通过构造注入取得它，不要求 Architecture 上下文。
+
+走标准 `GFramework.Core` 架构启动路径时，在 `ConfigureServices` 配置窗口中安装 runtime 模块：
 
 ```csharp
 using GFramework.Cqrs.Extensions;
 
-var architecture = new GameArchitecture();
-architecture.UseCqrsRuntime(); // 自动包含架构所在程序集的 handler
-await architecture.InitializeAsync();
+public sealed class GameArchitecture : Architecture
+{
+    protected override void ConfigureServices(IServiceCollection services)
+    {
+        this.UseCqrsRuntime(); // 自动包含架构所在程序集的 handler
+        services.AddSingleton<PlayerModel>();
+    }
+}
 ```
 
-或显式登记服务模块：
+或在同一配置窗口中显式登记服务模块：
 
 ```csharp
-architecture.RegisterServiceModule(new CqrsRuntimeModule(typeof(InventoryModule).Assembly));
+protected override void ConfigureServices(IServiceCollection services)
+{
+    RegisterServiceModule(new CqrsRuntimeModule(typeof(InventoryModule).Assembly));
+}
 ```
 
 pipeline 行为、通知发布策略与额外 handler 程序集通过 `ConfigureServices(...)` 里的 `IServiceCollection` 扩展登记（`AddCqrsPipelineBehavior`、`UseNotificationPublisher*`、`AddCqrsHandlersFromAssembly`）。`CqrsRuntimeModule` 不再内置到 Core 的默认模块列表，未安装它的架构没有 CQRS 分发能力。
+
+## 请求作用域
+
+`AddCqrsRuntime` 保持根单例语义，只能使用可从根 provider 解析的依赖。需要 Scoped handler 或依赖时，显式选择 `AddScopedCqrsRuntime` 并从请求作用域解析 runtime；注册入口不会自动改变 handler 自身的生命周期：
+
+```csharp
+services.AddScopedCqrsRuntime();
+services.AddScoped<PlayerModel>();
+services.AddScoped<IRequestHandler<CreatePlayerRequest, int>, CreatePlayerHandler>();
+
+await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+await using var scope = provider.CreateAsyncScope();
+var runtime = scope.ServiceProvider.GetRequiredService<ICqrsRuntime>();
+var playerId = await runtime.SendAsync(new CreatePlayerRequest("Alice"));
+```
+
+同一作用域复用 runtime，不同作用域隔离依赖；request、notification 与 stream 都通过该作用域解析。枚举流结束后再释放作用域。单例与作用域 runtime 注册不能在同一容器混用。需要自行组合 provider 时，也可调用 `CqrsRuntimeFactory.CreateRuntime(scope.ServiceProvider)`。
 
 在 `IContextAware` 对象内发送请求：
 

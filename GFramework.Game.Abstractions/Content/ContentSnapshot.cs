@@ -10,10 +10,14 @@ public sealed class ContentSnapshot
     /// <param name="packs">Packages in actual dependency-resolved load order.</param>
     public ContentSnapshot(IReadOnlyList<ContentPackStamp> packs)
     {
-        if (packs is null) throw new ArgumentNullException(nameof(packs));
+        if (packs is null)
+            throw new ArgumentNullException(nameof(packs));
         Packs = Array.AsReadOnly(packs.ToArray());
     }
 
     /// <summary>Gets packages in effective load order.</summary>
-    public IReadOnlyList<ContentPackStamp> Packs { get; }
+    public IReadOnlyList<ContentPackStamp> Packs
+    {
+        get;
+    }
 }

@@ -138,7 +138,7 @@ public class ExplicitRegistrationTests
     [Test]
     public async Task DestroyAsync_Should_Stop_Started_Systems_After_Partial_Initialization_Failure()
     {
-        using var container = new MicrosoftDiContainer();
+        await using var container = new MicrosoftDiContainer();
         container.Register<ILoggerFactory>(NullLoggerFactory.Instance);
         ((IContextAware)container).SetContext(new ArchitectureContext(container));
         var started = new StartedSystem();
@@ -179,7 +179,10 @@ public class ExplicitRegistrationTests
         /// <summary>
         ///     获取业务停止次数。
         /// </summary>
-        public int StopCount { get; private set; }
+        public int StopCount
+        {
+            get; private set;
+        }
 
         /// <inheritdoc />
         protected override void OnDestroy()

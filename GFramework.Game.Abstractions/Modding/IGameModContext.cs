@@ -12,15 +12,30 @@ namespace GFramework.Game.Abstractions.Modding;
 public interface IGameModContext
 {
     /// <summary>Gets the game identity used to namespace integration state.</summary>
-    string GameId { get; }
+    string GameId
+    {
+        get;
+    }
     /// <summary>Gets the exact approved package snapshot.</summary>
-    ContentPackStamp Package { get; }
+    ContentPackStamp Package
+    {
+        get;
+    }
     /// <summary>Gets host-selected services, with per-mod services preceding shared services.</summary>
-    IServiceProvider Services { get; }
+    IServiceProvider Services
+    {
+        get;
+    }
     /// <summary>Gets the dispatcher for operations that touch the native host.</summary>
-    IGameDispatcher Dispatcher { get; }
+    IGameDispatcher Dispatcher
+    {
+        get;
+    }
     /// <summary>Gets a logger categorized with the mod identity.</summary>
-    ILogger Logger { get; }
+    ILogger Logger
+    {
+        get;
+    }
     /// <summary>Transfers a disposable resource to this mod scope for reverse-order cleanup.</summary>
     /// <param name="resource">Resource owned by this mod, not a shared host singleton.</param>
     void Own(IDisposable resource);

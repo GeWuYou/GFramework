@@ -35,7 +35,7 @@ public class WaitForPredicateTests
     public void WaitForPredicate_Should_Wait_For_False_When_Specified()
     {
         var condition = true;
-        var wait = new WaitForPredicate(() => condition, false);
+        var wait = new WaitForPredicate(() => condition, waitForTrue: false);
 
         Assert.That(wait.IsDone, Is.False);
 

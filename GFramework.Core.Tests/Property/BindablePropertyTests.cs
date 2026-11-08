@@ -18,7 +18,7 @@ public class BindablePropertyTests
     [TearDown]
     public void TearDown()
     {
-        BindableProperty<string>.Comparer = (a, b) => a?.Equals(b) ?? b == null;
+        BindableProperty<string>.Comparer = (a, b) => a?.Equals(b, StringComparison.Ordinal) ?? b == null;
     }
 
     /// <summary>
@@ -73,7 +73,10 @@ public class BindablePropertyTests
         var property = new BindableProperty<int>();
         var count = 0;
 
-        Action<int> handler = _ => { count++; };
+        void handler(int _)
+        {
+            count++;
+        }
         property.Register(handler);
 
         property.Value = 1;
@@ -286,7 +289,9 @@ public class BindablePropertyTests
                 {
                     for (var j = 0; j < iterationsPerThread; j++)
                     {
-                        Action<int> handler = _ => { };
+                        static void handler(int _)
+                        {
+                        }
                         property.Register(handler);
                         property.UnRegister(handler);
                     }
@@ -346,6 +351,6 @@ public class BindablePropertyTests
 
         Assert.That(exceptions, Is.Empty);
         Assert.That(receivedValues.Count, Is.EqualTo(threadCount));
-        Assert.That(receivedValues.All(v => v == 42), Is.True, "所有初始值都应该是42");
+        Assert.That(receivedValues.TrueForAll(v => v == 42), Is.True, "所有初始值都应该是42");
     }
 }

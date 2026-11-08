@@ -31,14 +31,14 @@ public sealed class CoroutinePhaseTests
         }
         var handle = scheduler.Run(Routine());
         scheduler.Update(CoroutineExecutionStage.Update, 1, 1);
-        Assert.That(order, Is.EqualTo(new[] { "start" }));
+        Assert.That(order, Is.EqualTo(["start"]));
         scheduler.Update(CoroutineExecutionStage.FixedUpdate, 1, 1);
         scheduler.Update(CoroutineExecutionStage.Update, 1, 1);
-        Assert.That(order, Is.EqualTo(new[] { "start", "fixed-first" }));
+        Assert.That(order, Is.EqualTo(["start", "fixed-first"]));
         scheduler.Update(CoroutineExecutionStage.FixedUpdate, 1, 1);
         scheduler.Update(CoroutineExecutionStage.Deferred, 1, 1);
         scheduler.Update(CoroutineExecutionStage.Update, 1, 1);
-        Assert.That(order, Is.EqualTo(new[] { "start", "fixed-first", "fixed-second", "deferred", "update" }));
+        Assert.That(order, Is.EqualTo(["start", "fixed-first", "fixed-second", "deferred", "update"]));
         Assert.That(scheduler.IsCoroutineAlive(handle), Is.False);
     }
 
@@ -109,7 +109,10 @@ public sealed class CoroutinePhaseTests
     public void AwaitUnknown_FailsExplicitly()
     {
         var scheduler = Create();
-        IEnumerator<IYieldInstruction> Routine() { yield return scheduler.Await(default); }
+        IEnumerator<IYieldInstruction> Routine()
+        {
+            yield return scheduler.Await(default);
+        }
         var handle = scheduler.Run(Routine());
         scheduler.Update();
         Assert.That(scheduler.TryGetResult(handle, out var result), Is.True);
@@ -117,6 +120,9 @@ public sealed class CoroutinePhaseTests
     }
 
     private static CoroutineScheduler Create() => new(new FakeTimeSource(), supportedStages:
-        new[] { CoroutineExecutionStage.Update, CoroutineExecutionStage.FixedUpdate, CoroutineExecutionStage.Deferred });
-    private static IEnumerator<IYieldInstruction> Wait() { yield return new WaitOneFrame(); }
+        [CoroutineExecutionStage.Update, CoroutineExecutionStage.FixedUpdate, CoroutineExecutionStage.Deferred]);
+    private static IEnumerator<IYieldInstruction> Wait()
+    {
+        yield return new WaitOneFrame();
+    }
 }

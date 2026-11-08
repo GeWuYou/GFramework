@@ -22,23 +22,28 @@ namespace GFramework.Godot.Scene;
 ///     提供对 Node 类型场景节点的统一管理，包括加载、进入、暂停、恢复、退出、卸载等操作。
 /// </summary>
 /// <typeparam name="T">Node 类型的场景节点。</typeparam>
-public abstract class SceneBehaviorBase<T> : ISceneBehavior
+/// <remarks>
+///     初始化 SceneBehaviorBase 实例。
+/// </remarks>
+/// <param name="owner">场景节点的所有者实例。</param>
+/// <param name="key">场景的唯一标识键。</param>
+public abstract class SceneBehaviorBase<T>(T owner, string key) : ISceneBehavior
     where T : Node
 {
     /// <summary>
     ///     场景的唯一标识键。
     /// </summary>
-    private readonly string _key;
+    private readonly string _key = key;
 
     /// <summary>
     ///     IScene 接口引用（如果节点实现了该接口）。
     /// </summary>
-    private readonly IScene? _scene;
+    private readonly IScene? _scene = owner as IScene;
 
     /// <summary>
     ///     场景节点的所有者实例。
     /// </summary>
-    protected readonly T Owner;
+    protected readonly T Owner = owner;
 
     /// <summary>
     ///     场景是否处于活跃状态。
@@ -58,18 +63,6 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     // Retain the first pre-pause state through repeated calls and callback failures.
     // Only successful restoration consumes the snapshot, allowing compensating resume.
     private (bool Process, bool Physics, bool Input)? _pausedProcessing;
-
-    /// <summary>
-    ///     初始化 SceneBehaviorBase 实例。
-    /// </summary>
-    /// <param name="owner">场景节点的所有者实例。</param>
-    /// <param name="key">场景的唯一标识键。</param>
-    protected SceneBehaviorBase(T owner, string key)
-    {
-        Owner = owner;
-        _key = key;
-        _scene = owner as IScene;
-    }
 
     #region ISceneBehavior 实现
 
@@ -158,9 +151,9 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
             await _scene.OnPauseAsync(cancellationToken).ConfigureAwait(true);
 
         // 暂停处理
-        Owner.SetProcess(false);
-        Owner.SetPhysicsProcess(false);
-        Owner.SetProcessInput(false);
+        Owner.SetProcess(enable: false);
+        Owner.SetPhysicsProcess(enable: false);
+        Owner.SetProcessInput(enable: false);
 
         _isActive = false;
     }

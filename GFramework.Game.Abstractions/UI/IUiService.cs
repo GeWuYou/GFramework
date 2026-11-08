@@ -10,7 +10,10 @@ namespace GFramework.Game.Abstractions.UI;
 public interface IUiService : IAsyncDisposable
 {
     /// <summary>Gets an immutable copy of committed state and operation diagnostics.</summary>
-    UiSnapshot Snapshot { get; }
+    UiSnapshot Snapshot
+    {
+        get;
+    }
     /// <summary>Pushes a page, hiding the previous page while retaining its navigation history.</summary>
     /// <typeparam name="TArgs">Opening argument type.</typeparam>
     /// <param name="route">Registered page definition.</param>

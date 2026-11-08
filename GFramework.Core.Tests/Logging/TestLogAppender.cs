@@ -13,18 +13,24 @@ namespace GFramework.Core.Tests.Logging;
 /// </remarks>
 public sealed class TestLogAppender : ILogAppender
 {
-    private readonly List<LogEntry> _entries = new();
+    private readonly List<LogEntry> _entries = [];
     private readonly Lock _sync = new();
 
     /// <summary>
     ///     获取一个值，该值指示 <see cref="Flush" /> 是否已被调用。
     /// </summary>
-    public bool FlushCalled { get; private set; }
+    public bool FlushCalled
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取一个值，该值指示 <see cref="Dispose" /> 是否已被调用。
     /// </summary>
-    public bool DisposeCalled { get; private set; }
+    public bool DisposeCalled
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取按写入顺序保存的日志条目快照。
@@ -35,7 +41,7 @@ public sealed class TestLogAppender : ILogAppender
         {
             lock (_sync)
             {
-                return _entries.ToArray();
+                return [.. _entries];
             }
         }
     }

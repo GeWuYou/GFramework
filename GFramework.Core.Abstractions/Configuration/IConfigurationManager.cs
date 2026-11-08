@@ -15,7 +15,10 @@ public interface IConfigurationManager : IUtility
     /// <summary>
     ///     获取配置数量
     /// </summary>
-    int Count { get; }
+    int Count
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取指定键的配置值

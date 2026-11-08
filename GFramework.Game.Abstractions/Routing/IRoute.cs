@@ -21,5 +21,8 @@ public interface IRoute
     /// <summary>
     /// 路由键值,用于唯一标识路由项
     /// </summary>
-    string Key { get; }
+    string Key
+    {
+        get;
+    }
 }

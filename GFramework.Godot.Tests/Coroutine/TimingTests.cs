@@ -42,11 +42,11 @@ public sealed class TimingTests
         var game = _timing.RunCoroutineOnInstance(AfterFrame(() => completed.Add("game")));
         var ui = _timing.RunCoroutineOnInstance(AfterFrame(() => completed.Add("ui")), Segment.ProcessIgnorePause);
         _timing.AdvanceProcessFrameForTests(paused: true);
-        Assert.That(completed, Is.EqualTo(new[] { "ui" }));
+        Assert.That(completed, Is.EqualTo(["ui"]));
         Assert.That(_timing.GetSchedulerForTests(Segment.Process).IsCoroutineAlive(game), Is.True);
         Assert.That(_timing.GetSchedulerForTests(Segment.Process).IsCoroutineAlive(ui), Is.False);
         _timing.AdvanceProcessFrameForTests(paused: false);
-        Assert.That(completed, Is.EqualTo(new[] { "ui", "game" }));
+        Assert.That(completed, Is.EqualTo(["ui", "game"]));
     }
 
     /// <summary>A physics tick cannot consume an ordinary Update wait.</summary>
@@ -57,7 +57,7 @@ public sealed class TimingTests
         _timing.RunCoroutineOnInstance(AfterFrame(() => completed.Add("process")));
         _timing.RunCoroutineOnInstance(AfterFrame(() => completed.Add("physics")), Segment.PhysicsProcess);
         _timing.AdvancePhysicsFrameForTests();
-        Assert.That(completed, Is.EqualTo(new[] { "physics" }));
+        Assert.That(completed, Is.EqualTo(["physics"]));
         Assert.That(_timing.ProcessCoroutines, Is.EqualTo(1));
         Assert.That(_timing.PhysicsCoroutines, Is.Zero);
     }
@@ -82,7 +82,7 @@ public sealed class TimingTests
         _timing.RunCoroutineOnInstance(AfterFrame(() => order.Add("process")));
         _timing.RunCoroutineOnInstance(AfterFrame(() => order.Add("deferred")), Segment.DeferredProcess);
         _timing.AdvanceProcessFrameForTests(paused: false);
-        Assert.That(order, Is.EqualTo(new[] { "process", "deferred" }));
+        Assert.That(order, Is.EqualTo(["process", "deferred"]));
     }
 
     /// <summary>Explicit switching keeps identity and stays at the destination until another switch.</summary>
@@ -106,16 +106,16 @@ public sealed class TimingTests
         _timing.AdvanceProcessFrameForTests(paused: false);
         Assert.That(order, Is.Empty);
         _timing.AdvancePhysicsFrameForTests();
-        Assert.That(order, Is.EqualTo(new[] { "physics" }));
+        Assert.That(order, Is.EqualTo(["physics"]));
         Assert.That(Timing.TryGetCoroutineSnapshot(handle, out var snapshot), Is.True);
         Assert.That(snapshot.ExecutionStage, Is.EqualTo(CoroutineExecutionStage.FixedUpdate));
         _timing.AdvanceProcessFrameForTests(paused: false);
         Assert.That(order.Count, Is.EqualTo(1));
         _timing.AdvancePhysicsFrameForTests();
         _timing.AdvanceProcessFrameForTests(paused: false);
-        Assert.That(order, Is.EqualTo(new[] { "physics", "physics-again", "deferred" }));
+        Assert.That(order, Is.EqualTo(["physics", "physics-again", "deferred"]));
         _timing.AdvanceProcessFrameForTests(paused: false);
-        Assert.That(order.Last(), Is.EqualTo("update"));
+        Assert.That(order[^1], Is.EqualTo("update"));
         Assert.That(_timing.GetSchedulerForTests(Segment.Process).TryGetCompletionStatus(handle, out var status), Is.True);
         Assert.That(status, Is.EqualTo(CoroutineCompletionStatus.Completed));
     }
@@ -124,18 +124,18 @@ public sealed class TimingTests
     [Test]
     public void UiPausePolicy_Should_Survive_Stage_Switches()
     {
-        var completed = false;
+        var completed = new global::System.Runtime.CompilerServices.StrongBox<bool>(value: false);
         IEnumerator<IYieldInstruction> Flow()
         {
             yield return new SwitchTo(CoroutineExecutionStage.FixedUpdate);
             yield return new SwitchTo(CoroutineExecutionStage.Deferred);
-            completed = true;
+            completed.Value = true;
         }
 
         _timing.RunCoroutineOnInstance(Flow(), Segment.ProcessIgnorePause);
         _timing.AdvancePhysicsFrameForTests(paused: true);
         _timing.AdvanceProcessFrameForTests(paused: true);
-        Assert.That(completed, Is.True);
+        Assert.That(completed.Value, Is.True);
     }
 
     /// <summary>Paused host callbacks still drain external cancellation and execute iterator finally blocks.</summary>
@@ -146,7 +146,10 @@ public sealed class TimingTests
         var disposed = false;
         IEnumerator<IYieldInstruction> Flow()
         {
-            try { yield return new Delay(100); }
+            try
+            {
+                yield return new Delay(100);
+            }
             finally { disposed = true; }
         }
 
@@ -166,12 +169,15 @@ public sealed class TimingTests
         var childDisposed = false;
         IEnumerator<IYieldInstruction> Child()
         {
-            try { yield return new Delay(100); }
+            try
+            {
+                yield return new Delay(100);
+            }
             finally { childDisposed = true; }
         }
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            context.RunChild(Child());
+            context.RunChild(Child(), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new SwitchTo(CoroutineExecutionStage.FixedUpdate);
             yield return new Delay(100);
         }
@@ -191,10 +197,16 @@ public sealed class TimingTests
         var rejected = false;
         IEnumerator<IYieldInstruction> Flow()
         {
-            try { yield return new Delay(100); }
+            try
+            {
+                yield return new Delay(100);
+            }
             finally
             {
-                try { _timing.RunCoroutineOnInstance(WaitLong()); }
+                try
+                {
+                    _timing.RunCoroutineOnInstance(WaitLong());
+                }
                 catch (InvalidOperationException) { rejected = true; }
             }
         }

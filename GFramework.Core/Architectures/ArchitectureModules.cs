@@ -22,9 +22,15 @@ internal sealed class ArchitectureModules(
     public IArchitectureModule InstallModule(IArchitectureModule module)
     {
         var name = module.GetType().Name;
-        logger.LogDebug($"Installing module: {name}");
+        if (logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+        {
+            logger.LogDebug("Installing module: {ModuleName}", name);
+        }
         module.Install(architecture);
-        logger.LogInformation($"Module installed: {name}");
+        if (logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Information))
+        {
+            logger.LogInformation("Module installed: {ModuleName}", name);
+        }
         return module;
     }
 }

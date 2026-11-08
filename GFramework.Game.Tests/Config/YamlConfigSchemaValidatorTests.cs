@@ -33,7 +33,7 @@ public sealed class YamlConfigSchemaValidatorTests
         if (!string.IsNullOrEmpty(_rootPath) &&
             Directory.Exists(_rootPath))
         {
-            Directory.Delete(_rootPath, true);
+            Directory.Delete(_rootPath, recursive: true);
         }
     }
 
@@ -71,7 +71,7 @@ public sealed class YamlConfigSchemaValidatorTests
 
         var schema = YamlConfigSchemaValidator.Load("monster", schemaPath);
 
-        Assert.That(schema.ReferencedTableNames, Is.EqualTo(new[] { "ally", "item", "weapon" }));
+        Assert.That(schema.ReferencedTableNames, Is.EqualTo(["ally", "item", "weapon"]));
     }
 
     /// <summary>

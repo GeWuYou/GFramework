@@ -194,18 +194,18 @@ public partial class PlayerService : IController
         }
     }
 
-    public Task<PlayerData> GetPlayer(string name)
+    public ValueTask<PlayerData> GetPlayer(string name)
     {
         return this.SendRequestAsync<PlayerData>(new GetPlayerRequest(name));
     }
 
-    public Task<List<PlayerData>> GetAllPlayers(PlayerClass? classFilter = null, int? minLevel = null)
+    public ValueTask<List<PlayerData>> GetAllPlayers(PlayerClass? classFilter = null, int? minLevel = null)
     {
         return this.SendRequestAsync<List<PlayerData>>(
             new GetAllPlayersRequest(classFilter, minLevel));
     }
 
-    public Task<PlayerStatistics> GetPlayerStatistics(string playerName)
+    public ValueTask<PlayerStatistics> GetPlayerStatistics(string playerName)
     {
         return this.SendRequestAsync<PlayerStatistics>(
             new GetPlayerStatisticsRequest(playerName));

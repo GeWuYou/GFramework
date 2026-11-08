@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025 GeWuYou
+// Copyright (c) 2025 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -43,5 +43,5 @@ public enum StorageKinds
     /// <summary>
     ///     数据库存储
     /// </summary>
-    Database = 1 << 3
+    Database = 1 << 3,
 }

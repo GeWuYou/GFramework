@@ -55,7 +55,8 @@ public static class GodotUiRegistrationExtensions
             var node = scene.Instantiate();
             try
             {
-                if (node is not Control control) throw new InvalidOperationException($"UI route '{route.Key}' requires a Control scene root.");
+                if (node is not Control control)
+                    throw new InvalidOperationException($"UI route '{route.Key}' requires a Control scene root.");
                 bind?.Invoke(control, args, context);
                 return control;
             }

@@ -23,18 +23,14 @@ namespace GFramework.Game.Scene.Handler;
 /// <summary>
 /// 日志场景切换处理器，用于记录场景切换的详细信息。
 /// </summary>
-public sealed class LoggingTransitionHandler : SceneTransitionHandlerBase
+/// <remarks>创建日志切换处理器；未注入日志时使用空输出。</remarks>
+/// <param name="logger">标准日志记录器。</param>
+public sealed class LoggingTransitionHandler(ILogger? logger = null) : SceneTransitionHandlerBase
 {
-    /// <summary>创建日志切换处理器；未注入日志时使用空输出。</summary>
-    /// <param name="logger">标准日志记录器。</param>
-    public LoggingTransitionHandler(ILogger? logger = null)
-    {
-        _logger = logger ?? NullLogger<LoggingTransitionHandler>.Instance;
-    }
 
     // 标准日志记录器；未注入时使用空输出，不读取进程级状态。
-    private readonly ILogger _logger;
-    
+    private readonly ILogger _logger = logger ?? NullLogger<LoggingTransitionHandler>.Instance;
+
     /// <summary>
     /// 获取处理器优先级，数值越大优先级越低（最后执行）。
     /// </summary>
@@ -53,13 +49,13 @@ public sealed class LoggingTransitionHandler : SceneTransitionHandlerBase
     /// <returns>表示异步操作的任务。</returns>
     public override Task HandleAsync(SceneTransitionEvent @event, CancellationToken cancellationToken)
     {
-        _logger.LogInformation(
-            "Scene Transition: Phases={0}, Type={1}, From={2}, To={3}",
-            @event.Get<string>("Phases", "Unknown"),
-            @event.TransitionType,
-            @event.FromSceneKey ?? "None",
-            @event.ToSceneKey ?? "None"
-        );
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Scene Transition: Phases={Phases}, Type={TransitionType}, From={FromScene}, To={ToScene}",
+                @event.Get<string>("Phases", "Unknown"), @event.TransitionType,
+                @event.FromSceneKey ?? "None", @event.ToSceneKey ?? "None");
+        }
 
         return Task.CompletedTask;
     }

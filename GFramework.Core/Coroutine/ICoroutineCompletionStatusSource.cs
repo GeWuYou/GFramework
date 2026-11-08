@@ -9,5 +9,8 @@ namespace GFramework.Core.Coroutine;
 internal interface ICoroutineCompletionStatusSource
 {
     /// <summary>The underlying operation's explicit status; Unknown leaves classification to the coroutine exception contract.</summary>
-    CoroutineCompletionStatus CompletionStatus { get; }
+    CoroutineCompletionStatus CompletionStatus
+    {
+        get;
+    }
 }

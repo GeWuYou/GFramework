@@ -98,7 +98,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
         IReadOnlyList<ImplementationRegistrationSpec> registrations)
     {
         if (!supportsRequestInvokerProvider)
-            return ImmutableArray<RequestInvokerEmissionSpec>.Empty;
+            return [];
 
         var builder = ImmutableArray.CreateBuilder<RequestInvokerEmissionSpec>();
         var methodIndex = 0;
@@ -151,7 +151,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
         IReadOnlyList<ImplementationRegistrationSpec> registrations)
     {
         if (!supportsStreamInvokerProvider)
-            return ImmutableArray<StreamInvokerEmissionSpec>.Empty;
+            return [];
 
         var builder = ImmutableArray.CreateBuilder<StreamInvokerEmissionSpec>();
         var methodIndex = 0;
@@ -699,7 +699,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
         int registrationIndex)
     {
         var orderedRegistrations = CreateOrderedRegistrations(registration);
-        var implementationVariableName = $"implementationType{registrationIndex}";
+        var implementationVariableName = global::System.FormattableString.Invariant($"implementationType{registrationIndex}");
         AppendImplementationTypeVariable(builder, registration, implementationVariableName);
 
         builder.Append("        if (");
@@ -765,7 +765,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
     }
 
     /// <summary>
-    ///     发射实现类型变量。公开类型直接使用 <c>typeof</c>，不可直接引用的实现类型则从当前程序集反射解析。
+    ///     发射实现类型变量。公开类型直接使用 <see langword="typeof" />，不可直接引用的实现类型则从当前程序集反射解析。
     /// </summary>
     /// <param name="builder">生成源码构造器。</param>
     /// <param name="registration">单个实现类型聚合后的注册描述。</param>
@@ -906,7 +906,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
         int orderedRegistrationIndex,
         string implementationVariableName)
     {
-        var registrationVariablePrefix = $"serviceType{registrationIndex}_{orderedRegistrationIndex}";
+        var registrationVariablePrefix = global::System.FormattableString.Invariant($"serviceType{registrationIndex}_{orderedRegistrationIndex}");
         AppendPreciseReflectedTypeResolution(
             builder,
             preciseRegistration.ServiceTypeArguments,
@@ -978,7 +978,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
             resolvedArgumentNames[argumentIndex] = AppendRuntimeTypeReferenceResolution(
                 builder,
                 serviceTypeArguments[argumentIndex],
-                $"{registrationVariablePrefix}Argument{argumentIndex}",
+                global::System.FormattableString.Invariant($"{registrationVariablePrefix}Argument{argumentIndex}"),
                 reflectedArgumentNames,
                 indent);
         }
@@ -1106,7 +1106,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
 
         return runtimeTypeReference.ArrayRank == 1
             ? $"{elementExpression}.MakeArrayType()"
-            : $"{elementExpression}.MakeArrayType({runtimeTypeReference.ArrayRank})";
+            : global::System.FormattableString.Invariant($"{elementExpression}.MakeArrayType({runtimeTypeReference.ArrayRank})");
     }
 
     /// <summary>
@@ -1139,7 +1139,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
             genericArgumentExpressions[argumentIndex] = AppendRuntimeTypeReferenceResolution(
                 builder,
                 runtimeTypeReference.GenericTypeArguments[argumentIndex],
-                $"{variableBaseName}GenericArgument{argumentIndex}",
+                global::System.FormattableString.Invariant($"{variableBaseName}GenericArgument{argumentIndex}"),
                 reflectedArgumentNames,
                 indent);
         }

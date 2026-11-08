@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Immutable;
@@ -10,6 +10,8 @@ namespace GFramework.SourceGenerators.Tests.Core;
 ///     用于测试源代码生成器的快照测试类
 /// </summary>
 /// <typeparam name="TGenerator">要测试的源代码生成器类型</typeparam>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0018",
+    Justification = "Each closed generic snapshot fixture binds the generator type used by its existing static verification entry point.")]
 public static class GeneratorSnapshotTest<TGenerator>
     where TGenerator : new()
 {
@@ -219,7 +221,7 @@ public static class GeneratorSnapshotTest<TGenerator>
             ISourceGenerator sourceGenerator => sourceGenerator,
             IIncrementalGenerator incrementalGenerator => incrementalGenerator.AsSourceGenerator(),
             _ => throw new InvalidOperationException(
-                $"Generator type '{typeof(TGenerator).FullName}' must implement {nameof(ISourceGenerator)} or {nameof(IIncrementalGenerator)}.")
+                $"Generator type '{typeof(TGenerator).FullName}' must implement {nameof(ISourceGenerator)} or {nameof(IIncrementalGenerator)}."),
         };
     }
 

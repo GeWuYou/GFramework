@@ -252,12 +252,12 @@ public class ContextAwareServiceExtensionsTests
         Assert.That(results, Is.Empty);
     }
 
-    private class TestService
+    private sealed class TestService
     {
         public string Name { get; set; } = string.Empty;
     }
 
-    private class TestSystem : ISystem
+    private sealed class TestSystem : ISystem
     {
         public string Name { get; set; } = string.Empty;
 
@@ -280,7 +280,7 @@ public class ContextAwareServiceExtensionsTests
         }
     }
 
-    private class TestModel : IModel
+    private sealed class TestModel : IModel
     {
         public string Name { get; set; } = string.Empty;
 
@@ -299,12 +299,10 @@ public class ContextAwareServiceExtensionsTests
         }
     }
 
-    private class TestUtility : IUtility
+    private sealed class TestUtility : IUtility
     {
         public string Name { get; set; } = string.Empty;
     }
 
-    private class TestContextAware : ContextAwareBase
-    {
-    }
+    private sealed class TestContextAware : ContextAwareBase;
 }

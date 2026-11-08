@@ -36,7 +36,7 @@ public class GameConfigBootstrapTests
     {
         if (Directory.Exists(_rootPath))
         {
-            Directory.Delete(_rootPath, true);
+            Directory.Delete(_rootPath, recursive: true);
         }
     }
 
@@ -84,7 +84,7 @@ public class GameConfigBootstrapTests
             new YamlConfigHotReloadOptions
             {
                 OnTableReloaded = tableName => reloadTaskSource.TrySetResult(tableName),
-                DebounceDelay = TimeSpan.FromMilliseconds(150)
+                DebounceDelay = TimeSpan.FromMilliseconds(150),
             });
 
         try
@@ -124,7 +124,7 @@ public class GameConfigBootstrapTests
             _ = new GameConfigBootstrap(
                 new GameConfigBootstrapOptions
                 {
-                    RootPath = _rootPath
+                    RootPath = _rootPath,
                 }));
 
         Assert.That(exception!.ParamName, Is.EqualTo("options"));
@@ -138,8 +138,8 @@ public class GameConfigBootstrapTests
     {
         CreateMonsterFiles();
 
-        using ManualResetEventSlim initializeEntered = new(false);
-        using ManualResetEventSlim continueInitialization = new(false);
+        using ManualResetEventSlim initializeEntered = new(initialState: false);
+        using ManualResetEventSlim continueInitialization = new(initialState: false);
         using var bootstrap = new GameConfigBootstrap(
             new GameConfigBootstrapOptions
             {
@@ -154,9 +154,9 @@ public class GameConfigBootstrapTests
                     loader.RegisterAllGeneratedConfigTables(
                         new GeneratedConfigRegistrationOptions
                         {
-                            IncludedConfigDomains = new[] { MonsterConfigBindings.ConfigDomain }
+                            IncludedConfigDomains = [MonsterConfigBindings.ConfigDomain],
                         });
-                }
+                },
             });
 
         var firstInitializeTask = Task.Run(() => bootstrap.InitializeAsync());
@@ -195,14 +195,14 @@ public class GameConfigBootstrapTests
                 EnableHotReload = true,
                 HotReloadOptions = new YamlConfigHotReloadOptions
                 {
-                    DebounceDelay = TimeSpan.FromMilliseconds(-1)
+                    DebounceDelay = TimeSpan.FromMilliseconds(-1),
                 },
                 ConfigureLoader = static loader =>
                     loader.RegisterAllGeneratedConfigTables(
                         new GeneratedConfigRegistrationOptions
                         {
-                            IncludedConfigDomains = new[] { MonsterConfigBindings.ConfigDomain }
-                        })
+                            IncludedConfigDomains = [MonsterConfigBindings.ConfigDomain],
+                        }),
             });
 
         var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => bootstrap.InitializeAsync());
@@ -232,8 +232,8 @@ public class GameConfigBootstrapTests
                     loader.RegisterAllGeneratedConfigTables(
                         new GeneratedConfigRegistrationOptions
                         {
-                            IncludedConfigDomains = new[] { MonsterConfigBindings.ConfigDomain }
-                        })
+                            IncludedConfigDomains = [MonsterConfigBindings.ConfigDomain],
+                        }),
             });
     }
 

@@ -45,8 +45,8 @@ public sealed class AbstractArchitectureModuleInstallationTests
         context.UnRegisterEvent<DummyEvent>(_ => { });
         context.GetEnvironment();
 
-        Assert.That(inner.Calls, Is.EquivalentTo(new[]
-        {
+        Assert.That(inner.Calls, Is.EquivalentTo(
+        [
             nameof(IArchitectureContext.GetService),
             nameof(IArchitectureContext.GetServices),
             nameof(IArchitectureContext.GetSystem),
@@ -64,7 +64,7 @@ public sealed class AbstractArchitectureModuleInstallationTests
             nameof(IArchitectureContext.RegisterEvent),
             nameof(IArchitectureContext.UnRegisterEvent),
             nameof(IArchitectureContext.GetEnvironment),
-        }));
+        ]));
     }
 
     /// <summary>
@@ -131,16 +131,21 @@ public sealed class AbstractArchitectureModuleInstallationTests
         /// <inheritdoc />
         protected override ValueTask OnStartedAsync(CancellationToken cancellationToken)
         {
+            // This fixture tests declarations only; native attachment is deliberately excluded from the managed host.
             return ValueTask.CompletedTask;
         }
     }
 
+    /// <summary>Exposes module installation so configuration-window guards can be observed without native attachment.</summary>
     private sealed class TestArchitecture : AbstractArchitecture
     {
+        /// <inheritdoc />
         protected override void InstallModules()
         {
         }
 
+        /// <summary>Forwards the test request through the production module-installation boundary.</summary>
+        /// <param name="module">The module whose declaration must not run outside configuration.</param>
         public void InstallGodotModuleForTest(RecordingGodotModule module)
         {
             InstallGodotModule(module);
@@ -152,7 +157,8 @@ public sealed class AbstractArchitectureModuleInstallationTests
     /// </summary>
     private sealed class RecordingArchitectureContext : IArchitectureContext
     {
-        public List<string> Calls { get; } = new();
+        /// <summary>Records forwarded operations so the decorator can be checked without resolving real services.</summary>
+        public List<string> Calls { get; } = [];
 
         /// <inheritdoc />
         public TService GetService<TService>() where TService : class
@@ -271,14 +277,28 @@ public sealed class AbstractArchitectureModuleInstallationTests
         }
     }
 
+    /// <summary>Records declaration and attachment separately; native node access must remain unused in the managed fixture.</summary>
     private sealed class RecordingGodotModule : IGodotModule
     {
-        public bool InstallCalled { get; private set; }
+        /// <summary>Whether the module's configuration callback has run.</summary>
+        public bool InstallCalled
+        {
+            get; private set;
+        }
 
-        public bool AttachCalled { get; private set; }
+        /// <summary>Whether native host attachment has been requested.</summary>
+        public bool AttachCalled
+        {
+            get; private set;
+        }
 
-        public int NodeReadCount { get; private set; }
+        /// <summary>Counts attempted native-node access, which the declaration-only test requires to stay zero.</summary>
+        public int NodeReadCount
+        {
+            get; private set;
+        }
 
+        /// <inheritdoc />
         public global::Godot.Node Node
         {
             get
@@ -288,74 +308,91 @@ public sealed class AbstractArchitectureModuleInstallationTests
             }
         }
 
+        /// <inheritdoc />
         public void Install(IArchitecture architecture)
         {
             InstallCalled = true;
         }
 
+        /// <inheritdoc />
         public void OnAttach(GFramework.Core.Architectures.Architecture architecture)
         {
             AttachCalled = true;
         }
 
+        /// <inheritdoc />
         public void OnDetach()
         {
         }
     }
 
+    /// <summary>Identifies the ordinary-service forwarding path without requiring a constructed service.</summary>
     private sealed class DummyService;
 
+    /// <summary>Supplies the System contract for context-forwarding checks; lifecycle callbacks intentionally do no work.</summary>
     private sealed class DummySystem : ISystem
     {
         private IArchitectureContext? _context;
 
+        /// <inheritdoc />
         public void SetContext(IArchitectureContext context)
         {
             _context = context;
         }
 
+        /// <inheritdoc />
         public IArchitectureContext GetContext()
         {
             return _context!;
         }
 
+        /// <inheritdoc />
         public void OnArchitecturePhase(ArchitecturePhase phase)
         {
         }
 
+        /// <inheritdoc />
         public void Initialize()
         {
         }
 
+        /// <inheritdoc />
         public void Destroy()
         {
         }
     }
 
+    /// <summary>Supplies the Model contract for context-forwarding checks without owning runtime resources.</summary>
     private sealed class DummyModel : IModel
     {
         private IArchitectureContext? _context;
 
+        /// <inheritdoc />
         public void SetContext(IArchitectureContext context)
         {
             _context = context;
         }
 
+        /// <inheritdoc />
         public IArchitectureContext GetContext()
         {
             return _context!;
         }
 
+        /// <inheritdoc />
         public void OnArchitecturePhase(ArchitecturePhase phase)
         {
         }
 
+        /// <inheritdoc />
         public void Initialize()
         {
         }
     }
 
+    /// <summary>Identifies Utility forwarding without lifecycle or disposal behavior.</summary>
     private sealed class DummyUtility : IUtility;
 
+    /// <summary>Identifies the event forwarding paths without introducing a payload or handlers.</summary>
     private sealed class DummyEvent;
 }

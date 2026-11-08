@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Globalization;
 using GFramework.Core.Concurrency;
 
 namespace GFramework.Core.Tests.Concurrency;
@@ -74,7 +75,7 @@ public sealed class AsyncKeyLockManagerTests
         // Act
         for (var i = 0; i < 10; i++)
         {
-            var key = $"key-{i}";
+            var key = string.Create(CultureInfo.InvariantCulture, $"key-{i}");
             tasks.Add(Task.Run(async () =>
             {
                 await using ((await manager.AcquireLockAsync(key).ConfigureAwait(false)).ConfigureAwait(false))
@@ -118,7 +119,7 @@ public sealed class AsyncKeyLockManagerTests
         // Act
         for (var i = 0; i < 100; i++)
         {
-            var key = $"key-{i % 10}";
+            var key = string.Create(CultureInfo.InvariantCulture, $"key-{i % 10}");
             tasks.Add(Task.Run(async () =>
             {
                 await using ((await manager.AcquireLockAsync(key).ConfigureAwait(false)).ConfigureAwait(false))
@@ -303,7 +304,7 @@ public sealed class AsyncKeyLockManagerTests
             {
                 for (var j = 0; j < 10; j++)
                 {
-                    await using ((await manager.AcquireLockAsync($"key-{j % 5}").ConfigureAwait(false)).ConfigureAwait(false))
+                    await using ((await manager.AcquireLockAsync(string.Create(CultureInfo.InvariantCulture, $"key-{j % 5}")).ConfigureAwait(false)).ConfigureAwait(false))
                     {
                         await Task.Delay(10).ConfigureAwait(false);
                     }

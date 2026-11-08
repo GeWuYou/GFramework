@@ -16,7 +16,10 @@ public sealed class TestUtilityV2 : IUtility
     /// <summary>
     ///     获取或设置测试用标识。
     /// </summary>
-    public int Id { get; init; }
+    public int Id
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     关联当前工具所属的架构上下文。

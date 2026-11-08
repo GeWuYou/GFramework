@@ -21,6 +21,4 @@ namespace GFramework.Core.SourceGenerators.Abstractions.Rule;
 /// </code>
 /// </example>
 [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
-public sealed class GetSystemsAttribute : Attribute
-{
-}
+public sealed class GetSystemsAttribute : Attribute;

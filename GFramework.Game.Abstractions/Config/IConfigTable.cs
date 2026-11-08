@@ -14,17 +14,26 @@ public interface IConfigTable : IUtility
     /// <summary>
     ///     获取配置表主键类型。
     /// </summary>
-    Type KeyType { get; }
+    Type KeyType
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取配置项值类型。
     /// </summary>
-    Type ValueType { get; }
+    Type ValueType
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取当前配置表中的条目数量。
     /// </summary>
-    int Count { get; }
+    int Count
+    {
+        get;
+    }
 }
 
 /// <summary>
@@ -50,14 +59,14 @@ public interface IConfigTable<TKey, TValue> : IConfigTable
     /// </summary>
     /// <param name="key">配置项主键。</param>
     /// <param name="value">找到的配置项；未找到时返回默认值。</param>
-    /// <returns>找到配置项时返回 <c>true</c>，否则返回 <c>false</c>。</returns>
+    /// <returns>找到配置项时返回 <see langword="true" />，否则返回 <see langword="false" />。</returns>
     bool TryGet(TKey key, out TValue? value);
 
     /// <summary>
     ///     检查指定主键是否存在。
     /// </summary>
     /// <param name="key">配置项主键。</param>
-    /// <returns>主键存在时返回 <c>true</c>，否则返回 <c>false</c>。</returns>
+    /// <returns>主键存在时返回 <see langword="true" />，否则返回 <see langword="false" />。</returns>
     bool ContainsKey(TKey key);
 
     /// <summary>

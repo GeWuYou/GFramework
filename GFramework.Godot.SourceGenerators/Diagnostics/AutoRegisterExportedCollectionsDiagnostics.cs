@@ -25,7 +25,7 @@ internal static class AutoRegisterExportedCollectionsDiagnostics
         "AutoRegisterExportedCollections does not support nested class '{0}'",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     报告特性引用的注册表成员在宿主类型上不存在。
@@ -36,7 +36,7 @@ internal static class AutoRegisterExportedCollectionsDiagnostics
         "Member '{0}' referenced by exported collection '{1}' was not found on '{2}'",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     报告注册表上未找到与集合元素类型兼容的注册方法。
@@ -47,7 +47,7 @@ internal static class AutoRegisterExportedCollectionsDiagnostics
         "Method '{0}' was not found on registry member '{1}' for exported collection '{2}'",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     报告被标记成员不是可枚举集合，因此无法执行批量注册。
@@ -58,7 +58,7 @@ internal static class AutoRegisterExportedCollectionsDiagnostics
         "Member '{0}' must be enumerable to use RegisterExportedCollection",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     报告集合元素类型无法在编译期推导，因此无法安全匹配注册方法。
@@ -69,7 +69,7 @@ internal static class AutoRegisterExportedCollectionsDiagnostics
         "Member '{0}' must expose a generic enumerable element type to use RegisterExportedCollection safely",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     报告被标记为导出集合的成员不是实例可读成员，因此无法生成 <c>this.&lt;member&gt;</c> 访问代码。
@@ -80,7 +80,7 @@ internal static class AutoRegisterExportedCollectionsDiagnostics
         "Member '{0}' must be an instance field or readable non-indexer instance property to use RegisterExportedCollection",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     报告注册表成员不是实例可读成员，因此生成器无法安全读取并调用注册方法。
@@ -91,7 +91,7 @@ internal static class AutoRegisterExportedCollectionsDiagnostics
         "Registry member '{0}' referenced by exported collection '{1}' must be an instance field or readable non-indexer instance property",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     报告 <c>RegisterExportedCollectionAttribute</c> 构造参数不满足约定，导致无法解析注册目标成员与方法名。
@@ -102,5 +102,5 @@ internal static class AutoRegisterExportedCollectionsDiagnostics
         "Attribute 'RegisterExportedCollectionAttribute' on member '{0}' must provide a string registry member name and a string register method name",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 }

@@ -10,9 +10,13 @@ namespace GFramework.Core.Events;
 ///     线程安全：使用锁保护监听器列表和过滤器列表的修改
 /// </summary>
 /// <typeparam name="T">事件数据类型</typeparam>
-public sealed class FilterableEvent<T>
+/// <remarks>
+///     构造函数
+/// </remarks>
+/// <param name="statistics">事件统计对象（可选）</param>
+public sealed class FilterableEvent<T>(EventStatistics? statistics = null)
 {
-    private readonly List<IEventFilter<T>> _filters = new();
+    private readonly List<IEventFilter<T>> _filters = [];
 #if NET9_0_OR_GREATER
     // net9.0 及以上目标使用专用 Lock，以满足分析器对专用同步原语的建议。
     private readonly System.Threading.Lock _lock = new();
@@ -20,17 +24,8 @@ public sealed class FilterableEvent<T>
     // net8.0 目标仍回退到 object 锁，以保持多目标编译兼容性。
     private readonly object _lock = new();
 #endif
-    private readonly EventStatistics? _statistics;
+    private readonly EventStatistics? _statistics = statistics;
     private Action<T>? _onEvent;
-
-    /// <summary>
-    ///     构造函数
-    /// </summary>
-    /// <param name="statistics">事件统计对象（可选）</param>
-    public FilterableEvent(EventStatistics? statistics = null)
-    {
-        _statistics = statistics;
-    }
 
     /// <summary>
     ///     注册事件监听器
@@ -76,7 +71,7 @@ public sealed class FilterableEvent<T>
 
         lock (_lock)
         {
-            filtersSnapshot = _filters.Count > 0 ? _filters.ToArray() : Array.Empty<IEventFilter<T>>();
+            filtersSnapshot = _filters.Count > 0 ? [.. _filters] : [];
             handlers = _onEvent;
         }
 

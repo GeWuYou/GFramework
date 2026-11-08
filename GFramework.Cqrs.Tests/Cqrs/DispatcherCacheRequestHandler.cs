@@ -9,6 +9,7 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 /// <summary>
 ///     处理 <see cref="DispatcherCacheRequest" />。
 /// </summary>
+[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
 internal sealed class DispatcherCacheRequestHandler : IRequestHandler<DispatcherCacheRequest, int>
 {
     /// <summary>

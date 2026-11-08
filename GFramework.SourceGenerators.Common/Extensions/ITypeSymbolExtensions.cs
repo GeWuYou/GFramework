@@ -15,7 +15,7 @@ public static class ITypeSymbolExtensions
     /// </summary>
     /// <param name="typeSymbol">当前类型符号。</param>
     /// <param name="targetType">目标类型符号。</param>
-    /// <returns>若等于、实现或继承则返回 <c>true</c>。</returns>
+    /// <returns>若等于、实现或继承则返回 <see langword="true" />。</returns>
     public static bool IsAssignableTo(
         this ITypeSymbol typeSymbol,
         INamedTypeSymbol? targetType)

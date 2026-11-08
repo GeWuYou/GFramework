@@ -35,14 +35,14 @@ public partial class DodgeApp
                 break;
             case "done":
                 Require(CanStart && _content.Catalog.Snapshot.Packs.Count == 1, "Base-only reset did not survive restart.");
-                await StartGameAsync(false).ConfigureAwait(true);
+                await StartGameAsync(restore: false).ConfigureAwait(true);
                 Require(_world is { IsRunning: true }, "Gameplay did not recover after fixing the startup selection.");
                 break;
             default:
                 throw new InvalidOperationException("Unknown content smoke phase.");
         }
         GD.Print("DODGE_CONTENT_RESULT PASS " + _contentSmokePhase);
-        FinishSmoke(true);
+        FinishSmoke(passed: true);
     }
 
     private async Task SeedContentSmokeAsync()
@@ -67,14 +67,14 @@ public partial class DodgeApp
         Require(string.Equals(_content.ArenaId, "coral:reef", StringComparison.Ordinal), "Data-mod arena was not discovered.");
         Click("ContentBack");
         await UntilAsync(() => !HasView("content")).ConfigureAwait(true);
-        await StartGameAsync(false).ConfigureAwait(true);
+        await StartGameAsync(restore: false).ConfigureAwait(true);
         Require(_world is { IsRunning: true }, "Data-mod arena did not start.");
         await OpenContentAsync().ConfigureAwait(true);
         await ClickContentActionAsync("ContentArena").ConfigureAwait(true);
         Require(string.Equals(_content.ArenaId, "moon:crater", StringComparison.Ordinal), "Official DLC arena was not available.");
         Click("ContentBack");
         await UntilAsync(() => !HasView("content")).ConfigureAwait(true);
-        await StartGameAsync(false).ConfigureAwait(true);
+        await StartGameAsync(restore: false).ConfigureAwait(true);
         Require(_world!.GetNodeOrNull<Node>("MoonArena") is not null, "Trusted PCK scene was not instantiated.");
         _world.RestoreRun(37, new Vector2(140, 500));
         await SaveGameAsync().ConfigureAwait(true);
@@ -93,12 +93,12 @@ public partial class DodgeApp
         Require(!_content.Catalog.Contains(new ContentReference("arenas", new ContentId("moon:crater"))),
             "Disabled DLC remained in the active catalog.");
         var savePath = ProjectSettings.GlobalizePath(_dataRoot + "/saves/slot_1/save.json");
-        var original = File.ReadAllBytes(savePath);
+        var original = await File.ReadAllBytesAsync(savePath, System.Threading.CancellationToken.None).ConfigureAwait(true);
         Click("Continue");
         await UntilAsync(() => HasView("recover")).ConfigureAwait(true);
         Click("RecoveryCancel");
-        await UntilAsync(() => !HasView("recover") && _actions.All(static task => task.IsCompleted)).ConfigureAwait(true);
-        Require(File.ReadAllBytes(savePath).SequenceEqual(original), "Cancelled repair changed the original file.");
+        await UntilAsync(() => !HasView("recover") && _actions.TrueForAll(static task => task.IsCompleted)).ConfigureAwait(true);
+        Require((await File.ReadAllBytesAsync(savePath, System.Threading.CancellationToken.None).ConfigureAwait(true)).SequenceEqual(original), "Cancelled repair changed the original file.");
         Click("Continue");
         await UntilAsync(() => HasView("recover")).ConfigureAwait(true);
         Click("RecoveryProceed");
@@ -106,19 +106,19 @@ public partial class DodgeApp
         Require(string.Equals(_arenaId, "base:yard", StringComparison.Ordinal) && _world!.Score >= 37,
             "Game-owned downgrade did not preserve progress while replacing the missing arena.");
         var backup = Path.Combine(Path.GetDirectoryName(savePath)!, _latestBackup!);
-        Require(File.ReadAllBytes(backup).SequenceEqual(original), "Recovery backup did not preserve original bytes.");
+        Require((await File.ReadAllBytesAsync(backup, System.Threading.CancellationToken.None).ConfigureAwait(true)).SequenceEqual(original), "Recovery backup did not preserve original bytes.");
         _dirty = false;
         await ReturnToMenuAsync().ConfigureAwait(true);
         await OpenContentAsync().ConfigureAwait(true);
         Click("RestoreContentBackup");
         await UntilAsync(() => HasView("recover")).ConfigureAwait(true);
         Click("RecoveryProceed");
-        await UntilAsync(() => !HasView("recover") && _actions.All(static task => task.IsCompleted)).ConfigureAwait(true);
-        Require(File.ReadAllBytes(savePath).SequenceEqual(original), "Restoring the backup did not restore exact original bytes.");
+        await UntilAsync(() => !HasView("recover") && _actions.TrueForAll(static task => task.IsCompleted)).ConfigureAwait(true);
+        Require((await File.ReadAllBytesAsync(savePath, System.Threading.CancellationToken.None).ConfigureAwait(true)).SequenceEqual(original), "Restoring the backup did not restore exact original bytes.");
         await ClickContentActionAsync("Toggle_moon").ConfigureAwait(true);
         // Test-owned isolated installation only: a modified file must fail host trust on the next start.
         var nativePack = Path.Combine(_content.InstalledDirectory, "moon", "moon.pck");
-        await File.AppendAllTextAsync(nativePack, "untrusted modification").ConfigureAwait(true);
+        await File.AppendAllTextAsync(nativePack, "untrusted modification", cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
         GD.Print("DODGE_CONTENT_NEXT " + _smokeId + ":broken");
     }
 
@@ -131,7 +131,7 @@ public partial class DodgeApp
         await UntilAsync(() => HasView("content")).ConfigureAwait(true);
         await ClickContentActionAsync("ResetContent").ConfigureAwait(true);
         Require(_content.RequestedProfile.EnabledPackages.Count == 0, "Broken startup did not retain a usable repair manager.");
-        await File.WriteAllTextAsync(ProjectSettings.GlobalizePath(_dataRoot + "/content.json"), "{\"Profile\":null}").ConfigureAwait(true);
+        await File.WriteAllTextAsync(ProjectSettings.GlobalizePath(_dataRoot + "/content.json"), "{\"Profile\":null}", cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
         GD.Print("DODGE_CONTENT_NEXT " + _smokeId + ":profile");
     }
 
@@ -140,19 +140,19 @@ public partial class DodgeApp
         Require(!CanStart && _content.Error is not null && _content.Error.Contains("settings could not be read", StringComparison.Ordinal),
             "Null profile bypassed the recoverable settings validation.");
         var settings = ProjectSettings.GlobalizePath(_dataRoot + "/content.json");
-        Require(string.Equals(File.ReadAllText(settings), "{\"Profile\":null}", StringComparison.Ordinal), "Startup silently overwrote unreadable content preferences.");
+        Require(string.Equals(await File.ReadAllTextAsync(settings, System.Threading.CancellationToken.None).ConfigureAwait(true), "{\"Profile\":null}", StringComparison.Ordinal), "Startup silently overwrote unreadable content preferences.");
         foreach (var malformed in new[]
         {
             "{\"Profile\":{\"EnabledPackages\":null,\"LoadOrder\":[]}}",
             "{\"Profile\":{\"EnabledPackages\":[],\"LoadOrder\":null}}",
-            "{\"Profile\":{\"EnabledPackages\":[],\"LoadOrder\":[]},\"ArenaId\":\"../arena\"}"
+            "{\"Profile\":{\"EnabledPackages\":[],\"LoadOrder\":[]},\"ArenaId\":\"../arena\"}",
         })
         {
-            await File.WriteAllTextAsync(settings, malformed).ConfigureAwait(true);
+            await File.WriteAllTextAsync(settings, malformed, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
             using var candidate = new DodgeContent(_storage, _dataRoot);
             await candidate.InitializeAsync(_lifetime.Token).ConfigureAwait(true);
             Require(!candidate.IsReady && candidate.Error is not null, "Malformed profile escaped startup validation.");
-            Require(string.Equals(File.ReadAllText(settings), malformed, StringComparison.Ordinal), "Validation replaced the malformed profile without a player action.");
+            Require(string.Equals(await File.ReadAllTextAsync(settings, System.Threading.CancellationToken.None).ConfigureAwait(true), malformed, StringComparison.Ordinal), "Validation replaced the malformed profile without a player action.");
         }
         Click("Content");
         await UntilAsync(() => HasView("content")).ConfigureAwait(true);
@@ -165,6 +165,6 @@ public partial class DodgeApp
     private async Task ClickContentActionAsync(string name)
     {
         Click(name);
-        await UntilAsync(() => HasView("content") && _actions.All(static task => task.IsCompleted)).ConfigureAwait(true);
+        await UntilAsync(() => HasView("content") && _actions.TrueForAll(static task => task.IsCompleted)).ConfigureAwait(true);
     }
 }

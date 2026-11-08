@@ -13,12 +13,18 @@ public sealed class FakeTimeSource : ITimeSource
     /// <summary>
     ///     获取当前累计时间
     /// </summary>
-    public double CurrentTime { get; private set; }
+    public double CurrentTime
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取上一帧的时间增量
     /// </summary>
-    public double DeltaTime { get; private set; }
+    public double DeltaTime
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     更新时间源

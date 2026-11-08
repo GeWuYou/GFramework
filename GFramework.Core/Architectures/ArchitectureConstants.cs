@@ -28,7 +28,7 @@ public static class ArchitectureConstants
         ArchitecturePhase.AfterSystemInit,
         ArchitecturePhase.Ready,
         ArchitecturePhase.Destroying,
-        ArchitecturePhase.Destroyed
+        ArchitecturePhase.Destroyed,
     ];
 
     /// <summary>
@@ -52,6 +52,6 @@ public static class ArchitectureConstants
             { ArchitecturePhase.Ready, [ArchitecturePhase.Destroying] },
             { ArchitecturePhase.Destroying, [ArchitecturePhase.Destroyed] },
             // 失败路径：从任何阶段都可以转到 FailedInitialization
-            { ArchitecturePhase.FailedInitialization, [ArchitecturePhase.Destroying] }
+            { ArchitecturePhase.FailedInitialization, [ArchitecturePhase.Destroying] },
         }.ToImmutableDictionary();
 }

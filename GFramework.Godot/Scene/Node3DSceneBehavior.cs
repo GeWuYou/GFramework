@@ -19,15 +19,9 @@ namespace GFramework.Godot.Scene;
 ///     Node3D 场景行为类，用于管理 3D 场景节点的生命周期。
 ///     适用于 MeshInstance3D、Camera3D 等 3D 场景元素。
 /// </summary>
-public sealed class Node3DSceneBehavior : SceneBehaviorBase<Node3D>
-{
-    /// <summary>
-    ///     初始化 Node3DSceneBehavior 实例。
-    /// </summary>
-    /// <param name="owner">3D 场景节点的所有者实例。</param>
-    /// <param name="key">场景的唯一标识键。</param>
-    public Node3DSceneBehavior(Node3D owner, string key)
-        : base(owner, key)
-    {
-    }
-}
+/// <remarks>
+///     初始化 Node3DSceneBehavior 实例。
+/// </remarks>
+/// <param name="owner">3D 场景节点的所有者实例。</param>
+/// <param name="key">场景的唯一标识键。</param>
+public sealed class Node3DSceneBehavior(Node3D owner, string key) : SceneBehaviorBase<Node3D>(owner, key);

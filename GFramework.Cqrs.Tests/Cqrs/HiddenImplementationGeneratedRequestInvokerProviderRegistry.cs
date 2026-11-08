@@ -43,8 +43,10 @@ internal sealed class HiddenImplementationGeneratedRequestInvokerProviderRegistr
 
         var implementationType = HiddenImplementationRequestInvokerContainer.HiddenHandlerType;
         services.AddTransient(HandlerContractType, implementationType);
-        logger.LogDebug(
-            $"Registered CQRS handler {implementationType.FullName} as {HandlerContractType.FullName}.");
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Registered CQRS handler {ImplementationType} as {HandlerContract}.", implementationType.FullName, HandlerContractType.FullName);
+        }
     }
 
     /// <summary>
@@ -88,6 +90,8 @@ internal sealed class HiddenImplementationGeneratedRequestInvokerProviderRegistr
     /// <returns>带有 hidden generated 前缀的结果，便于断言 dispatcher 命中了 generated provider 路径。</returns>
     private static ValueTask<string> InvokeGenerated(object handler, object request, CancellationToken cancellationToken)
     {
+        // Keep the reflection/delegate contract even when this probe does not consume an input.
+        _ = cancellationToken;
         _ = handler as IRequestHandler<HiddenImplementationRequestInvokerContainer.VisibleRequest, string>
             ?? throw new InvalidOperationException("Generated invoker received an incompatible hidden handler instance.");
         var typedRequest = (HiddenImplementationRequestInvokerContainer.VisibleRequest)request;

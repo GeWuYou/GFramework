@@ -40,7 +40,7 @@ public sealed class SettingsModelTests
         repository.Stored["TestSettingsData"] = new TestSettingsData
         {
             Version = 1,
-            Value = "legacy"
+            Value = "legacy",
         };
 
         await model.InitializeAsync();
@@ -52,7 +52,7 @@ public sealed class SettingsModelTests
         repository.Stored["TestSettingsData"] = new TestSettingsData
         {
             Version = 1,
-            Value = "legacy"
+            Value = "legacy",
         };
 
         await model.InitializeAsync();
@@ -91,7 +91,7 @@ public sealed class SettingsModelTests
         repository.Stored["TestLatestSettingsData"] = new TestLatestSettingsData
         {
             Version = 1,
-            Value = "legacy"
+            Value = "legacy",
         };
 
         model.RegisterMigration(new TestLatestSettingsMigrationV1ToV2());
@@ -121,7 +121,7 @@ public sealed class SettingsModelTests
         repository.Stored["TestLatestSettingsData"] = new TestLatestSettingsData
         {
             Version = 1,
-            Value = "legacy"
+            Value = "legacy",
         };
 
         var tasks = StartConcurrentMigrationWork(model);
@@ -142,7 +142,7 @@ public sealed class SettingsModelTests
         repository.Stored["TestLatestSettingsData"] = new TestLatestSettingsData
         {
             Version = 1,
-            Value = "legacy"
+            Value = "legacy",
         };
 
         await model.InitializeAsync();
@@ -295,7 +295,7 @@ public sealed class SettingsModelTests
             return new TestSettingsData
             {
                 Version = 2,
-                Value = $"{data.Value}-migrated"
+                Value = $"{data.Value}-migrated",
             };
         }
     }
@@ -340,7 +340,7 @@ public sealed class SettingsModelTests
             return new TestLatestSettingsData
             {
                 Version = 2,
-                Value = $"{data.Value}-migrated"
+                Value = $"{data.Value}-migrated",
             };
         }
     }
@@ -359,7 +359,7 @@ public sealed class SettingsModelTests
             return new TestLatestSettingsData
             {
                 Version = 3,
-                Value = $"{data.Value}-v3"
+                Value = $"{data.Value}-v3",
             };
         }
     }

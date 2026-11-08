@@ -21,17 +21,17 @@ public partial class DodgeApp
             CheckStoredSettings();
             CheckPreferenceAudio(0.4f, 0.3f, 0.2f);
             GD.Print("DODGE_SETTINGS_RESULT PASS continuation");
-            FinishSmoke(true);
+            FinishSmoke(passed: true);
             return;
         }
         CheckResolutionParity();
-        await StartGameAsync(false).ConfigureAwait(true);
+        await StartGameAsync(restore: false).ConfigureAwait(true);
         Require(_world!.GetNode<AudioStreamPlayer>("Music").Bus.ToString().Equals("BGM", StringComparison.Ordinal) &&
             _world.GetNode<AudioStreamPlayer>("GameOverSound").Bus.ToString().Equals("SFX", StringComparison.Ordinal),
             "Gameplay audio is not routed through independent music/effects buses.");
         await SaveGameAsync().ConfigureAwait(true);
         var progressPath = ProjectSettings.GlobalizePath(_dataRoot + "/saves/slot_1/save.json");
-        var progress = File.ReadAllBytes(progressPath);
+        var progress = await File.ReadAllBytesAsync(progressPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false);
         await SaveBestScoreAsync(83).ConfigureAwait(true);
         Click("Pause");
         await UntilAsync(() => HasView("pause") && GetTree().Paused).ConfigureAwait(true);
@@ -40,10 +40,10 @@ public partial class DodgeApp
         await CheckSettingsFailuresAsync().ConfigureAwait(true);
         await Task.WhenAll(SaveBestScoreAsync(91), SetLanguageAsync("zh-CN")).ConfigureAwait(true);
         CheckStoredSettings();
-        Require(File.ReadAllBytes(progressPath).SequenceEqual(progress), "Settings or reset changed saved gameplay progress.");
+        Require((await File.ReadAllBytesAsync(progressPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false)).SequenceEqual(progress), "Settings or reset changed saved gameplay progress.");
         GD.Print("DODGE_SETTINGS_NEXT " + _smokeId);
         GD.Print("DODGE_SETTINGS_RESULT PASS seed");
-        FinishSmoke(true);
+        FinishSmoke(passed: true);
     }
 
     private static void CheckResolutionParity()
@@ -70,14 +70,14 @@ public partial class DodgeApp
         Click("Back");
         await UntilAsync(() => HasView("settings-unsaved")).ConfigureAwait(true);
         Click("KeepEditingSettings");
-        await UntilAsync(() => !HasView("settings-unsaved") && _actions.All(static task => task.IsCompleted)).ConfigureAwait(true);
+        await UntilAsync(() => !HasView("settings-unsaved") && _actions.TrueForAll(static task => task.IsCompleted)).ConfigureAwait(true);
         Require(_ui.Snapshot.Views.Single(static view => string.Equals(view.RouteKey, "settings", StringComparison.Ordinal)).Handle == handle,
             "Cancel recreated the settings view instead of retaining its draft.");
         Require(_pause.GetPauseDepth(PauseGroup.Global) == 2, "Cancelling the settings decision changed pause ownership.");
-        await _ui.DispatchActionAsync(UiInputAction.Cancel).ConfigureAwait(true);
+        await _ui.DispatchActionAsync(UiInputAction.Cancel, System.Threading.CancellationToken.None).ConfigureAwait(true);
         await UntilAsync(() => HasView("settings-unsaved")).ConfigureAwait(true);
         Click("DiscardSettingsAndExit");
-        await UntilAsync(() => !HasView("settings") && _actions.All(static task => task.IsCompleted)).ConfigureAwait(true);
+        await UntilAsync(() => !HasView("settings") && _actions.TrueForAll(static task => task.IsCompleted)).ConfigureAwait(true);
         Require(_pause.GetPauseDepth(PauseGroup.Global) == 1 && GetTree().Paused, "Discard released the lower pause window's lease.");
         CheckPreferenceAudio(0.65f, 1, 1);
     }
@@ -92,23 +92,23 @@ public partial class DodgeApp
         SelectSettingsOption("Fullscreen", 0);
         Click("SaveSettings");
         await UntilAsync(() => Preferences.Fullscreen && Math.Abs(Preferences.Volume - 0.4f) < 0.001 &&
-            _actions.All(static task => task.IsCompleted)).ConfigureAwait(true);
+            _actions.TrueForAll(static task => task.IsCompleted)).ConfigureAwait(true);
         CheckPreferenceAudio(0.4f, 0.3f, 0);
         ((HSlider)FindNative("SfxVolume", "HSlider")).Value = 0.2;
         Click("SaveSettings");
-        await UntilAsync(() => Math.Abs(Preferences.SfxVolume - 0.2f) < 0.001 && _actions.All(static task => task.IsCompleted)).ConfigureAwait(true);
+        await UntilAsync(() => Math.Abs(Preferences.SfxVolume - 0.2f) < 0.001 && _actions.TrueForAll(static task => task.IsCompleted)).ConfigureAwait(true);
         CheckPreferenceAudio(0.4f, 0.3f, 0.2f);
         SelectSettingsOption("Fullscreen", 1);
         Click("Back");
         await UntilAsync(() => HasView("settings-unsaved")).ConfigureAwait(true);
         Click("ApplySettingsAndExit");
-        await UntilAsync(() => !HasView("settings") && _actions.All(static task => task.IsCompleted)).ConfigureAwait(true);
+        await UntilAsync(() => !HasView("settings") && _actions.TrueForAll(static task => task.IsCompleted)).ConfigureAwait(true);
         Require(!Preferences.Fullscreen && Preferences.ResolutionWidth == 640 && Preferences.ResolutionHeight == 960,
             "Apply-and-exit did not persist graphics preferences.");
         await CheckPhysicalWindowAsync().ConfigureAwait(true);
         await OpenSettingsAsync().ConfigureAwait(true);
         Click("ResetSettings");
-        await UntilAsync(() => _actions.All(static task => task.IsCompleted)).ConfigureAwait(true);
+        await UntilAsync(() => _actions.TrueForAll(static task => task.IsCompleted)).ConfigureAwait(true);
         Require(Math.Abs(((HSlider)FindNative("Volume", "HSlider")).Value - 0.65) < 0.001 &&
             Math.Abs(((HSlider)FindNative("BgmVolume", "HSlider")).Value - 1) < 0.001 &&
             ((OptionButton)FindNative("Resolution", "OptionButton")).Selected == 1,
@@ -118,7 +118,7 @@ public partial class DodgeApp
         Click("Back");
         await UntilAsync(() => HasView("settings-unsaved")).ConfigureAwait(true);
         Click("DiscardSettingsAndExit");
-        await UntilAsync(() => !HasView("settings") && _actions.All(static task => task.IsCompleted)).ConfigureAwait(true);
+        await UntilAsync(() => !HasView("settings") && _actions.TrueForAll(static task => task.IsCompleted)).ConfigureAwait(true);
         CheckPreferenceAudio(0.4f, 0.3f, 0.2f);
     }
 
@@ -143,13 +143,16 @@ public partial class DodgeApp
     private async Task CheckSettingsFailuresAsync()
     {
         var preferencesPath = ProjectSettings.GlobalizePath(_dataRoot + "/preferences.json");
-        var original = File.ReadAllBytes(preferencesPath);
+        var original = await File.ReadAllBytesAsync(preferencesPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false);
         var invalid = Preferences.Copy();
         invalid.Volume = float.NaN;
         var rejected = false;
-        try { await SaveSettingsAsync(invalid).ConfigureAwait(true); }
+        try
+        {
+            await SaveSettingsAsync(invalid).ConfigureAwait(true);
+        }
         catch (InvalidOperationException) { rejected = true; }
-        Require(rejected && File.ReadAllBytes(preferencesPath).SequenceEqual(original), "Invalid settings overwrote the previous preferences.");
+        Require(rejected && (await File.ReadAllBytesAsync(preferencesPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false)).SequenceEqual(original), "Invalid settings overwrote the previous preferences.");
         var dataRoot = _dataRoot;
         try
         {
@@ -159,12 +162,15 @@ public partial class DodgeApp
             var candidate = Preferences.Copy();
             candidate.Volume = 0.75f;
             rejected = false;
-            try { await SaveSettingsAsync(candidate).ConfigureAwait(true); }
+            try
+            {
+                await SaveSettingsAsync(candidate).ConfigureAwait(true);
+            }
             catch (NotSupportedException) { rejected = true; }
             Require(rejected, "The deliberate read-only destination did not reject a settings write.");
         }
         finally { _dataRoot = dataRoot; }
-        Require(File.ReadAllBytes(preferencesPath).SequenceEqual(original) && Math.Abs(Preferences.Volume - 0.4f) < 0.001,
+        Require((await File.ReadAllBytesAsync(preferencesPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false)).SequenceEqual(original) && Math.Abs(Preferences.Volume - 0.4f) < 0.001,
             "Failed settings persistence changed the old file or published preferences.");
         CheckPreferenceAudio(0.4f, 0.3f, 0.2f);
     }

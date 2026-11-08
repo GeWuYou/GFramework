@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.SourceGenerators.Abstractions.Enums;
@@ -53,7 +53,8 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
         EnumDeclarationSyntax syntax,
         INamedTypeSymbol symbol, AttributeData attr)
     {
-        if (symbol.TypeKind == TypeKind.Enum) return true;
+        if (symbol.TypeKind == TypeKind.Enum)
+            return true;
         var loc = syntax.Identifier.GetLocation();
         context.ReportDiagnostic(Diagnostic.Create(
             CommonDiagnostics.ClassMustBePartial,
@@ -75,7 +76,7 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
             ? null
             : symbol.ContainingNamespace.ToDisplayString();
 
-        var generationOptions = GetGenerationOptions(attr);
+        var (GenerateIsMethods, GenerateIsInMethod) = GetGenerationOptions(attr);
         var enumName = symbol.Name;
         var fullEnumName = symbol.ToDisplayString();
         var members = symbol.GetMembers()
@@ -92,15 +93,15 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
         sb.AppendLine("{");
 
         sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// 为 <see cref=\"{fullEnumName}\" /> 提供自动生成的扩展方法。");
+        sb.Append("    /// 为 <see cref=\"").Append(fullEnumName).AppendLine("\" /> 提供自动生成的扩展方法。");
         sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    public static partial class {enumName}Extensions");
+        sb.Append("    public static partial class ").Append(enumName).AppendLine("Extensions");
         sb.AppendLine("    {");
 
         // 两个生成开关是彼此独立的契约，需要分别控制输出，并保持空行布局稳定，便于快照精确回归。
         var hasGeneratedMembers = false;
 
-        if (generationOptions.GenerateIsMethods)
+        if (GenerateIsMethods)
         {
             hasGeneratedMembers = AppendIsMethods(
                 sb,
@@ -108,7 +109,7 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
                 fullEnumName);
         }
 
-        if (generationOptions.GenerateIsInMethod)
+        if (GenerateIsInMethod)
         {
             if (hasGeneratedMembers)
             {
@@ -137,11 +138,11 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
             GetNamedBooleanArgument(
                 attribute,
                 nameof(GenerateEnumExtensionsAttribute.GenerateIsMethods),
-                true),
+defaultValue: true),
             GetNamedBooleanArgument(
                 attribute,
                 nameof(GenerateEnumExtensionsAttribute.GenerateIsInMethod),
-                true));
+defaultValue: true));
     }
 
     /// <summary>
@@ -194,14 +195,11 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
             }
 
             builder.AppendLine("        /// <summary>");
-            builder.AppendLine(
-                $"        /// 判断给定值是否为 <see cref=\"{fullEnumName}.{memberName}\" />。");
+            builder.Append("        /// 判断给定值是否为 <see cref=\"").Append(fullEnumName).Append('.').Append(memberName).AppendLine("\" />。");
             builder.AppendLine("        /// </summary>");
             builder.AppendLine("        /// <param name=\"value\">要检查的枚举值。</param>");
-            builder.AppendLine(
-                $"        /// <returns>当 <paramref name=\"value\" /> 等于 <see cref=\"{fullEnumName}.{memberName}\" /> 时返回 <see langword=\"true\" />；否则返回 <see langword=\"false\" />。</returns>");
-            builder.AppendLine(
-                $"        public static bool Is{memberName}(this {fullEnumName} value) => value == {fullEnumName}.{memberName};");
+            builder.Append("        /// <returns>当 <paramref name=\"value\" /> 等于 <see cref=\"").Append(fullEnumName).Append('.').Append(memberName).AppendLine("\" /> 时返回 <see langword=\"true\" />；否则返回 <see langword=\"false\" />。</returns>");
+            builder.Append("        public static bool Is").Append(memberName).Append("(this ").Append(fullEnumName).Append(" value) => value == ").Append(fullEnumName).Append('.').Append(memberName).Append(';').AppendLine();
             hasGeneratedMembers = true;
         }
 
@@ -223,8 +221,7 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
             "        /// <param name=\"values\">用于匹配的候选枚举值集合；当为 <see langword=\"null\" /> 时返回 <see langword=\"false\" />。</param>");
         builder.AppendLine(
             "        /// <returns>当 <paramref name=\"value\" /> 命中任一候选值时返回 <see langword=\"true\" />；否则返回 <see langword=\"false\" />。</returns>");
-        builder.AppendLine(
-            $"        public static bool IsIn(this {fullEnumName} value, params {fullEnumName}[] values)");
+        builder.Append("        public static bool IsIn(this ").Append(fullEnumName).Append(" value, params ").Append(fullEnumName).AppendLine("[] values)");
         builder.AppendLine("        {");
         builder.AppendLine("            if (values == null) return false;");
         builder.AppendLine("            foreach (var v in values) if (value == v) return true;");

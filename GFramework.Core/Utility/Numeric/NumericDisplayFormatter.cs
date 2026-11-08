@@ -10,9 +10,13 @@ namespace GFramework.Core.Utility.Numeric;
 /// <summary>
 /// 默认数值显示格式化器。
 /// </summary>
-public sealed class NumericDisplayFormatter : INumericDisplayFormatter
+/// <remarks>
+/// 初始化数值显示格式化器。
+/// </remarks>
+/// <param name="defaultRule">默认规则。</param>
+public sealed class NumericDisplayFormatter(INumericFormatRule defaultRule) : INumericDisplayFormatter
 {
-    private readonly INumericFormatRule _defaultRule;
+    private readonly INumericFormatRule _defaultRule = defaultRule ?? throw new ArgumentNullException(nameof(defaultRule));
 
     /// <summary>
     /// 初始化默认数值显示格式化器。
@@ -20,15 +24,6 @@ public sealed class NumericDisplayFormatter : INumericDisplayFormatter
     public NumericDisplayFormatter()
         : this(NumericSuffixFormatRule.InternationalCompact)
     {
-    }
-
-    /// <summary>
-    /// 初始化数值显示格式化器。
-    /// </summary>
-    /// <param name="defaultRule">默认规则。</param>
-    public NumericDisplayFormatter(INumericFormatRule defaultRule)
-    {
-        _defaultRule = defaultRule ?? throw new ArgumentNullException(nameof(defaultRule));
     }
 
     /// <inheritdoc/>
@@ -76,7 +71,7 @@ public sealed class NumericDisplayFormatter : INumericDisplayFormatter
             double doubleValue => Format(doubleValue, options),
             decimal decimalValue => Format(decimalValue, options),
             BigInteger bigIntegerValue => Format(bigIntegerValue, options),
-            _ => FormatFallback(value, options?.FormatProvider)
+            _ => FormatFallback(value, options?.FormatProvider),
         };
     }
 
@@ -128,7 +123,7 @@ public sealed class NumericDisplayFormatter : INumericDisplayFormatter
         return options.Style switch
         {
             NumericDisplayStyle.Compact => _defaultRule,
-            _ => throw new ArgumentOutOfRangeException(nameof(options), options.Style, "不支持的数值显示风格。")
+            _ => throw new ArgumentOutOfRangeException(nameof(options), options.Style, "不支持的数值显示风格。"),
         };
     }
 
@@ -136,8 +131,8 @@ public sealed class NumericDisplayFormatter : INumericDisplayFormatter
     {
         return value switch
         {
-            IFormattable formattable => formattable.ToString(null, provider ?? CultureInfo.CurrentCulture),
-            _ => value.ToString() ?? string.Empty
+            IFormattable formattable => formattable.ToString(format: null, provider ?? CultureInfo.CurrentCulture),
+            _ => value.ToString() ?? string.Empty,
         };
     }
 }

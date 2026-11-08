@@ -163,18 +163,18 @@ public sealed class CoroutineResourceLifecycleTests
     {
         var scheduler = new CoroutineScheduler(new FakeTimeSource());
         var failure = new InvalidOperationException("task failed");
-        var continued = false;
+        var continued = new global::System.Runtime.CompilerServices.StrongBox<bool>(value: false);
 
         IEnumerator<IYieldInstruction> Routine()
         {
             yield return new WaitForTask(Task.FromException(failure));
-            continued = true;
+            continued.Value = true;
         }
 
         var handle = scheduler.Run(Routine());
         scheduler.Update();
 
-        Assert.That(continued, Is.False);
+        Assert.That(continued.Value, Is.False);
         Assert.That(scheduler.TryGetResult(handle, out var result), Is.True);
         Assert.That(result.Status, Is.EqualTo(CoroutineCompletionStatus.Faulted));
         Assert.That(result.Exception, Is.SameAs(failure));
@@ -211,7 +211,7 @@ public sealed class CoroutineResourceLifecycleTests
             yield return instruction;
         }
 
-        var handle = scheduler.Run(Routine());
+        var handle = scheduler.Run(Routine(), cancellationToken: global::System.Threading.CancellationToken.None);
         scheduler.Update();
 
         Assert.That(scheduler.TryGetResult(handle, out var result), Is.True);
@@ -245,10 +245,10 @@ public sealed class CoroutineResourceLifecycleTests
 
         if (!owned)
         {
-            target = scheduler.Run(child);
+            target = scheduler.Run(child, cancellationToken: global::System.Threading.CancellationToken.None);
         }
 
-        var parent = scheduler.Run(Parent(), childFailurePolicy: CoroutineFailurePolicy.Supervisor);
+        var parent = scheduler.Run(Parent(), childFailurePolicy: CoroutineFailurePolicy.Supervisor, cancellationToken: global::System.Threading.CancellationToken.None);
         if (owned)
         {
             target = scheduler.GetActiveSnapshots().Single(snapshot => snapshot.Parent == parent).Handle;
@@ -281,7 +281,7 @@ public sealed class CoroutineResourceLifecycleTests
         }
 
         var handle = scheduler.Run(context => context.ParallelCoroutines(Child()),
-            childFailurePolicy: CoroutineFailurePolicy.Supervisor);
+            childFailurePolicy: CoroutineFailurePolicy.Supervisor, cancellationToken: global::System.Threading.CancellationToken.None);
         for (var frame = 0; frame < 4 && scheduler.IsCoroutineAlive(handle); frame++)
         {
             scheduler.Update();
@@ -314,7 +314,7 @@ public sealed class CoroutineResourceLifecycleTests
             return sequence
                 ? CoroutineExtensions.Sequence(parallel)
                 : parallel.Then(() => continued = true);
-        }, childFailurePolicy: CoroutineFailurePolicy.Supervisor);
+        }, childFailurePolicy: CoroutineFailurePolicy.Supervisor, cancellationToken: global::System.Threading.CancellationToken.None);
         for (var frame = 0; frame < 8 && scheduler.IsCoroutineAlive(handle); frame++)
         {
             scheduler.Update();
@@ -336,7 +336,7 @@ public sealed class CoroutineResourceLifecycleTests
         var failure = new OperationCanceledException("sequence transition cleanup failed");
         var first = new ProbeEnumerator(disposeFailure: failure, completesImmediately: true);
         var second = new ProbeEnumerator();
-        var handle = scheduler.Run(CoroutineExtensions.Sequence(first, second));
+        var handle = scheduler.Run(CoroutineExtensions.Sequence(first, second), cancellationToken: global::System.Threading.CancellationToken.None);
 
         Assert.That(scheduler.TryGetResult(handle, out var result), Is.True);
         Assert.That(result.Status, Is.EqualTo(CoroutineCompletionStatus.Faulted));
@@ -371,8 +371,8 @@ public sealed class CoroutineResourceLifecycleTests
     {
         var scheduler = new CoroutineScheduler(new FakeTimeSource());
         var failure = new InvalidOperationException("awaited child failed");
-        var continued = false;
-        WaitForCoroutine? ownedAwait = null;
+        var continued = new global::System.Runtime.CompilerServices.StrongBox<bool>(value: false);
+        var ownedAwait = new global::System.Runtime.CompilerServices.StrongBox<WaitForCoroutine?>(value: null);
 
         IEnumerator<IYieldInstruction> Child()
         {
@@ -387,9 +387,9 @@ public sealed class CoroutineResourceLifecycleTests
 
         IEnumerator<IYieldInstruction> Parent()
         {
-            ownedAwait = new WaitForCoroutine(Child());
-            yield return ownedAwait;
-            continued = true;
+            ownedAwait.Value = new WaitForCoroutine(Child());
+            yield return ownedAwait.Value!;
+            continued.Value = true;
         }
 
         var handle = scheduler.Run(Parent(), childFailurePolicy: CoroutineFailurePolicy.Supervisor);
@@ -398,12 +398,12 @@ public sealed class CoroutineResourceLifecycleTests
             scheduler.Update();
         }
 
-        Assert.That(continued, Is.False);
+        Assert.That(continued.Value, Is.False);
         Assert.That(scheduler.TryGetResult(handle, out var result), Is.True);
         Assert.That(result.Status, Is.EqualTo(cancel
             ? CoroutineCompletionStatus.Cancelled
             : CoroutineCompletionStatus.Faulted));
-        Assert.That(ownedAwait!.Result.Status, Is.EqualTo(result.Status));
+        Assert.That(ownedAwait.Value!.Result.Status, Is.EqualTo(result.Status));
         if (!cancel)
         {
             Assert.That(result.Exception, Is.SameAs(failure));
@@ -438,7 +438,7 @@ public sealed class CoroutineResourceLifecycleTests
         {
             received = token;
             return source.Task;
-        });
+        }, cancellationToken: global::System.Threading.CancellationToken.None);
 
         scheduler.Kill(handle);
 
@@ -573,10 +573,16 @@ public sealed class CoroutineResourceLifecycleTests
         : IEnumerator<IYieldInstruction>
     {
         /// <summary>获取释放请求次数。</summary>
-        public int DisposeCount { get; private set; }
+        public int DisposeCount
+        {
+            get; private set;
+        }
 
         /// <summary>获取推进次数。</summary>
-        public int MoveNextCount { get; private set; }
+        public int MoveNextCount
+        {
+            get; private set;
+        }
 
         /// <inheritdoc />
         public IYieldInstruction Current => new Delay(10);

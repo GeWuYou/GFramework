@@ -34,7 +34,10 @@ public class RequestPipelineBenchmarks
     ///     控制当前场景注册的 pipeline 行为数量，保持与 `Mediator` benchmark 常见的“无行为 / 少量行为 / 多行为”矩阵一致。
     /// </summary>
     [Params(0, 1, 4)]
-    public int PipelineCount { get; set; }
+    public int PipelineCount
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     配置 request pipeline benchmark 的公共输出格式。
@@ -258,35 +261,27 @@ public class RequestPipelineBenchmarks
             RequestHandlerDelegate<BenchmarkResponse> next,
             CancellationToken cancellationToken)
         {
-            return next();
+            return next(cancellationToken);
         }
     }
 
     /// <summary>
     ///     pipeline 行为槽位 1。
     /// </summary>
-    public sealed class BenchmarkPipelineBehavior1 : BenchmarkPipelineBehaviorBase
-    {
-    }
+    public sealed class BenchmarkPipelineBehavior1 : BenchmarkPipelineBehaviorBase;
 
     /// <summary>
     ///     pipeline 行为槽位 2。
     /// </summary>
-    public sealed class BenchmarkPipelineBehavior2 : BenchmarkPipelineBehaviorBase
-    {
-    }
+    public sealed class BenchmarkPipelineBehavior2 : BenchmarkPipelineBehaviorBase;
 
     /// <summary>
     ///     pipeline 行为槽位 3。
     /// </summary>
-    public sealed class BenchmarkPipelineBehavior3 : BenchmarkPipelineBehaviorBase
-    {
-    }
+    public sealed class BenchmarkPipelineBehavior3 : BenchmarkPipelineBehaviorBase;
 
     /// <summary>
     ///     pipeline 行为槽位 4。
     /// </summary>
-    public sealed class BenchmarkPipelineBehavior4 : BenchmarkPipelineBehaviorBase
-    {
-    }
+    public sealed class BenchmarkPipelineBehavior4 : BenchmarkPipelineBehaviorBase;
 }

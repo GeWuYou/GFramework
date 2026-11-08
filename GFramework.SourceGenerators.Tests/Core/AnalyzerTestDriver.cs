@@ -9,6 +9,8 @@ namespace GFramework.SourceGenerators.Tests.Core;
 ///     提供 Roslyn 分析器测试的通用运行入口。
 /// </summary>
 /// <typeparam name="TAnalyzer">要验证的分析器类型。</typeparam>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0018",
+    Justification = "The fixture driver is deliberately bound to its generic analyzer type; its static creation helpers retain that test contract.")]
 public static class AnalyzerTestDriver<TAnalyzer>
     where TAnalyzer : DiagnosticAnalyzer, new()
 {
@@ -26,9 +28,9 @@ public static class AnalyzerTestDriver<TAnalyzer>
         {
             TestState =
             {
-                Sources = { source }
+                Sources = { source },
             },
-            DisabledDiagnostics = { "GF_Common_Trace_001" }
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
         };
 
         test.ExpectedDiagnostics.AddRange(diagnostics);

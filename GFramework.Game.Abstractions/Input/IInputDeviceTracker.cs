@@ -11,5 +11,8 @@ public interface IInputDeviceTracker
     /// <summary>
     ///     获取当前输入设备上下文。
     /// </summary>
-    InputDeviceContext CurrentDevice { get; }
+    InputDeviceContext CurrentDevice
+    {
+        get;
+    }
 }

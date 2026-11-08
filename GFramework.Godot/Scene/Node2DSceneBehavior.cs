@@ -19,15 +19,9 @@ namespace GFramework.Godot.Scene;
 ///     Node2D 场景行为类，用于管理 2D 场景节点的生命周期。
 ///     适用于 Sprite2D、TileMap 等 2D 场景元素。
 /// </summary>
-public sealed class Node2DSceneBehavior : SceneBehaviorBase<Node2D>
-{
-    /// <summary>
-    ///     初始化 Node2DSceneBehavior 实例。
-    /// </summary>
-    /// <param name="owner">2D 场景节点的所有者实例。</param>
-    /// <param name="key">场景的唯一标识键。</param>
-    public Node2DSceneBehavior(Node2D owner, string key)
-        : base(owner, key)
-    {
-    }
-}
+/// <remarks>
+///     初始化 Node2DSceneBehavior 实例。
+/// </remarks>
+/// <param name="owner">2D 场景节点的所有者实例。</param>
+/// <param name="key">场景的唯一标识键。</param>
+public sealed class Node2DSceneBehavior(Node2D owner, string key) : SceneBehaviorBase<Node2D>(owner, key);

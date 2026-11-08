@@ -9,19 +9,40 @@ public sealed class ContentLoadDiagnostic
     /// <summary>Gets a stable error category.</summary>
     public string Code { get; init; } = string.Empty;
     /// <summary>Gets the package responsible for the failure, if known.</summary>
-    public string? PackId { get; init; }
+    public string? PackId
+    {
+        get; init;
+    }
     /// <summary>Gets its declared version, if available.</summary>
-    public string? PackVersion { get; init; }
+    public string? PackVersion
+    {
+        get; init;
+    }
     /// <summary>Gets the source file, if applicable.</summary>
-    public string? FilePath { get; init; }
+    public string? FilePath
+    {
+        get; init;
+    }
     /// <summary>Gets the extensible table name, if applicable.</summary>
-    public string? TableName { get; init; }
+    public string? TableName
+    {
+        get; init;
+    }
     /// <summary>Gets the stable record identity, if applicable.</summary>
-    public string? ContentId { get; init; }
+    public string? ContentId
+    {
+        get; init;
+    }
     /// <summary>Gets the field path, if applicable.</summary>
-    public string? FieldPath { get; init; }
+    public string? FieldPath
+    {
+        get; init;
+    }
     /// <summary>Gets another package participating in a dependency or conflict.</summary>
-    public string? RelatedPackId { get; init; }
+    public string? RelatedPackId
+    {
+        get; init;
+    }
     /// <summary>Gets details suitable for presenting alongside the structured fields.</summary>
     public string Detail { get; init; } = string.Empty;
 }

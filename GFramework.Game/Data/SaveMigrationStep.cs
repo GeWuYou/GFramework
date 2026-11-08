@@ -29,13 +29,28 @@ public sealed class SaveMigrationStep
     }
 
     /// <summary>Gets the source schema version.</summary>
-    public int FromVersion { get; }
+    public int FromVersion
+    {
+        get;
+    }
     /// <summary>Gets the destination schema version.</summary>
-    public int ToVersion { get; }
+    public int ToVersion
+    {
+        get;
+    }
     /// <summary>Gets the explanation displayed in preparation results.</summary>
-    public string Description { get; }
+    public string Description
+    {
+        get;
+    }
     /// <summary>Gets whether this conversion can discard information.</summary>
-    public bool IsLossy { get; }
+    public bool IsLossy
+    {
+        get;
+    }
     /// <summary>Gets the owner-provided pure asynchronous conversion.</summary>
-    internal Func<SaveDataBlock, CancellationToken, Task<SaveDataBlock>> ConvertAsync { get; }
+    internal Func<SaveDataBlock, CancellationToken, Task<SaveDataBlock>> ConvertAsync
+    {
+        get;
+    }
 }

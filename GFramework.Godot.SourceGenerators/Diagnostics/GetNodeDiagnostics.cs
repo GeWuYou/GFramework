@@ -21,7 +21,7 @@ public static class GetNodeDiagnostics
             "Class '{0}' cannot use [GetNode] inside a nested type",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Error,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     static 字段不受支持。
@@ -33,7 +33,7 @@ public static class GetNodeDiagnostics
             "Field '{0}' cannot be static when using [GetNode]",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Error,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     readonly 字段不受支持。
@@ -45,7 +45,7 @@ public static class GetNodeDiagnostics
             "Field '{0}' cannot be readonly when using [GetNode]",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Error,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     字段类型必须继承自 Godot.Node。
@@ -57,7 +57,7 @@ public static class GetNodeDiagnostics
             "Field '{0}' must be a Godot.Node type to use [GetNode]",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Error,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     无法从字段名推导路径。
@@ -69,7 +69,7 @@ public static class GetNodeDiagnostics
             "Field '{0}' does not provide a path and its name cannot be converted to a node path",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Error,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     现有 _Ready 中未调用生成注入逻辑。
@@ -81,5 +81,5 @@ public static class GetNodeDiagnostics
             "Class '{0}' defines _Ready(); call __InjectGetNodes_Generated() there or remove _Ready() to use the generated hook",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Warning,
-            true);
+isEnabledByDefault: true);
 }

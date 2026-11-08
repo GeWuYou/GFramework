@@ -48,8 +48,8 @@ public sealed class CqrsRuntimeModule(params Assembly[] handlerAssemblies) : ISe
         ArgumentNullException.ThrowIfNull(container);
 
         var services = container.GetServicesUnsafe;
-        var loggerFactory = container.Get<ILoggerFactory>();
-        services.AddCqrsRuntime(loggerFactory);
+        // 注册阶段可能持有容器写锁；只登记描述，日志在正式 provider 构建后按标准 DI 解析。
+        services.AddCqrsRuntime();
         if (handlerAssemblies.Length > 0)
         {
             services.AddCqrsHandlersFromAssemblies(handlerAssemblies);

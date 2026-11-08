@@ -14,18 +14,31 @@ public sealed class ModSavePolicy
     /// <param name="migrations">Explicit transformations, if any.</param>
     public ModSavePolicy(string modId, int currentVersion, SaveMigrationGraph? migrations = null)
     {
-        if (!ContentId.IsCanonicalSegment(modId)) throw new ArgumentException("A mod namespace must be canonical.", nameof(modId));
-        if (currentVersion < 1) throw new ArgumentOutOfRangeException(nameof(currentVersion));
+        if (!ContentId.IsCanonicalSegment(modId))
+            throw new ArgumentException("A mod namespace must be canonical.", nameof(modId));
+        ArgumentOutOfRangeException.ThrowIfLessThan(currentVersion, 1);
         ModId = modId;
         CurrentVersion = currentVersion;
         Migrations = migrations ?? new SaveMigrationGraph();
     }
     /// <summary>Gets the owning mod ID.</summary>
-    public string ModId { get; }
+    public string ModId
+    {
+        get;
+    }
     /// <summary>Gets the current schema version.</summary>
-    public int CurrentVersion { get; }
+    public int CurrentVersion
+    {
+        get;
+    }
     /// <summary>Gets an optional complete version path to resolve equal shortest routes.</summary>
-    public IReadOnlyList<int>? VersionPath { get; init; }
+    public IReadOnlyList<int>? VersionPath
+    {
+        get; init;
+    }
     /// <summary>Gets the owner's immutable conversion graph.</summary>
-    public SaveMigrationGraph Migrations { get; }
+    public SaveMigrationGraph Migrations
+    {
+        get;
+    }
 }

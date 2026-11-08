@@ -91,7 +91,10 @@ public class OrEventTests
         var orEvent = new OrEvent();
 
         var count = 0;
-        var handler = () => { count++; };
+        void handler()
+        {
+            count++;
+        }
 
         orEvent.Register(handler);
         orEvent.Or(@event);

@@ -35,7 +35,10 @@ public sealed class PreparedSave<TSaveData> where TSaveData : class, IData, new(
     }
 
     /// <summary>Gets the inspected slot.</summary>
-    public int Slot { get; }
+    public int Slot
+    {
+        get;
+    }
     /// <summary>Gets a fresh current DTO; editing it does not change the approved candidate.</summary>
     public TSaveData Data => _codec.DeserializeData<TSaveData>(_codec.Decode(Candidate).Game.Data);
     /// <summary>Gets an independent document for inspection.</summary>
@@ -45,21 +48,45 @@ public sealed class PreparedSave<TSaveData> where TSaveData : class, IData, new(
     /// <summary>Gets an independent mod draft, including opaque data from unavailable mods.</summary>
     public ModSaveSession ModState => new(Owner, Document.Mods, _modPolicies, _codec);
     /// <summary>Gets whether transformed or updated metadata must be explicitly committed before ordinary loading.</summary>
-    public bool RequiresCommit { get; }
+    public bool RequiresCommit
+    {
+        get;
+    }
     /// <summary>Gets whether downgrade, lossy conversion or content repair needs an explicit player decision.</summary>
-    public bool RequiresConfirmation { get; }
+    public bool RequiresConfirmation
+    {
+        get;
+    }
     /// <summary>Gets structured original content differences.</summary>
-    public IReadOnlyList<ContentSaveIssue> Issues { get; }
+    public IReadOnlyList<ContentSaveIssue> Issues
+    {
+        get;
+    }
     /// <summary>Gets selected game and mod conversion steps in execution order.</summary>
-    public IReadOnlyList<SaveMigrationStep> MigrationPath { get; }
+    public IReadOnlyList<SaveMigrationStep> MigrationPath
+    {
+        get;
+    }
     /// <summary>Gets the exact source file identity.</summary>
     public string SourceFingerprint => Original.Fingerprint;
     /// <summary>Gets the issuing repository identity.</summary>
-    internal Guid Owner { get; }
+    internal Guid Owner
+    {
+        get;
+    }
     /// <summary>Gets the original lossless file.</summary>
-    internal StorageSnapshot Original { get; }
+    internal StorageSnapshot Original
+    {
+        get;
+    }
     /// <summary>Gets the private prepared bytes, inaccessible to game mutation.</summary>
-    internal StorageSnapshot Candidate { get; }
+    internal StorageSnapshot Candidate
+    {
+        get;
+    }
     /// <summary>Gets the active session bound to this decision.</summary>
-    internal ContentSnapshot? CurrentContent { get; }
+    internal ContentSnapshot? CurrentContent
+    {
+        get;
+    }
 }

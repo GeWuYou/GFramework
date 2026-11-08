@@ -15,12 +15,24 @@ namespace GFramework.Core.StateManagement;
 /// </summary>
 /// <typeparam name="TState">源状态类型。</typeparam>
 /// <typeparam name="TSelected">投影后的局部状态类型。</typeparam>
-public sealed class StoreSelection<TState, TSelected> : IReadonlyBindableProperty<TSelected>
+/// <remarks>
+///     初始化一个新的 Store 选择视图。
+/// </remarks>
+/// <param name="store">源 Store。</param>
+/// <param name="selector">状态选择器。</param>
+/// <param name="comparer">选择结果比较器；未提供时使用 <see cref="EqualityComparer{T}.Default"/>。</param>
+/// <exception cref="ArgumentNullException">
+///     当 <paramref name="store"/> 或 <paramref name="selector"/> 为 <see langword="null"/> 时抛出。
+/// </exception>
+public sealed class StoreSelection<TState, TSelected>(
+    IReadonlyStore<TState> store,
+    Func<TState, TSelected> selector,
+    IEqualityComparer<TSelected>? comparer = null) : IReadonlyBindableProperty<TSelected>
 {
     /// <summary>
     ///     用于判断选择结果是否真正变化的比较器。
     /// </summary>
-    private readonly IEqualityComparer<TSelected> _comparer;
+    private readonly IEqualityComparer<TSelected> _comparer = comparer ?? EqualityComparer<TSelected>.Default;
 
     /// <summary>
     ///     当前监听器列表。
@@ -38,12 +50,12 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     /// <summary>
     ///     负责从完整状态中投影出局部状态的选择器。
     /// </summary>
-    private readonly Func<TState, TSelected> _selector;
+    private readonly Func<TState, TSelected> _selector = selector ?? throw new ArgumentNullException(nameof(selector));
 
     /// <summary>
     ///     源 Store。
     /// </summary>
-    private readonly IReadonlyStore<TState> _store;
+    private readonly IReadonlyStore<TState> _store = store ?? throw new ArgumentNullException(nameof(store));
 
     /// <summary>
     ///     当前已缓存的选择结果。
@@ -58,25 +70,6 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     private IUnRegister? _storeSubscription;
 
     /// <summary>
-    ///     初始化一个新的 Store 选择视图。
-    /// </summary>
-    /// <param name="store">源 Store。</param>
-    /// <param name="selector">状态选择器。</param>
-    /// <param name="comparer">选择结果比较器；未提供时使用 <see cref="EqualityComparer{T}.Default"/>。</param>
-    /// <exception cref="ArgumentNullException">
-    ///     当 <paramref name="store"/> 或 <paramref name="selector"/> 为 <see langword="null"/> 时抛出。
-    /// </exception>
-    public StoreSelection(
-        IReadonlyStore<TState> store,
-        Func<TState, TSelected> selector,
-        IEqualityComparer<TSelected>? comparer = null)
-    {
-        _store = store ?? throw new ArgumentNullException(nameof(store));
-        _selector = selector ?? throw new ArgumentNullException(nameof(selector));
-        _comparer = comparer ?? EqualityComparer<TSelected>.Default;
-    }
-
-    /// <summary>
     ///     获取当前选择结果。
     /// </summary>
     public TSelected Value => _selector(_store.State);
@@ -88,8 +81,7 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     /// <returns>用于取消订阅的句柄。</returns>
     IUnRegister IEvent.Register(Action onEvent)
     {
-        if (onEvent is null)
-            throw new ArgumentNullException(nameof(onEvent));
+        ArgumentNullException.ThrowIfNull(onEvent);
 
         return Register(_ => onEvent());
     }
@@ -102,18 +94,17 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     /// <exception cref="ArgumentNullException">当 <paramref name="onValueChanged"/> 为 <see langword="null"/> 时抛出。</exception>
     public IUnRegister Register(Action<TSelected> onValueChanged)
     {
-        if (onValueChanged is null)
-            throw new ArgumentNullException(nameof(onValueChanged));
+        ArgumentNullException.ThrowIfNull(onValueChanged);
 
         var subscription = new SelectionListenerSubscription(onValueChanged);
-        var shouldAttach = false;
+        bool shouldAttach;
 
         lock (_lock)
         {
-            if (_listeners.Count == 0)
+            shouldAttach = _listeners.Count == 0;
+            if (shouldAttach)
             {
                 _currentValue = Value;
-                shouldAttach = true;
             }
 
             _listeners.Add(subscription);
@@ -135,12 +126,11 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     /// <exception cref="ArgumentNullException">当 <paramref name="action"/> 为 <see langword="null"/> 时抛出。</exception>
     public IUnRegister RegisterWithInitValue(Action<TSelected> action)
     {
-        if (action is null)
-            throw new ArgumentNullException(nameof(action));
+        ArgumentNullException.ThrowIfNull(action);
 
         var subscription = new SelectionListenerSubscription(action)
         {
-            IsActive = false
+            IsActive = false,
         };
         var currentValue = Value;
         TSelected? pendingValue = default;
@@ -199,8 +189,7 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     /// <exception cref="ArgumentNullException">当 <paramref name="onValueChanged"/> 为 <see langword="null"/> 时抛出。</exception>
     public void UnRegister(Action<TSelected> onValueChanged)
     {
-        if (onValueChanged is null)
-            throw new ArgumentNullException(nameof(onValueChanged));
+        ArgumentNullException.ThrowIfNull(onValueChanged);
 
         SelectionListenerSubscription? subscriptionToRemove = null;
 
@@ -226,7 +215,7 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     /// </summary>
     private void EnsureAttached()
     {
-        var shouldAttach = false;
+        bool shouldAttach;
 
         lock (_lock)
         {
@@ -267,7 +256,7 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     private void AttachToStore()
     {
         var subscription = _store.Subscribe(OnStoreChanged);
-        Action<TSelected>[] listenersSnapshot = Array.Empty<Action<TSelected>>();
+        Action<TSelected>[] listenersSnapshot = [];
         var latestValue = Value;
         var shouldNotify = false;
 
@@ -307,10 +296,9 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
                     listener.HasPendingValue = true;
                 }
 
-                listenersSnapshot = _listeners
+                listenersSnapshot = [.. _listeners
                     .Where(listener => listener.IsSubscribed && listener.IsActive)
-                    .Select(listener => listener.Listener)
-                    .ToArray();
+                    .Select(listener => listener.Listener)];
                 shouldNotify = listenersSnapshot.Length > 0;
             }
         }
@@ -333,7 +321,7 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     private void OnStoreChanged(TState state)
     {
         var selectedValue = _selector(state);
-        Action<TSelected>[] listenersSnapshot = Array.Empty<Action<TSelected>>();
+        Action<TSelected>[] listenersSnapshot = [];
 
         lock (_lock)
         {
@@ -359,10 +347,9 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
                 listener.HasPendingValue = true;
             }
 
-            listenersSnapshot = _listeners
+            listenersSnapshot = [.. _listeners
                 .Where(listener => listener.IsSubscribed && listener.IsActive)
-                .Select(listener => listener.Listener)
-                .ToArray();
+                .Select(listener => listener.Listener)];
         }
 
         foreach (var listener in listenersSnapshot)
@@ -395,7 +382,10 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
         /// <summary>
         ///     获取或设置是否存在待补发的局部状态值。
         /// </summary>
-        public bool HasPendingValue { get; set; }
+        public bool HasPendingValue
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置初始化阶段积累的最新局部状态值。

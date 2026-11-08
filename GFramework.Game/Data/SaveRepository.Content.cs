@@ -14,13 +14,13 @@ public sealed partial class SaveRepository<TSaveData>
     {
         var issues = new List<ContentSaveIssue>();
         if (document.Content is null)
-            issues.Add(new ContentSaveIssue(ContentSaveIssueKind.MissingMetadata, "The save has no content metadata.", true));
+            issues.Add(new ContentSaveIssue(ContentSaveIssueKind.MissingMetadata, "The save has no content metadata.", blocking: true));
         else
             CollectPackageIssues(document.Content, catalog, issues);
         foreach (var reference in EnumerateReferences(document))
             if (!catalog.Contains(reference))
                 issues.Add(new ContentSaveIssue(ContentSaveIssueKind.MissingContent,
-                    $"Content '{reference.Id}' in '{reference.TableName}' is unavailable.", true, reference.Id.PackId, reference));
+                    $"Content '{reference.Id}' in '{reference.TableName}' is unavailable.", blocking: true, reference.Id.PackId, reference));
         return new ContentSaveReport(slot, fingerprint, document.Content, catalog.Snapshot, issues);
     }
 
@@ -33,34 +33,37 @@ public sealed partial class SaveRepository<TSaveData>
         {
             if (!active.TryGetValue(oldPack.Id, out var current))
                 issues.Add(new ContentSaveIssue(ContentSaveIssueKind.MissingPack,
-                    $"Package '{oldPack.Id}' ({oldPack.Version}) is not enabled.", true, oldPack.Id));
+                    $"Package '{oldPack.Id}' ({oldPack.Version}) is not enabled.", blocking: true, oldPack.Id));
             else if (!IsPackCompatible(oldPack, current, catalog))
                 issues.Add(new ContentSaveIssue(ContentSaveIssueKind.IncompatiblePack,
-                    $"Package '{oldPack.Id}' changed from {oldPack.Version} to {current.Version} without declared compatibility.", true, oldPack.Id));
+                    $"Package '{oldPack.Id}' changed from {oldPack.Version} to {current.Version} without declared compatibility.", blocking: true, oldPack.Id));
         }
         foreach (var added in catalog.Snapshot.Packs.Where(pack => !previous.ContainsKey(pack.Id)))
             issues.Add(new ContentSaveIssue(ContentSaveIssueKind.AdditionalPack,
-                $"Package '{added.Id}' is newly enabled.", false, added.Id));
+                $"Package '{added.Id}' is newly enabled.", blocking: false, added.Id));
         var oldOrder = saved.Packs.Where(pack => active.ContainsKey(pack.Id)).Select(static pack => pack.Id);
         var newOrder = catalog.Snapshot.Packs.Where(pack => previous.ContainsKey(pack.Id)).Select(static pack => pack.Id);
         if (!oldOrder.SequenceEqual(newOrder, StringComparer.Ordinal))
             issues.Add(new ContentSaveIssue(ContentSaveIssueKind.LoadOrderChanged,
-                "The effective order of previously enabled packages changed.", false));
+                "The effective order of previously enabled packages changed.", blocking: false));
     }
 
     /// <summary>Accepts exact identity or an explicit compatibility contract; same-version edits never use version ranges.</summary>
     private bool IsPackCompatible(ContentPackStamp previous, ContentPackStamp current, ContentCatalog catalog)
     {
-        if (PackStampsEqual(previous, current)) return true;
-        if (_options.Content!.IsPackCompatible is { } policy) return policy(previous, current);
-        if (string.Equals(previous.Version, current.Version, StringComparison.Ordinal)) return false;
+        if (PackStampsEqual(previous, current))
+            return true;
+        if (_options.Content!.IsPackCompatible is { } policy)
+            return policy(previous, current);
+        if (string.Equals(previous.Version, current.Version, StringComparison.Ordinal))
+            return false;
         var installed = catalog.Packages.Single(pack => string.Equals(pack.Manifest.Id, current.Id, StringComparison.Ordinal));
         return installed.Manifest.SaveCompatibleVersions is { } range && ContentVersionRules.Contains(previous.Version, range);
     }
 
     /// <summary>Rejects a broken host enumerator instead of silently omitting reference validation.</summary>
     private IEnumerable<ContentReference> EnumerateReferences(SaveDocument document) =>
-        (_options.Content!.EnumerateReferences(document.Clone()) ?? throw new InvalidOperationException("Save references cannot be null.")).ToArray();
+        [.. (_options.Content!.EnumerateReferences(document.Clone()) ?? throw new InvalidOperationException("Save references cannot be null."))];
 
     /// <summary>Compares full immutable startup package order and identity.</summary>
     private static bool SnapshotsEqual(ContentSnapshot? left, ContentSnapshot? right) =>

@@ -17,20 +17,15 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 ///     该工厂统一保留这些测试日志器，以便断言警告是否经由公开入口真正发出。
 ///     并发创建日志器时会通过内部锁串行化，<see cref="Loggers" /> 每次返回快照，避免调用方观察到可变集合。
 /// </remarks>
-internal sealed class CapturingLoggerFactoryProvider : ILoggerFactory
+/// <remarks>
+///     使用指定的最小日志级别初始化一个新的捕获型日志工厂。
+/// </remarks>
+/// <param name="minLevel">要应用到新建测试日志器的最小日志级别。</param>
+internal sealed class CapturingLoggerFactoryProvider(LogLevel minLevel = LogLevel.Information) : ILoggerFactory
 {
     private readonly List<TestLogger> _loggers = [];
     private readonly Lock _sync = new();
-    private LogLevel _minLevel;
-
-    /// <summary>
-    ///     使用指定的最小日志级别初始化一个新的捕获型日志工厂。
-    /// </summary>
-    /// <param name="minLevel">要应用到新建测试日志器的最小日志级别。</param>
-    public CapturingLoggerFactoryProvider(LogLevel minLevel = LogLevel.Information)
-    {
-        _minLevel = minLevel;
-    }
+    private LogLevel _minLevel = minLevel;
 
     /// <summary>
     ///     获取通过当前工厂创建的全部测试日志器快照。
@@ -41,7 +36,7 @@ internal sealed class CapturingLoggerFactoryProvider : ILoggerFactory
         {
             lock (_sync)
             {
-                return _loggers.ToArray();
+                return [.. _loggers];
             }
         }
     }

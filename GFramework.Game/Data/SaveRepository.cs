@@ -18,7 +18,7 @@ namespace GFramework.Game.Data;
 public sealed partial class SaveRepository<TSaveData> : ISaveRepository<TSaveData> where TSaveData : class, IData, new()
 {
     private readonly SaveConfiguration _configuration;
-    private readonly IStorage _rootStorage;
+    private readonly ScopedStorage _rootStorage;
     private readonly SaveRepositoryOptions<TSaveData> _options;
     private readonly ISaveDocumentCodec _codec;
     private readonly IReadOnlyDictionary<string, ModSavePolicy> _modPolicies;
@@ -35,12 +35,15 @@ public sealed partial class SaveRepository<TSaveData> : ISaveRepository<TSaveDat
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.GameId, nameof(options));
-        if (options.CurrentVersion < 1) throw new ArgumentOutOfRangeException(nameof(options));
-        if (storage is not IStorageBackup) throw new ArgumentException("Document saves require IStorageBackup.", nameof(storage));
+        if (options.CurrentVersion < 1)
+            throw new ArgumentOutOfRangeException(nameof(options));
+        if (storage is not IStorageBackup)
+            throw new ArgumentException("Document saves require IStorageBackup.", nameof(storage));
         _codec = options.Codec ?? throw new ArgumentException("A document codec is required.", nameof(options));
         ArgumentNullException.ThrowIfNull(options.Migrations, nameof(options));
         ArgumentNullException.ThrowIfNull(options.ModPolicies, nameof(options));
-        if (options.Content is not null) ArgumentNullException.ThrowIfNull(options.Content.CurrentCatalog, nameof(options));
+        if (options.Content is not null)
+            ArgumentNullException.ThrowIfNull(options.Content.CurrentCatalog, nameof(options));
         _configuration = configuration;
         _options = options;
         _rootStorage = new ScopedStorage(storage, configuration.SaveRoot);
@@ -51,9 +54,10 @@ public sealed partial class SaveRepository<TSaveData> : ISaveRepository<TSaveDat
             // Capture explicit paths as well as the collection: caller-owned lists cannot mutate a prepared policy.
             var captured = new ModSavePolicy(policy.ModId, policy.CurrentVersion, policy.Migrations)
             {
-                VersionPath = policy.VersionPath is null ? null : Array.AsReadOnly(policy.VersionPath.ToArray())
+                VersionPath = policy.VersionPath is null ? null : Array.AsReadOnly(policy.VersionPath.ToArray()),
             };
-            if (!policies.TryAdd(policy.ModId, captured)) throw new ArgumentException("Duplicate active mod save policy.", nameof(options));
+            if (!policies.TryAdd(policy.ModId, captured))
+                throw new ArgumentException("Duplicate active mod save policy.", nameof(options));
         }
         _modPolicies = policies;
     }
@@ -68,10 +72,28 @@ public sealed partial class SaveRepository<TSaveData> : ISaveRepository<TSaveDat
     /// <inheritdoc />
     public async Task<TSaveData> LoadAsync(int slot, CancellationToken cancellationToken = default)
     {
-        if (!await ExistsAsync(slot, cancellationToken).ConfigureAwait(false)) return new TSaveData();
-        var prepared = await PrepareLoadAsync(slot, cancellationToken).ConfigureAwait(false);
-        if (prepared.RequiresCommit) throw new SavePreparationRequiredException<TSaveData>(prepared);
-        return prepared.Data;
+        var gate = GetSlotGate(slot);
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            // Existence and reading belong to one admission, so deletion cannot invalidate a successful check.
+            var exists = await GetSlotStorage(slot).ExistsAsync(_configuration.SaveFileName).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!exists)
+            {
+                return new TSaveData();
+            }
+            var prepared = await PrepareLockedAsync(slot, versionPath: null, cancellationToken).ConfigureAwait(false);
+            if (prepared.RequiresCommit)
+            {
+                throw new SavePreparationRequiredException<TSaveData>(prepared);
+            }
+            return prepared.Data;
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
 
     /// <summary>Creates a new run's empty mod snapshot, independent of any existing slot or prior run.</summary>
@@ -80,7 +102,7 @@ public sealed partial class SaveRepository<TSaveData> : ISaveRepository<TSaveDat
 
     /// <inheritdoc />
     public Task SaveAsync(int slot, TSaveData data, CancellationToken cancellationToken = default) =>
-        SaveCoreAsync(slot, data, null, cancellationToken);
+        SaveCoreAsync(slot, data, modState: null, cancellationToken);
 
     /// <summary>Atomically writes game state and an explicitly captured mod draft together.</summary>
     /// <param name="slot">Target slot.</param>
@@ -91,7 +113,8 @@ public sealed partial class SaveRepository<TSaveData> : ISaveRepository<TSaveDat
     public Task SaveDocumentAsync(int slot, TSaveData data, ModSaveSession modState, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(modState);
-        if (modState.Owner != _owner) throw new ArgumentException("The mod draft belongs to another repository.", nameof(modState));
+        if (modState.Owner != _owner)
+            throw new ArgumentException("The mod draft belongs to another repository.", nameof(modState));
         return SaveCoreAsync(slot, data, modState.Snapshot(), cancellationToken);
     }
 
@@ -105,12 +128,12 @@ public sealed partial class SaveRepository<TSaveData> : ISaveRepository<TSaveDat
         try
         {
             var storage = GetSlotStorage(slot);
-            var backups = (IStorageBackup)storage;
+            var backups = storage;
             var document = new SaveDocument
             {
                 GameId = _options.GameId,
                 Game = new SaveDataBlock { Version = _options.CurrentVersion, Data = _codec.SerializeData(data) },
-                Content = GetCurrentCatalog()?.Snapshot
+                Content = GetCurrentCatalog()?.Snapshot,
             };
             if (modState is not null)
             {
@@ -137,7 +160,11 @@ public sealed partial class SaveRepository<TSaveData> : ISaveRepository<TSaveDat
     {
         var gate = GetSlotGate(slot);
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try { await GetSlotStorage(slot).DeleteAsync(_configuration.SaveFileName).ConfigureAwait(false); }
+        try
+        {
+            await GetSlotStorage(slot).DeleteAsync(_configuration.SaveFileName).ConfigureAwait(false);
+
+        }
         finally { gate.Release(); }
     }
 
@@ -152,9 +179,10 @@ public sealed partial class SaveRepository<TSaveData> : ISaveRepository<TSaveDat
             cancellationToken.ThrowIfCancellationRequested();
             if (directory.StartsWith(_configuration.SaveSlotPrefix, StringComparison.Ordinal) &&
                 int.TryParse(directory[_configuration.SaveSlotPrefix.Length..], NumberStyles.None, CultureInfo.InvariantCulture, out var slot) &&
-                await ExistsAsync(slot, cancellationToken).ConfigureAwait(false)) slots.Add(slot);
+                await ExistsAsync(slot, cancellationToken).ConfigureAwait(false))
+                slots.Add(slot);
         }
-        return slots.OrderBy(static slot => slot).ToArray();
+        return [.. slots.Order()];
     }
 
     /// <summary>Decodes outer metadata before any DTO or conversion callback can execute.</summary>
@@ -173,14 +201,16 @@ public sealed partial class SaveRepository<TSaveData> : ISaveRepository<TSaveDat
     {
         if (document.FormatVersion != 1 || !string.Equals(document.GameId, _options.GameId, StringComparison.Ordinal))
             throw new InvalidOperationException("Recovery cannot change the envelope format or game identity.");
-        if (document.Game.Version != _options.CurrentVersion) throw new InvalidOperationException("Wrong current game schema.");
+        if (document.Game.Version != _options.CurrentVersion)
+            throw new InvalidOperationException("Wrong current game schema.");
         foreach (var policy in _modPolicies.Values)
             if (document.Mods.TryGetValue(policy.ModId, out var block) && block.Version != policy.CurrentVersion)
                 throw new InvalidOperationException("Mod data must be prepared before saving: " + policy.ModId);
         var catalog = GetCurrentCatalog();
         if (catalog is not null)
             foreach (var reference in EnumerateReferences(document))
-                if (!catalog.Contains(reference)) throw new InvalidOperationException("Prepared save references missing content: " + reference.Id);
+                if (!catalog.Contains(reference))
+                    throw new InvalidOperationException("Prepared save references missing content: " + reference.Id);
         var data = _codec.DeserializeData<TSaveData>(document.Game.Data);
         _options.Validate?.Invoke(data);
         return data;
@@ -191,16 +221,16 @@ public sealed partial class SaveRepository<TSaveData> : ISaveRepository<TSaveDat
         _options.Content.CurrentCatalog() ?? throw new InvalidOperationException("The current content catalog is unavailable.");
 
     /// <summary>Creates a slot scope after rejecting negative or malformed layouts at the storage boundary.</summary>
-    private IStorage GetSlotStorage(int slot)
+    private ScopedStorage GetSlotStorage(int slot)
     {
-        if (slot < 0) throw new ArgumentOutOfRangeException(nameof(slot));
+        ArgumentOutOfRangeException.ThrowIfNegative(slot);
         return new ScopedStorage(_rootStorage, _configuration.SaveSlotPrefix + slot.ToString(CultureInfo.InvariantCulture));
     }
 
     /// <summary>Gets the repository-lifetime operation gate for one slot.</summary>
     private SemaphoreSlim GetSlotGate(int slot)
     {
-        if (slot < 0) throw new ArgumentOutOfRangeException(nameof(slot));
+        ArgumentOutOfRangeException.ThrowIfNegative(slot);
         return _slotGates.GetOrAdd(slot, static _ => new SemaphoreSlim(1, 1));
     }
 }

@@ -11,8 +11,16 @@ namespace GFramework.Game.Tests.Config;
 ///     避免调用方把不一致的约束对象继续传入加载器和校验器。
 /// </summary>
 [TestFixture]
-public sealed class YamlConfigModelContractTests
+public sealed partial class YamlConfigModelContractTests
 {
+    /// <summary>Provides the non-null regex used to reject an unmatched pattern/regex pair.</summary>
+    /// <value>The same value pattern and one-second timeout as the constructor fixture.</value>
+    [GeneratedRegex("value", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex ValuePatternRegex
+    {
+        get;
+    }
+
     /// <summary>
     ///     验证枚举允许值模型会拒绝空白比较键。
     /// </summary>
@@ -63,8 +71,8 @@ public sealed class YamlConfigModelContractTests
 
         Assert.Multiple(() =>
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => new YamlConfigArrayContainsConstraints(itemNode, -1, null));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new YamlConfigArrayContainsConstraints(itemNode, null, -1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new YamlConfigArrayContainsConstraints(itemNode, -1, maxContains: null));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new YamlConfigArrayContainsConstraints(itemNode, minContains: null, -1));
             Assert.Throws<ArgumentException>(() => new YamlConfigArrayContainsConstraints(itemNode, 3, 2));
         });
     }
@@ -77,9 +85,9 @@ public sealed class YamlConfigModelContractTests
     {
         Assert.Multiple(() =>
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => new YamlConfigArrayConstraints(-1, null, false, null));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new YamlConfigArrayConstraints(null, -1, false, null));
-            Assert.Throws<ArgumentException>(() => new YamlConfigArrayConstraints(4, 3, false, null));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new YamlConfigArrayConstraints(-1, maxItems: null, uniqueItems: false, containsConstraints: null));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new YamlConfigArrayConstraints(minItems: null, -1, uniqueItems: false, containsConstraints: null));
+            Assert.Throws<ArgumentException>(() => new YamlConfigArrayConstraints(4, 3, uniqueItems: false, containsConstraints: null));
         });
     }
 
@@ -92,11 +100,11 @@ public sealed class YamlConfigModelContractTests
         Assert.Multiple(() =>
         {
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                new YamlConfigObjectConstraints(-1, null, null, null, null, null));
+                new YamlConfigObjectConstraints(-1, maxProperties: null, dependentRequired: null, dependentSchemas: null, allOfSchemas: null, conditionalSchemas: null));
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                new YamlConfigObjectConstraints(null, -1, null, null, null, null));
+                new YamlConfigObjectConstraints(minProperties: null, -1, dependentRequired: null, dependentSchemas: null, allOfSchemas: null, conditionalSchemas: null));
             Assert.Throws<ArgumentException>(() =>
-                new YamlConfigObjectConstraints(5, 4, null, null, null, null));
+                new YamlConfigObjectConstraints(5, 4, dependentRequired: null, dependentSchemas: null, allOfSchemas: null, conditionalSchemas: null));
         });
     }
 
@@ -109,14 +117,14 @@ public sealed class YamlConfigModelContractTests
         Assert.Multiple(() =>
         {
             Assert.Throws<ArgumentException>(() =>
-                new YamlConfigStringConstraints(null, null, "value", null, null));
+                new YamlConfigStringConstraints(minLength: null, maxLength: null, "value", patternRegex: null, formatConstraint: null));
             Assert.Throws<ArgumentException>(() =>
                 new YamlConfigStringConstraints(
-                    null,
-                    null,
-                    null,
-                    new Regex("value", RegexOptions.None, TimeSpan.FromSeconds(1)),
-                    null));
+minLength: null,
+maxLength: null,
+pattern: null,
+                    ValuePatternRegex,
+formatConstraint: null));
         });
     }
 
@@ -133,7 +141,7 @@ public sealed class YamlConfigModelContractTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(schema.ReferencedTableNames, Is.EqualTo(new[] { "item" }));
+            Assert.That(schema.ReferencedTableNames, Is.EqualTo(["item"]));
             Assert.That(schema.ReferencedTableNames, Is.Not.SameAs(referencedTableNames));
         });
     }

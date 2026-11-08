@@ -35,7 +35,7 @@ public sealed class GeneratedDefaultStreamingBenchmarkRegistry :
         new GFramework.Cqrs.CqrsStreamInvokerDescriptorEntry(
             typeof(StreamingBenchmarks.BenchmarkStreamRequest),
             typeof(StreamingBenchmarks.BenchmarkResponse),
-            Descriptor)
+            Descriptor),
     ];
 
     /// <summary>
@@ -46,9 +46,7 @@ public sealed class GeneratedDefaultStreamingBenchmarkRegistry :
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(logger);
 
-        services.AddSingleton(
-            typeof(IStreamRequestHandler<StreamingBenchmarks.BenchmarkStreamRequest, StreamingBenchmarks.BenchmarkResponse>),
-            typeof(StreamingBenchmarks.BenchmarkStreamHandler));
+        services.AddSingleton<IStreamRequestHandler<StreamingBenchmarks.BenchmarkStreamRequest, StreamingBenchmarks.BenchmarkResponse>, StreamingBenchmarks.BenchmarkStreamHandler>();
         logger.LogDebug("Registered generated default streaming benchmark handler.");
     }
 

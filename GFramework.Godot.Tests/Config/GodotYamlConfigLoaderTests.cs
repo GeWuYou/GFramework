@@ -39,7 +39,7 @@ public sealed class GodotYamlConfigLoaderTests
     {
         if (Directory.Exists(_testRoot))
         {
-            Directory.Delete(_testRoot, true);
+            Directory.Delete(_testRoot, recursive: true);
         }
     }
 
@@ -158,7 +158,7 @@ public sealed class GodotYamlConfigLoaderTests
             tableSources:
             [
                 new GodotYamlConfigTableSource("boss", "monster/boss"),
-                new GodotYamlConfigTableSource("monster", "monster")
+                new GodotYamlConfigTableSource("monster", "monster"),
             ],
             configureLoader: loader =>
             {
@@ -284,7 +284,7 @@ public sealed class GodotYamlConfigLoaderTests
                     new GodotYamlConfigTableSource(
                         "monster",
                         "monster",
-                        "schemas/monster.schema.json")
+                        "schemas/monster.schema.json"),
                 ],
                 ConfigureLoader = configureLoader ??
                                   (static loader =>
@@ -292,7 +292,7 @@ public sealed class GodotYamlConfigLoaderTests
                                           "monster",
                                           "monster",
                                           "schemas/monster.schema.json",
-                                          static config => config.Id))
+                                          static config => config.Id)),
             },
             CreateEnvironment(isEditor));
     }
@@ -315,12 +315,11 @@ public sealed class GodotYamlConfigLoaderTests
                     return null;
                 }
 
-                return Directory
+                return [.. Directory
                     .EnumerateFileSystemEntries(absolutePath, "*", SearchOption.TopDirectoryOnly)
                     .Select(static entryPath => new GodotYamlConfigDirectoryEntry(
                         Path.GetFileName(entryPath),
-                        Directory.Exists(entryPath)))
-                    .ToArray();
+                        Directory.Exists(entryPath)))];
             },
             path => File.Exists(MapGodotPath(path)),
             path => File.ReadAllBytes(MapGodotPath(path)));
@@ -428,12 +427,8 @@ public sealed class GodotYamlConfigLoaderTests
     {
         var field = instance.GetType().GetField(
             $"<{propertyName}>k__BackingField",
-            BindingFlags.Instance | BindingFlags.NonPublic);
-        if (field == null)
-        {
-            throw new InvalidOperationException(
+            BindingFlags.Instance | BindingFlags.NonPublic) ?? throw new InvalidOperationException(
                 $"Backing field for property '{propertyName}' was not found on type '{instance.GetType().FullName}'.");
-        }
 
         field.SetValue(instance, value);
     }
@@ -470,7 +465,10 @@ public sealed class GodotYamlConfigLoaderTests
         /// <summary>
         ///     主键。
         /// </summary>
-        public int Id { get; init; }
+        public int Id
+        {
+            get; init;
+        }
 
         /// <summary>
         ///     名称。
@@ -480,6 +478,9 @@ public sealed class GodotYamlConfigLoaderTests
         /// <summary>
         ///     生命值。
         /// </summary>
-        public int Hp { get; init; }
+        public int Hp
+        {
+            get; init;
+        }
     }
 }

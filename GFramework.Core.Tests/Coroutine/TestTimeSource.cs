@@ -13,12 +13,18 @@ public sealed class TestTimeSource : ITimeSource
     /// <summary>
     ///     获取当前累计时间。
     /// </summary>
-    public double CurrentTime { get; private set; }
+    public double CurrentTime
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取最近一次更新产生的时间增量。
     /// </summary>
-    public double DeltaTime { get; private set; }
+    public double DeltaTime
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     按固定步长推进测试时间，确保调度器测试具有确定性。

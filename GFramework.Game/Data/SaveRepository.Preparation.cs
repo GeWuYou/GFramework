@@ -16,7 +16,7 @@ public sealed partial class SaveRepository<TSaveData>
     /// <param name="cancellationToken">Cancels reading and pure transformations.</param>
     /// <returns>An immutable candidate; display its losses before explicitly committing it.</returns>
     public Task<PreparedSave<TSaveData>> PrepareLoadAsync(int slot, CancellationToken cancellationToken = default) =>
-        PrepareCoreAsync(slot, null, cancellationToken);
+        PrepareCoreAsync(slot, versionPath: null, cancellationToken);
 
     /// <summary>Prepares using an explicitly selected complete game-version route.</summary>
     /// <param name="slot">Existing slot.</param>
@@ -38,48 +38,63 @@ public sealed partial class SaveRepository<TSaveData>
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var snapshot = await ((IStorageBackup)GetSlotStorage(slot)).ReadSnapshotAsync(_configuration.SaveFileName, cancellationToken)
-                .ConfigureAwait(false);
-            var document = ReadDocument(snapshot);
-            var catalog = GetCurrentCatalog();
-            var paths = new List<SaveMigrationStep>();
-            var gamePath = _options.Migrations.Plan(document.Game.Version, _options.CurrentVersion, versionPath);
-            paths.AddRange(gamePath);
-            document.Game = await SaveMigrationGraph.ConvertAsync(document.Game, gamePath, cancellationToken).ConfigureAwait(false);
-            foreach (var policy in _modPolicies.Values.OrderBy(static policy => policy.ModId, StringComparer.Ordinal))
-            {
-                if (!document.Mods.TryGetValue(policy.ModId, out var block)) continue;
-                var path = policy.Migrations.Plan(block.Version, policy.CurrentVersion, policy.VersionPath);
-                paths.AddRange(path);
-                document.Mods[policy.ModId] = await SaveMigrationGraph.ConvertAsync(block, path, cancellationToken).ConfigureAwait(false);
-            }
-            // Content checks see the current schema, but run before current DTO construction. Missing mods are never invoked.
-            var report = catalog is null ? null : BuildContentReport(slot, snapshot.Fingerprint, document, catalog);
-            var repaired = report?.RequiresRecovery == true;
-            if (repaired)
-            {
-                var recover = _options.Content!.RecoverAsync ?? throw new InvalidOperationException("Content differences require a game-owned document recovery policy.");
-                var result = await recover(document.Clone(), report!, cancellationToken).ConfigureAwait(false);
-                if (result is null) throw new InvalidOperationException("Content recovery returned null.");
-                // The host can deliberately remove/repair opaque mod blocks, but cannot change envelope identity or versions.
-                document = ReadDocument(_codec.Encode(result));
-            }
-            var contentChanged = !SnapshotsEqual(document.Content, catalog?.Snapshot);
-            document.Content = catalog?.Snapshot;
-            _ = ValidateDocumentForCurrentGame(document);
-            cancellationToken.ThrowIfCancellationRequested();
-            if (!SnapshotsEqual(catalog?.Snapshot, GetCurrentCatalog()?.Snapshot))
-                throw new InvalidOperationException("Content changed while preparing the save.");
-            var candidate = _codec.Encode(document);
-            return new PreparedSave<TSaveData>(new SavePreparationState
-            {
-                Owner = _owner, Slot = slot, Original = snapshot, Candidate = candidate, CurrentContent = catalog?.Snapshot,
-                Issues = report?.Issues ?? [], MigrationPath = paths,
-                RequiresCommit = paths.Count != 0 || repaired || contentChanged,
-                RequiresConfirmation = repaired || paths.Any(static step => step.IsLossy || step.ToVersion < step.FromVersion)
-            }, _codec, _modPolicies);
+            return await PrepareLockedAsync(slot, versionPath, cancellationToken).ConfigureAwait(false);
         }
-        finally { gate.Release(); }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    /// <summary>Prepares a snapshot while the caller owns slot admission, including any existence check.</summary>
+    private async Task<PreparedSave<TSaveData>> PrepareLockedAsync(int slot, IReadOnlyList<int>? versionPath,
+        CancellationToken cancellationToken)
+    {
+        var snapshot = await ((IStorageBackup)GetSlotStorage(slot)).ReadSnapshotAsync(_configuration.SaveFileName, cancellationToken)
+                .ConfigureAwait(false);
+        var document = ReadDocument(snapshot);
+        var catalog = GetCurrentCatalog();
+        var paths = new List<SaveMigrationStep>();
+        var gamePath = _options.Migrations.Plan(document.Game.Version, _options.CurrentVersion, versionPath);
+        paths.AddRange(gamePath);
+        document.Game = await SaveMigrationGraph.ConvertAsync(document.Game, gamePath, cancellationToken).ConfigureAwait(false);
+        foreach (var policy in _modPolicies.Values.OrderBy(static policy => policy.ModId, StringComparer.Ordinal))
+        {
+            if (!document.Mods.TryGetValue(policy.ModId, out var block))
+                continue;
+            var path = policy.Migrations.Plan(block.Version, policy.CurrentVersion, policy.VersionPath);
+            paths.AddRange(path);
+            document.Mods[policy.ModId] = await SaveMigrationGraph.ConvertAsync(block, path, cancellationToken).ConfigureAwait(false);
+        }
+        // Content checks see the current schema, but run before current DTO construction. Missing mods are never invoked.
+        var report = catalog is null ? null : BuildContentReport(slot, snapshot.Fingerprint, document, catalog);
+        var repaired = report?.RequiresRecovery == true;
+        if (repaired)
+        {
+            var recover = _options.Content!.RecoverAsync ?? throw new InvalidOperationException("Content differences require a game-owned document recovery policy.");
+            var result = await recover(document.Clone(), report!, cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException("Content recovery returned null.");
+            // The host can deliberately remove/repair opaque mod blocks, but cannot change envelope identity or versions.
+            document = ReadDocument(_codec.Encode(result));
+        }
+        var contentChanged = !SnapshotsEqual(document.Content, catalog?.Snapshot);
+        document.Content = catalog?.Snapshot;
+        _ = ValidateDocumentForCurrentGame(document);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!SnapshotsEqual(catalog?.Snapshot, GetCurrentCatalog()?.Snapshot))
+            throw new InvalidOperationException("Content changed while preparing the save.");
+        var candidate = _codec.Encode(document);
+        return new PreparedSave<TSaveData>(new SavePreparationState
+        {
+            Owner = _owner,
+            Slot = slot,
+            Original = snapshot,
+            Candidate = candidate,
+            CurrentContent = catalog?.Snapshot,
+            Issues = report?.Issues ?? [],
+            MigrationPath = paths,
+            RequiresCommit = paths.Count != 0 || repaired || contentChanged,
+            RequiresConfirmation = repaired || paths.Exists(static step => step.IsLossy || step.ToVersion < step.FromVersion),
+        }, _codec, _modPolicies);
     }
 
     /// <summary>
@@ -98,7 +113,7 @@ public sealed partial class SaveRepository<TSaveData>
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var storage = (IStorageBackup)GetSlotStorage(slot);
+            var storage = GetSlotStorage(slot);
             var current = await storage.ReadSnapshotAsync(_configuration.SaveFileName, cancellationToken).ConfigureAwait(false);
             ValidateApproval(slot, prepared, current);
             var document = ReadDocument(prepared.Candidate);
@@ -128,7 +143,7 @@ public sealed partial class SaveRepository<TSaveData>
         try
         {
             var ordinary = GetSlotStorage(slot);
-            var storage = (IStorageBackup)ordinary;
+            var storage = ordinary;
             var restore = await storage.ReadSnapshotAsync(backupKey, cancellationToken).ConfigureAwait(false);
             string? displaced = null;
             if (await ordinary.ExistsAsync(_configuration.SaveFileName).ConfigureAwait(false))

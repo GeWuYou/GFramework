@@ -120,7 +120,10 @@ public class AppenderLoggerProviderTests
         using var provider = new AppenderLoggerProvider([appender]);
         var logger = provider.CreateLogger("TestLogger");
 
-        logger.LogInformation("User {UserId} logged in from {Country}", 42, "CN");
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation("User {UserId} logged in from {Country}", 42, "CN");
+        }
 
         var entries = appender.Entries;
         Assert.Multiple(() =>
@@ -140,12 +143,13 @@ public class AppenderLoggerProviderTests
         var appender = new TestLogAppender();
         using var provider = new AppenderLoggerProvider([appender]);
         var logger = provider.CreateLogger("TestLogger");
+        var state = new object();
 
         logger.Log<object>(
             LogLevel.Information,
             default,
-            new object(),
-            null,
+            state,
+exception: null,
             static (_, _) => "Plain message");
 
         var entries = appender.Entries;
@@ -163,12 +167,14 @@ public class AppenderLoggerProviderTests
         var appender = new TestLogAppender();
         using var provider = new AppenderLoggerProvider([appender]);
         var logger = provider.CreateLogger("TestLogger");
+        var state = new object();
 
+        // Invoke Log directly even when disabled: this assertion checks the provider's own None-level filtering.
         logger.Log<object>(
             LogLevel.None,
             default,
-            new object(),
-            null,
+            state,
+exception: null,
             static (_, _) => "Should not appear");
 
         Assert.That(appender.Entries, Is.Empty);

@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -24,7 +24,11 @@ namespace GFramework.Godot.Data;
 /// </summary>
 /// <typeparam name="TKey">资源键的类型</typeparam>
 /// <typeparam name="TResource">资源类型，必须继承自Godot.Resource并实现IHasKey接口</typeparam>
-public class GodotResourceRepository<TKey, TResource>
+/// <remarks>
+/// 创建资源仓储实例。
+/// </remarks>
+/// <param name="logger">标准日志记录器；依赖注入容器会自动提供，手动创建时可省略。</param>
+public class GodotResourceRepository<TKey, TResource>(ILogger<GodotResourceRepository<TKey, TResource>>? logger = null)
     : IResourceRepository<TKey, TResource>
     where TResource : Resource, IHasKey<TKey>
     where TKey : notnull
@@ -32,21 +36,12 @@ public class GodotResourceRepository<TKey, TResource>
     /// <summary>
     /// 标准日志记录器，通过构造注入获取；未注入时退化为空记录器。
     /// </summary>
-    private readonly ILogger<GodotResourceRepository<TKey, TResource>> _logger;
-
-    /// <summary>
-    /// 创建资源仓储实例。
-    /// </summary>
-    /// <param name="logger">标准日志记录器；依赖注入容器会自动提供，手动创建时可省略。</param>
-    public GodotResourceRepository(ILogger<GodotResourceRepository<TKey, TResource>>? logger = null)
-    {
-        _logger = logger ?? NullLogger<GodotResourceRepository<TKey, TResource>>.Instance;
-    }
+    private readonly ILogger<GodotResourceRepository<TKey, TResource>> _logger = logger ?? NullLogger<GodotResourceRepository<TKey, TResource>>.Instance;
 
     /// <summary>
     /// 内部存储字典，用于保存键值对形式的资源
     /// </summary>
-    private readonly Dictionary<TKey, TResource> _storage = new();
+    private readonly Dictionary<TKey, TResource> _storage = [];
 
     /// <summary>
     /// 向仓储中添加资源
@@ -88,7 +83,7 @@ public class GodotResourceRepository<TKey, TResource>
     /// </summary>
     /// <returns>包含所有资源的只读集合</returns>
     public IReadOnlyCollection<TResource> GetAll()
-        => _storage.Values.ToArray();
+        => [.. _storage.Values];
 
     /// <summary>
     /// 检查是否包含指定键的资源
@@ -215,7 +210,7 @@ public class GodotResourceRepository<TKey, TResource>
         {
             // 如果启用递归，则递归处理子目录
             if (recursive)
-                LoadSinglePath(fullPath, true);
+                LoadSinglePath(fullPath, recursive: true);
             return;
         }
 

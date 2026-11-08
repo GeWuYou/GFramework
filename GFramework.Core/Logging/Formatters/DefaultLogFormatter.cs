@@ -20,7 +20,7 @@ public sealed class DefaultLogFormatter : ILogFormatter
         "INFO   ",
         "WARNING",
         "ERROR  ",
-        "FATAL  "
+        "FATAL  ",
     ];
 
     /// <summary>

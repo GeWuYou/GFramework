@@ -276,10 +276,16 @@ public class TaskCoroutineExtensionsTests
     /// <summary>
     ///     测试用时间源类
     /// </summary>
-    private class TestTimeSource : ITimeSource
+    private sealed class TestTimeSource : ITimeSource
     {
-        public double CurrentTime { get; private set; }
-        public double DeltaTime { get; private set; }
+        public double CurrentTime
+        {
+            get; private set;
+        }
+        public double DeltaTime
+        {
+            get; private set;
+        }
 
         public void Update()
         {

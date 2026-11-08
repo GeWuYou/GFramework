@@ -83,13 +83,13 @@ public sealed class InputBindingStoreTests
                 new InputActionBinding(
                     "move_left",
                     [
-                        new InputBindingDescriptor(InputDeviceKind.KeyboardMouse, InputBindingKind.Key, "key:65", "A")
+                        new InputBindingDescriptor(InputDeviceKind.KeyboardMouse, InputBindingKind.Key, "key:65", "A"),
                     ]),
                 new InputActionBinding(
                     "move_right",
                     [
-                        new InputBindingDescriptor(InputDeviceKind.KeyboardMouse, InputBindingKind.Key, "key:68", "D")
-                    ])
+                        new InputBindingDescriptor(InputDeviceKind.KeyboardMouse, InputBindingKind.Key, "key:68", "D"),
+                    ]),
             ]));
     }
 }

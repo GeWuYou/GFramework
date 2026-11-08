@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Properties;
@@ -13,10 +13,16 @@ public interface IArchitectureConfiguration
     /// <summary>
     ///     获取或设置日志选项，包含日志相关的配置参数
     /// </summary>
-    LoggerProperties LoggerProperties { get; set; }
+    LoggerProperties LoggerProperties
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     获取或设置架构选项，包含架构相关的配置参数
     /// </summary>
-    ArchitectureProperties ArchitectureProperties { get; set; }
+    ArchitectureProperties ArchitectureProperties
+    {
+        get; set;
+    }
 }

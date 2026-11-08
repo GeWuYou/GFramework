@@ -111,7 +111,7 @@ public sealed class EventFilterTests
 
         // Assert - 只有 10-50 之间的事件通过
         Assert.That(receivedEvents, Has.Count.EqualTo(41)); // 10 到 50 包含边界
-        Assert.That(receivedEvents.All(e => e.Value >= 10 && e.Value <= 50), Is.True);
+        Assert.That(receivedEvents.TrueForAll(e => e.Value >= 10 && e.Value <= 50), Is.True);
     }
 
     [Test]
@@ -185,7 +185,10 @@ public sealed class EventFilterTests
 
     private sealed class TestEvent
     {
-        public int Value { get; init; }
+        public int Value
+        {
+            get; init;
+        }
         public string Message { get; init; } = string.Empty;
     }
 }

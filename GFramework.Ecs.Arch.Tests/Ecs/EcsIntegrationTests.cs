@@ -31,10 +31,16 @@ public class EcsIntegrationTests
     }
 
     [TearDown]
-    public void TearDown()
+    public async Task TearDown()
     {
-        _ecsModule?.DestroyAsync().GetAwaiter().GetResult();
-        _container?.Dispose();
+        if (_ecsModule != null)
+        {
+            await _ecsModule.DestroyAsync().ConfigureAwait(false);
+        }
+        if (_container != null)
+        {
+            await _container.DisposeAsync().ConfigureAwait(false);
+        }
         _world = null;
         _context = null;
         _ecsModule = null;

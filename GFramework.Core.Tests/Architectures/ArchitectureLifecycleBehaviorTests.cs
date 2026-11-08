@@ -49,16 +49,16 @@ public class ArchitectureLifecycleBehaviorTests
 
         await architecture.InitializeAsync();
 
-        Assert.That(architecture.PhaseHistory, Is.EqualTo(new[]
-        {
+        Assert.That(architecture.PhaseHistory, Is.EqualTo(
+        [
             ArchitecturePhase.BeforeUtilityInit,
             ArchitecturePhase.AfterUtilityInit,
             ArchitecturePhase.BeforeModelInit,
             ArchitecturePhase.AfterModelInit,
             ArchitecturePhase.BeforeSystemInit,
             ArchitecturePhase.AfterSystemInit,
-            ArchitecturePhase.Ready
-        }));
+            ArchitecturePhase.Ready,
+        ]));
 
         await architecture.DestroyAsync();
     }
@@ -77,17 +77,17 @@ public class ArchitectureLifecycleBehaviorTests
         await architecture.InitializeAsync();
 
         Assert.That(observations, Is.Not.Empty);
-        Assert.That(observations.All(item => ReferenceEquals(item.Sender, architecture)), Is.True);
-        Assert.That(observations.Select(static item => item.Phase), Is.EqualTo(new[]
-        {
+        Assert.That(observations.TrueForAll(item => ReferenceEquals(item.Sender, architecture)), Is.True);
+        Assert.That(observations.Select(static item => item.Phase), Is.EqualTo(
+        [
             ArchitecturePhase.BeforeUtilityInit,
             ArchitecturePhase.AfterUtilityInit,
             ArchitecturePhase.BeforeModelInit,
             ArchitecturePhase.AfterModelInit,
             ArchitecturePhase.BeforeSystemInit,
             ArchitecturePhase.AfterSystemInit,
-            ArchitecturePhase.Ready
-        }));
+            ArchitecturePhase.Ready,
+        ]));
 
         await architecture.DestroyAsync();
     }
@@ -120,13 +120,13 @@ public class ArchitectureLifecycleBehaviorTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(destroyOrder, Is.EqualTo(new[] { "system", "model", "utility" }));
+            Assert.That(destroyOrder, Is.EqualTo(["system", "model", "utility"]));
             Assert.That(architecture.CurrentPhase, Is.EqualTo(ArchitecturePhase.Destroyed));
-            Assert.That(architecture.PhaseHistory[^2..], Is.EqualTo(new[]
-            {
+            Assert.That(architecture.PhaseHistory[^2..], Is.EqualTo(
+            [
                 ArchitecturePhase.Destroying,
-                ArchitecturePhase.Destroyed
-            }));
+                ArchitecturePhase.Destroyed,
+            ]));
         });
     }
 
@@ -148,14 +148,14 @@ public class ArchitectureLifecycleBehaviorTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(destroyOrder, Is.EqualTo(new[] { "model", "utility" }));
+            Assert.That(destroyOrder, Is.EqualTo(["model", "utility"]));
             Assert.That(architecture.CurrentPhase, Is.EqualTo(ArchitecturePhase.Destroyed));
-            Assert.That(architecture.PhaseHistory[^3..], Is.EqualTo(new[]
-            {
+            Assert.That(architecture.PhaseHistory[^3..], Is.EqualTo(
+            [
                 ArchitecturePhase.FailedInitialization,
                 ArchitecturePhase.Destroying,
-                ArchitecturePhase.Destroyed
-            }));
+                ArchitecturePhase.Destroyed,
+            ]));
         });
     }
 
@@ -171,11 +171,11 @@ public class ArchitectureLifecycleBehaviorTests
         await architecture.InitializeAsync();
         await architecture.DestroyAsync();
 
-        Assert.That(listener.ObservedPhases[^2..], Is.EqualTo(new[]
-        {
+        Assert.That(listener.ObservedPhases[^2..], Is.EqualTo(
+        [
             ArchitecturePhase.Destroying,
-            ArchitecturePhase.Destroyed
-        }));
+            ArchitecturePhase.Destroyed,
+        ]));
     }
 
     /// <summary>
@@ -207,13 +207,13 @@ public class ArchitectureLifecycleBehaviorTests
         var context = architecture.Context;
         Assert.Multiple(() =>
         {
-            Assert.That(destroyOrder, Is.EqualTo(new[] { "model", "utility" }));
+            Assert.That(destroyOrder, Is.EqualTo(["model", "utility"]));
             Assert.That(GameContext.TryGet<ArchitectureContext>(out _), Is.False);
             Assert.Throws<ObjectDisposedException>(() => context.GetService<TrackingPhaseListener>());
         });
 
         await architecture.DestroyAsync();
-        Assert.That(destroyOrder, Is.EqualTo(new[] { "model", "utility" }));
+        Assert.That(destroyOrder, Is.EqualTo(["model", "utility"]));
     }
 
     /// <summary>
@@ -243,9 +243,10 @@ public class ArchitectureLifecycleBehaviorTests
         var architecture = new PhaseTrackingArchitecture();
         await architecture.InitializeAsync();
         var context = architecture.Context;
+        await
 
 #pragma warning disable CS0618
-        architecture.Destroy();
+                architecture.DestroyAsync();
 #pragma warning restore CS0618
 
         Assert.Throws<ObjectDisposedException>(() => context.GetService<TrackingPhaseListener>());
@@ -324,9 +325,7 @@ public class ArchitectureLifecycleBehaviorTests
     /// <summary>
     ///     仅用于验证销毁后全局上下文回退是否仍然泄漏的最小 ContextAware 探针。
     /// </summary>
-    private sealed class LifecycleContextAwareProbe : ContextAwareBase
-    {
-    }
+    private sealed class LifecycleContextAwareProbe : ContextAwareBase;
 
     /// <summary>
     ///     在初始化时注册可销毁组件的测试架构。
@@ -511,7 +510,10 @@ public class ArchitectureLifecycleBehaviorTests
         /// <summary>
         ///     记录是否真的进入过初始化。
         /// </summary>
-        public int InitializeCallCount { get; private set; }
+        public int InitializeCallCount
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录一次初始化。

@@ -36,5 +36,5 @@ internal enum YamlConfigSchemaPropertyType
     /// <summary>
     ///     数组类型。
     /// </summary>
-    Array
+    Array,
 }

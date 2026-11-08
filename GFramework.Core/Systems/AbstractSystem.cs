@@ -24,6 +24,8 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
     ///     当前系统实例日志；首次访问时经由上下文或空输出解析并缓存，
     ///     不依赖初始化时机，也不读取进程级状态。
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles",
+        Justification = "This protected member is an existing subclass API; retain its name for source compatibility.")]
     protected ILogger _logger => _loggerInstance ??= CreateInstanceLogger(GetType().Name);
 
     /// <summary>
@@ -32,11 +34,17 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
     public void Initialize()
     {
         var name = GetType().Name;
-        _logger.LogDebug($"Initializing system: {name}");
+        if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+        {
+            _logger.LogDebug("Initializing system: {SystemName}", name);
+        }
 
         OnInit();
 
-        _logger.LogInformation($"System initialized: {name}");
+        if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Information))
+        {
+            _logger.LogInformation("System initialized: {SystemName}", name);
+        }
     }
 
     /// <summary>
@@ -44,11 +52,17 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
     /// </summary>
     public void Destroy()
     {
-        _logger.LogDebug($"Destroying system: {GetType().Name}");
+        if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+        {
+            _logger.LogDebug("Destroying system: {SystemName}", GetType().Name);
+        }
 
         OnDestroy();
 
-        _logger.LogInformation($"System destroyed: {GetType().Name}");
+        if (_logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Information))
+        {
+            _logger.LogInformation("System destroyed: {SystemName}", GetType().Name);
+        }
     }
 
     /// <summary>

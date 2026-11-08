@@ -14,14 +14,13 @@ using GFramework.Cqrs.Abstractions.Cqrs;
 
 public sealed record RestoreHealthRequest(int PlayerId) : IRequest<Unit>;
 
-public sealed class RestoreHealthHandler
+public sealed class RestoreHealthHandler(PlayerModel playerModel)
     : IRequestHandler<RestoreHealthRequest, Unit>
 {
     public ValueTask<Unit> Handle(
         RestoreHealthRequest request,
         CancellationToken cancellationToken)
     {
-        var playerModel = Context.GetModel<PlayerModel>();
         playerModel.Health.Value = playerModel.MaxHealth.Value;
         return ValueTask.FromResult(Unit.Value);
     }
@@ -29,6 +28,14 @@ public sealed class RestoreHealthHandler
 ```
 
 ## 发送方式
+
+本例的 `PlayerModel` 是应用提供的业务模型。处理器通过构造函数获取模型，在组合根登记相同依赖：
+
+```csharp
+services.AddSingleton<PlayerModel>();
+services.AddSingleton<IRequestHandler<RestoreHealthRequest, Unit>, RestoreHealthHandler>();
+services.AddCqrsRuntime();
+```
 
 在 `IContextAware` 对象（如生成过上下文注入的 Controller、Model、System）内：
 

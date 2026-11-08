@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
@@ -110,7 +111,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
     [Test]
     public async Task Memory_Usage_Should_Remain_Stable_Under_Heavy_Load()
     {
-        var initialMemory = GC.GetTotalMemory(false);
+        var initialMemory = GC.GetTotalMemory(forceFullCollection: false);
 
         const int requestCount = 1000;
         for (int i = 0; i < requestCount; i++)
@@ -126,7 +127,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
             }
         }
 
-        var finalMemory = GC.GetTotalMemory(false);
+        var finalMemory = GC.GetTotalMemory(forceFullCollection: false);
         var memoryGrowth = finalMemory - initialMemory;
 
         // 验证内存增长在合理范围内（不应该无限制增长）
@@ -188,7 +189,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
         {
             new TestSagaStepRequest { Step = 1, SagaData = sagaData, ShouldFail = false },
             new TestSagaStepRequest { Step = 2, SagaData = sagaData, ShouldFail = false },
-            new TestSagaStepRequest { Step = 3, SagaData = sagaData, ShouldFail = false }
+            new TestSagaStepRequest { Step = 3, SagaData = sagaData, ShouldFail = false },
         };
 
         // 执行saga
@@ -198,7 +199,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
         }
 
         // 验证所有步骤都成功执行
-        Assert.That(sagaData.CompletedSteps, Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(sagaData.CompletedSteps, Is.EqualTo([1, 2, 3]));
         Assert.That(sagaData.IsCompleted, Is.True);
     }
 
@@ -213,7 +214,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
         {
             new TestSagaStepRequest { Step = 1, SagaData = sagaData, ShouldFail = false },
             new TestSagaStepRequest { Step = 2, SagaData = sagaData, ShouldFail = true }, // 这步会失败
-            new TestSagaStepRequest { Step = 3, SagaData = sagaData, ShouldFail = false }
+            new TestSagaStepRequest { Step = 3, SagaData = sagaData, ShouldFail = false },
         };
 
         // 执行saga，第二步会失败
@@ -223,8 +224,8 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
             await _context!.SendRequestAsync(requests[1]).ConfigureAwait(false));
 
         // 验证回滚机制被触发
-        Assert.That(sagaData.CompletedSteps, Is.EqualTo(new[] { 1 })); // 只有第一步完成
-        Assert.That(sagaData.CompensatedSteps, Is.EqualTo(new[] { 1 })); // 第一步被补偿
+        Assert.That(sagaData.CompletedSteps, Is.EqualTo([1])); // 只有第一步完成
+        Assert.That(sagaData.CompensatedSteps, Is.EqualTo([1])); // 第一步被补偿
         Assert.That(sagaData.IsCompleted, Is.False);
     }
 
@@ -362,7 +363,7 @@ public sealed class TestSagaStepRequestHandler : IRequestHandler<TestSagaStepReq
                 request.SagaData.CompensatedSteps.Add(completedStep);
             }
 
-            throw new InvalidOperationException($"Saga step {request.Step} failed");
+            throw new InvalidOperationException(string.Create(CultureInfo.InvariantCulture, $"Saga step {request.Step} failed"));
         }
 
         request.SagaData.CompletedSteps.Add(request.Step);
@@ -372,7 +373,7 @@ public sealed class TestSagaStepRequestHandler : IRequestHandler<TestSagaStepReq
             request.SagaData.IsCompleted = true;
         }
 
-        return new ValueTask<string>($"Step {request.Step} completed");
+        return new ValueTask<string>(string.Create(CultureInfo.InvariantCulture, $"Step {request.Step} completed"));
     }
 }
 
@@ -448,7 +449,10 @@ public sealed record TestValidatedRequest : IRequest<string>
     /// <summary>
     ///     获取或初始化要验证的整数值。
     /// </summary>
-    public int Value { get; init; }
+    public int Value
+    {
+        get; init;
+    }
 }
 
 /// <summary>
@@ -465,7 +469,7 @@ public sealed class TestValidatedRequestHandler : IRequestHandler<TestValidatedR
             throw new ArgumentException("Value must be non-negative", nameof(request));
         }
 
-        return new ValueTask<string>($"Value: {request.Value}");
+        return new ValueTask<string>(string.Create(CultureInfo.InvariantCulture, $"Value: {request.Value}"));
     }
 }
 
@@ -477,7 +481,10 @@ public sealed record TestRetryRequest : IRequest<string>
     /// <summary>
     ///     获取或初始化在返回成功前应模拟的失败次数。
     /// </summary>
-    public int ShouldFailTimes { get; init; }
+    public int ShouldFailTimes
+    {
+        get; init;
+    }
 }
 
 /// <summary>
@@ -488,7 +495,10 @@ public static class TestRetryBehavior
     /// <summary>
     ///     获取或设置当前请求处理期间累计的尝试次数。
     /// </summary>
-    public static int AttemptCount { get; set; }
+    public static int AttemptCount
+    {
+        get; set;
+    }
 }
 
 /// <summary>
@@ -499,12 +509,18 @@ public sealed record TestPerformanceRequest : IRequest<int>
     /// <summary>
     ///     获取或初始化请求的标识值。
     /// </summary>
-    public int Id { get; init; }
+    public int Id
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     获取或初始化模拟处理延时，单位为毫秒。
     /// </summary>
-    public int ProcessingTimeMs { get; init; }
+    public int ProcessingTimeMs
+    {
+        get; init;
+    }
 }
 
 /// <summary>
@@ -553,7 +569,10 @@ public static class TestTransientErrorHandler
     /// <summary>
     ///     获取或设置当前已模拟的错误次数。
     /// </summary>
-    public static int ErrorCount { get; set; }
+    public static int ErrorCount
+    {
+        get; set;
+    }
 }
 
 /// <summary>
@@ -564,7 +583,10 @@ public sealed record TestTransientErrorRequest : IRequest<string>
     /// <summary>
     ///     获取或初始化允许连续抛出的最大错误次数。
     /// </summary>
-    public int MaxErrors { get; init; }
+    public int MaxErrors
+    {
+        get; init;
+    }
 }
 
 /// <summary>
@@ -575,17 +597,26 @@ public static class TestCircuitBreakerHandler
     /// <summary>
     ///     获取或设置当前累计的失败次数。
     /// </summary>
-    public static int FailureCount { get; set; }
+    public static int FailureCount
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     获取或设置当前累计的成功次数。
     /// </summary>
-    public static int SuccessCount { get; set; }
+    public static int SuccessCount
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     获取或设置断路器是否已处于打开状态。
     /// </summary>
-    public static bool CircuitOpen { get; set; }
+    public static bool CircuitOpen
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     重置断路器测试状态，避免静态字段在测试之间互相污染。
@@ -606,7 +637,10 @@ public sealed record TestCircuitBreakerRequest : IRequest<string>
     /// <summary>
     ///     获取或初始化当前请求是否应主动模拟失败。
     /// </summary>
-    public bool ShouldFail { get; init; }
+    public bool ShouldFail
+    {
+        get; init;
+    }
 }
 
 /// <summary>
@@ -617,17 +651,20 @@ public class SagaData
     /// <summary>
     ///     获取 Saga 已成功执行的步骤集合。
     /// </summary>
-    public IList<int> CompletedSteps { get; } = new List<int>();
+    public IList<int> CompletedSteps { get; } = [];
 
     /// <summary>
     ///     获取 Saga 失败后已执行补偿的步骤集合。
     /// </summary>
-    public IList<int> CompensatedSteps { get; } = new List<int>();
+    public IList<int> CompensatedSteps { get; } = [];
 
     /// <summary>
     ///     获取或设置 Saga 是否已经完整结束。
     /// </summary>
-    public bool IsCompleted { get; set; }
+    public bool IsCompleted
+    {
+        get; set;
+    }
 }
 
 /// <summary>
@@ -638,7 +675,10 @@ public sealed record TestSagaStepRequest : IRequest<string>
     /// <summary>
     ///     获取或初始化当前要执行的 Saga 步骤编号。
     /// </summary>
-    public int Step { get; init; }
+    public int Step
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     获取或初始化当前 Saga 使用的共享状态对象。
@@ -648,7 +688,10 @@ public sealed record TestSagaStepRequest : IRequest<string>
     /// <summary>
     ///     获取或初始化当前步骤是否应模拟失败。
     /// </summary>
-    public bool ShouldFail { get; init; }
+    public bool ShouldFail
+    {
+        get; init;
+    }
 }
 
 /// <summary>
@@ -664,7 +707,10 @@ public sealed record TestExternalServiceRequest : IRequest<string>
     /// <summary>
     ///     获取或初始化模拟外部服务所需的响应时长，单位为毫秒。
     /// </summary>
-    public int TimeoutMs { get; init; }
+    public int TimeoutMs
+    {
+        get; init;
+    }
 }
 
 /// <summary>
@@ -680,7 +726,7 @@ public sealed record TestDatabaseRequest : IRequest<string>
     /// <summary>
     ///     获取或初始化用于模拟数据库写入的可变存储集合，同时避免泄漏具体集合实现。
     /// </summary>
-    public IList<string> Storage { get; init; } = new List<string>();
+    public IList<string> Storage { get; init; } = [];
 }
 
 #endregion

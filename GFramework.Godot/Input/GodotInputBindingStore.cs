@@ -71,7 +71,7 @@ public sealed class GodotInputBindingStore : IInputBindingStore, IInputDeviceTra
 
         foreach (var actionName in removedActionNames)
         {
-            _backend.SetBindings(actionName, Array.Empty<InputBindingDescriptor>());
+            _backend.SetBindings(actionName, []);
         }
 
         foreach (var action in snapshot.Actions)
@@ -138,7 +138,7 @@ public sealed class GodotInputBindingStore : IInputBindingStore, IInputDeviceTra
 
     private InputActionBinding CreateActionBinding(string actionName)
     {
-        return new InputActionBinding(actionName, _backend.GetBindings(actionName).ToArray());
+        return new InputActionBinding(actionName, [.. _backend.GetBindings(actionName)]);
     }
 
     private void ReloadFromBackend()

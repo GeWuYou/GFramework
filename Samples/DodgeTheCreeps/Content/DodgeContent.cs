@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -31,8 +32,8 @@ internal sealed class DodgeContent : IDisposable
     private readonly Dictionary<string, ImageTexture> _textures = new(StringComparer.Ordinal);
     private readonly Dictionary<string, AudioStream> _audio = new(StringComparer.Ordinal);
     private readonly Dictionary<string, PackedScene> _scenes = new(StringComparer.Ordinal);
-    private readonly List<ContentPack> _packages = new();
-    private readonly List<string> _discoveryErrors = new();
+    private readonly List<ContentPack> _packages = [];
+    private readonly List<string> _discoveryErrors = [];
     private readonly GodotContentPackMounter _native;
     private DodgeContentPreferences _preferences = new();
     private string _activeSelection = string.Empty;
@@ -61,7 +62,10 @@ internal sealed class DodgeContent : IDisposable
     /// <summary>Gets the next-start preferences without changing the active catalog.</summary>
     internal ContentPackProfile RequestedProfile => _preferences.Profile;
     /// <summary>Gets the most recent content-startup failure.</summary>
-    internal string? Error { get; private set; }
+    internal string? Error
+    {
+        get; private set;
+    }
     /// <summary>Gets package discovery errors for the repair screen.</summary>
     internal IReadOnlyList<string> DiscoveryErrors => _discoveryErrors;
     /// <summary>Gets whether the next-start selection differs from this process's selection.</summary>
@@ -78,15 +82,17 @@ internal sealed class DodgeContent : IDisposable
     internal async Task ApproveCodeAsync(string id, CancellationToken cancellationToken)
     {
         var package = _packages.Single(pack => string.Equals(pack.Manifest.Id, id, StringComparison.Ordinal));
-        if (package.Manifest.Code is null) throw new InvalidOperationException("This is not a code package.");
+        if (package.Manifest.Code is null)
+            throw new InvalidOperationException("This is not a code package.");
         await _selectionGate.WaitAsync(cancellationToken).ConfigureAwait(true);
         try
         {
             var stamp = new ContentPackStamp(id, package.Manifest.Version, package.Fingerprint);
             var next = new DodgeContentPreferences
             {
-                Profile = _preferences.Profile, ArenaId = _preferences.ArenaId,
-                CodeApprovals = _preferences.CodeApprovals.Where(item => !string.Equals(item.Id, id, StringComparison.Ordinal)).Append(stamp).ToArray()
+                Profile = _preferences.Profile,
+                ArenaId = _preferences.ArenaId,
+                CodeApprovals = [.. _preferences.CodeApprovals.Where(item => !string.Equals(item.Id, id, StringComparison.Ordinal)), stamp],
             };
             await _storage.WriteAsync(_settingsKey, next).ConfigureAwait(true);
             _preferences = next;
@@ -107,6 +113,51 @@ internal sealed class DodgeContent : IDisposable
         CopyShippedDirectory("res://content-schemas", schemaDirectory);
         SeedOptionalExamples();
 
+        await LoadPreferencesAsync().ConfigureAwait(true);
+        _activeSelection = SelectionKey(_preferences.Profile);
+
+        await DiscoverDirectoryAsync(baseDirectory, cancellationToken).ConfigureAwait(true);
+        foreach (var directory in Directory.GetDirectories(InstalledDirectory).Order(StringComparer.Ordinal))
+            await DiscoverDirectoryAsync(directory, cancellationToken).ConfigureAwait(true);
+        if (Error is not null)
+            return;
+
+        try
+        {
+            var plan = Resolve(_preferences.Profile);
+            _mods = await GameModHost.PrepareAsync(plan, _modOptions ?? new GameModHostOptions
+            {
+                GameId = "dodge-the-creeps",
+                CodeApiVersion = "1.0.0",
+                TrustPolicy = IsCodeApproved,
+            }, cancellationToken).ConfigureAwait(true);
+            var loader = new ContentCatalogLoader()
+                .RegisterTable<DodgeEnemyDefinition>("enemies", Path.Combine(schemaDirectory, "enemies.schema.json"), static value => value.Id)
+                .RegisterTable<DodgeArenaDefinition>("arenas", Path.Combine(schemaDirectory, "arenas.schema.json"), static value => value.Id);
+            var catalog = await loader.LoadAsync(plan, _mods.Admission, cancellationToken).ConfigureAwait(true);
+            ValidateRequiredRows(catalog);
+            var native = plan.Packages.SelectMany(pack => pack.Manifest.ResourcePacks.Select(path =>
+                new GodotContentPackDescriptor(pack.Manifest.Id, pack.RootPath, path))).ToArray();
+            _native.MountAll(native);
+            PrepareResources(catalog);
+            if (!catalog.Contains(new ContentReference("arenas", new ContentId(_preferences.ArenaId))))
+                _preferences.ArenaId = "base:yard";
+            _catalog = catalog;
+            await _mods.StartAsync(cancellationToken).ConfigureAwait(true);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            GD.PushError(exception.ToString());
+            _catalog = null;
+            if (_mods is not null)
+                await _mods.StopAsync(CancellationToken.None).ConfigureAwait(true);
+            Error = exception.Message + (_native.RequiresRestart ? " Restart is required after repairing the selection." : string.Empty);
+        }
+    }
+
+    /// <summary>Reads the next-start selection while retaining unreadable settings for the explicit repair action.</summary>
+    private async Task LoadPreferencesAsync()
+    {
         try
         {
             if (await _storage.ExistsAsync(_settingsKey).ConfigureAwait(true))
@@ -121,64 +172,52 @@ internal sealed class DodgeContent : IDisposable
             // Only the explicit Reset selection action replaces unreadable player preferences.
             Error = "Content settings could not be read: " + exception.Message;
         }
-        _activeSelection = SelectionKey(_preferences.Profile);
+    }
 
-        await DiscoverDirectoryAsync(baseDirectory, cancellationToken).ConfigureAwait(true);
-        foreach (var directory in Directory.GetDirectories(InstalledDirectory).OrderBy(static path => path, StringComparer.Ordinal))
-            await DiscoverDirectoryAsync(directory, cancellationToken).ConfigureAwait(true);
-        if (Error is not null) return;
-
-        try
+    /// <summary>Rejects catalog removals that would prevent gameplay or the repair screen from being constructed.</summary>
+    /// <param name="catalog">The complete unpublished candidate.</param>
+    private static void ValidateRequiredRows(ContentCatalog catalog)
+    {
+        foreach (var reference in new[]
         {
-            var plan = Resolve(_preferences.Profile);
-            _mods = await GameModHost.PrepareAsync(plan, _modOptions ?? new GameModHostOptions
+            new ContentReference("arenas", new ContentId("base:yard")),
+            new ContentReference("enemies", new ContentId("base:walker")),
+        })
+        {
+            if (!catalog.Contains(reference))
             {
-                GameId = "dodge-the-creeps", CodeApiVersion = "1.0.0", TrustPolicy = IsCodeApproved
-            }, cancellationToken).ConfigureAwait(true);
-            var loader = new ContentCatalogLoader()
-                .RegisterTable<DodgeEnemyDefinition>("enemies", Path.Combine(schemaDirectory, "enemies.schema.json"), static value => value.Id)
-                .RegisterTable<DodgeArenaDefinition>("arenas", Path.Combine(schemaDirectory, "arenas.schema.json"), static value => value.Id);
-            var catalog = await loader.LoadAsync(plan, _mods.Admission, cancellationToken).ConfigureAwait(true);
-            var native = plan.Packages.SelectMany(pack => pack.Manifest.ResourcePacks.Select(path =>
-                new GodotContentPackDescriptor(pack.Manifest.Id, pack.RootPath, path))).ToArray();
-            _native.MountAll(native);
-            PrepareResources(catalog);
-            if (!catalog.Contains(new ContentReference("arenas", new ContentId(_preferences.ArenaId))))
-                _preferences.ArenaId = "base:yard";
-            _catalog = catalog;
-            await _mods.StartAsync(cancellationToken).ConfigureAwait(true);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            GD.PushError(exception.ToString());
-            _catalog = null;
-            if (_mods is not null) await _mods.StopAsync().ConfigureAwait(true);
-            Error = exception.Message + (_native.RequiresRestart ? " Restart is required after repairing the selection." : string.Empty);
+                throw new InvalidOperationException($"Required sample content is missing: {reference}. Disable the removing package and restart.");
+            }
         }
     }
 
     /// <summary>Returns the dependency-constrained order for the player's saved next-start selection.</summary>
     internal string DescribeRequestedOrder()
     {
-        try { return string.Join(" > ", Resolve(_preferences.Profile).Packages.Select(static pack => pack.Manifest.Id)); }
+        try
+        {
+            return string.Join(" > ", Resolve(_preferences.Profile).Packages.Select(static pack => pack.Manifest.Id));
+        }
         catch (Exception exception) { return exception.Message; }
     }
 
     /// <summary>Shows which package supplies the final field after applying all patches.</summary>
     internal string DescribeWalkerSpeed()
     {
-        if (!IsReady) return "Content is unavailable until the next successful start.";
+        if (!IsReady)
+            return "Content is unavailable until the next successful start.";
         var enemy = Catalog.GetTable<DodgeEnemyDefinition>("enemies").Get(new ContentId("base:walker"));
         var source = Catalog.GetFieldSource(new ContentReference("enemies", new ContentId("base:walker")), "speedMin");
-        return $"Walker speed {enemy.SpeedMin:0}-{enemy.SpeedMax:0}; source: {source?.PackId ?? "base"}";
+        return string.Create(CultureInfo.InvariantCulture, $"Walker speed {enemy.SpeedMin:0}-{enemy.SpeedMax:0}; source: {source?.PackId ?? "base"}");
     }
 
     /// <summary>Persists an enable choice for the next process without mutating the active session.</summary>
     internal Task ToggleAsync(string id, CancellationToken cancellationToken) => ChangeProfileAsync(profile =>
     {
         var enabled = profile.EnabledPackages.ToList();
-        if (!enabled.Remove(id)) enabled.Add(id);
-        return new ContentPackProfile { EnabledPackages = enabled, LoadOrder = PreferredIds(profile).ToArray() };
+        if (!enabled.Remove(id))
+            enabled.Add(id);
+        return new ContentPackProfile { EnabledPackages = enabled, LoadOrder = [.. PreferredIds(profile)] };
     }, cancellationToken);
 
     /// <summary>Persists player priority; the resolver still constrains it by dependencies.</summary>
@@ -220,14 +259,17 @@ internal sealed class DodgeContent : IDisposable
     /// <summary>Releases native media after gameplay nodes have stopped and left the tree.</summary>
     public void Dispose()
     {
-        foreach (var texture in _textures.Values) texture.Dispose();
-        foreach (var stream in _audio.Values) stream.Dispose();
-        foreach (var scene in _scenes.Values) scene.Dispose();
+        foreach (var texture in _textures.Values)
+            texture.Dispose();
+        foreach (var stream in _audio.Values)
+            stream.Dispose();
+        foreach (var scene in _scenes.Values)
+            scene.Dispose();
         _selectionGate.Dispose();
     }
 
     private static string SelectionKey(ContentPackProfile profile) =>
-        string.Join(",", profile.EnabledPackages.OrderBy(static id => id, StringComparer.Ordinal)) + "|" + string.Join(",", profile.LoadOrder);
+        string.Join(',', profile.EnabledPackages.Order(StringComparer.Ordinal)) + "|" + string.Join(',', profile.LoadOrder);
 
     private IEnumerable<string> PreferredIds(ContentPackProfile profile) => profile.LoadOrder
         .Concat(_packages.Select(static pack => pack.Manifest.Id).Where(static id => !string.Equals(id, "base", StringComparison.Ordinal)))
@@ -253,7 +295,10 @@ internal sealed class DodgeContent : IDisposable
 
     private async Task DiscoverDirectoryAsync(string directory, CancellationToken cancellationToken)
     {
-        try { _packages.AddRange(await new ContentPackDiscovery().DiscoverAsync(new[] { directory }, cancellationToken).ConfigureAwait(true)); }
+        try
+        {
+            _packages.AddRange(await new ContentPackDiscovery().DiscoverAsync([directory], cancellationToken).ConfigureAwait(true));
+        }
         catch (Exception exception) when (exception is ContentLoadException or IOException or UnauthorizedAccessException or ArgumentException)
         {
             _discoveryErrors.Add(Path.GetFileName(directory) + ": " + exception.Message);
@@ -274,7 +319,8 @@ internal sealed class DodgeContent : IDisposable
     {
         foreach (var enemy in catalog.GetTable<DodgeEnemyDefinition>("enemies").All())
         {
-            if (enemy.SpeedMax < enemy.SpeedMin) throw new InvalidOperationException("Enemy speed range is invalid: " + enemy.Id);
+            if (enemy.SpeedMax < enemy.SpeedMin)
+                throw new InvalidOperationException("Enemy speed range is invalid: " + enemy.Id);
             if (enemy.Texture.Length > 0 && !_textures.ContainsKey(enemy.Texture))
             {
                 var (pack, path) = ResolveMediaReference(enemy.Texture);
@@ -319,11 +365,14 @@ internal sealed class DodgeContent : IDisposable
         {
             // A not-yet-built code example must remain installable later; successful installs alone get a marker.
             var marker = Path.Combine(_physicalRoot, "example-installed-" + id);
-            if (File.Exists(marker)) continue;
+            if (File.Exists(marker))
+                continue;
             if (id.StartsWith("code-", StringComparison.Ordinal) &&
-                !DirAccess.GetFilesAt("res://content_sources/" + id).Any(static file => file.EndsWith(".dll.source", StringComparison.Ordinal))) continue;
+                !DirAccess.GetFilesAt("res://content_sources/" + id).Any(static file => file.EndsWith(".dll.source", StringComparison.Ordinal)))
+                continue;
             var destination = Path.Combine(InstalledDirectory, id);
-            if (!Directory.Exists(destination)) CopyShippedDirectory("res://content_sources/" + id, destination);
+            if (!Directory.Exists(destination))
+                CopyShippedDirectory("res://content_sources/" + id, destination);
             File.WriteAllText(marker, "1");
         }
     }
@@ -334,9 +383,11 @@ internal sealed class DodgeContent : IDisposable
         foreach (var file in DirAccess.GetFilesAt(source))
         {
             // Imported editor metadata is not part of the portable loose-content format.
-            if (file.EndsWith(".import", StringComparison.Ordinal)) continue;
+            if (file.EndsWith(".import", StringComparison.Ordinal))
+                continue;
             var bytes = FileAccess.GetFileAsBytes(source + "/" + file);
-            if (FileAccess.GetOpenError() != Godot.Error.Ok) throw new IOException("Cannot read shipped content: " + source + "/" + file);
+            if (FileAccess.GetOpenError() != Godot.Error.Ok)
+                throw new IOException("Cannot read shipped content: " + source + "/" + file);
             // The sample ships raw media with a .source suffix so exports retain original
             // bytes rather than replacing them with editor-imported Godot resources.
             var targetName = file.EndsWith(".source", StringComparison.Ordinal) ? file[..^".source".Length] : file;

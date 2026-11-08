@@ -27,7 +27,7 @@ public partial class DodgeApp
         else if (stage == 1)
         {
             Require(_scoreModifiers.Count == 1 && DodgeScoreRules.Calculate() == 2, "External API or Harmony mod did not start.");
-            await StartGameAsync(false).ConfigureAwait(true);
+            await StartGameAsync(restore: false).ConfigureAwait(true);
             AdvanceModScore();
             Require(_world!.Score == 3 && ReadBonusAwards() == 1, "The two external DLLs did not affect gameplay or mod state.");
             await SaveGameAsync().ConfigureAwait(true);
@@ -54,11 +54,13 @@ public partial class DodgeApp
         {
             await RestoreModStateSmokeAsync().ConfigureAwait(true);
         }
-        else throw new InvalidOperationException("Unknown modding acceptance stage.");
+        else
+            throw new InvalidOperationException("Unknown modding acceptance stage.");
         await _storage.WriteAsync(key, stage + 1).ConfigureAwait(true);
-        GD.Print("DODGE_MODDING_RESULT PASS " + stage);
-        if (stage < 3) GD.Print("DODGE_MODDING_NEXT " + _smokeId);
-        FinishSmoke(true);
+        GD.Print("DODGE_MODDING_RESULT PASS " + stage.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        if (stage < 3)
+            GD.Print("DODGE_MODDING_NEXT " + _smokeId);
+        FinishSmoke(passed: true);
     }
 
     /// <summary>Checks restored mod state and independent API/patch cleanup after another process enabled the code again.</summary>
@@ -78,21 +80,21 @@ public partial class DodgeApp
     private async Task PrepareCodeSelectionSmokeAsync()
     {
         CheckRunStateAdmission();
-        Require(_content.Packages.Count(pack => pack.Manifest.Code is not null) == 2,
+        Require(_content.Packages.Where(pack => pack.Manifest.Code is not null).Take(3).Count() == 2,
             "Build the two external mod examples before native acceptance.");
         await OpenContentAsync().ConfigureAwait(true);
         // First reject one execution request through the same dialog as normal installation.
         Click("Toggle_code-bonus");
         await UntilAsync(() => HasView("code-permission")).ConfigureAwait(true);
         Click("DenyCode");
-        await UntilAsync(() => _actions.All(static task => task.IsCompleted)).ConfigureAwait(true);
+        await UntilAsync(() => _actions.TrueForAll(static task => task.IsCompleted)).ConfigureAwait(true);
         Require(!_content.RequestedProfile.EnabledPackages.Contains("code-bonus", StringComparer.Ordinal), "Denied code was enabled.");
         foreach (var id in new[] { "code-bonus", "code-double" })
         {
             Click("Toggle_" + id);
             await UntilAsync(() => HasView("code-permission")).ConfigureAwait(true);
             Click("AllowCode");
-            await UntilAsync(() => _actions.All(static task => task.IsCompleted)).ConfigureAwait(true);
+            await UntilAsync(() => _actions.TrueForAll(static task => task.IsCompleted)).ConfigureAwait(true);
         }
         Require(_scoreModifiers.Count == 0 && DodgeScoreRules.Calculate() == 1,
             "Recording next-start code choices changed this process.");
@@ -116,9 +118,10 @@ public partial class DodgeApp
     /// <summary>Accepts any required prepared-save commit through the native confirmation dialog.</summary>
     private async Task ContinueModSaveAsync()
     {
-        var action = StartGameAsync(true);
+        var action = StartGameAsync(restore: true);
         await UntilAsync(() => HasView("recover") || action.IsCompleted).ConfigureAwait(true);
-        if (HasView("recover")) Click("RecoveryProceed");
+        if (HasView("recover"))
+            Click("RecoveryProceed");
         await action.ConfigureAwait(true);
     }
 

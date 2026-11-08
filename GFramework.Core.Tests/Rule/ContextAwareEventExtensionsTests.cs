@@ -115,16 +115,12 @@ public class ContextAwareEventExtensionsTests
         Assert.That(receivedEvent!.Data, Is.EqualTo("TestData"));
     }
 
-    private class TestEvent
+    private sealed class TestEvent
     {
         public string Data { get; set; } = string.Empty;
     }
 
-    private class TestEventWithDefaultConstructor
-    {
-    }
+    private sealed class TestEventWithDefaultConstructor;
 
-    private class TestContextAware : ContextAwareBase
-    {
-    }
+    private sealed class TestContextAware : ContextAwareBase;
 }

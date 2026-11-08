@@ -62,7 +62,10 @@ public class UnRegisterTests
         var property = new BindableProperty<int>();
         var callCount = 0;
 
-        Action<int> handler = _ => { callCount++; };
+        void handler(int _)
+        {
+            callCount++;
+        }
         property.Register(handler);
 
         var unRegister = new BindablePropertyUnRegister<int>(property, handler);
@@ -81,7 +84,9 @@ public class UnRegisterTests
     {
         var property = new BindableProperty<int>();
 
-        Action<int> handler = _ => { };
+        static void handler(int _)
+        {
+        }
         var unRegister = new BindablePropertyUnRegister<int>(property, handler);
 
         unRegister.UnRegister();
@@ -97,7 +102,9 @@ public class UnRegisterTests
     [Test]
     public void BindablePropertyUnRegister_WithNull_Property_Should_NotThrow()
     {
-        Action<int> handler = _ => { };
+        static void handler(int _)
+        {
+        }
         var unRegister = new BindablePropertyUnRegister<int>(null!, handler);
 
         Assert.DoesNotThrow(() => unRegister.UnRegister());

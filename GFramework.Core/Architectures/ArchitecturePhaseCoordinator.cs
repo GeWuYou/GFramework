@@ -20,7 +20,10 @@ internal sealed class ArchitecturePhaseCoordinator(
     private IReadOnlyList<IArchitecturePhaseListener> _listeners = [];
 
     /// <summary>当前阶段；先更新状态再广播，使失败的回调也不能隐藏已开始的阶段。</summary>
-    public ArchitecturePhase CurrentPhase { get; private set; }
+    public ArchitecturePhase CurrentPhase
+    {
+        get; private set;
+    }
 
     /// <summary>在配置阶段登记钩子，外层架构负责注册窗口约束。</summary>
     /// <param name="hook">当前实例的钩子。</param>
@@ -36,7 +39,7 @@ internal sealed class ArchitecturePhaseCoordinator(
     /// <param name="listeners">显式组件及容器中的额外监听器。</param>
     public void SetListeners(IEnumerable<IArchitecturePhaseListener> listeners)
     {
-        _listeners = listeners.Distinct<IArchitecturePhaseListener>(ReferenceEqualityComparer.Instance).ToArray();
+        _listeners = [.. listeners.Distinct<IArchitecturePhaseListener>(ReferenceEqualityComparer.Instance)];
     }
 
     /// <summary>进入阶段，等待异步钩子；同步模式遇到异步钩子明确拒绝。</summary>
@@ -51,7 +54,10 @@ internal sealed class ArchitecturePhaseCoordinator(
     {
         ValidatePhaseTransition(next);
         CurrentPhase = next;
-        logger.LogDebug($"Architecture phase: {next}");
+        if (logger.IsEnabled(global::Microsoft.Extensions.Logging.LogLevel.Debug))
+        {
+            logger.LogDebug("Architecture phase: {ArchitecturePhase}", next);
+        }
         foreach (var hook in _hooks)
         {
             cancellationToken.ThrowIfCancellationRequested();

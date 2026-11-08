@@ -20,13 +20,16 @@ internal sealed class RichTextEffectPlan
     {
         ArgumentNullException.ThrowIfNull(effects);
 
-        Effects = effects.ToArray();
+        Effects = [.. effects];
     }
 
     /// <summary>
     ///     获取当前计划启用的效果条目集合。
     /// </summary>
-    public IReadOnlyList<RichTextEffectPlanEntry> Effects { get; }
+    public IReadOnlyList<RichTextEffectPlanEntry> Effects
+    {
+        get;
+    }
 
     /// <summary>
     ///     从 Godot 资源配置转换为纯托管计划。
@@ -67,7 +70,7 @@ internal sealed class RichTextEffectPlan
             new RichTextEffectPlanEntry("fade_in"),
             new RichTextEffectPlanEntry("sine"),
             new RichTextEffectPlanEntry("jitter"),
-            new RichTextEffectPlanEntry("fly_in")
+            new RichTextEffectPlanEntry("fly_in"),
         ]);
     }
 }

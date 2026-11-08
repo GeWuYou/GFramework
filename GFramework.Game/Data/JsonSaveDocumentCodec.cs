@@ -21,10 +21,12 @@ public sealed class JsonSaveDocumentCodec : ISaveDocumentCodec
         ArgumentNullException.ThrowIfNull(snapshot);
         using var reader = new JsonTextReader(new StringReader(snapshot.ReadText()))
         {
-            MaxDepth = 64, DateParseHandling = DateParseHandling.None
+            MaxDepth = 64,
+            DateParseHandling = DateParseHandling.None,
         };
         var root = JObject.Load(reader, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
-        if (reader.Read()) throw new InvalidOperationException("A save must contain exactly one JSON document.");
+        if (reader.Read())
+            throw new InvalidOperationException("A save must contain exactly one JSON document.");
         ValidateEnvelopeShape(root);
         var document = root.ToObject<SaveDocument>(CreateSerializer())
             ?? throw new InvalidOperationException("A save envelope cannot be null.");
@@ -62,7 +64,7 @@ public sealed class JsonSaveDocumentCodec : ISaveDocumentCodec
         TypeNameHandling = TypeNameHandling.None,
         MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
         DateParseHandling = DateParseHandling.None,
-        MaxDepth = 64
+        MaxDepth = 64,
     });
 
     /// <summary>Requires explicit metadata instead of interpreting missing fields through CLR property defaults.</summary>
@@ -75,10 +77,12 @@ public sealed class JsonSaveDocumentCodec : ISaveDocumentCodec
         ValidateBlockShape(game);
         foreach (var property in mods.Properties())
         {
-            if (property.Value is not JObject block) throw new InvalidOperationException("A mod block must be an object.");
+            if (property.Value is not JObject block)
+                throw new InvalidOperationException("A mod block must be an object.");
             ValidateBlockShape(block);
         }
-        if (root["Content"]?.Type == JTokenType.Null) return;
+        if (root["Content"]?.Type == JTokenType.Null)
+            return;
         if (root["Content"] is not JObject content || content["Packs"] is not JArray packs)
             throw new InvalidOperationException("Content metadata requires an explicit package array.");
         foreach (var pack in packs)
@@ -100,10 +104,12 @@ public sealed class JsonSaveDocumentCodec : ISaveDocumentCodec
         if (document.FormatVersion != 1 || string.IsNullOrWhiteSpace(document.GameId))
             throw new InvalidOperationException("Unknown save envelope format or missing game identity.");
         ValidateBlock(document.Game);
-        if (document.Mods is null) throw new InvalidOperationException("A save requires a mod data map.");
+        if (document.Mods is null)
+            throw new InvalidOperationException("A save requires a mod data map.");
         foreach (var pair in document.Mods)
         {
-            if (!ContentId.IsCanonicalSegment(pair.Key)) throw new InvalidOperationException("Invalid mod data namespace.");
+            if (!ContentId.IsCanonicalSegment(pair.Key))
+                throw new InvalidOperationException("Invalid mod data namespace.");
             ValidateBlock(pair.Value);
         }
         if (document.Content is not null)

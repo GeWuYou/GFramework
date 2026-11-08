@@ -33,16 +33,25 @@ internal sealed class YamlConfigSchema
     /// <summary>
     ///     获取 schema 文件路径。
     /// </summary>
-    public string SchemaPath { get; }
+    public string SchemaPath
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取根节点模型。
     /// </summary>
-    public YamlConfigSchemaNode RootNode { get; }
+    public YamlConfigSchemaNode RootNode
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取 schema 声明的目标引用表名称集合。
     ///     该信息用于热重载时推导受影响的依赖表闭包。
     /// </summary>
-    public IReadOnlyCollection<string> ReferencedTableNames { get; }
+    public IReadOnlyCollection<string> ReferencedTableNames
+    {
+        get;
+    }
 }

@@ -22,17 +22,18 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
             ["GetSystem"] = ComponentKind.System,
             ["GetSystems"] = ComponentKind.System,
             ["GetUtility"] = ComponentKind.Utility,
-            ["GetUtilities"] = ComponentKind.Utility
+            ["GetUtilities"] = ComponentKind.Utility,
         };
 
     /// <summary>
     ///     当前分析器支持的诊断规则。
     /// </summary>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(
+        [
             ContextRegistrationDiagnostics.ModelRegistrationMissing,
             ContextRegistrationDiagnostics.SystemRegistrationMissing,
-            ContextRegistrationDiagnostics.UtilityRegistrationMissing);
+            ContextRegistrationDiagnostics.UtilityRegistrationMissing,
+        ];
 
     /// <summary>
     ///     初始化分析器并注册字段注入与手写 GetX 调用分析。
@@ -134,7 +135,7 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
                 ComponentKind.Model => ContextRegistrationDiagnostics.ModelRegistrationMissing,
                 ComponentKind.System => ContextRegistrationDiagnostics.SystemRegistrationMissing,
                 ComponentKind.Utility => ContextRegistrationDiagnostics.UtilityRegistrationMissing,
-                _ => throw new ArgumentOutOfRangeException(nameof(request))
+                _ => throw new ArgumentOutOfRangeException(nameof(request)),
             },
             request.Location,
             request.ServiceType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
@@ -291,7 +292,7 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
     {
         Model,
         System,
-        Utility
+        Utility,
     }
 
     private readonly record struct BindingRequest(
@@ -330,29 +331,65 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
             GetUtilitiesAttribute = getUtilitiesAttribute;
         }
 
-        public INamedTypeSymbol? ArchitectureType { get; }
+        public INamedTypeSymbol? ArchitectureType
+        {
+            get;
+        }
 
-        public INamedTypeSymbol? IArchitectureType { get; }
+        public INamedTypeSymbol? IArchitectureType
+        {
+            get;
+        }
 
-        public INamedTypeSymbol? IArchitectureModuleType { get; }
+        public INamedTypeSymbol? IArchitectureModuleType
+        {
+            get;
+        }
 
-        public INamedTypeSymbol? IArchitectureContext { get; }
+        public INamedTypeSymbol? IArchitectureContext
+        {
+            get;
+        }
 
-        public INamedTypeSymbol? IReadOnlyList { get; }
+        public INamedTypeSymbol? IReadOnlyList
+        {
+            get;
+        }
 
-        public INamedTypeSymbol? ContextAwareServiceExtensions { get; }
+        public INamedTypeSymbol? ContextAwareServiceExtensions
+        {
+            get;
+        }
 
-        public INamedTypeSymbol? GetModelAttribute { get; }
+        public INamedTypeSymbol? GetModelAttribute
+        {
+            get;
+        }
 
-        public INamedTypeSymbol? GetModelsAttribute { get; }
+        public INamedTypeSymbol? GetModelsAttribute
+        {
+            get;
+        }
 
-        public INamedTypeSymbol? GetSystemAttribute { get; }
+        public INamedTypeSymbol? GetSystemAttribute
+        {
+            get;
+        }
 
-        public INamedTypeSymbol? GetSystemsAttribute { get; }
+        public INamedTypeSymbol? GetSystemsAttribute
+        {
+            get;
+        }
 
-        public INamedTypeSymbol? GetUtilityAttribute { get; }
+        public INamedTypeSymbol? GetUtilityAttribute
+        {
+            get;
+        }
 
-        public INamedTypeSymbol? GetUtilitiesAttribute { get; }
+        public INamedTypeSymbol? GetUtilitiesAttribute
+        {
+            get;
+        }
 
         public bool IsReady =>
             ArchitectureType != null &&
@@ -750,7 +787,7 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
                 ComponentKind.Model => _models,
                 ComponentKind.System => _systems,
                 ComponentKind.Utility => _utilities,
-                _ => throw new ArgumentOutOfRangeException(nameof(componentKind))
+                _ => throw new ArgumentOutOfRangeException(nameof(componentKind)),
             };
         }
     }
@@ -811,8 +848,8 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
             {
                 Expression: MemberAccessExpressionSyntax
                 {
-                    Expression: BaseExpressionSyntax
-                }
+                    Expression: BaseExpressionSyntax,
+                },
             };
         }
 
@@ -862,7 +899,7 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
                         semanticModel.GetOperation(constructorDeclaration.Body),
                     ConstructorDeclarationSyntax { ExpressionBody: not null } constructorDeclaration =>
                         semanticModel.GetOperation(constructorDeclaration.ExpressionBody.Expression),
-                    _ => null
+                    _ => null,
                 };
 
                 if (operation == null)
@@ -883,7 +920,7 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
             return current switch
             {
                 IObjectCreationOperation objectCreationOperation => objectCreationOperation.Type as INamedTypeSymbol,
-                _ => null
+                _ => null,
             };
         }
 

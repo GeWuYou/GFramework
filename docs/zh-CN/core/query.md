@@ -14,20 +14,27 @@ using GFramework.Cqrs.Abstractions.Cqrs;
 
 public sealed record GetPlayerHealthRequest(int PlayerId) : IRequest<int>;
 
-public sealed class GetPlayerHealthHandler
+public sealed class GetPlayerHealthHandler(PlayerModel playerModel)
     : IRequestHandler<GetPlayerHealthRequest, int>
 {
     public ValueTask<int> Handle(
         GetPlayerHealthRequest request,
         CancellationToken cancellationToken)
     {
-        var playerModel = Context.GetModel<PlayerModel>();
         return ValueTask.FromResult(playerModel.Health.Value);
     }
 }
 ```
 
 ## 发送方式
+
+`PlayerModel` 是应用的业务模型。与写操作相同，先在组合根登记模型及处理器，让标准 DI 注入依赖：
+
+```csharp
+services.AddSingleton<PlayerModel>();
+services.AddSingleton<IRequestHandler<GetPlayerHealthRequest, int>, GetPlayerHealthHandler>();
+services.AddCqrsRuntime();
+```
 
 在 `IContextAware` 对象内：
 

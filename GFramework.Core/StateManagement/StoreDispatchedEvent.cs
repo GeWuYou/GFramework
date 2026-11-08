@@ -10,20 +10,16 @@ namespace GFramework.Core.StateManagement;
 ///     该事件用于让旧模块在不直接依赖 Store API 的情况下观察 action 分发结果。
 /// </summary>
 /// <typeparam name="TState">状态树的根状态类型。</typeparam>
-public sealed class StoreDispatchedEvent<TState>
+/// <remarks>
+///     初始化一个新的 Store 分发桥接事件。
+/// </remarks>
+/// <param name="dispatchRecord">本次分发记录。</param>
+/// <exception cref="ArgumentNullException">当 <paramref name="dispatchRecord"/> 为 <see langword="null"/> 时抛出。</exception>
+public sealed class StoreDispatchedEvent<TState>(StoreDispatchRecord<TState> dispatchRecord)
 {
-    /// <summary>
-    ///     初始化一个新的 Store 分发桥接事件。
-    /// </summary>
-    /// <param name="dispatchRecord">本次分发记录。</param>
-    /// <exception cref="ArgumentNullException">当 <paramref name="dispatchRecord"/> 为 <see langword="null"/> 时抛出。</exception>
-    public StoreDispatchedEvent(StoreDispatchRecord<TState> dispatchRecord)
-    {
-        DispatchRecord = dispatchRecord ?? throw new ArgumentNullException(nameof(dispatchRecord));
-    }
 
     /// <summary>
     ///     获取本次桥接对应的 Store 分发记录。
     /// </summary>
-    public StoreDispatchRecord<TState> DispatchRecord { get; }
+    public StoreDispatchRecord<TState> DispatchRecord { get; } = dispatchRecord ?? throw new ArgumentNullException(nameof(dispatchRecord));
 }

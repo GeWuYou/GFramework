@@ -274,23 +274,17 @@ public class ArchitectureComponentRegistryBehaviorTests
     /// <summary>
     ///     用于测试组件注册行为的最小架构实现。
     /// </summary>
-    private sealed class RegistryTestArchitecture : Architecture
+    /// <remarks>
+    ///     创建一个可选地附带服务配置逻辑的测试架构。
+    /// </remarks>
+    /// <param name="registrationAction">初始化阶段执行的组件注册逻辑。</param>
+    /// <param name="configurator">初始化前执行的服务配置逻辑。</param>
+    private sealed class RegistryTestArchitecture(
+        Action<ArchitectureComponentRegistryBehaviorTests.RegistryTestArchitecture> registrationAction,
+        Action<IServiceCollection>? configurator = null) : Architecture
     {
-        private readonly Action<IServiceCollection>? _configurator;
-        private readonly Action<RegistryTestArchitecture> _registrationAction;
-
-        /// <summary>
-        ///     创建一个可选地附带服务配置逻辑的测试架构。
-        /// </summary>
-        /// <param name="registrationAction">初始化阶段执行的组件注册逻辑。</param>
-        /// <param name="configurator">初始化前执行的服务配置逻辑。</param>
-        public RegistryTestArchitecture(
-            Action<RegistryTestArchitecture> registrationAction,
-            Action<IServiceCollection>? configurator = null)
-        {
-            _registrationAction = registrationAction;
-            _configurator = configurator;
-        }
+        private readonly Action<IServiceCollection>? _configurator = configurator;
+        private readonly Action<RegistryTestArchitecture> _registrationAction = registrationAction;
 
         /// <summary>
         ///     返回测试注入的服务配置逻辑。
@@ -317,7 +311,10 @@ public class ArchitectureComponentRegistryBehaviorTests
         /// <summary>
         ///     获取系统初始化调用次数。
         /// </summary>
-        public int InitializeCallCount { get; private set; }
+        public int InitializeCallCount
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录初始化调用。
@@ -370,7 +367,10 @@ public class ArchitectureComponentRegistryBehaviorTests
         /// <summary>
         ///     获取模型初始化调用次数。
         /// </summary>
-        public int InitializeCallCount { get; private set; }
+        public int InitializeCallCount
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录初始化调用。
@@ -416,7 +416,10 @@ public class ArchitectureComponentRegistryBehaviorTests
         /// <summary>
         ///     获取工具初始化调用次数。
         /// </summary>
-        public int InitializeCallCount { get; private set; }
+        public int InitializeCallCount
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录初始化调用。
@@ -454,9 +457,7 @@ public class ArchitectureComponentRegistryBehaviorTests
     /// <summary>
     ///     用于验证普通工厂注册路径的简单工具。
     /// </summary>
-    private sealed class FactoryCreatedUtility : IUtility
-    {
-    }
+    private sealed class FactoryCreatedUtility : IUtility;
 
     /// <summary>
     ///     用于验证构造函数依赖注入的简单依赖对象。
@@ -484,7 +485,10 @@ public class ArchitectureComponentRegistryBehaviorTests
         /// <summary>
         ///     获取初始化调用次数。
         /// </summary>
-        public int InitializeCallCount { get; private set; }
+        public int InitializeCallCount
+        {
+            get; private set;
+        }
 
         public void Initialize()
         {
@@ -525,7 +529,10 @@ public class ArchitectureComponentRegistryBehaviorTests
         /// <summary>
         ///     获取初始化调用次数。
         /// </summary>
-        public int InitializeCallCount { get; private set; }
+        public int InitializeCallCount
+        {
+            get; private set;
+        }
 
         public void Initialize()
         {
@@ -555,7 +562,10 @@ public class ArchitectureComponentRegistryBehaviorTests
         /// <summary>
         ///     获取共享依赖被构造的次数。
         /// </summary>
-        public int CreationCount { get; private set; }
+        public int CreationCount
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录一次新的依赖构造。
@@ -650,9 +660,7 @@ public class ArchitectureComponentRegistryBehaviorTests
     /// <summary>
     ///     用于覆盖 ImplementationFactory 单例描述符路径的共享依赖。
     /// </summary>
-    private sealed class FactorySharedDependency
-    {
-    }
+    private sealed class FactorySharedDependency;
 
     /// <summary>
     ///     用于覆盖 ImplementationFactory 单例复用路径的测试系统。

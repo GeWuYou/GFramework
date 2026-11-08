@@ -352,7 +352,9 @@ public abstract class Architecture : IArchitecture
     protected virtual ValueTask OnStartedAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+#pragma warning disable MA0042 // This default async adapter must invoke the synchronous hook; calling OnStartedAsync would recurse.
         OnStarted();
+#pragma warning restore MA0042
         return ValueTask.CompletedTask;
     }
 
@@ -369,13 +371,13 @@ public abstract class Architecture : IArchitecture
     protected virtual ValueTask OnStoppedAsync() => ValueTask.CompletedTask;
 
     /// <summary>同步启动只执行同步参与者，遇到异步组件或钩子明确要求异步入口。</summary>
-    public void Initialize() => StartInitialization(false, CancellationToken.None).GetAwaiter().GetResult();
+    public void Initialize() => StartInitialization(asyncMode: false, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>配置、构建唯一 provider，并等待组件和宿主准备完成。</summary>
     /// <param name="cancellationToken">取消本轮启动并等待部分资源清理完成。</param>
     /// <returns>本轮启动完成。</returns>
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
-        StartInitialization(true, cancellationToken);
+        StartInitialization(asyncMode: true, cancellationToken);
 
     /// <summary>先发布启动任务，再执行用户回调，防止并发启动和销毁看见半发布状态。</summary>
     /// <param name="asyncMode">是否允许异步参与者。</param>
@@ -541,7 +543,9 @@ public abstract class Architecture : IArchitecture
             var asyncHook = GetType().GetMethod(nameof(OnStartedAsync), BindingFlags.Instance | BindingFlags.NonPublic);
             if (asyncHook?.DeclaringType != typeof(Architecture))
                 throw new InvalidOperationException("An asynchronous host hook requires InitializeAsync().");
+#pragma warning disable MA0042 // Initialize() deliberately selects the synchronous host contract and rejects async overrides above.
             OnStarted();
+#pragma warning restore MA0042
         }
         cancellationToken.ThrowIfCancellationRequested();
         await _lifecycle.MarkAsReadyAsync(asyncMode, cancellationToken).ConfigureAwait(false);
@@ -604,6 +608,8 @@ public abstract class Architecture : IArchitecture
     /// <param name="startup">可能尚未完成的启动。</param>
     /// <param name="cancellation">启动取消源。</param>
     /// <returns>内部任务结果发布完成。</returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1816",
+        Justification = "Successful canonical cleanup suppresses finalization before publishing the shared completion task; disposal aliases retain Task identity.")]
     private async Task CompleteDestructionAsync(
         TaskCompletionSource completion, Task? startup, CancellationTokenSource? cancellation)
     {
@@ -613,7 +619,9 @@ public abstract class Architecture : IArchitecture
         {
             try
             {
+#pragma warning disable MA0042 // Execute startup cancellation callbacks inline before waiting; CancelAsync would change callback thread affinity.
                 cancellation?.Cancel();
+#pragma warning restore MA0042
             }
             catch (Exception error)
             {
@@ -644,13 +652,18 @@ public abstract class Architecture : IArchitecture
             _insideDestruction.Value = false;
         }
         if (errors.Count == 0)
+        {
+            GC.SuppressFinalize(this);
             completion.TrySetResult();
+        }
         else
             completion.TrySetException(new AggregateException("Architecture destruction failed.", errors));
     }
 
     /// <summary>标准异步资源释放入口，与 DestroyAsync 共享同一次任务。</summary>
     /// <returns>资源全部释放。</returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1816",
+        Justification = "CompleteDestructionAsync suppresses finalization only on canonical cleanup success; forwarding the original ValueTask preserves the lifecycle completion barrier and Task identity.")]
     public ValueTask DisposeAsync() => DestroyAsync();
 
     /// <summary>同步销毁包装；包含异步资源时调用方应优先等待 DestroyAsync。</summary>

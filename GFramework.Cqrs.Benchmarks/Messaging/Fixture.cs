@@ -3,6 +3,7 @@
 
 using BenchmarkDotNet.Loggers;
 using System;
+using System.Globalization;
 
 namespace GFramework.Cqrs.Benchmarks.Messaging;
 
@@ -21,8 +22,8 @@ internal static class Fixture
     {
         ConsoleLogger.Default.WriteLineHeader("GFramework.Cqrs benchmark config");
         ConsoleLogger.Default.WriteLineInfo($"Scenario      = {scenario}");
-        ConsoleLogger.Default.WriteLineInfo($"HandlerCount  = {handlerCount}");
-        ConsoleLogger.Default.WriteLineInfo($"PipelineCount = {pipelineCount}");
+        ConsoleLogger.Default.WriteLineInfo(string.Create(CultureInfo.InvariantCulture, $"HandlerCount  = {handlerCount}"));
+        ConsoleLogger.Default.WriteLineInfo(string.Create(CultureInfo.InvariantCulture, $"PipelineCount = {pipelineCount}"));
 
         var environmentScenario = Environment.GetEnvironmentVariable("GFRAMEWORK_CQRS_BENCHMARK_SCENARIO");
         if (!string.IsNullOrWhiteSpace(environmentScenario) &&

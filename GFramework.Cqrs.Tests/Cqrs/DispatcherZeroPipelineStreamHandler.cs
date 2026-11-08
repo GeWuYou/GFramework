@@ -12,6 +12,7 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 /// <summary>
 ///     处理 <see cref="DispatcherZeroPipelineStreamRequest" />，用于验证零管道 stream 的 dispatcher 缓存路径。
 /// </summary>
+[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
 internal sealed class DispatcherZeroPipelineStreamHandler : IStreamRequestHandler<DispatcherZeroPipelineStreamRequest, int>
 {
     /// <summary>
@@ -20,13 +21,17 @@ internal sealed class DispatcherZeroPipelineStreamHandler : IStreamRequestHandle
     /// <param name="request">当前零管道 stream 请求。</param>
     /// <param name="cancellationToken">用于终止异步枚举的取消令牌。</param>
     /// <returns>只包含一个元素的异步响应流。</returns>
-    public async IAsyncEnumerable<int> Handle(
-        DispatcherZeroPipelineStreamRequest request,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    public IAsyncEnumerable<int> Handle(DispatcherZeroPipelineStreamRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        cancellationToken.ThrowIfCancellationRequested();
 
-        yield return 1;
+        return Handle(request, cancellationToken);
+        static async IAsyncEnumerable<int> Handle(DispatcherZeroPipelineStreamRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            _ = request;
+            cancellationToken.ThrowIfCancellationRequested();
+
+            yield return 1;
+        }
     }
 }

@@ -8,18 +8,13 @@ namespace GFramework.Core.Tests.Time;
 /// <summary>
 ///     可控制的时间提供者，用于测试
 /// </summary>
-public sealed class FakeTimeProvider : ITimeProvider
+/// <remarks>
+///     创建可控制的时间提供者
+/// </remarks>
+/// <param name="initialTime">初始时间，默认为 2024-01-01 00:00:00 UTC</param>
+public sealed class FakeTimeProvider(DateTime? initialTime = null) : ITimeProvider
 {
-    private DateTime _currentTime;
-
-    /// <summary>
-    ///     创建可控制的时间提供者
-    /// </summary>
-    /// <param name="initialTime">初始时间，默认为 2024-01-01 00:00:00 UTC</param>
-    public FakeTimeProvider(DateTime? initialTime = null)
-    {
-        _currentTime = initialTime ?? new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-    }
+    private DateTime _currentTime = initialTime ?? new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     /// <summary>
     ///     获取当前时间

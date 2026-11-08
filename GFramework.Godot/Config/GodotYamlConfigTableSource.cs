@@ -72,24 +72,33 @@ public sealed class GodotYamlConfigTableSource
     /// <summary>
     ///     获取运行时表名称。
     /// </summary>
-    public string TableName { get; }
+    public string TableName
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取相对配置根目录的 YAML 目录路径。
     ///     该值始终保持为无根相对路径，不会包含 <c>.</c>、<c>..</c> 或 <c>:</c> 段。
     /// </summary>
-    public string ConfigRelativePath { get; }
+    public string ConfigRelativePath
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取相对配置根目录的 schema 文件路径；未启用 schema 校验时为空。
     ///     该值在非空时始终保持为无根相对路径，不会包含 <c>.</c>、<c>..</c> 或 <c>:</c> 段。
     /// </summary>
-    public string? SchemaRelativePath { get; }
+    public string? SchemaRelativePath
+    {
+        get;
+    }
 
     private static bool IsSafeRelativePath(string path)
     {
         var normalizedPath = path.Replace('\\', '/');
-        if (normalizedPath.StartsWith("/", StringComparison.Ordinal) ||
+        if (normalizedPath.StartsWith('/') ||
             normalizedPath.StartsWith("res://", StringComparison.Ordinal) ||
             normalizedPath.StartsWith("user://", StringComparison.Ordinal) ||
             Path.IsPathRooted(path) ||

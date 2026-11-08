@@ -168,9 +168,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 20
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.4
+      - name: Install Bun
+        run: npm install --global bun@1.4.4 --no-audit --no-fund
       - name: Install and test config tool
         working-directory: tools/gframework-config-tool
         run: |
@@ -184,9 +183,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v7
         with:
-          bun-version: latest
+          node-version: 20
+      # Install the official pinned npm package, avoiding the repeatedly failing GitHub release download.
+      - name: Install Bun
+        run: npm install --global bun@1.4.4 --no-audit --no-fund
       - name: Build documentation without deployment
         working-directory: docs
         run: |

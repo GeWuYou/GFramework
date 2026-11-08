@@ -17,12 +17,18 @@ public abstract class TestArchitectureBase : Architecture
     /// <summary>
     ///     获取就绪事件是否已触发的状态
     /// </summary>
-    public bool ReadyEventFired { get; protected set; }
+    public bool ReadyEventFired
+    {
+        get; protected set;
+    }
 
     /// <summary>
     ///     获取初始化方法是否已调用的状态
     /// </summary>
-    public bool InitCalled { get; protected set; }
+    public bool InitCalled
+    {
+        get; protected set;
+    }
 
     /// <summary>
     ///     获取架构阶段历史记录列表

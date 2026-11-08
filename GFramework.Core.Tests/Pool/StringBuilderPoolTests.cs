@@ -108,7 +108,7 @@ public class StringBuilderPoolTests
         using (var scoped = StringBuilderPool.GetScoped())
         {
             scoped.Value.Append("Hello");
-            scoped.Value.Append(" ");
+            scoped.Value.Append(' ');
             scoped.Value.Append("World");
             result = scoped.Value.ToString();
         }

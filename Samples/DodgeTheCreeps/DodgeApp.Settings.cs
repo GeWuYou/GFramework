@@ -17,7 +17,7 @@ namespace DodgeTheCreeps;
 public partial class DodgeApp
 {
     private readonly SemaphoreSlim _preferencesGate = new(1, 1);
-    private static readonly string[] PreferenceBuses = { "Master", "BGM", "SFX" };
+    private static readonly string[] PreferenceBuses = ["Master", "BGM", "SFX"];
 
     /// <summary>Saves an audio/display draft while retaining the current score and immediately saved language.</summary>
     // #region tutorial-save-settings
@@ -39,7 +39,8 @@ public partial class DodgeApp
     {
         current.Volume = volume;
         current.Fullscreen = fullscreen;
-        if (language is not null) current.Language = DodgeLocalization.Normalize(language);
+        if (language is not null)
+            current.Language = DodgeLocalization.Normalize(language);
         return current;
     });
 
@@ -107,7 +108,10 @@ public partial class DodgeApp
             }
             catch (Exception exception)
             {
-                try { RestoreNativePreferences(native); }
+                try
+                {
+                    RestoreNativePreferences(native);
+                }
                 catch (Exception rollback) { throw new AggregateException("Preferences failed and native rollback also failed.", exception, rollback); }
                 throw;
             }
@@ -121,7 +125,8 @@ public partial class DodgeApp
     {
         foreach (var name in PreferenceBuses)
         {
-            if (AudioServer.GetBusIndex(name) >= 0) continue;
+            if (AudioServer.GetBusIndex(name) >= 0)
+                continue;
             AudioServer.AddBus();
             var index = AudioServer.BusCount - 1;
             AudioServer.SetBusName(index, name);
@@ -148,7 +153,8 @@ public partial class DodgeApp
     private static void SetAudioBus(string name, float volume)
     {
         var index = AudioServer.GetBusIndex(name);
-        if (index < 0) throw new InvalidOperationException("Required audio bus is absent: " + name);
+        if (index < 0)
+            throw new InvalidOperationException("Required audio bus is absent: " + name);
         AudioServer.SetBusVolumeDb(index, Mathf.LinearToDb(Math.Max(volume, 0.0001f)));
         AudioServer.SetBusMute(index, volume <= 0);
     }
@@ -161,7 +167,8 @@ public partial class DodgeApp
         window.ContentScaleSize = new Vector2I(480, 720);
         window.ContentScaleMode = Window.ContentScaleModeEnum.CanvasItems;
         window.ContentScaleAspect = Window.ContentScaleAspectEnum.Keep;
-        if (string.Equals(DisplayServer.GetName(), "headless", StringComparison.Ordinal)) return;
+        if (string.Equals(DisplayServer.GetName(), "headless", StringComparison.Ordinal))
+            return;
         DisplayServer.WindowSetMode(preferences.Fullscreen ? DisplayServer.WindowMode.Fullscreen : DisplayServer.WindowMode.Windowed);
         if (!preferences.Fullscreen)
         {
@@ -201,7 +208,8 @@ public partial class DodgeApp
         if (snapshot.Window is { } window)
         {
             DisplayServer.WindowSetMode(window.Mode);
-            if (window.Mode == DisplayServer.WindowMode.Windowed) DisplayServer.WindowSetSize(window.Size);
+            if (window.Mode == DisplayServer.WindowMode.Windowed)
+                DisplayServer.WindowSetSize(window.Size);
             DisplayServer.WindowSetPosition(window.Position);
         }
         Text.SetLanguage(snapshot.Language);

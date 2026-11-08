@@ -75,7 +75,7 @@ public sealed class CompactNumberLocalizationFormatter : ILocalizationFormatter
     {
         options = new NumericFormatOptions
         {
-            FormatProvider = provider
+            FormatProvider = provider,
         };
 
         if (string.IsNullOrWhiteSpace(format))
@@ -113,7 +113,7 @@ public sealed class CompactNumberLocalizationFormatter : ILocalizationFormatter
             MaxDecimalPlaces = maxDecimalPlaces,
             MinDecimalPlaces = minDecimalPlaces,
             TrimTrailingZeros = trimTrailingZeros,
-            UseGroupingBelowThreshold = useGroupingBelowThreshold
+            UseGroupingBelowThreshold = useGroupingBelowThreshold,
         };
 
         return true;
@@ -128,7 +128,7 @@ public sealed class CompactNumberLocalizationFormatter : ILocalizationFormatter
     /// <returns>如果片段格式有效且成功解析则返回true；如果格式无效（如缺少分隔符、空键等）则返回false</returns>
     private static bool TryParseSegment(string segment, out string key, out string value)
     {
-        var separatorIndex = segment.IndexOf('=');
+        var separatorIndex = segment.IndexOf('=', StringComparison.Ordinal);
         if (separatorIndex <= 0 || separatorIndex == segment.Length - 1)
         {
             key = string.Empty;
@@ -166,7 +166,7 @@ public sealed class CompactNumberLocalizationFormatter : ILocalizationFormatter
             "minDecimals" => int.TryParse(value, NumberStyles.Integer, formatProvider, out minDecimalPlaces),
             "trimZeros" => bool.TryParse(value, out trimTrailingZeros),
             "grouping" => bool.TryParse(value, out useGroupingBelowThreshold),
-            _ => true
+            _ => true,
         };
     }
 }

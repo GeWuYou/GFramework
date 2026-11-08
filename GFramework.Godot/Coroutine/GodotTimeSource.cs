@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Coroutine;
@@ -25,12 +25,18 @@ public sealed class GodotTimeSource(Func<double> timeProvider, bool useAbsoluteT
     /// <summary>
     ///     获取当前累计时间。
     /// </summary>
-    public double CurrentTime { get; private set; }
+    public double CurrentTime
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取上一帧的时间增量。
     /// </summary>
-    public double DeltaTime { get; private set; }
+    public double DeltaTime
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     更新时间源，计算新的时间增量与累计时间。

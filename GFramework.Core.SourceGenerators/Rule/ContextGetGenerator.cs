@@ -49,56 +49,56 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
             BindingKind.Service,
             $"{PathContests.SourceGeneratorsAbstractionsPath}.Rule.GetServiceAttribute",
             "GetService",
-            false),
+IsCollection: false),
         new(
             BindingKind.Services,
             $"{PathContests.SourceGeneratorsAbstractionsPath}.Rule.GetServicesAttribute",
             "GetServices",
-            true),
+IsCollection: true),
         new(
             BindingKind.System,
             $"{PathContests.SourceGeneratorsAbstractionsPath}.Rule.GetSystemAttribute",
             "GetSystem",
-            false),
+IsCollection: false),
         new(
             BindingKind.Systems,
             $"{PathContests.SourceGeneratorsAbstractionsPath}.Rule.GetSystemsAttribute",
             "GetSystems",
-            true),
+IsCollection: true),
         new(
             BindingKind.Model,
             $"{PathContests.SourceGeneratorsAbstractionsPath}.Rule.GetModelAttribute",
             "GetModel",
-            false),
+IsCollection: false),
         new(
             BindingKind.Models,
             $"{PathContests.SourceGeneratorsAbstractionsPath}.Rule.GetModelsAttribute",
             "GetModels",
-            true),
+IsCollection: true),
         new(
             BindingKind.Utility,
             $"{PathContests.SourceGeneratorsAbstractionsPath}.Rule.GetUtilityAttribute",
             "GetUtility",
-            false),
+IsCollection: false),
         new(
             BindingKind.Utilities,
             $"{PathContests.SourceGeneratorsAbstractionsPath}.Rule.GetUtilitiesAttribute",
             "GetUtilities",
-            true)
+IsCollection: true),
     ];
 
     private static readonly ImmutableHashSet<string> FieldCandidateAttributeNames = BindingDescriptors
         .SelectMany(static descriptor => new[]
         {
             descriptor.AttributeName,
-            descriptor.AttributeName + "Attribute"
+            descriptor.AttributeName + "Attribute",
         })
         .ToImmutableHashSet(StringComparer.Ordinal);
 
     private static readonly ImmutableHashSet<string> TypeCandidateAttributeNames =
     [
         "GetAll",
-        "GetAllAttribute"
+        "GetAllAttribute",
     ];
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -132,8 +132,8 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
             {
                 Parent: VariableDeclarationSyntax
                 {
-                    Parent: FieldDeclarationSyntax fieldDeclaration
-                }
+                    Parent: FieldDeclarationSyntax fieldDeclaration,
+                },
             })
             return false;
 
@@ -508,15 +508,11 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
         if (descriptors.IsDefaultOrEmpty)
             return [];
 
-        var builder = ImmutableArray.CreateBuilder<ResolvedBindingDescriptor>();
-
-        foreach (var descriptor in descriptors.Where(descriptor => fieldSymbol.GetAttributes().Any(attribute =>
-                     SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, descriptor.AttributeSymbol))))
-        {
-            builder.Add(descriptor);
-        }
-
-        return builder.ToImmutable();
+        return
+        [
+            .. descriptors.Where(descriptor => fieldSymbol.GetAttributes().Any(attribute =>
+                         SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, descriptor.AttributeSymbol))),
+        ];
     }
 
     private static bool TryCreateExplicitBinding(
@@ -805,13 +801,13 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
 
         if (namespaceName is not null)
         {
-            sb.AppendLine($"namespace {namespaceName};");
+            sb.Append("namespace ").Append(namespaceName).Append(';').AppendLine();
             sb.AppendLine();
         }
 
-        sb.AppendLine($"partial class {typeSymbol.Name}{generics.Parameters}");
+        sb.Append("partial class ").Append(typeSymbol.Name).Append(generics.Parameters).AppendLine();
         foreach (var constraint in generics.Constraints)
-            sb.AppendLine($"    {constraint}");
+            sb.Append("    ").Append(constraint).AppendLine();
 
         sb.AppendLine("{");
         sb.AppendLine($"    private void {InjectionMethodName}()");
@@ -820,7 +816,7 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
         foreach (var binding in orderedBindings)
         {
             var targetType = binding.TargetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            sb.AppendLine($"        {binding.Field.Name} = {ResolveAccessor(binding.Kind, targetType)};");
+            sb.Append("        ").Append(binding.Field.Name).Append(" = ").Append(ResolveAccessor(binding.Kind, targetType)).Append(';').AppendLine();
         }
 
         sb.AppendLine("    }");
@@ -840,7 +836,7 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
             BindingKind.Models => $"this.GetModels<{targetType}>()",
             BindingKind.Utility => $"this.GetUtility<{targetType}>()",
             BindingKind.Utilities => $"this.GetUtilities<{targetType}>()",
-            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, message: null),
         };
     }
 
@@ -862,7 +858,7 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
         Model,
         Models,
         Utility,
-        Utilities
+        Utilities,
     }
 
     private sealed record BindingDescriptor(
@@ -894,6 +890,9 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
     {
         public INamedTypeSymbol TypeSymbol { get; } = typeSymbol;
         public List<FieldCandidateInfo> FieldCandidates { get; } = [];
-        public ClassDeclarationSyntax? GetAllDeclaration { get; set; }
+        public ClassDeclarationSyntax? GetAllDeclaration
+        {
+            get; set;
+        }
     }
 }

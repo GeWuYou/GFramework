@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Core.Abstractions.Events;
@@ -11,5 +11,8 @@ public interface IUnRegisterList
     /// <summary>
     ///     获取需要注销的对象列表
     /// </summary>
-    IList<IUnRegister> UnregisterList { get; }
+    IList<IUnRegister> UnregisterList
+    {
+        get;
+    }
 }

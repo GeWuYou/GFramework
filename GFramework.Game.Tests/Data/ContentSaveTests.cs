@@ -38,14 +38,15 @@ public sealed class ContentSaveTests
     public void TearDown()
     {
         _storage.Dispose();
-        if (Directory.Exists(_root)) Directory.Delete(_root, true);
+        if (Directory.Exists(_root))
+            Directory.Delete(_root, recursive: true);
     }
 
     /// <summary>Content metadata lives in the envelope, without imposing metadata interfaces on game DTOs.</summary>
     [Test]
     public async Task SaveAndLoad_UseEnvelopeMetadata()
     {
-        var catalog = CreateCatalog(false);
+        var catalog = CreateCatalog(includeMod: false);
         var repository = CreateRepository(() => catalog);
         await repository.SaveAsync(1, new ContentSave { Value = 7 });
         var loaded = await CreateRepository(() => catalog).LoadAsync(1);
@@ -64,10 +65,11 @@ public sealed class ContentSaveTests
     {
         var document = new SaveDocument
         {
-            GameId = "test", Game = new SaveDataBlock { Version = 2, Data = JObject.Parse("""{"ArenaId":"base:arena","Value":7}""") }
+            GameId = "test",
+            Game = new SaveDataBlock { Version = 2, Data = JObject.Parse("""{"ArenaId":"base:arena","Value":7}""") },
         };
         await _storage.WriteSnapshotAsync("saves/slot_1/save", _codec.Encode(document));
-        var repository = CreateRepository(() => CreateCatalog(false), static (candidate, report, _) =>
+        var repository = CreateRepository(() => CreateCatalog(includeMod: false), static (candidate, report, _) =>
         {
             Assert.That(report.Issues.Single().Kind, Is.EqualTo(ContentSaveIssueKind.MissingMetadata));
             return Task.FromResult(candidate);
@@ -82,10 +84,10 @@ public sealed class ContentSaveTests
     [Test]
     public async Task Prepare_RepairsMissingContentBeforeCurrentDtoValidation()
     {
-        var originalCatalog = CreateCatalog(true);
+        var originalCatalog = CreateCatalog(includeMod: true);
         await CreateRepository(() => originalCatalog).SaveAsync(1, new ContentSave { ArenaId = "extra:arena", Value = 5 });
         var original = await SnapshotAsync();
-        var baseCatalog = CreateCatalog(false);
+        var baseCatalog = CreateCatalog(includeMod: false);
         var calls = 0;
         var repository = CreateRepository(() => baseCatalog, (data, report, _) =>
         {
@@ -114,9 +116,9 @@ public sealed class ContentSaveTests
     [Test]
     public async Task MissingContentWithoutPolicy_PreservesOriginal()
     {
-        await CreateRepository(() => CreateCatalog(true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
+        await CreateRepository(() => CreateCatalog(includeMod: true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
         var original = await SnapshotAsync();
-        await Assert.ThrowsAsync<InvalidOperationException>(() => CreateRepository(() => CreateCatalog(false)).PrepareLoadAsync(1));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => CreateRepository(() => CreateCatalog(includeMod: false)).PrepareLoadAsync(1));
         Assert.That((await SnapshotAsync()).Fingerprint, Is.EqualTo(original.Fingerprint));
     }
 
@@ -125,11 +127,15 @@ public sealed class ContentSaveTests
     [TestCase(true)]
     public async Task InvalidRecovery_PreservesOriginal(bool invalidBusinessValue)
     {
-        await CreateRepository(() => CreateCatalog(true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
+        await CreateRepository(() => CreateCatalog(includeMod: true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
         var original = await SnapshotAsync();
-        var repository = CreateRepository(() => CreateCatalog(false), (data, _, _) =>
+        var repository = CreateRepository(() => CreateCatalog(includeMod: false), (data, _, _) =>
         {
-            if (invalidBusinessValue) { data.Game.Data["ArenaId"] = "base:arena"; data.Game.Data["Value"] = -1; }
+            if (invalidBusinessValue)
+            {
+                data.Game.Data["ArenaId"] = "base:arena";
+                data.Game.Data["Value"] = -1;
+            }
             return Task.FromResult(data);
         });
         await Assert.ThrowsAsync<InvalidOperationException>(() => repository.PrepareLoadAsync(1));
@@ -140,11 +146,12 @@ public sealed class ContentSaveTests
     [Test]
     public async Task SchemaConversionPrecedesContentRepair_WithoutCurrentDtoDependency()
     {
-        var catalog = CreateCatalog(false);
+        var catalog = CreateCatalog(includeMod: false);
         var source = new SaveDocument
         {
-            GameId = "test", Content = CreateCatalog(true).Snapshot,
-            Game = new SaveDataBlock { Version = 1, Data = JObject.Parse("""{"OldArena":"extra:arena","Value":4}""") }
+            GameId = "test",
+            Content = CreateCatalog(includeMod: true).Snapshot,
+            Game = new SaveDataBlock { Version = 1, Data = JObject.Parse("""{"OldArena":"extra:arena","Value":4}""") },
         };
         await _storage.WriteSnapshotAsync("saves/slot_1/save", _codec.Encode(source));
         var step = new SaveMigrationStep(1, 2, "Rename arena", (block, _) =>
@@ -171,12 +178,13 @@ public sealed class ContentSaveTests
     {
         var document = new SaveDocument
         {
-            GameId = "test", Content = CreateCatalog(true).Snapshot,
-            Game = new SaveDataBlock { Version = 2, Data = JObject.Parse("""{"ArenaId":"extra:arena","Value":7}""") }
+            GameId = "test",
+            Content = CreateCatalog(includeMod: true).Snapshot,
+            Game = new SaveDataBlock { Version = 2, Data = JObject.Parse("""{"ArenaId":"extra:arena","Value":7}""") },
         };
         document.Mods["extra"] = new SaveDataBlock { Version = 9, Data = JObject.Parse("""{"UnknownProgress":123}""") };
         await _storage.WriteSnapshotAsync("saves/slot_1/save", _codec.Encode(document));
-        var repository = CreateRepository(() => CreateCatalog(false), static (candidate, _, _) =>
+        var repository = CreateRepository(() => CreateCatalog(includeMod: false), static (candidate, _, _) =>
         {
             candidate.Game.Data["ArenaId"] = "base:arena";
             candidate.Mods.Remove("extra");
@@ -193,12 +201,14 @@ public sealed class ContentSaveTests
     [TestCase(false)]
     public async Task Recovery_RejectsChangedIdentityOrCurrentVersion(bool changeIdentity)
     {
-        await CreateRepository(() => CreateCatalog(true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
-        var repository = CreateRepository(() => CreateCatalog(false), (candidate, _, _) =>
+        await CreateRepository(() => CreateCatalog(includeMod: true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
+        var repository = CreateRepository(() => CreateCatalog(includeMod: false), (candidate, _, _) =>
         {
             candidate.Game.Data["ArenaId"] = "base:arena";
-            if (changeIdentity) candidate.GameId = "forged";
-            else candidate.Game.Version = 999;
+            if (changeIdentity)
+                candidate.GameId = "forged";
+            else
+                candidate.Game.Version = 999;
             return Task.FromResult(candidate);
         });
         var original = await SnapshotAsync();
@@ -210,16 +220,16 @@ public sealed class ContentSaveTests
     [Test]
     public async Task Commit_RejectsChangedTargetSession()
     {
-        var current = CreateCatalog(true);
+        var current = CreateCatalog(includeMod: true);
         await CreateRepository(() => current).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
-        current = CreateCatalog(false);
+        current = CreateCatalog(includeMod: false);
         var repository = CreateRepository(() => current, static (data, _, _) =>
         {
             data.Game.Data["ArenaId"] = "base:arena";
             return Task.FromResult(data);
         });
         var prepared = await repository.PrepareLoadAsync(1);
-        current = CreateCatalog(false, baseFingerprint: "changed");
+        current = CreateCatalog(includeMod: false, baseFingerprint: "changed");
         await Assert.ThrowsAsync<InvalidOperationException>(() => repository.CommitPreparedAsync(1, prepared));
     }
 
@@ -229,8 +239,8 @@ public sealed class ContentSaveTests
     [TestCase("3.0.0", "2.0.0", false)]
     public async Task PackageCompatibility_UsesDeclaredRangeButRejectsSameVersionEdits(string oldVersion, string currentVersion, bool compatible)
     {
-        await CreateRepository(() => CreateCatalog(false, baseVersion: oldVersion)).SaveAsync(1, new ContentSave());
-        var current = CreateCatalog(false, baseVersion: currentVersion, baseFingerprint: "updated",
+        await CreateRepository(() => CreateCatalog(includeMod: false, baseVersion: oldVersion)).SaveAsync(1, new ContentSave());
+        var current = CreateCatalog(includeMod: false, baseVersion: currentVersion, baseFingerprint: "updated",
             compatibleVersions: new ContentVersionRange { MinimumInclusive = "1.0.0", MaximumExclusive = "3.0.0" });
         var repository = CreateRepository(() => current);
         if (compatible)
@@ -239,16 +249,17 @@ public sealed class ContentSaveTests
             Assert.That(prepared.RequiresConfirmation, Is.False);
             Assert.That(prepared.RequiresCommit, Is.True);
         }
-        else await Assert.ThrowsAsync<InvalidOperationException>(() => repository.PrepareLoadAsync(1));
+        else
+            await Assert.ThrowsAsync<InvalidOperationException>(() => repository.PrepareLoadAsync(1));
     }
 
     /// <summary>Newly enabled packages are advisory; persisting the new session remains an explicit commit.</summary>
     [Test]
     public async Task AdditionalPackage_IsAdvisoryAndNoWrite()
     {
-        await CreateRepository(() => CreateCatalog(false)).SaveAsync(1, new ContentSave());
+        await CreateRepository(() => CreateCatalog(includeMod: false)).SaveAsync(1, new ContentSave());
         var original = await SnapshotAsync();
-        var prepared = await CreateRepository(() => CreateCatalog(true)).PrepareLoadAsync(1);
+        var prepared = await CreateRepository(() => CreateCatalog(includeMod: true)).PrepareLoadAsync(1);
         Assert.That(prepared.RequiresConfirmation, Is.False);
         Assert.That(prepared.Issues.Single().Kind, Is.EqualTo(ContentSaveIssueKind.AdditionalPack));
         Assert.That((await SnapshotAsync()).Fingerprint, Is.EqualTo(original.Fingerprint));
@@ -259,14 +270,16 @@ public sealed class ContentSaveTests
         Func<SaveDocument, ContentSaveReport, CancellationToken, Task<SaveDocument>>? recover = null, SaveMigrationGraph? migrations = null) =>
         new(_storage, Configuration, new SaveRepositoryOptions<ContentSave>
         {
-            GameId = "test", CurrentVersion = 2, Migrations = migrations ?? new SaveMigrationGraph(),
+            GameId = "test",
+            CurrentVersion = 2,
+            Migrations = migrations ?? new SaveMigrationGraph(),
             Content = new ContentSaveOptions
             {
                 CurrentCatalog = catalog,
                 EnumerateReferences = static data => [new ContentReference("arenas", new ContentId(data.Game.Data["ArenaId"]!.Value<string>()!))],
-                RecoverAsync = recover
+                RecoverAsync = recover,
             },
-            Validate = static data => { if (data.Value < 0) throw new InvalidOperationException("Invalid negative business value."); }
+            Validate = static data => { if (data.Value < 0) throw new InvalidOperationException("Invalid negative business value."); },
         });
 
     /// <summary>Creates immutable catalog state through the production catalog representation.</summary>
@@ -276,7 +289,7 @@ public sealed class ContentSaveTests
         var packages = new List<ContentPack>
         {
             new(_root, new ContentPackManifest { Id = "base", Name = "Base", GameId = "test", Version = baseVersion,
-                SaveCompatibleVersions = compatibleVersions }, baseFingerprint)
+                SaveCompatibleVersions = compatibleVersions, }, baseFingerprint),
         };
         var references = new HashSet<ContentReference> { BaseArena };
         if (includeMod)
@@ -299,6 +312,9 @@ public sealed class ContentSaveTests
         /// <summary>Gets or sets the stable arena reference.</summary>
         public string ArenaId { get; set; } = "base:arena";
         /// <summary>Gets or sets a validated business value.</summary>
-        public int Value { get; set; }
+        public int Value
+        {
+            get; set;
+        }
     }
 }

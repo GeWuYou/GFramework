@@ -22,7 +22,7 @@ public partial class Timing
         Func<double>? physicsDeltaProvider = null, Func<double>? deferredDeltaProvider = null, ILogger? logger = null)
     {
         _isStopping = false;
-        _ownerScopes ??= new Dictionary<ulong, OwnedCoroutineScope>();
+        _ownerScopes ??= [];
         _testProcessDelta = processDeltaProvider ?? DefaultDeltaProvider;
         _testPhysicsDelta = physicsDeltaProvider ?? DefaultDeltaProvider;
         _testDeferredDelta = deferredDeltaProvider ?? _testProcessDelta;

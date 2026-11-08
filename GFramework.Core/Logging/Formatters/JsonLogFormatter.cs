@@ -15,7 +15,7 @@ public sealed class JsonLogFormatter : ILogFormatter
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = false,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     /// <summary>
@@ -30,7 +30,7 @@ public sealed class JsonLogFormatter : ILogFormatter
             ["timestamp"] = entry.Timestamp.ToString("O", CultureInfo.InvariantCulture), // ISO 8601 格式
             ["level"] = entry.Level.ToString().ToUpperInvariant(),
             ["logger"] = entry.LoggerName,
-            ["message"] = entry.Message
+            ["message"] = entry.Message,
         };
 
         // 添加结构化属性
@@ -47,7 +47,7 @@ public sealed class JsonLogFormatter : ILogFormatter
             {
                 type = entry.Exception.GetType().FullName,
                 message = entry.Exception.Message,
-                stackTrace = entry.Exception.StackTrace
+                stackTrace = entry.Exception.StackTrace,
             };
         }
 

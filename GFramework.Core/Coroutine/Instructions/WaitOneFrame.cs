@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Coroutine;
@@ -23,5 +23,8 @@ public sealed class WaitOneFrame : IYieldInstruction
     /// <summary>
     ///     获取当前等待指令是否已完成
     /// </summary>
-    public bool IsDone { get; private set; }
+    public bool IsDone
+    {
+        get; private set;
+    }
 }

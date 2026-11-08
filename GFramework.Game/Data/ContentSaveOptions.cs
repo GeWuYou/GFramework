@@ -13,11 +13,20 @@ namespace GFramework.Game.Data;
 public sealed class ContentSaveOptions
 {
     /// <summary>Gets the game's immutable active content session.</summary>
-    public required Func<ContentCatalog> CurrentCatalog { get; init; }
+    public required Func<ContentCatalog> CurrentCatalog
+    {
+        get; init;
+    }
     /// <summary>Gets every content reference across current-schema game and mod blocks.</summary>
     public Func<SaveDocument, IEnumerable<ContentReference>> EnumerateReferences { get; init; } = static _ => [];
     /// <summary>Gets a pure recovery transformation; absent means blocking differences cannot be repaired.</summary>
-    public Func<SaveDocument, ContentSaveReport, CancellationToken, Task<SaveDocument>>? RecoverAsync { get; init; }
+    public Func<SaveDocument, ContentSaveReport, CancellationToken, Task<SaveDocument>>? RecoverAsync
+    {
+        get; init;
+    }
     /// <summary>Gets a compatibility override; otherwise exact stamps or declared old-version ranges apply.</summary>
-    public Func<ContentPackStamp, ContentPackStamp, bool>? IsPackCompatible { get; init; }
+    public Func<ContentPackStamp, ContentPackStamp, bool>? IsPackCompatible
+    {
+        get; init;
+    }
 }

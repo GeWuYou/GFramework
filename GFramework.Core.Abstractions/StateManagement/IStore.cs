@@ -14,13 +14,19 @@ public interface IStore<out TState> : IReadonlyStore<TState>
     ///     获取当前是否可以撤销到更早的历史状态。
     ///     当未启用历史缓冲区，或当前已经位于最早历史点时，返回 <see langword="false"/>。
     /// </summary>
-    bool CanUndo { get; }
+    bool CanUndo
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取当前是否可以重做到更晚的历史状态。
     ///     当未启用历史缓冲区，或当前已经位于最新历史点时，返回 <see langword="false"/>。
     /// </summary>
-    bool CanRedo { get; }
+    bool CanRedo
+    {
+        get;
+    }
 
     /// <summary>
     ///     分发一个 action 以触发状态演进。

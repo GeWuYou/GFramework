@@ -47,7 +47,10 @@ public class RequestLifetimeBenchmarks
     ///     控制当前 benchmark 使用的 handler 生命周期。
     /// </summary>
     [Params(HandlerLifetime.Singleton, HandlerLifetime.Scoped, HandlerLifetime.Transient)]
-    public HandlerLifetime Lifetime { get; set; }
+    public HandlerLifetime Lifetime
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     可公平比较的 benchmark handler 生命周期集合。
@@ -67,7 +70,7 @@ public class RequestLifetimeBenchmarks
         /// <summary>
         ///     每次分发都重新解析新的 handler 实例。
         /// </summary>
-        Transient
+        Transient,
     }
 
     /// <summary>
@@ -237,7 +240,7 @@ public class RequestLifetimeBenchmarks
             HandlerLifetime.Singleton => ServiceLifetime.Singleton,
             HandlerLifetime.Scoped => ServiceLifetime.Scoped,
             HandlerLifetime.Transient => ServiceLifetime.Transient,
-            _ => throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Unsupported benchmark handler lifetime.")
+            _ => throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Unsupported benchmark handler lifetime."),
         };
     }
 

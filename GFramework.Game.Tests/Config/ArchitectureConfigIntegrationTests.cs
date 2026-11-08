@@ -43,7 +43,7 @@ public class ArchitectureConfigIntegrationTests
                 Assert.That(table.Get(1).Name, Is.EqualTo("Slime"));
                 Assert.That(table.Get(2).Hp, Is.EqualTo(30));
                 Assert.That(table.FindByFaction("dungeon").Select(static config => config.Name),
-                    Is.EquivalentTo(new[] { "Slime", "Goblin" }));
+                    Is.EquivalentTo(["Slime", "Goblin"]));
                 Assert.That(architecture.Registry.TryGetMonsterTable(out var retrieved), Is.True);
                 Assert.That(retrieved, Is.Not.Null);
                 Assert.That(retrieved!.Get(1).Name, Is.EqualTo("Slime"));
@@ -164,14 +164,15 @@ public class ArchitectureConfigIntegrationTests
             {
                 Assert.That(architecture.ConfigModule.IsInitialized, Is.True);
                 Assert.That(monsterTable.Get(1).Name, Is.EqualTo("Slime"));
-                Assert.That(monsterTable.FindByFaction("dungeon").Count(), Is.EqualTo(2));
+                Assert.That(monsterTable.FindByFaction("dungeon").Count, Is.EqualTo(2));
             });
         }
         finally
         {
             if (architecture is not null && initialized)
             {
-                architecture.DestroyAsync().GetAwaiter().GetResult();
+                // This test deliberately blocks its driver context; bridge through Task while consuming the ValueTask exactly once.
+                architecture.DestroyAsync().AsTask().GetAwaiter().GetResult();
             }
 
             DeleteDirectoryIfExists(rootPath);
@@ -207,12 +208,13 @@ public class ArchitectureConfigIntegrationTests
         var rootPath = CreateTempConfigRoot();
         try
         {
-            File.WriteAllText(Path.Combine(rootPath, "monster", "slime.yaml"),
-                "id: 1\nname: Slime\nhp: invalid-number\nfaction: dungeon\n");
+            await File.WriteAllTextAsync(Path.Combine(rootPath, "monster", "slime.yaml"),
+                "id: 1\nname: Slime\nhp: invalid-number\nfaction: dungeon\n", CancellationToken.None).ConfigureAwait(false);
             var module = CreateModule(rootPath);
-            await using var architecture = new ModuleOnlyArchitecture(module);
+            var architecture = new ModuleOnlyArchitecture(module);
+            await using var architectureCleanup = architecture.ConfigureAwait(false);
 
-            await Assert.ThrowsAsync<ConfigLoadException>(() => architecture.InitializeAsync());
+            await Assert.ThrowsAsync<ConfigLoadException>(() => architecture.InitializeAsync()).ConfigureAwait(false);
             Assert.Throws<ObjectDisposedException>(() => _ = module.Loader);
         }
         finally
@@ -236,7 +238,7 @@ public class ArchitectureConfigIntegrationTests
             {
                 RootPath = rootPath,
                 ConfigureLoader = defaults.ConfigureLoader,
-                EnableHotReload = true
+                EnableHotReload = true,
             });
             await using var architecture = new FailingConfigArchitecture(module);
 
@@ -267,9 +269,10 @@ public class ArchitectureConfigIntegrationTests
             var module = new GameConfigModule(new GameConfigBootstrapOptions
             {
                 RootPath = rootPath,
-                ConfigureLoader = _ => cancellation.Cancel()
+                ConfigureLoader = _ => cancellation.Cancel(),
             });
-            await using var architecture = new ModuleOnlyArchitecture(module);
+            var architecture = new ModuleOnlyArchitecture(module);
+            await using var architectureCleanup = architecture.ConfigureAwait(false);
 
             var exception = await Assert.CatchAsync<OperationCanceledException>(() =>
                 architecture.InitializeAsync(cancellation.Token));
@@ -345,6 +348,49 @@ public class ArchitectureConfigIntegrationTests
         }
     }
 
+    /// <summary>Distinct configuration roots receive separate provider-owned cleanup helpers without duplicate type registration.</summary>
+    [Test]
+    public async Task MultipleConfigModules_InitializeAndReleaseEachBootstrap()
+    {
+        var firstRoot = CreateTempConfigRoot();
+        var secondRoot = CreateTempConfigRoot();
+        var first = CreateModule(firstRoot);
+        var second = CreateModule(secondRoot);
+        try
+        {
+            await using (var architecture = new MultipleConfigArchitecture(first, second))
+            {
+                await architecture.InitializeAsync();
+                Assert.That(first.IsInitialized && second.IsInitialized, Is.True);
+                Assert.That(first.Registry, Is.Not.SameAs(second.Registry));
+                Assert.That(first.Registry.TryGetMonsterTable(out var firstTable), Is.True);
+                Assert.That(second.Registry.TryGetMonsterTable(out var secondTable), Is.True);
+                Assert.That(firstTable!.Get(1).Name, Is.EqualTo("Slime"));
+                Assert.That(secondTable!.Get(1).Name, Is.EqualTo("Slime"));
+            }
+            Assert.Throws<ObjectDisposedException>(() => _ = first.Loader);
+            Assert.Throws<ObjectDisposedException>(() => _ = second.Loader);
+        }
+        finally
+        {
+            DeleteDirectoryIfExists(firstRoot);
+            DeleteDirectoryIfExists(secondRoot);
+        }
+    }
+
+    /// <summary>Composes two modules through the public configuration window.</summary>
+    private sealed class MultipleConfigArchitecture(params GameConfigModule[] modules) : Architecture
+    {
+        /// <inheritdoc />
+        protected override void ConfigureServices(IServiceCollection services)
+        {
+            foreach (var module in modules)
+            {
+                InstallModule(module);
+            }
+        }
+    }
+
     private static string CreateTempConfigRoot()
     {
         var rootPath = Path.Combine(Path.GetTempPath(), "GFramework.ConfigArchitecture", Guid.NewGuid().ToString("N"));
@@ -369,7 +415,7 @@ public class ArchitectureConfigIntegrationTests
 
         try
         {
-            Directory.Delete(path, true);
+            Directory.Delete(path, recursive: true);
         }
         catch (IOException)
         {
@@ -406,7 +452,7 @@ public class ArchitectureConfigIntegrationTests
             }
         })
         {
-            IsBackground = true
+            IsBackground = true,
         };
 
         workerThread.Start();
@@ -446,8 +492,8 @@ public class ArchitectureConfigIntegrationTests
                 loader.RegisterAllGeneratedConfigTables(
                     new GeneratedConfigRegistrationOptions
                     {
-                        IncludedConfigDomains = new[] { MonsterConfigBindings.ConfigDomain }
-                    })
+                        IncludedConfigDomains = [MonsterConfigBindings.ConfigDomain],
+                    }),
         };
     }
 
@@ -499,10 +545,7 @@ public class ArchitectureConfigIntegrationTests
         /// <exception cref="ArgumentNullException">当 <paramref name="configRoot" /> 为空时抛出。</exception>
         public ConsumerArchitecture(string configRoot)
         {
-            if (configRoot == null)
-            {
-                throw new ArgumentNullException(nameof(configRoot));
-            }
+            ArgumentNullException.ThrowIfNull(configRoot);
 
             _configModule = CreateModule(configRoot);
         }
@@ -643,17 +686,26 @@ public class ArchitectureConfigIntegrationTests
         /// <summary>
         ///     获取一个值，指示初始化时是否已经读取到有效配置。
         /// </summary>
-        public bool InitializedWithLoadedConfig { get; private set; }
+        public bool InitializedWithLoadedConfig
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     获取初始化期间读取到的怪物名称。
         /// </summary>
-        public string? ObservedMonsterName { get; private set; }
+        public string? ObservedMonsterName
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     获取初始化期间读取到的 dungeon 阵营怪物数量。
         /// </summary>
-        public int ObservedDungeonMonsterCount { get; private set; }
+        public int ObservedDungeonMonsterCount
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     读取架构上下文中的配置注册表并验证目标表已经可用。
@@ -666,7 +718,7 @@ public class ArchitectureConfigIntegrationTests
             var monsterTable = registry.GetMonsterTable();
 
             ObservedMonsterName = monsterTable.Get(1).Name;
-            ObservedDungeonMonsterCount = monsterTable.FindByFaction("dungeon").Count();
+            ObservedDungeonMonsterCount = monsterTable.FindByFaction("dungeon").Count;
             InitializedWithLoadedConfig = true;
         }
     }

@@ -21,7 +21,7 @@ public static class ContextGetDiagnostics
         "Class '{0}' cannot use context Get injection inside a nested type",
         SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     带注入语义的字段不能是静态字段。
@@ -32,7 +32,7 @@ public static class ContextGetDiagnostics
         "Field '{0}' cannot be static when using generated context Get injection",
         SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     带注入语义的字段不能是只读字段。
@@ -43,7 +43,7 @@ public static class ContextGetDiagnostics
         "Field '{0}' cannot be readonly when using generated context Get injection",
         SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     使用 <c>[GetAll]</c> 时，静态字段会被跳过且不会生成注入赋值。
@@ -54,7 +54,7 @@ public static class ContextGetDiagnostics
         "Field '{0}' is static and will be skipped by [GetAll] context Get injection generation",
         SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Warning,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     使用 <c>[GetAll]</c> 时，只读字段会被跳过且不会生成注入赋值。
@@ -65,7 +65,7 @@ public static class ContextGetDiagnostics
         "Field '{0}' is readonly and will be skipped by [GetAll] context Get injection generation",
         SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Warning,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     字段类型与注入特性不匹配。
@@ -76,7 +76,7 @@ public static class ContextGetDiagnostics
         "Field '{0}' type '{1}' is not valid for [{2}]",
         SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     使用 Context Get 注入的类型必须是上下文感知类型。
@@ -87,7 +87,7 @@ public static class ContextGetDiagnostics
         "Class '{0}' must be context-aware to use generated context Get injection",
         SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     一个字段不允许同时声明多个 Context Get 特性。
@@ -98,5 +98,5 @@ public static class ContextGetDiagnostics
         "Field '{0}' cannot declare multiple generated context Get attributes",
         SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 }

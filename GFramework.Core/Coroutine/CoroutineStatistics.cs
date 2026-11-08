@@ -13,7 +13,7 @@ namespace GFramework.Core.Coroutine;
 /// </summary>
 internal sealed class CoroutineStatistics : ICoroutineStatistics
 {
-    private readonly Dictionary<CoroutinePriority, int> _countByPriority = new();
+    private readonly Dictionary<CoroutinePriority, int> _countByPriority = [];
     private readonly Dictionary<string, int> _countByTag = new(StringComparer.Ordinal);
 #if NET9_0_OR_GREATER
     // net9.0 及以上目标使用专用 Lock，以满足分析器对专用同步原语的建议。
@@ -46,7 +46,10 @@ internal sealed class CoroutineStatistics : ICoroutineStatistics
     public long TotalCancelled => Interlocked.Read(ref _totalCancelled);
 
     /// <inheritdoc />
-    public double LastUpdateElapsedMs { get; internal set; }
+    public double LastUpdateElapsedMs
+    {
+        get; internal set;
+    }
 
     /// <inheritdoc />
     public double AverageLifetimeMs
@@ -158,31 +161,29 @@ internal sealed class CoroutineStatistics : ICoroutineStatistics
     public string GenerateReport()
     {
         var sb = new StringBuilder();
-        sb.AppendLine(FormattableString.Invariant($"=== 协程统计报告 ==="));
-        sb.AppendLine(FormattableString.Invariant($"总启动数: {TotalStarted}"));
-        sb.AppendLine(FormattableString.Invariant($"总完成数: {TotalCompleted}"));
-        sb.AppendLine(FormattableString.Invariant($"总失败数: {TotalFailed}"));
-        sb.AppendLine(FormattableString.Invariant($"当前活跃: {ActiveCount}"));
-        sb.AppendLine(FormattableString.Invariant($"当前暂停: {PausedCount}"));
-        sb.AppendLine(FormattableString.Invariant(
-            $"平均执行时间: {AverageExecutionTimeMs.ToString("F2", CultureInfo.InvariantCulture)} ms"));
-        sb.AppendLine(FormattableString.Invariant(
-            $"最大执行时间: {MaxExecutionTimeMs.ToString("F2", CultureInfo.InvariantCulture)} ms"));
+        sb.AppendLine($"=== 协程统计报告 ===");
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"总启动数: {TotalStarted}"));
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"总完成数: {TotalCompleted}"));
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"总失败数: {TotalFailed}"));
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"当前活跃: {ActiveCount}"));
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"当前暂停: {PausedCount}"));
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"平均执行时间: {AverageExecutionTimeMs:F2} ms"));
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"最大执行时间: {MaxExecutionTimeMs:F2} ms"));
 
         lock (_lock)
         {
             if (_countByPriority.Count > 0)
             {
-                sb.AppendLine(FormattableString.Invariant($"\n按优先级统计:"));
+                sb.AppendLine($"\n按优先级统计:");
                 foreach (var kvp in _countByPriority.OrderByDescending(x => x.Key))
-                    sb.AppendLine(FormattableString.Invariant($"  {kvp.Key}: {kvp.Value}"));
+                    sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"  {kvp.Key}: {kvp.Value}"));
             }
 
             if (_countByTag.Count > 0)
             {
-                sb.AppendLine(FormattableString.Invariant($"\n按标签统计:"));
+                sb.AppendLine($"\n按标签统计:");
                 foreach (var kvp in _countByTag.OrderByDescending(x => x.Value))
-                    sb.AppendLine(FormattableString.Invariant($"  {kvp.Key}: {kvp.Value}"));
+                    sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"  {kvp.Key}: {kvp.Value}"));
             }
         }
 

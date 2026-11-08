@@ -102,13 +102,13 @@ public static class ArrayPoolExtensions
         /// <summary>
         ///     获取租用的数组
         /// </summary>
-        public T[] Array => GetArray();
+        public readonly T[] Array => GetArray();
 #pragma warning restore CA1819
 
         /// <summary>
         ///     获取数组的长度
         /// </summary>
-        public int Length => Array.Length;
+        public readonly int Length => Array.Length;
 
         internal ScopedArray(ArrayPool<T> pool, int minimumLength, bool clearOnReturn)
         {
@@ -133,7 +133,7 @@ public static class ArrayPoolExtensions
         ///     获取数组的 Span 视图
         /// </summary>
         /// <returns>数组的 Span</returns>
-        public Span<T> AsSpan() => Array.AsSpan();
+        public readonly Span<T> AsSpan() => Array.AsSpan();
 
         /// <summary>
         ///     获取数组指定范围的 Span 视图
@@ -141,7 +141,7 @@ public static class ArrayPoolExtensions
         /// <param name="start">起始索引</param>
         /// <param name="length">长度</param>
         /// <returns>数组指定范围的 Span</returns>
-        public Span<T> AsSpan(int start, int length)
+        public readonly Span<T> AsSpan(int start, int length)
             => Array.AsSpan(start, length);
 
         /// <summary>
@@ -149,16 +149,19 @@ public static class ArrayPoolExtensions
         /// </summary>
         /// <param name="index">要获取引用的索引位置</param>
         /// <returns>指定索引处元素的引用</returns>
-        public ref T this[int index] => ref Array[index];
+        public readonly ref T this[int index] => ref Array[index];
 
         /// <summary>
         ///     获取内部数组实例
         /// </summary>
         /// <returns>内部数组实例</returns>
         /// <exception cref="ObjectDisposedException">当对象已被丢弃时抛出</exception>
-        private T[] GetArray()
+        private readonly T[] GetArray()
         {
+            // net8/net9 compile with C# 12/13; retain the constructed nameof until C# 14 is supported by every target.
+#pragma warning disable IDE0340
             return _array ?? throw new ObjectDisposedException(nameof(ScopedArray<T>));
+#pragma warning restore IDE0340
         }
     }
 }

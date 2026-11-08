@@ -48,7 +48,10 @@ public class EventTests
     public void EasyEvent_UnRegister_Should_Remove_Handler()
     {
         var count = 0;
-        var handler = () => { count++; };
+        void handler()
+        {
+            count++;
+        }
 
         _easyEvent.Register(handler);
         _easyEvent.Trigger();
@@ -98,7 +101,10 @@ public class EventTests
     public void EventT_UnRegister_Should_Remove_Handler()
     {
         var count = 0;
-        Action<int> handler = value => { count++; };
+        void handler(int value)
+        {
+            count++;
+        }
 
         _eventInt.Register(handler);
         _eventInt.Trigger(1);
@@ -135,7 +141,9 @@ public class EventTests
     {
         Assert.That(_eventInt.GetListenerCount(), Is.EqualTo(0));
 
-        Action<int> handler = _ => { };
+        static void handler(int _)
+        {
+        }
         _eventInt.Register(handler);
 
         Assert.That(_eventInt.GetListenerCount(), Is.EqualTo(1));
@@ -172,7 +180,7 @@ public class EventTests
     public void EventTTK_UnRegister_Should_Remove_Handler()
     {
         var count = 0;
-        Action<int, string> handler = (i, s) => count++;
+        void handler(int i, string s) => count++;
 
         _eventIntString.Register(handler);
         _eventIntString.Trigger(1, "a");
@@ -191,7 +199,9 @@ public class EventTests
     {
         Assert.That(_eventIntString.GetListenerCount(), Is.EqualTo(0));
 
-        Action<int, string> handler = (_, _) => { };
+        static void handler(int _1, string _2)
+        {
+        }
         _eventIntString.Register(handler);
 
         Assert.That(_eventIntString.GetListenerCount(), Is.EqualTo(1));

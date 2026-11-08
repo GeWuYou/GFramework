@@ -8,14 +8,9 @@ namespace GFramework.Core.Configuration;
 /// <summary>
 ///     配置监听取消注册接口
 /// </summary>
-internal sealed class ConfigWatcherUnRegister : IUnRegister
+internal sealed class ConfigWatcherUnRegister(Action unRegisterAction) : IUnRegister
 {
-    private readonly Action _unRegisterAction;
-
-    public ConfigWatcherUnRegister(Action unRegisterAction)
-    {
-        _unRegisterAction = unRegisterAction ?? throw new ArgumentNullException(nameof(unRegisterAction));
-    }
+    private readonly Action _unRegisterAction = unRegisterAction ?? throw new ArgumentNullException(nameof(unRegisterAction));
 
     public void UnRegister()
     {

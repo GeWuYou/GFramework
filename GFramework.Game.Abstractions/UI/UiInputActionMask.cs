@@ -22,5 +22,5 @@ public enum UiInputActionMask
     /// <summary>
     ///     捕获确认动作。
     /// </summary>
-    Confirm = 1 << 1
+    Confirm = 1 << 1,
 }

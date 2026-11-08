@@ -21,14 +21,14 @@ public sealed class YamlConfigTextSerializerTests
         var yaml = YamlConfigTextSerializer.Serialize(new MonsterYamlStub
         {
             Id = 1,
-            Name = "Slime"
+            Name = "Slime",
         });
 
         Assert.Multiple(() =>
         {
             Assert.That(yaml, Does.Contain("id: 1"));
             Assert.That(yaml, Does.Contain("name: Slime"));
-            Assert.That(yaml.EndsWith("\n", StringComparison.Ordinal), Is.True);
+            Assert.That(yaml.EndsWith('\n'), Is.True);
             Assert.That(yaml.EndsWith("\r\n", StringComparison.Ordinal), Is.False);
         });
     }
@@ -53,7 +53,10 @@ public sealed class YamlConfigTextSerializerTests
         /// <summary>
         ///     获取或设置配置标识。
         /// </summary>
-        public int Id { get; init; }
+        public int Id
+        {
+            get; init;
+        }
 
         /// <summary>
         ///     获取或设置配置名称。

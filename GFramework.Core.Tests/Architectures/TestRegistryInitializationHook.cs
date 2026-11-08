@@ -10,19 +10,15 @@ namespace GFramework.Core.Tests.Architectures;
 /// <summary>
 ///     为 <see cref="RegistryInitializationHookBaseTests" /> 提供的注册表初始化钩子测试替身。
 /// </summary>
-public class TestRegistryInitializationHook : RegistryInitializationHookBase<TestRegistry, string>
+/// <remarks>
+///     使用给定配置集合和目标阶段创建测试钩子。
+/// </remarks>
+/// <param name="configs">测试期间要注册到目标注册表的配置值。</param>
+/// <param name="targetPhase">触发注册行为的架构阶段。</param>
+public class TestRegistryInitializationHook(
+    IEnumerable<string> configs,
+    ArchitecturePhase targetPhase = ArchitecturePhase.AfterSystemInit) : RegistryInitializationHookBase<TestRegistry, string>(configs, targetPhase)
 {
-    /// <summary>
-    ///     使用给定配置集合和目标阶段创建测试钩子。
-    /// </summary>
-    /// <param name="configs">测试期间要注册到目标注册表的配置值。</param>
-    /// <param name="targetPhase">触发注册行为的架构阶段。</param>
-    public TestRegistryInitializationHook(
-        IEnumerable<string> configs,
-        ArchitecturePhase targetPhase = ArchitecturePhase.AfterSystemInit)
-        : base(configs, targetPhase)
-    {
-    }
 
     /// <summary>
     ///     将当前配置值写入测试注册表。

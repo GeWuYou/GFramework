@@ -22,16 +22,22 @@ public sealed class InputActionBinding
         }
 
         ActionName = actionName;
-        Bindings = bindings ?? Array.Empty<InputBindingDescriptor>();
+        Bindings = bindings ?? [];
     }
 
     /// <summary>
     ///     获取动作名称。
     /// </summary>
-    public string ActionName { get; }
+    public string ActionName
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取当前绑定列表。
     /// </summary>
-    public IReadOnlyList<InputBindingDescriptor> Bindings { get; }
+    public IReadOnlyList<InputBindingDescriptor> Bindings
+    {
+        get;
+    }
 }

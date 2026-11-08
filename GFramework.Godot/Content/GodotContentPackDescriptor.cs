@@ -30,10 +30,16 @@ public sealed class GodotContentPackDescriptor
     }
 
     /// <summary>Gets the package identity used by the host trust policy.</summary>
-    public string PackId { get; }
+    public string PackId
+    {
+        get;
+    }
 
     /// <summary>Gets the validated physical PCK path.</summary>
-    public string FilePath { get; }
+    public string FilePath
+    {
+        get;
+    }
 
     /// <summary>Gets the namespace required for resources exported by this package.</summary>
     public string ResourceRoot => "res://content/" + PackId + "/";

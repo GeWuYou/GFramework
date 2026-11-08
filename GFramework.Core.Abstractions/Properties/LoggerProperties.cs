@@ -19,5 +19,8 @@ public sealed class LoggerProperties
     ///     获取或设置当前架构实例使用的标准 <see cref="ILoggerFactory"/>。
     ///     为 null 时由架构创建独立的默认工厂。
     /// </summary>
-    public ILoggerFactory? LoggerFactory { get; set; }
+    public ILoggerFactory? LoggerFactory
+    {
+        get; set;
+    }
 }

@@ -8,52 +8,43 @@ namespace GFramework.Core.Localization;
 /// <summary>
 /// 本地化表实现
 /// </summary>
-public class LocalizationTable : ILocalizationTable
+/// <remarks>
+/// 初始化本地化表
+/// </remarks>
+/// <param name="name">表名</param>
+/// <param name="language">语言代码</param>
+/// <param name="data">数据字典</param>
+/// <param name="fallback">回退表</param>
+public class LocalizationTable(
+    string name,
+    string language,
+    IReadOnlyDictionary<string, string> data,
+    ILocalizationTable? fallback = null) : ILocalizationTable
 {
     /// <summary>
     /// 存储原始本地化数据的字典
     /// </summary>
-    private readonly Dictionary<string, string> _data;
+    private readonly Dictionary<string, string> _data = new(data, StringComparer.Ordinal);
 
     /// <summary>
     /// 存储覆盖数据的字典，优先级高于原始数据
     /// </summary>
-    private readonly Dictionary<string, string> _overrides;
-
-    /// <summary>
-    /// 初始化本地化表
-    /// </summary>
-    /// <param name="name">表名</param>
-    /// <param name="language">语言代码</param>
-    /// <param name="data">数据字典</param>
-    /// <param name="fallback">回退表</param>
-    public LocalizationTable(
-        string name,
-        string language,
-        IReadOnlyDictionary<string, string> data,
-        ILocalizationTable? fallback = null)
-    {
-        Name = name ?? throw new ArgumentNullException(nameof(name));
-        Language = language ?? throw new ArgumentNullException(nameof(language));
-        _data = new Dictionary<string, string>(data, StringComparer.Ordinal);
-        _overrides = new Dictionary<string, string>(StringComparer.Ordinal);
-        Fallback = fallback;
-    }
+    private readonly Dictionary<string, string> _overrides = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 获取本地化表的名称
     /// </summary>
-    public string Name { get; }
+    public string Name { get; } = name ?? throw new ArgumentNullException(nameof(name));
 
     /// <summary>
     /// 获取语言代码
     /// </summary>
-    public string Language { get; }
+    public string Language { get; } = language ?? throw new ArgumentNullException(nameof(language));
 
     /// <summary>
     /// 获取回退表，当当前表找不到键时用于查找
     /// </summary>
-    public ILocalizationTable? Fallback { get; }
+    public ILocalizationTable? Fallback { get; } = fallback;
 
     /// <summary>
     /// 获取指定键的原始文本内容
@@ -64,10 +55,7 @@ public class LocalizationTable : ILocalizationTable
     /// <exception cref="LocalizationKeyNotFoundException">当键在表中不存在且无回退表时抛出</exception>
     public string GetRawText(string key)
     {
-        if (key == null)
-        {
-            throw new ArgumentNullException(nameof(key));
-        }
+        ArgumentNullException.ThrowIfNull(key);
 
         // 优先使用覆盖数据
         if (_overrides.TryGetValue(key, out var overrideValue))
@@ -126,10 +114,7 @@ public class LocalizationTable : ILocalizationTable
     /// <exception cref="ArgumentNullException">当 overrides 为 null 时抛出</exception>
     public void Merge(IReadOnlyDictionary<string, string> overrides)
     {
-        if (overrides == null)
-        {
-            throw new ArgumentNullException(nameof(overrides));
-        }
+        ArgumentNullException.ThrowIfNull(overrides);
 
         foreach (var (key, value) in overrides)
         {

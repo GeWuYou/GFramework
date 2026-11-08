@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Environment;
@@ -19,7 +19,10 @@ public abstract class EnvironmentBase : ContextAwareBase, IEnvironment
     /// <summary>
     ///     获取环境名称的抽象属性
     /// </summary>
-    public abstract string Name { get; }
+    public abstract string Name
+    {
+        get;
+    }
 
     /// <summary>
     ///     根据键获取指定类型的值

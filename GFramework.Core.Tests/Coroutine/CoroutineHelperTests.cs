@@ -194,7 +194,7 @@ public class CoroutineHelperTests
     [Test]
     public void DelayedCall_Should_Handle_Null_Action()
     {
-        var coroutine = CoroutineHelper.DelayedCall(1.0, null);
+        var coroutine = CoroutineHelper.DelayedCall(1.0, action: null);
 
         Assert.That(coroutine, Is.Not.Null);
         Assert.DoesNotThrow(() => coroutine.MoveNext());
@@ -221,7 +221,8 @@ public class CoroutineHelperTests
         var callCount = 0;
         var coroutine = CoroutineHelper.RepeatCall(0.1, 3, () => callCount++);
 
-        while (coroutine.MoveNext()) coroutine.Current.Update(0.1);
+        while (coroutine.MoveNext())
+            coroutine.Current.Update(0.1);
 
         Assert.That(callCount, Is.EqualTo(3));
     }
@@ -277,7 +278,7 @@ public class CoroutineHelperTests
     [Test]
     public void RepeatCallForever_Should_Handle_Null_Action()
     {
-        var coroutine = CoroutineHelper.RepeatCallForever(0.1, null);
+        var coroutine = CoroutineHelper.RepeatCallForever(0.1, action: null);
 
         Assert.That(coroutine, Is.Not.Null);
         Assert.DoesNotThrow(() => coroutine.MoveNext());
@@ -360,7 +361,8 @@ public class CoroutineHelperTests
         var wait = CoroutineHelper.WaitForProgress(1.0, progress => progressValues.Add(progress));
 
         // 更新直到完成
-        while (!wait.IsDone) wait.Update(0.1);
+        while (!wait.IsDone)
+            wait.Update(0.1);
 
         Assert.That(progressValues.Count, Is.GreaterThan(0));
         // 进度值应该递增
@@ -421,7 +423,8 @@ public class CoroutineHelperTests
         var maxCalls = 3;
         var coroutine = CoroutineHelper.RepeatCallForever(0.1, () => callCount++, () => callCount < maxCalls);
 
-        while (coroutine.MoveNext()) coroutine.Current.Update(0.1);
+        while (coroutine.MoveNext())
+            coroutine.Current.Update(0.1);
 
         Assert.That(callCount, Is.EqualTo(maxCalls));
     }
@@ -469,10 +472,12 @@ public class CoroutineHelperTests
         var coroutine = CoroutineHelper.RepeatCallForever(0.1, () =>
         {
             callCount++;
-            if (callCount >= 3) cts.Cancel();
+            if (callCount >= 3)
+                cts.Cancel();
         }, cts.Token);
 
-        while (coroutine.MoveNext()) coroutine.Current.Update(0.1);
+        while (coroutine.MoveNext())
+            coroutine.Current.Update(0.1);
 
         Assert.That(callCount, Is.EqualTo(3));
     }

@@ -23,7 +23,7 @@ internal sealed partial class DodgeMenus : IDisposable
     private readonly FontVariation _chineseFont;
     private Label? _score;
     private Label? _status;
-    private readonly Dictionary<Label, Func<string>> _statusText = new();
+    private readonly Dictionary<Label, Func<string>> _statusText = [];
 
     /// <summary>Creates one menu composer with explicit business actions.</summary>
     internal DodgeMenus(DodgeApp app)
@@ -33,7 +33,7 @@ internal sealed partial class DodgeMenus : IDisposable
         _englishFont = new FontVariation
         {
             BaseFont = GD.Load<Font>("res://fonts/Xolonium-Regular.ttf"),
-            Fallbacks = new Godot.Collections.Array<Font> { _chineseFont }
+            Fallbacks = [_chineseFont],
         };
         _theme = new Theme { DefaultFont = _englishFont, DefaultFontSize = 20 };
         _theme.SetColor("font_color", "Label", new Color("ecf5ff"));
@@ -72,7 +72,8 @@ internal sealed partial class DodgeMenus : IDisposable
     /// <summary>Updates a live HUD without retaining gameplay event subscriptions in the view.</summary>
     internal void SetScore(int score)
     {
-        if (_score is not null && GodotObject.IsInstanceValid(_score)) _score.Text = score.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (_score is not null && GodotObject.IsInstanceValid(_score))
+            _score.Text = score.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
     /// <summary>Shows operation feedback in the currently open menu.</summary>
     internal void SetStatus(string text) => SetStatus(() => text);
@@ -101,14 +102,15 @@ internal sealed partial class DodgeMenus : IDisposable
             Texture = GD.Load<Texture2D>("res://art/playerGrey_walk1.png"),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            CustomMinimumSize = new Vector2(90, 90), MouseFilter = Control.MouseFilterEnum.Ignore
+            CustomMinimumSize = new Vector2(90, 90),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         column.AddChild(art);
         Title(column, "game_title", 38);
         Caption(column, "game_subtitle");
         Gap(column, 12);
-        Button(column, "Start", "new_run", () => _app.StartGameAsync(false)).Disabled = !_app.CanStart;
-        Button(column, "Continue", "continue_run", () => _app.StartGameAsync(true)).Disabled = !canContinue || !_app.CanStart || !_app.CanRestoreSave;
+        Button(column, "Start", "new_run", () => _app.StartGameAsync(restore: false)).Disabled = !_app.CanStart;
+        Button(column, "Continue", "continue_run", () => _app.StartGameAsync(restore: true)).Disabled = !canContinue || !_app.CanStart || !_app.CanRestoreSave;
         Button(column, "Content", "content", _app.OpenContentAsync);
         Button(column, "Settings", "settings", _app.OpenSettingsAsync);
         QuitButton(column);
@@ -130,8 +132,11 @@ internal sealed partial class DodgeMenus : IDisposable
         root.AddChild(pause);
         var hint = new Label
         {
-            Name = "HudStatus", Position = new Vector2(26, 646), Size = new Vector2(428, 68),
-            MouseFilter = Control.MouseFilterEnum.Ignore, AutowrapMode = TextServer.AutowrapMode.WordSmart
+            Name = "HudStatus",
+            Position = new Vector2(26, 646),
+            Size = new Vector2(428, 68),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
         // Operation feedback stays available while the gameplay HUD is the active view.
         _status = hint;
@@ -147,7 +152,7 @@ internal sealed partial class DodgeMenus : IDisposable
     /// <summary>Creates a pause window; the route policy owns its pause request.</summary>
     private Control Pause(int score, UiViewContext context)
     {
-        var root = Page("Pause", out var column, false);
+        var root = Page("Pause", out var column, background: false);
         Title(column, "paused", 28);
         Caption(column, () => _app.Text.Get("survived_seconds", ("score", score)));
         Button(column, "Resume", "resume", () => context.CloseAsync());
@@ -166,7 +171,7 @@ internal sealed partial class DodgeMenus : IDisposable
         Caption(column, "you_survived");
         Title(column, () => _app.Text.Get("seconds", ("score", score)), 64);
         Caption(column, () => _app.Text.Get("best_seconds", ("score", _app.Preferences.BestScore)));
-        Button(column, "Retry", "retry", () => _app.StartGameAsync(false));
+        Button(column, "Retry", "retry", () => _app.StartGameAsync(restore: false));
         Button(column, "MainMenu", "main_menu", _app.ReturnToMenuAsync);
         Status(column, "gameover_hint");
         return root;
@@ -176,11 +181,11 @@ internal sealed partial class DodgeMenus : IDisposable
     /// <summary>Returns a typed decision through the dialog's own completion context.</summary>
     private Control Confirm(Func<string> message, UiDialogContext<bool> context)
     {
-        var root = Page("Confirm", out var column, false);
+        var root = Page("Confirm", out var column, background: false);
         Title(column, "leave_title", 30);
         Caption(column, message);
-        Button(column, "KeepPlaying", "keep_playing", () => context.CompleteAsync(false));
-        Button(column, "Leave", "leave_without_saving", () => context.CompleteAsync(true));
+        Button(column, "KeepPlaying", "keep_playing", () => context.CompleteAsync(result: false));
+        Button(column, "Leave", "leave_without_saving", () => context.CompleteAsync(result: true));
         return root;
     }
     // #endregion tutorial-confirm
@@ -228,7 +233,10 @@ internal sealed partial class DodgeMenus : IDisposable
         button.Pressed += () => _app.RunAction(async () =>
         {
             button.Disabled = true;
-            try { await action().ConfigureAwait(true); }
+            try
+            {
+                await action().ConfigureAwait(true);
+            }
             finally { if (GodotObject.IsInstanceValid(button) && !button.IsQueuedForDeletion()) button.Disabled = false; }
         });
         return button;
@@ -281,8 +289,14 @@ internal sealed partial class DodgeMenus : IDisposable
     /// <summary>Creates a rounded native style with consistent internal spacing.</summary>
     private static StyleBoxFlat Box(Color color, int radius, int padding = 12) => new()
     {
-        BgColor = color, CornerRadiusTopLeft = radius, CornerRadiusTopRight = radius,
-        CornerRadiusBottomLeft = radius, CornerRadiusBottomRight = radius,
-        ContentMarginLeft = padding, ContentMarginRight = padding, ContentMarginTop = padding, ContentMarginBottom = padding
+        BgColor = color,
+        CornerRadiusTopLeft = radius,
+        CornerRadiusTopRight = radius,
+        CornerRadiusBottomLeft = radius,
+        CornerRadiusBottomRight = radius,
+        ContentMarginLeft = padding,
+        ContentMarginRight = padding,
+        ContentMarginTop = padding,
+        ContentMarginBottom = padding,
     };
 }

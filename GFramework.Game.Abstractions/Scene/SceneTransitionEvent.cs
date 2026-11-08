@@ -21,31 +21,43 @@ namespace GFramework.Game.Abstractions.Scene;
 /// </summary>
 public sealed class SceneTransitionEvent
 {
-    private readonly Dictionary<string, object> _context = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, object> _context = [with(StringComparer.Ordinal)];
 
     /// <summary>
     /// 获取或初始化源场景的唯一标识符。
     /// 表示切换前的场景，如果是首次加载场景则为 null。
     /// </summary>
-    public string? FromSceneKey { get; init; }
+    public string? FromSceneKey
+    {
+        get; init;
+    }
 
     /// <summary>
     /// 获取或初始化目标场景的唯一标识符。
     /// 表示切换后的场景，如果是清空操作则为 null。
     /// </summary>
-    public string? ToSceneKey { get; init; }
+    public string? ToSceneKey
+    {
+        get; init;
+    }
 
     /// <summary>
     /// 获取或初始化场景过渡类型。
     /// 指示当前执行的是哪种场景切换操作（Push/Pop/Replace/Clear）。
     /// </summary>
-    public SceneTransitionType TransitionType { get; init; }
+    public SceneTransitionType TransitionType
+    {
+        get; init;
+    }
 
     /// <summary>
     /// 获取或初始化场景进入参数。
     /// 包含传递给新场景的初始化数据或上下文信息。
     /// </summary>
-    public ISceneEnterParam? EnterParam { get; init; }
+    public ISceneEnterParam? EnterParam
+    {
+        get; init;
+    }
 
     /// <summary>
     /// 从上下文中获取指定键的值。

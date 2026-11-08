@@ -50,6 +50,17 @@ class ValidateRuntimeGeneratorBoundariesTests(unittest.TestCase):
             pattern.search("[global::GFramework.Core.SourceGenerators.Abstractions.Bases.PriorityAttribute(10)]")
         )
 
+    def test_ignores_collection_spread_of_runtime_get_services(self) -> None:
+        for source in ("[.. provider.GetServices(serviceType).OfType<object>()]",
+                       "[\n    .. provider.GetServices(serviceType)\n]"):
+            with self.subTest(source=source):
+                self.assertIsNone(self.patterns["GetServices"].search(source))
+
+    def test_collection_spread_does_not_hide_a_real_attribute(self) -> None:
+        source = "return [.. provider.GetServices(type)];\n[GetServices] public class Consumer;"
+        matches = list(self.patterns["GetServices"].finditer(source))
+        self.assertEqual([match.group() for match in matches], ["[GetServices]"])
+
     def test_ignores_xml_doc_example_attribute(self) -> None:
         text = "///     [ContextAware]\npublic interface IController;\n"
         pattern = self.patterns["ContextAware"]

@@ -44,6 +44,6 @@ internal static class BenchmarkDispatcherCacheHelper
         var clearMethod = cache.GetType().GetMethod("Clear", BindingFlags.Public | BindingFlags.Instance)
                           ?? throw new InvalidOperationException(
                               $"Dispatcher cache field {fieldName} does not expose a Clear method.");
-        _ = clearMethod.Invoke(cache, null);
+        _ = clearMethod.Invoke(cache, parameters: null);
     }
 }

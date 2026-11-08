@@ -43,32 +43,50 @@ internal sealed class YamlConfigReferenceUsage
     /// <summary>
     ///     获取源 YAML 文件路径。
     /// </summary>
-    public string YamlPath { get; }
+    public string YamlPath
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取定义该引用的 schema 文件路径。
     /// </summary>
-    public string SchemaPath { get; }
+    public string SchemaPath
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取声明引用的字段路径。
     /// </summary>
-    public string PropertyPath { get; }
+    public string PropertyPath
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取 YAML 中的原始标量值。
     /// </summary>
-    public string RawValue { get; }
+    public string RawValue
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取目标配置表名称。
     /// </summary>
-    public string ReferencedTableName { get; }
+    public string ReferencedTableName
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取引用值的 schema 标量类型。
     /// </summary>
-    public YamlConfigSchemaPropertyType ValueType { get; }
+    public YamlConfigSchemaPropertyType ValueType
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取便于诊断显示的字段路径。

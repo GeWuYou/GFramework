@@ -59,8 +59,7 @@ public sealed class GodotMainThreadDispatcherTests
         var calls = 0;
         var dispatcher = new GodotMainThreadDispatcher(() => false, queued.Add);
         var pending = dispatcher.InvokeAsync(() => calls++, cancellation.Token);
-
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         await Assert.CatchAsync<OperationCanceledException>(() => pending);
         queued.Single()();
         Assert.That(calls, Is.Zero);

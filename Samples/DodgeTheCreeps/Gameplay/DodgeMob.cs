@@ -21,12 +21,21 @@ internal sealed partial class DodgeMob : Node2D
     internal string EnemyId { get; init; } = "base:walker";
 
     /// <summary>Gets the velocity selected once by the spawning world.</summary>
-    internal Vector2 Velocity { get; init; }
+    internal Vector2 Velocity
+    {
+        get; init;
+    }
 
     /// <summary>Gets the texture-pair selection, assigned before entering the tree.</summary>
-    internal int Appearance { get; init; }
+    internal int Appearance
+    {
+        get; init;
+    }
     /// <summary>Gets an optional safely decoded texture owned by the active content session.</summary>
-    internal Texture2D? Texture { get; init; }
+    internal Texture2D? Texture
+    {
+        get; init;
+    }
 
     /// <summary>Builds the enemy animation and makes native smoke inspection possible through a stable group.</summary>
     public override void _Ready()
@@ -39,7 +48,8 @@ internal sealed partial class DodgeMob : Node2D
     /// <summary>Prepares native media before a restore commits changes to the existing board.</summary>
     internal void PreparePresentation()
     {
-        if (_sprite is not null) return;
+        if (_sprite is not null)
+            return;
         _sprite = new AnimatedSprite2D
         {
             Name = "Sprite",
@@ -50,8 +60,8 @@ internal sealed partial class DodgeMob : Node2D
             {
                 1 => new Color(0.95f, 0.75f, 1),
                 2 => new Color(1, 0.85f, 0.65f),
-                _ => Colors.White
-            }
+                _ => Colors.White,
+            },
         };
         Rotation = Velocity.Angle();
         AddChild(_sprite);
@@ -61,8 +71,14 @@ internal sealed partial class DodgeMob : Node2D
     /// <returns>The enemy's exact state on the host thread.</returns>
     internal DodgeMobProgress CaptureProgress() => new()
     {
-        EnemyId = EnemyId, X = Position.X, Y = Position.Y, VelocityX = Velocity.X, VelocityY = Velocity.Y,
-        Appearance = Appearance, AnimationFrame = _sprite.Frame, AnimationProgress = _sprite.FrameProgress
+        EnemyId = EnemyId,
+        X = Position.X,
+        Y = Position.Y,
+        VelocityX = Velocity.X,
+        VelocityY = Velocity.Y,
+        Appearance = Appearance,
+        AnimationFrame = _sprite.Frame,
+        AnimationProgress = _sprite.FrameProgress,
     };
 
     /// <summary>Rejects a saved frame that the current compatible definition cannot render.</summary>

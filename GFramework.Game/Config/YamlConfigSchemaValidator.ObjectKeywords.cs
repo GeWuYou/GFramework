@@ -9,7 +9,7 @@ namespace GFramework.Game.Config;
 ///     承载对象级 schema 关键字的解析与元数据校验逻辑。
 ///     该 partial 将 <c>minProperties</c>、<c>maxProperties</c>、
 ///     <c>dependentRequired</c>、<c>dependentSchemas</c>、<c>allOf</c>
-///     与 object-focused <c>if</c> / <c>then</c> / <c>else</c>
+///     与 object-focused <c language="json">if</c> / <c>then</c> / <c language="json">else</c>
 ///     从主校验文件中拆出，降低超大文件继续堆叠对象关键字时的维护成本。
 /// </summary>
 internal static partial class YamlConfigSchemaValidator
@@ -82,7 +82,7 @@ internal static partial class YamlConfigSchemaValidator
     /// <param name="element">Schema 节点。</param>
     /// <param name="properties">当前对象已声明的属性集合。</param>
     /// <returns>归一化后的依赖关系表；未声明或只有空依赖时返回空。</returns>
-    private static IReadOnlyDictionary<string, IReadOnlyList<string>>? ParseDependentRequiredConstraints(
+    private static Dictionary<string, IReadOnlyList<string>>? ParseDependentRequiredConstraints(
         string tableName,
         string schemaPath,
         string propertyPath,
@@ -134,7 +134,7 @@ internal static partial class YamlConfigSchemaValidator
     /// <param name="dependency">当前触发字段声明。</param>
     /// <param name="properties">当前对象已声明的属性集合。</param>
     /// <returns>去重后的依赖目标列表。</returns>
-    private static IReadOnlyList<string> ParseDependentRequiredConstraint(
+    private static List<string> ParseDependentRequiredConstraint(
         string tableName,
         string schemaPath,
         string propertyPath,
@@ -245,7 +245,7 @@ internal static partial class YamlConfigSchemaValidator
     /// <param name="element">Schema 节点。</param>
     /// <param name="properties">当前对象已声明的属性集合。</param>
     /// <returns>归一化后的触发字段到条件 schema 的映射；未声明时返回空。</returns>
-    private static IReadOnlyDictionary<string, YamlConfigSchemaNode>? ParseDependentSchemasConstraints(
+    private static Dictionary<string, YamlConfigSchemaNode>? ParseDependentSchemasConstraints(
         string tableName,
         string schemaPath,
         string propertyPath,
@@ -350,7 +350,7 @@ internal static partial class YamlConfigSchemaValidator
     /// <param name="element">Schema 节点。</param>
     /// <param name="properties">父对象已声明的属性集合。</param>
     /// <returns>归一化后的 allOf schema 列表；未声明或为空时返回空。</returns>
-    private static IReadOnlyList<YamlConfigSchemaNode>? ParseAllOfConstraints(
+    private static List<YamlConfigSchemaNode>? ParseAllOfConstraints(
         string tableName,
         string schemaPath,
         string propertyPath,
@@ -451,7 +451,7 @@ internal static partial class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     解析对象节点声明的 object-focused <c>if</c> / <c>then</c> / <c>else</c> 条件约束。
+    ///     解析对象节点声明的 object-focused <c language="json">if</c> / <c>then</c> / <c language="json">else</c> 条件约束。
     ///     当前共享子集要求三段内联 schema 都保持 object-typed focused block 语义，
     ///     既允许根据 sibling 值切换约束分支，又避免把条件 schema 扩展成新的生成类型形状。
     /// </summary>
@@ -509,7 +509,7 @@ internal static partial class YamlConfigSchemaValidator
 
     /// <summary>
     ///     校验 object-focused 条件关键字的组合关系。
-    ///     <c>then</c> 与 <c>else</c> 只能跟随 <c>if</c>，而单独的 <c>if</c> 没有可执行分支。
+    ///     <c>then</c> 与 <c language="json">else</c> 只能跟随 <c language="json">if</c>，而单独的 <c language="json">if</c> 没有可执行分支。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
@@ -549,7 +549,7 @@ internal static partial class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     解析可选的 <c>then</c> 或 <c>else</c> 条件分支。
+    ///     解析可选的 <c>then</c> 或 <c language="json">else</c> 条件分支。
     ///     未声明的分支保留为空，声明的分支必须通过 object-focused schema 校验。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
@@ -730,7 +730,7 @@ internal static partial class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     校验 object-focused 内联 schema 的 <c>required</c> 只引用父对象字段。
+    ///     校验 object-focused 内联 schema 的 <see langword="required" /> 只引用父对象字段。
     ///     该校验在加载期暴露不可满足的条件块，而不是等到运行时才发现无效字段名。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
@@ -778,7 +778,7 @@ internal static partial class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     校验 object-focused 内联 schema 的单个 <c>required</c> 字段名。
+    ///     校验 object-focused 内联 schema 的单个 <see langword="required" /> 字段名。
     ///     字段名必须是非空字符串并且属于父对象声明范围，保持条件块与父对象形状一致。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>

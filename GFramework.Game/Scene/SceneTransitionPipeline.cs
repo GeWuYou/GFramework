@@ -30,9 +30,9 @@ public class SceneTransitionPipeline(ILogger? logger = null)
     // 标准日志记录器；未注入时使用空输出，不读取进程级状态。
     private readonly ILogger _logger = logger ?? NullLogger<SceneTransitionPipeline>.Instance;
     private readonly List<ISceneAroundTransitionHandler> _aroundHandlers = [];
-    private readonly Dictionary<ISceneAroundTransitionHandler, SceneTransitionHandlerOptions> _aroundOptions = new();
+    private readonly Dictionary<ISceneAroundTransitionHandler, SceneTransitionHandlerOptions> _aroundOptions = [];
     private readonly List<ISceneTransitionHandler> _handlers = [];
-    private readonly Dictionary<ISceneTransitionHandler, SceneTransitionHandlerOptions> _options = new();
+    private readonly Dictionary<ISceneTransitionHandler, SceneTransitionHandlerOptions> _options = [];
 
     /// <summary>
     /// 注册场景过渡处理器。
@@ -45,19 +45,21 @@ public class SceneTransitionPipeline(ILogger? logger = null)
 
         if (_handlers.Contains(handler))
         {
-            _logger.LogDebug("Handler already registered: {0}", handler.GetType().Name);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Handler already registered: {HandlerType}", handler.GetType().Name);
+            }
             return;
         }
 
         _handlers.Add(handler);
         _options[handler] = options ?? new SceneTransitionHandlerOptions();
-        _logger.LogDebug(
-            "Handler registered: {0}, Priority={1}, Phases={2}, TimeoutMs={3}",
-            handler.GetType().Name,
-            handler.Priority,
-            handler.Phases,
-            _options[handler].TimeoutMs
-        );
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug(
+                "Handler registered: {HandlerType}, Priority={Priority}, Phases={Phases}, TimeoutMs={TimeoutMs}",
+                handler.GetType().Name, handler.Priority, handler.Phases, _options[handler].TimeoutMs);
+        }
     }
 
     /// <summary>
@@ -68,9 +70,13 @@ public class SceneTransitionPipeline(ILogger? logger = null)
     {
         ArgumentNullException.ThrowIfNull(handler);
 
-        if (!_handlers.Remove(handler)) return;
+        if (!_handlers.Remove(handler))
+            return;
         _options.Remove(handler);
-        _logger.LogDebug("Handler unregistered: {0}", handler.GetType().Name);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Handler unregistered: {HandlerType}", handler.GetType().Name);
+        }
     }
 
     /// <summary>
@@ -85,17 +91,20 @@ public class SceneTransitionPipeline(ILogger? logger = null)
 
         if (_aroundHandlers.Contains(handler))
         {
-            _logger.LogDebug("Around handler already registered: {0}", handler.GetType().Name);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Around handler already registered: {HandlerType}", handler.GetType().Name);
+            }
             return;
         }
 
         _aroundHandlers.Add(handler);
         _aroundOptions[handler] = options ?? new SceneTransitionHandlerOptions();
-        _logger.LogDebug(
-            "Around handler registered: {0}, Priority={1}",
-            handler.GetType().Name,
-            handler.Priority
-        );
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Around handler registered: {HandlerType}, Priority={Priority}",
+                handler.GetType().Name, handler.Priority);
+        }
     }
 
     /// <summary>
@@ -106,9 +115,13 @@ public class SceneTransitionPipeline(ILogger? logger = null)
     {
         ArgumentNullException.ThrowIfNull(handler);
 
-        if (!_aroundHandlers.Remove(handler)) return;
+        if (!_aroundHandlers.Remove(handler))
+            return;
         _aroundOptions.Remove(handler);
-        _logger.LogDebug("Around handler unregistered: {0}", handler.GetType().Name);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Around handler unregistered: {HandlerType}", handler.GetType().Name);
+        }
     }
 
     /// <summary>
@@ -126,28 +139,28 @@ public class SceneTransitionPipeline(ILogger? logger = null)
     {
         @event.Set("Phases", phases.ToString());
 
-        _logger.LogDebug(
-            "Execute pipeline: Phases={0}, From={1}, To={2}, Type={3}, HandlerCount={4}",
-            phases,
-            @event.FromSceneKey ?? "None",
-            @event.ToSceneKey ?? "None",
-            @event.TransitionType,
-            _handlers.Count
-        );
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug(
+                "Execute pipeline: Phases={Phases}, From={FromScene}, To={ToScene}, Type={TransitionType}, HandlerCount={HandlerCount}",
+                phases, @event.FromSceneKey ?? "None", @event.ToSceneKey ?? "None", @event.TransitionType, _handlers.Count);
+        }
 
         var sortedHandlers = FilterAndSortHandlers(@event, phases);
 
         if (sortedHandlers.Count == 0)
         {
-            _logger.LogDebug("No handlers to execute for phases: {0}", phases);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("No handlers to execute for phases: {Phases}", phases);
+            }
             return;
         }
 
-        _logger.LogDebug(
-            "Executing {0} handlers for phases {1}",
-            sortedHandlers.Count,
-            phases
-        );
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Executing {HandlerCount} handlers for phases {Phases}", sortedHandlers.Count, phases);
+        }
 
         foreach (var handler in sortedHandlers)
         {
@@ -155,7 +168,10 @@ public class SceneTransitionPipeline(ILogger? logger = null)
             await ExecuteSingleHandlerAsync(handler, options, @event, cancellationToken).ConfigureAwait(true);
         }
 
-        _logger.LogDebug("Pipeline execution completed for phases: {0}", phases);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Pipeline execution completed for phases: {Phases}", phases);
+        }
     }
 
     /// <summary>
@@ -181,11 +197,10 @@ public class SceneTransitionPipeline(ILogger? logger = null)
             return;
         }
 
-        _logger.LogDebug(
-            "Executing {0} around handlers for event: {1}",
-            handlers.Count,
-            @event.TransitionType
-        );
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Executing {HandlerCount} around handlers for event: {TransitionType}", handlers.Count, @event.TransitionType);
+        }
 
         // 构建中间件链
         var hostContext = SynchronizationContext.Current;
@@ -195,7 +210,7 @@ public class SceneTransitionPipeline(ILogger? logger = null)
             var handler = handlers[i];
             var options = _aroundOptions[handler];
             var nextCallback = pipeline;
-            Func<Task> next = () => RouterCallbackDispatcher.InvokeAsync(hostContext, nextCallback);
+            Task next() => RouterCallbackDispatcher.InvokeAsync(hostContext, nextCallback);
 
             pipeline = () => ExecuteSingleAroundHandlerAsync(
                 handler, options, @event, next, cancellationToken);
@@ -208,10 +223,9 @@ public class SceneTransitionPipeline(ILogger? logger = null)
         SceneTransitionEvent @event,
         SceneTransitionPhases phases)
     {
-        return _handlers
+        return [.. _handlers
             .Where(h => h.Phases.HasFlag(phases) && h.ShouldHandle(@event, phases))
-            .OrderBy(h => h.Priority)
-            .ToList();
+            .OrderBy(h => h.Priority)];
     }
 
     private async Task ExecuteSingleHandlerAsync(
@@ -220,11 +234,7 @@ public class SceneTransitionPipeline(ILogger? logger = null)
         SceneTransitionEvent @event,
         CancellationToken cancellationToken)
     {
-        _logger.LogDebug(
-            "Executing handler: {0}, Priority={1}",
-            handler.GetType().Name,
-            handler.Priority
-        );
+        LogHandlerStarting(handler);
 
         using var timeoutCts = options.TimeoutMs > 0
             ? new CancellationTokenSource(options.TimeoutMs)
@@ -240,30 +250,37 @@ public class SceneTransitionPipeline(ILogger? logger = null)
                 linkedCts?.Token ?? timeoutCts?.Token ?? cancellationToken
             ).ConfigureAwait(true);
 
-            _logger.LogDebug("Handler completed: {0}", handler.GetType().Name);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Handler completed: {HandlerType}", handler.GetType().Name);
+            }
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && timeoutCts?.IsCancellationRequested == true)
         {
-            _logger.LogError(
-                "Handler timeout: {0}, TimeoutMs={1}",
-                handler.GetType().Name,
-                options.TimeoutMs
-            );
+            LogHandlerTimeout(handler, options.TimeoutMs);
 
-            if (options.ContinueOnError) return;
+            if (options.ContinueOnError)
+                return;
             _logger.LogError("Stopping pipeline due to timeout and ContinueOnError=false");
             throw;
         }
         catch (OperationCanceledException)
         {
-            _logger.LogDebug("Handler cancelled: {0}", handler.GetType().Name);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Handler cancelled: {HandlerType}", handler.GetType().Name);
+            }
             throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError("Handler failed: {0}, Error: {1}", handler.GetType().Name, ex.Message);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Scene transition handler {HandlerType} failed", handler.GetType().Name);
+            }
 
-            if (options.ContinueOnError) return;
+            if (options.ContinueOnError)
+                return;
             _logger.LogError("Stopping pipeline due to error and ContinueOnError=false");
             throw;
         }
@@ -276,7 +293,10 @@ public class SceneTransitionPipeline(ILogger? logger = null)
         Func<Task> next,
         CancellationToken cancellationToken)
     {
-        _logger.LogDebug("Executing around handler: {0}", handler.GetType().Name);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Executing around handler: {HandlerType}", handler.GetType().Name);
+        }
 
         using var timeoutCts = options.TimeoutMs > 0
             ? new CancellationTokenSource(options.TimeoutMs)
@@ -289,7 +309,10 @@ public class SceneTransitionPipeline(ILogger? logger = null)
         {
             await handler.HandleAsync(@event, next, linkedCts?.Token ?? timeoutCts?.Token ?? cancellationToken).ConfigureAwait(true);
 
-            _logger.LogDebug("Around handler completed: {0}", handler.GetType().Name);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Around handler completed: {HandlerType}", handler.GetType().Name);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -298,11 +321,34 @@ public class SceneTransitionPipeline(ILogger? logger = null)
         }
         catch (Exception ex)
         {
-            _logger.LogError("Around handler failed: {0}, Error: {1}",
-                handler.GetType().Name, ex.Message);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Scene transition middleware {HandlerType} failed", handler.GetType().Name);
+            }
 
             if (!options.ContinueOnError)
                 throw;
+        }
+    }
+
+    /// <summary>Defers diagnostic argument evaluation until the configured factory enables stage-start logging.</summary>
+    /// <param name="handler">The stage handler about to execute.</param>
+    private void LogHandlerStarting(ISceneTransitionHandler handler)
+    {
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Executing handler: {HandlerType}, Priority={Priority}", handler.GetType().Name, handler.Priority);
+        }
+    }
+
+    /// <summary>Reports an independently timed-out handler without changing timeout or continuation policy.</summary>
+    /// <param name="handler">The timed-out stage handler.</param>
+    /// <param name="timeoutMs">The configured timeout.</param>
+    private void LogHandlerTimeout(ISceneTransitionHandler handler, int timeoutMs)
+    {
+        if (_logger.IsEnabled(LogLevel.Error))
+        {
+            _logger.LogError("Handler timeout: {HandlerType}, TimeoutMs={TimeoutMs}", handler.GetType().Name, timeoutMs);
         }
     }
 }

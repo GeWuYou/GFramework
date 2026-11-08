@@ -13,7 +13,7 @@ namespace GFramework.Core.Tests.Events;
 [TestFixture]
 public class EventBusPriorityTests
 {
-    private class TestEvent
+    private sealed class TestEvent
     {
         public string Message { get; set; } = string.Empty;
     }
@@ -33,7 +33,7 @@ public class EventBusPriorityTests
         eventBus.Send(new TestEvent(), EventPropagation.All);
 
         // Assert
-        Assert.That(executionOrder, Is.EqualTo(new[] { 3, 2, 1 }));
+        Assert.That(executionOrder, Is.EqualTo([3, 2, 1]));
     }
 
     [Test]
@@ -127,7 +127,7 @@ public class EventBusPriorityTests
         eventBus.Send(new TestEvent(), EventPropagation.All);
 
         // Assert
-        Assert.That(executionOrder, Is.EqualTo(new[] { 1, 0, -1 }));
+        Assert.That(executionOrder, Is.EqualTo([1, 0, -1]));
     }
 
     [Test]
@@ -149,8 +149,8 @@ public class EventBusPriorityTests
         eventBus.Send("test", EventPropagation.All);
 
         // Assert
-        Assert.That(event1Order, Is.EqualTo(new[] { 2, 1 }));
-        Assert.That(event2Order, Is.EqualTo(new[] { 20, 10 }));
+        Assert.That(event1Order, Is.EqualTo([2, 1]));
+        Assert.That(event2Order, Is.EqualTo([20, 10]));
     }
 
     [Test]
@@ -159,9 +159,9 @@ public class EventBusPriorityTests
         // Arrange
         var eventBus = new EventBus();
         var executionCount = 0;
-        Action<TestEvent> handler = _ => executionCount++;
+        void handler(TestEvent _) => executionCount++;
 
-        var unregister = eventBus.Register(handler, priority: 5);
+        var unregister = eventBus.Register((Action<TestEvent>)handler, priority: 5);
 
         // Act
         eventBus.Send(new TestEvent(), EventPropagation.All);
@@ -235,7 +235,7 @@ public class EventBusPriorityTests
         eventBus.Send(new TestEvent(), EventPropagation.All);
 
         // Assert
-        Assert.That(executionOrder, Is.EqualTo(new[] { "first", "second", "third" }));
+        Assert.That(executionOrder, Is.EqualTo(["first", "second", "third"]));
     }
 
     [Test]
@@ -260,7 +260,7 @@ public class EventBusPriorityTests
         eventBus.Send(new TestEvent(), EventPropagation.UntilHandled);
 
         // Assert
-        Assert.That(executionOrder, Is.EqualTo(new[] { 1 }));
+        Assert.That(executionOrder, Is.EqualTo([1]));
     }
 
     [Test]
@@ -277,7 +277,7 @@ public class EventBusPriorityTests
         eventBus.Send(new TestEvent(), EventPropagation.UntilHandled);
 
         // Assert
-        Assert.That(executionOrder, Is.EqualTo(new[] { 1, 2 }));
+        Assert.That(executionOrder, Is.EqualTo([1, 2]));
     }
 
     [Test]
@@ -315,7 +315,7 @@ public class EventBusPriorityTests
         eventBus.Send(new TestEvent(), EventPropagation.UntilHandled);
 
         // Assert
-        Assert.That(executionOrder, Is.EqualTo(new[] { 3 }));
+        Assert.That(executionOrder, Is.EqualTo([3]));
     }
 
     [Test]

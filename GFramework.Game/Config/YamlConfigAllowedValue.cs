@@ -4,7 +4,7 @@
 namespace GFramework.Game.Config;
 
 /// <summary>
-///     表示一个节点上声明的单个 <c>enum</c> 候选值。
+///     表示一个节点上声明的单个 <c language="json">enum</c> 候选值。
 ///     该模型同时保留稳定比较键与原始 JSON 文本，分别供运行时匹配和诊断输出复用。
 /// </summary>
 internal sealed class YamlConfigAllowedValue
@@ -33,10 +33,16 @@ internal sealed class YamlConfigAllowedValue
     /// <summary>
     ///     获取用于运行时比较的稳定键。
     /// </summary>
-    public string ComparableValue { get; }
+    public string ComparableValue
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取用于诊断输出的原始 JSON 文本。
     /// </summary>
-    public string DisplayValue { get; }
+    public string DisplayValue
+    {
+        get;
+    }
 }

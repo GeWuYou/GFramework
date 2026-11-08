@@ -33,7 +33,7 @@ public class LogEntryTests
     [Test]
     public void Constructor_WithNullException_ShouldWork()
     {
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, Properties: null);
 
         Assert.That(entry.Exception, Is.Null);
     }
@@ -41,7 +41,7 @@ public class LogEntryTests
     [Test]
     public void Constructor_WithNullProperties_ShouldWork()
     {
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, Properties: null);
 
         Assert.That(entry.Properties, Is.Null);
     }
@@ -49,7 +49,7 @@ public class LogEntryTests
     [Test]
     public void GetAllProperties_WithNoProperties_ShouldReturnEmpty()
     {
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, Properties: null);
 
         var allProps = entry.GetAllProperties();
 
@@ -60,7 +60,7 @@ public class LogEntryTests
     public void GetAllProperties_WithProperties_ShouldReturnOnlyProperties()
     {
         var properties = new Dictionary<string, object?>(StringComparer.Ordinal) { ["PropKey"] = "PropValue" };
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, properties);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, properties);
 
         var allProps = entry.GetAllProperties();
 
@@ -75,7 +75,7 @@ public class LogEntryTests
     public void GetAllProperties_WithEmptyProperties_ShouldReturnEmpty()
     {
         var properties = new Dictionary<string, object?>(StringComparer.Ordinal);
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, properties);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, properties);
 
         var allProps = entry.GetAllProperties();
 
@@ -88,8 +88,8 @@ public class LogEntryTests
         var timestamp = DateTime.UtcNow;
         var properties = new Dictionary<string, object?>(StringComparer.Ordinal) { ["Key1"] = "Value1" };
 
-        var entry1 = new LogEntry(timestamp, LogLevel.Information, "TestLogger", "Test message", null, properties);
-        var entry2 = new LogEntry(timestamp, LogLevel.Information, "TestLogger", "Test message", null, properties);
+        var entry1 = new LogEntry(timestamp, LogLevel.Information, "TestLogger", "Test message", Exception: null, properties);
+        var entry2 = new LogEntry(timestamp, LogLevel.Information, "TestLogger", "Test message", Exception: null, properties);
 
         Assert.That(entry1, Is.EqualTo(entry2));
     }
@@ -99,8 +99,8 @@ public class LogEntryTests
     {
         var timestamp = DateTime.UtcNow;
 
-        var entry1 = new LogEntry(timestamp, LogLevel.Information, "TestLogger", "Test message 1", null, null);
-        var entry2 = new LogEntry(timestamp, LogLevel.Information, "TestLogger", "Test message 2", null, null);
+        var entry1 = new LogEntry(timestamp, LogLevel.Information, "TestLogger", "Test message 1", Exception: null, Properties: null);
+        var entry2 = new LogEntry(timestamp, LogLevel.Information, "TestLogger", "Test message 2", Exception: null, Properties: null);
 
         Assert.That(entry1, Is.Not.EqualTo(entry2));
     }

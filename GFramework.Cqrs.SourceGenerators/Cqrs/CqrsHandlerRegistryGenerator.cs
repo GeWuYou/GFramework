@@ -51,7 +51,7 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         "Cannot generate CQRS handler registry because fallback metadata is required for handler(s): {0}, but runtime contract '{1}' is unavailable",
         "GFramework.Cqrs.SourceGenerators",
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -121,7 +121,7 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
     {
         return node is TypeDeclarationSyntax
         {
-            BaseList.Types.Count: > 0
+            BaseList.Types.Count: > 0,
         };
     }
 
@@ -151,10 +151,9 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
     /// <returns>可由 CQRS 注册器生成器处理的 handler 接口集合。</returns>
     private static ImmutableArray<INamedTypeSymbol> GetSupportedHandlerInterfaces(INamedTypeSymbol type)
     {
-        return type.AllInterfaces
+        return [.. type.AllInterfaces
             .Where(IsSupportedHandlerInterface)
-            .OrderBy(GetTypeSortKey, StringComparer.Ordinal)
-            .ToImmutableArray();
+            .OrderBy(GetTypeSortKey, StringComparer.Ordinal)];
     }
 
     /// <summary>
@@ -503,7 +502,7 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
     {
         var fallbackCandidates = CollectFallbackCandidates(registrations);
         if (fallbackCandidates.Count == 0)
-            return new ReflectionFallbackEmissionSpec(ImmutableArray<ReflectionFallbackAttributeEmissionSpec>.Empty);
+            return new ReflectionFallbackEmissionSpec([]);
 
         var fallbackHandlerTypeMetadataNames = GetSortedFallbackMetadataNames(fallbackCandidates);
         var fallbackHandlerTypeDisplayNames = GetSortedDirectFallbackDisplayNames(fallbackCandidates);
@@ -554,9 +553,7 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
     private static ImmutableArray<string> GetSortedFallbackMetadataNames(
         IReadOnlyDictionary<string, string?> fallbackCandidates)
     {
-        return fallbackCandidates.Keys
-            .OrderBy(static metadataName => metadataName, StringComparer.Ordinal)
-            .ToImmutableArray();
+        return [.. fallbackCandidates.Keys.OrderBy(static metadataName => metadataName, StringComparer.Ordinal)];
     }
 
     /// <summary>
@@ -565,11 +562,10 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
     private static ImmutableArray<string> GetSortedDirectFallbackDisplayNames(
         IReadOnlyDictionary<string, string?> fallbackCandidates)
     {
-        return fallbackCandidates.Values
+        return [.. fallbackCandidates.Values
             .Where(static typeDisplayName => !string.IsNullOrWhiteSpace(typeDisplayName))
             .Cast<string>()
-            .OrderBy(static typeDisplayName => typeDisplayName, StringComparer.Ordinal)
-            .ToImmutableArray();
+            .OrderBy(static typeDisplayName => typeDisplayName, StringComparer.Ordinal)];
     }
 
     /// <summary>
@@ -588,7 +584,7 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                 [
                     new ReflectionFallbackAttributeEmissionSpec(
                         EmitDirectTypeReferences: true,
-                        fallbackHandlerTypeDisplayNames)
+                        fallbackHandlerTypeDisplayNames),
                 ]);
             return true;
         }
@@ -634,7 +630,7 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                     fallbackHandlerTypeDisplayNames),
                 new ReflectionFallbackAttributeEmissionSpec(
                     EmitDirectTypeReferences: false,
-                    namedOnlyFallbackMetadataNames)
+                    namedOnlyFallbackMetadataNames),
             ]);
         return true;
     }
@@ -649,7 +645,7 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             [
                 new ReflectionFallbackAttributeEmissionSpec(
                     EmitDirectTypeReferences: false,
-                    fallbackHandlerTypeMetadataNames)
+                    fallbackHandlerTypeMetadataNames),
             ]);
     }
 

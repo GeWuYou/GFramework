@@ -156,7 +156,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider locationProvider, 
             if (!_migrations.TryAdd((migration.SettingsType, migration.FromVersion), migration))
             {
                 throw new InvalidOperationException(
-                    $"Duplicate settings migration registration for {migration.SettingsType.Name} from version {migration.FromVersion}.");
+                    string.Create(CultureInfo.InvariantCulture, $"Duplicate settings migration registration for {migration.SettingsType.Name} from version {migration.FromVersion}."));
             }
 
             _migrationCache.TryRemove(migration.SettingsType, out _);
@@ -372,13 +372,13 @@ public class SettingsModel<TRepository>(IDataLocationProvider locationProvider, 
         if (migrated is not ISettingsData migratedData)
         {
             throw new InvalidOperationException(
-                $"Settings migration for {migration.SettingsType.Name} from version {fromVersion} must return {nameof(ISettingsData)}.");
+                string.Create(CultureInfo.InvariantCulture, $"Settings migration for {migration.SettingsType.Name} from version {fromVersion} must return {nameof(ISettingsData)}."));
         }
 
         if (!migration.SettingsType.IsInstanceOfType(migratedData))
         {
             throw new InvalidOperationException(
-                $"Settings migration for {migration.SettingsType.Name} from version {fromVersion} returned incompatible data type {migratedData.GetType().Name}.");
+                string.Create(CultureInfo.InvariantCulture, $"Settings migration for {migration.SettingsType.Name} from version {fromVersion} returned incompatible data type {migratedData.GetType().Name}."));
         }
 
         return migratedData;

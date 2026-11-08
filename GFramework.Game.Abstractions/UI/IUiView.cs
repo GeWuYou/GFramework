@@ -10,7 +10,10 @@ namespace GFramework.Game.Abstractions.UI;
 public interface IUiView : IAsyncDisposable
 {
     /// <summary>Gets whether the underlying view remains valid.</summary>
-    bool IsAlive { get; }
+    bool IsAlive
+    {
+        get;
+    }
     /// <summary>Prepares a mounted, hidden view before state is committed.</summary>
     /// <param name="cancellationToken">Cancellation of preparation.</param>
     /// <returns>Preparation completion.</returns>

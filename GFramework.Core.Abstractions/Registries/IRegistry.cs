@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Bases;
@@ -15,12 +15,18 @@ public interface IRegistry<T, Tr>
     /// <summary>
     ///     获取注册表中所有的键
     /// </summary>
-    IEnumerable<T> Keys { get; }
+    IEnumerable<T> Keys
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取注册表中项的数量
     /// </summary>
-    int Count { get; }
+    int Count
+    {
+        get;
+    }
 
     /// <summary>
     ///     根据指定的键获取对应的值

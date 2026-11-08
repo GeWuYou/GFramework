@@ -14,12 +14,12 @@ public class PriorityEvent<T> : IEvent
     /// <summary>
     ///     存储已注册的上下文事件处理器列表
     /// </summary>
-    private readonly List<ContextEventHandler> _contextHandlers = new();
+    private readonly List<ContextEventHandler> _contextHandlers = [];
 
     /// <summary>
     ///     存储已注册的事件处理器列表
     /// </summary>
-    private readonly List<EventHandler> _handlers = new();
+    private readonly List<EventHandler> _handlers = [];
 
     /// <summary>
     ///     保护处理器集合的并发访问
@@ -155,15 +155,15 @@ public class PriorityEvent<T> : IEvent
         var allHandlers = MergeAndSortHandlers(t);
         var context = new EventContext<T>(t);
 
-        foreach (var item in allHandlers)
+        foreach (var (Priority, Handler, ContextHandler, IsContext) in allHandlers)
         {
-            if (item.IsContext)
+            if (IsContext)
             {
-                item.ContextHandler?.Invoke(context);
+                ContextHandler?.Invoke(context);
             }
             else
             {
-                item.Handler?.Invoke();
+                Handler?.Invoke();
             }
         }
     }
@@ -177,17 +177,19 @@ public class PriorityEvent<T> : IEvent
         var allHandlers = MergeAndSortHandlers(t);
         var context = new EventContext<T>(t);
 
-        foreach (var item in allHandlers)
+        foreach (var (Priority, Handler, ContextHandler, IsContext) in allHandlers)
         {
-            if (item.IsContext)
+            if (IsContext)
             {
-                item.ContextHandler?.Invoke(context);
-                if (context.IsHandled) break;
+                ContextHandler?.Invoke(context);
+                if (context.IsHandled)
+                    break;
             }
             else
             {
-                item.Handler?.Invoke();
-                if (_handled) break; // 保持向后兼容
+                Handler?.Invoke();
+                if (_handled)
+                    break; // 保持向后兼容
             }
         }
     }
@@ -218,11 +220,10 @@ public class PriorityEvent<T> : IEvent
     {
         var (normalSnapshot, contextSnapshot) = CreateSnapshots();
         // 使用统一的投影方法显式固定元组的可空标注，避免 LINQ 在 Concat 时推断出不兼容的签名。
-        return normalSnapshot
+        return [.. normalSnapshot
             .Select(h => CreateNormalHandlerInvocation(h, t))
             .Concat(contextSnapshot.Select(CreateContextHandlerInvocation))
-            .OrderByDescending(h => h.Priority)
-            .ToList();
+            .OrderByDescending(h => h.Priority)];
     }
 
     /// <summary>
@@ -254,7 +255,8 @@ public class PriorityEvent<T> : IEvent
     {
         foreach (var handler in handlers)
         {
-            if (handler.Priority < highestPriority) break;
+            if (handler.Priority < highestPriority)
+                break;
             handler.Handler.Invoke(t);
         }
     }
@@ -270,7 +272,8 @@ public class PriorityEvent<T> : IEvent
         var context = new EventContext<T>(t);
         foreach (var handler in handlers)
         {
-            if (handler.Priority < highestPriority) break;
+            if (handler.Priority < highestPriority)
+                break;
             handler.Handler.Invoke(context);
         }
     }

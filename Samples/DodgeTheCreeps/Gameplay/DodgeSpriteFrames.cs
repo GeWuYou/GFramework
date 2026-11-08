@@ -29,7 +29,7 @@ internal static class DodgeSpriteFrames
     {
         2 or 6 => "up",
         0 or 1 or 3 or 4 or 5 or 7 => "walk",
-        _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Unknown player facing sector.")
+        _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Unknown player facing sector."),
     };
 
     /// <summary>Creates one of the tutorial's walking, swimming, or flying creeps.</summary>
@@ -49,7 +49,7 @@ internal static class DodgeSpriteFrames
         {
             1 => "enemySwimming",
             2 => "enemyFlyingAlt",
-            _ => "enemyWalking"
+            _ => "enemyWalking",
         };
         AddAnimation(frames, "move", 6, prefix + "_1.png", prefix + "_2.png");
         return frames;

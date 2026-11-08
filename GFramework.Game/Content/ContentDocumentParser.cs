@@ -62,13 +62,18 @@ internal static class ContentDocumentParser
         if (scalar.Style is ScalarStyle.DoubleQuoted or ScalarStyle.SingleQuoted or ScalarStyle.Literal or ScalarStyle.Folded ||
             string.Equals(tag, "tag:yaml.org,2002:str", StringComparison.Ordinal))
             return new JValue(value ?? string.Empty);
-        if (value is null or "" or "null" or "Null" or "NULL" or "~") return JValue.CreateNull();
-        if (bool.TryParse(value, out var boolean)) return new JValue(boolean);
-        if (long.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var integer)) return new JValue(integer);
-        if (decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) return new JValue(number);
+        if (value is null or "" or "null" or "Null" or "NULL" or "~")
+            return JValue.CreateNull();
+        if (bool.TryParse(value, out var boolean))
+            return new JValue(boolean);
+        if (long.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var integer))
+            return new JValue(integer);
+        if (decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+            return new JValue(number);
         if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var floating))
         {
-            if (!double.IsFinite(floating)) throw new InvalidOperationException("Non-finite content numbers are not allowed.");
+            if (!double.IsFinite(floating))
+                throw new InvalidOperationException("Non-finite content numbers are not allowed.");
             return new JValue(floating);
         }
         return new JValue(value);

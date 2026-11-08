@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using GFramework.Core.Functional.Control;
 using NUnit.Framework;
 
@@ -304,7 +305,7 @@ public class ControlExtensionsTests
     {
         // Arrange
         var counter = 0;
-        Func<int> func = () => ++counter;
+        int func() => ++counter;
 
         // Act
         var result = ControlExtensions.Retry(func, maxRetries: 3);
@@ -319,13 +320,13 @@ public class ControlExtensionsTests
     {
         // Arrange
         var counter = 0;
-        Func<int> func = () =>
+        int func()
         {
             counter++;
             if (counter < 3)
                 throw new InvalidOperationException("Not ready");
             return counter;
-        };
+        }
 
         // Act
         var result = ControlExtensions.Retry(func, maxRetries: 3);
@@ -340,11 +341,11 @@ public class ControlExtensionsTests
     {
         // Arrange
         var counter = 0;
-        Func<int> func = () =>
+        int func()
         {
             counter++;
-            throw new InvalidOperationException($"Attempt {counter}");
-        };
+            throw new InvalidOperationException(string.Create(CultureInfo.InvariantCulture, $"Attempt {counter}"));
+        }
 
         // Act & Assert
         var ex = Assert.Throws<AggregateException>(() =>
@@ -366,7 +367,7 @@ public class ControlExtensionsTests
     public void Retry_WithNegativeMaxRetries_Should_Throw_ArgumentOutOfRangeException()
     {
         // Arrange
-        Func<int> func = () => 42;
+        static int func() => 42;
 
         // Act & Assert
         Assert.Throws<ArgumentOutOfRangeException>(() =>
@@ -377,7 +378,7 @@ public class ControlExtensionsTests
     public void Retry_WithNegativeDelay_Should_Throw_ArgumentOutOfRangeException()
     {
         // Arrange
-        Func<int> func = () => 42;
+        static int func() => 42;
 
         // Act & Assert
         Assert.Throws<ArgumentOutOfRangeException>(() =>
@@ -390,13 +391,13 @@ public class ControlExtensionsTests
         // Arrange
         var counter = 0;
         var startTime = DateTime.UtcNow;
-        Func<int> func = () =>
+        int func()
         {
             counter++;
             if (counter < 3)
                 throw new InvalidOperationException("Not ready");
             return counter;
-        };
+        }
 
         // Act
         var result = ControlExtensions.Retry(func, maxRetries: 3, delayMilliseconds: 50);

@@ -22,8 +22,8 @@ public class SamplingFilterTests
             LogLevel.Information,
             "TestLogger",
             "Test message",
-            null,
-            null
+Exception: null,
+Properties: null
         );
 
         // 前 3 条：第 1 条通过，第 2、3 条被过滤
@@ -48,8 +48,8 @@ public class SamplingFilterTests
             LogLevel.Information,
             "TestLogger",
             "Test message",
-            null,
-            null
+Exception: null,
+Properties: null
         );
 
         // 第一个窗口
@@ -70,8 +70,8 @@ public class SamplingFilterTests
         var timeProvider = new FakeTimeProvider();
         var filter = new SamplingFilter(sampleRate: 2, timeWindow: TimeSpan.FromMinutes(1), timeProvider: timeProvider);
 
-        var entry1 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger1", "Message", null, null);
-        var entry2 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger2", "Message", null, null);
+        var entry1 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger1", "Message", Exception: null, Properties: null);
+        var entry2 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger2", "Message", Exception: null, Properties: null);
 
         // Logger1 的第一条
         Assert.That(filter.ShouldLog(entry1), Is.True);
@@ -93,9 +93,9 @@ public class SamplingFilterTests
         var filter = new SamplingFilter(sampleRate: 2, timeWindow: TimeSpan.FromMinutes(1), maxLoggers: 2,
             timeProvider: timeProvider);
 
-        var entry1 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger1", "Message", null, null);
-        var entry2 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger2", "Message", null, null);
-        var entry3 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger3", "Message", null, null);
+        var entry1 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger1", "Message", Exception: null, Properties: null);
+        var entry2 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger2", "Message", Exception: null, Properties: null);
+        var entry3 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger3", "Message", Exception: null, Properties: null);
 
         // Logger1 和 Logger2 各自独立
         Assert.That(filter.ShouldLog(entry1), Is.True); // Logger1: 1st
@@ -112,7 +112,7 @@ public class SamplingFilterTests
         var timeProvider = new FakeTimeProvider();
         var filter = new SamplingFilter(sampleRate: 2, timeWindow: TimeSpan.FromMinutes(1), timeProvider: timeProvider);
 
-        var entry = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "TestLogger", "Message", null, null);
+        var entry = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "TestLogger", "Message", Exception: null, Properties: null);
 
         // 使用过滤器
         filter.ShouldLog(entry);
@@ -172,7 +172,7 @@ public class SamplingFilterTests
         var timeProvider = new FakeTimeProvider();
         var filter = new SamplingFilter(sampleRate: 10, timeWindow: TimeSpan.FromMinutes(1),
             timeProvider: timeProvider);
-        var entry = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "TestLogger", "Message", null, null);
+        var entry = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "TestLogger", "Message", Exception: null, Properties: null);
 
         var passedCount = 0;
         var tasks = new List<Task>();
@@ -191,7 +191,7 @@ public class SamplingFilterTests
             }));
         }
 
-        Task.WaitAll(tasks.ToArray());
+        Task.WaitAll([.. tasks]);
 
         // 1000 条日志，采样率 10，应该通过约 100 条
         Assert.That(passedCount, Is.InRange(90, 110));

@@ -13,14 +13,21 @@ namespace GFramework.Core.Coroutine.Extensions;
 /// <remarks>
 ///     使用显式枚举器代替迭代器 finally，保证开始前释放、异常和取消路径行为一致。
 ///     多个资源释放失败会汇总，避免后续资源因前一个异常而泄漏。
+///     当前持有的任一枚举器取消时终止整个组合；自然结束的组件在释放前解除取消关联，后续取消不影响剩余步骤。
+///     取消回调只操作托管令牌源，不访问宿主或调度器。
 /// </remarks>
-internal sealed class OwnedCoroutineEnumerator : IEnumerator<IYieldInstruction>, ICoroutineCompletionStatusSource
+internal sealed class OwnedCoroutineEnumerator : IEnumerator<IYieldInstruction>, ICoroutineCompletionStatusSource,
+    ICoroutineCancellationSource
 {
     private readonly IEnumerator<IYieldInstruction>?[] _coroutines;
     private Action? _onCompleted;
     private IYieldInstruction? _current;
     private int _index;
     private bool _disposed;
+    private bool _cancellationInitialized;
+    private CancellationTokenSource? _cancellation;
+    private CancellationToken _cancellationToken;
+    private CancellationTokenRegistration[]? _registrations;
     private CoroutineCompletionStatus _terminalStatus;
 
     /// <summary>
@@ -52,6 +59,19 @@ internal sealed class OwnedCoroutineEnumerator : IEnumerator<IYieldInstruction>,
     /// </summary>
     CoroutineCompletionStatus ICoroutineCompletionStatusSource.CompletionStatus => _terminalStatus;
 
+    /// <summary>按需链接当前持有枚举器的生命周期；普通组合不分配取消令牌源。</summary>
+    public CancellationToken CancellationToken
+    {
+        get
+        {
+            if (!_cancellationInitialized && !_disposed)
+            {
+                BindOwnedCancellation();
+            }
+            return _cancellationToken;
+        }
+    }
+
     /// <inheritdoc />
     public bool MoveNext()
     {
@@ -62,33 +82,23 @@ internal sealed class OwnedCoroutineEnumerator : IEnumerator<IYieldInstruction>,
 
         try
         {
+            _ = CancellationToken;
             while (_index < _coroutines.Length)
             {
+                ThrowIfCancelled();
                 var coroutine = _coroutines[_index]!;
                 if (coroutine.MoveNext())
                 {
                     _current = coroutine.Current;
                     return true;
                 }
-
-                // 先解除本地所有权再调用外部 Dispose，避免异常后的收尾重复释放。
-                _coroutines[_index++] = null;
-                try
-                {
-                    coroutine.Dispose();
-                }
-                catch
-                {
-                    // 清理异常始终是失败，即使用户 Dispose 抛出的异常类型表示取消。
-                    _terminalStatus = CoroutineCompletionStatus.Faulted;
-                    throw;
-                }
+                ThrowCleanupFailure(ReleaseComponent(_index++));
             }
-
-            _disposed = true;
-            _current = null;
+            // 最后一步内部的取消可能尚未由调度器出队，但此刻也不能执行成功动作。
+            ThrowIfCancelled();
             var onCompleted = _onCompleted;
-            _onCompleted = null;
+            ThrowCleanupFailure(DisposeAll());
+            _terminalStatus = CoroutineCompletionStatus.Completed;
             onCompleted?.Invoke();
             return false;
         }
@@ -96,13 +106,10 @@ internal sealed class OwnedCoroutineEnumerator : IEnumerator<IYieldInstruction>,
         {
             if (_index < _coroutines.Length
                 && _coroutines[_index] is ICoroutineCompletionStatusSource
-                {
-                    CompletionStatus: CoroutineCompletionStatus.Faulted
-                })
+                { CompletionStatus: CoroutineCompletionStatus.Faulted, })
             {
                 _terminalStatus = CoroutineCompletionStatus.Faulted;
             }
-
             ExceptionDispatchInfo.Capture(DisposeAll(exception)!).Throw();
             return false;
         }
@@ -119,11 +126,81 @@ internal sealed class OwnedCoroutineEnumerator : IEnumerator<IYieldInstruction>,
     /// </summary>
     public void Dispose()
     {
-        var exception = DisposeAll();
+        ThrowCleanupFailure(DisposeAll());
+    }
+
+    private void BindOwnedCancellation()
+    {
+        _cancellationInitialized = true;
+        for (var i = _index; i < _coroutines.Length; i++)
+        {
+            if (_coroutines[i] is not ICoroutineCancellationSource source)
+            {
+                continue;
+            }
+            var token = source.CancellationToken;
+            if (!token.CanBeCanceled)
+            {
+                continue;
+            }
+            if (_cancellation == null)
+            {
+                _cancellation = new CancellationTokenSource();
+                _cancellationToken = _cancellation.Token;
+                _registrations = new CancellationTokenRegistration[_coroutines.Length];
+            }
+            _registrations![i] = token.Register(_cancellation.Cancel);
+        }
+    }
+
+    private void ThrowIfCancelled()
+    {
+        if (_cancellationToken.IsCancellationRequested)
+        {
+            _terminalStatus = CoroutineCompletionStatus.Cancelled;
+            _cancellationToken.ThrowIfCancellationRequested();
+        }
+    }
+
+    private void ThrowCleanupFailure(Exception? exception)
+    {
         if (exception != null)
         {
+            // 清理异常始终是失败，即使用户 Dispose 抛出的异常类型表示取消。
+            _terminalStatus = CoroutineCompletionStatus.Faulted;
             ExceptionDispatchInfo.Capture(exception).Throw();
         }
+    }
+
+    private Exception? ReleaseComponent(int index)
+    {
+        // 先解除本地所有权再调用外部 Dispose，避免异常后的收尾重复释放。
+        var coroutine = _coroutines[index];
+        _coroutines[index] = null;
+        Exception? failure = null;
+        if (_registrations != null)
+        {
+            var registration = _registrations[index];
+            _registrations[index] = default;
+            try
+            {
+                // 组件释放可能终结自己的令牌；先解除关联，避免误取消后续组件。
+                registration.Dispose();
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+        }
+        try
+        {
+            coroutine?.Dispose();
+        }
+        catch (Exception exception)
+        {
+            failure = failure == null ? exception : new AggregateException(failure, exception);
+        }
+        return failure;
     }
 
     /// <summary>
@@ -131,35 +208,40 @@ internal sealed class OwnedCoroutineEnumerator : IEnumerator<IYieldInstruction>,
     /// </summary>
     private Exception? DisposeAll(Exception? primaryException = null)
     {
+        if (_disposed)
+        {
+            return primaryException;
+        }
         _disposed = true;
         _current = null;
         _onCompleted = null;
-        List<Exception>? exceptions = primaryException == null ? null : new List<Exception> { primaryException };
+        List<Exception>? exceptions = primaryException == null ? null : [primaryException];
         for (var i = 0; i < _coroutines.Length; i++)
         {
-            var coroutine = _coroutines[i];
-            _coroutines[i] = null;
-            if (coroutine == null)
-            {
-                continue;
-            }
-
-            try
-            {
-                coroutine.Dispose();
-            }
-            catch (Exception exception)
+            var failure = ReleaseComponent(i);
+            if (failure != null)
             {
                 _terminalStatus = CoroutineCompletionStatus.Faulted;
-                (exceptions ??= new List<Exception>()).Add(exception);
+                (exceptions ??= []).Add(failure);
             }
         }
-
+        var cancellation = _cancellation;
+        _cancellation = null;
+        _registrations = null;
+        try
+        {
+            cancellation?.Dispose();
+        }
+        catch (Exception exception)
+        {
+            _terminalStatus = CoroutineCompletionStatus.Faulted;
+            (exceptions ??= []).Add(exception);
+        }
         return exceptions?.Count switch
         {
             null or 0 => null,
             1 => exceptions[0],
-            _ => new AggregateException(exceptions)
+            _ => new AggregateException(exceptions),
         };
     }
 }

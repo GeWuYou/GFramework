@@ -13,6 +13,15 @@ namespace GFramework.SourceGenerators.Tests.Logging;
 [TestFixture]
 public class LoggerGeneratorSnapshotTests
 {
+    /// <summary>Keep this suite on the supported consumer compiler baseline instead of silently validating only a newer driver.</summary>
+    [Test]
+    public void GeneratorTests_RunOnSupportedRoslynBaseline()
+    {
+        var version = typeof(Microsoft.CodeAnalysis.Compilation).Assembly.GetName().Version!;
+        Assert.That(version.Major, Is.EqualTo(4));
+        Assert.That(version.Minor, Is.EqualTo(14));
+    }
+
     /// <summary>
     ///     验证默认配置下的类日志属性快照。
     /// </summary>
@@ -203,14 +212,12 @@ public class LoggerGeneratorSnapshotTests
                      {{logAttributeLine}}
                      {{classDeclaration}}
                      {
-                         // 模拟 ContextAwareBase 的受保护上下文访问，供生成代码引用。
-                         private GFramework.Core.Abstractions.Architectures.IArchitectureContext Context => null!;
-
-                         public void SetContext(GFramework.Core.Abstractions.Architectures.IArchitectureContext context)
+                         // 仅显式实现契约，不提供额外 Context 属性，防止生成器依赖基类实现细节。
+                         void GFramework.Core.Abstractions.Rule.IContextAware.SetContext(GFramework.Core.Abstractions.Architectures.IArchitectureContext context)
                          {
                          }
 
-                         public GFramework.Core.Abstractions.Architectures.IArchitectureContext GetContext() => Context;
+                         GFramework.Core.Abstractions.Architectures.IArchitectureContext GFramework.Core.Abstractions.Rule.IContextAware.GetContext() => null!;
                      }
                  }
                  """;

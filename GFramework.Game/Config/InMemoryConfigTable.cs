@@ -16,7 +16,7 @@ public sealed class InMemoryConfigTable<TKey, TValue> : IConfigTable<TKey, TValu
     where TKey : notnull
 {
     private readonly IReadOnlyCollection<TValue> _allValues;
-    private readonly IReadOnlyDictionary<TKey, TValue> _entries;
+    private readonly ReadOnlyDictionary<TKey, TValue> _entries;
 
     /// <summary>
     ///     使用配置项序列和主键选择器创建内存配置表。

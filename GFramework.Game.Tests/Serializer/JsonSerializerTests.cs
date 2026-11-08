@@ -17,7 +17,7 @@ public sealed class JsonSerializerTests
         var original = new PlayerStateStub
         {
             Name = "Player1",
-            Level = 7
+            Level = 7,
         };
 
         var json = serializer.Serialize(original);
@@ -36,13 +36,13 @@ public sealed class JsonSerializerTests
         var serializer = new GameJsonSerializer(new JsonSerializerSettings
         {
             Formatting = Formatting.Indented,
-            NullValueHandling = NullValueHandling.Ignore
+            NullValueHandling = NullValueHandling.Ignore,
         });
 
         var json = serializer.Serialize(new OptionalStateStub
         {
             Name = "Configured",
-            Description = null
+            Description = null,
         });
 
         Assert.Multiple(() =>
@@ -106,7 +106,7 @@ public sealed class JsonSerializerTests
 
         var exception =
             Assert.Throws<InvalidOperationException>(() =>
-                serializer.Deserialize("{invalid json}", typeof(PlayerStateStub)));
+                serializer.Deserialize<PlayerStateStub>("{invalid json}"));
 
         Assert.Multiple(() =>
         {
@@ -121,7 +121,7 @@ public sealed class JsonSerializerTests
     {
         var serializer = new GameJsonSerializer();
 
-        var restored = serializer.Deserialize("{\"Name\":\"Runtime\",\"Level\":11}", typeof(PlayerStateStub));
+        var restored = serializer.Deserialize<PlayerStateStub>("{\"Name\":\"Runtime\",\"Level\":11}");
 
         Assert.That(restored, Is.TypeOf<PlayerStateStub>());
         Assert.That(((PlayerStateStub)restored).Level, Is.EqualTo(11));
@@ -151,28 +151,40 @@ public sealed class JsonSerializerTests
     {
         public string Name { get; set; } = string.Empty;
 
-        public int Level { get; set; }
+        public int Level
+        {
+            get; set;
+        }
     }
 
     private sealed class OptionalStateStub
     {
         public string Name { get; set; } = string.Empty;
 
-        public string? Description { get; set; }
+        public string? Description
+        {
+            get; set;
+        }
     }
 
     private sealed class CoordinateStub
     {
-        public int X { get; set; }
+        public int X
+        {
+            get; set;
+        }
 
-        public int Y { get; set; }
+        public int Y
+        {
+            get; set;
+        }
     }
 
     private sealed class CoordinateStubConverter : JsonConverter<CoordinateStub>
     {
         public override void WriteJson(JsonWriter writer, CoordinateStub? value, JsonSerializer serializer)
         {
-            writer.WriteValue($"{value?.X}:{value?.Y}");
+            writer.WriteValue(string.Create(CultureInfo.InvariantCulture, $"{value?.X}:{value?.Y}"));
         }
 
         public override CoordinateStub ReadJson(
@@ -187,7 +199,7 @@ public sealed class JsonSerializerTests
             return new CoordinateStub
             {
                 X = int.Parse(parts[0], CultureInfo.InvariantCulture),
-                Y = int.Parse(parts[1], CultureInfo.InvariantCulture)
+                Y = int.Parse(parts[1], CultureInfo.InvariantCulture),
             };
         }
     }

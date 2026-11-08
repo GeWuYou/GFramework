@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using System.IO;
 using GFramework.Godot.SourceGenerators.Diagnostics;
 using GFramework.SourceGenerators.Common.Constants;
@@ -159,7 +160,7 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
             {
                 if (!implicitCandidates.TryGetValue(typeSymbol.Name, out var implicitList))
                 {
-                    implicitList = new List<INamedTypeSymbol>();
+                    implicitList = [];
                     implicitCandidates.Add(typeSymbol.Name, implicitList);
                 }
 
@@ -193,7 +194,7 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
 
             if (!explicitMappings.TryGetValue(autoLoadName, out var explicitList))
             {
-                explicitList = new List<INamedTypeSymbol>();
+                explicitList = [];
                 explicitMappings.Add(autoLoadName, explicitList);
             }
 
@@ -350,7 +351,7 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
             originalName,
             baseIdentifier));
 
-        return $"{baseIdentifier}_{count}";
+        return $"{baseIdentifier}_{count.ToString(CultureInfo.InvariantCulture)}";
     }
 
     private static INamedTypeSymbol[] DistinctTypeSymbols(IEnumerable<INamedTypeSymbol> types)
@@ -359,13 +360,13 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
 
         foreach (var type in types)
         {
-            if (results.Any(existing => SymbolEqualityComparer.Default.Equals(existing, type)))
+            if (results.Exists(existing => SymbolEqualityComparer.Default.Equals(existing, type)))
                 continue;
 
             results.Add(type);
         }
 
-        return results.ToArray();
+        return [.. results];
     }
 
     private static string SanitizeIdentifier(
@@ -453,19 +454,16 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
         GeneratedAutoLoadMember member)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine($"    ///     获取 AutoLoad <c>{member.AutoLoadName}</c>。");
+        builder.Append("    ///     获取 AutoLoad <c>").Append(member.AutoLoadName).AppendLine("</c>。");
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine(
-            $"    public static {member.TypeName} {member.Identifier} => GetRequiredNode<{member.TypeName}>({SymbolDisplay.FormatLiteral(member.AutoLoadName, true)});");
+        builder.Append("    public static ").Append(member.TypeName).Append(' ').Append(member.Identifier).Append(" => GetRequiredNode<").Append(member.TypeName).Append(">(").Append(SymbolDisplay.FormatLiteral(member.AutoLoadName, quote: true)).AppendLine(");");
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine($"    ///     尝试获取 AutoLoad <c>{member.AutoLoadName}</c>。");
+        builder.Append("    ///     尝试获取 AutoLoad <c>").Append(member.AutoLoadName).AppendLine("</c>。");
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine(
-            $"    public static bool TryGet{member.Identifier}(out {member.TypeName}? value)");
+        builder.Append("    public static bool TryGet").Append(member.Identifier).Append("(out ").Append(member.TypeName).AppendLine("? value)");
         builder.AppendLine("    {");
-        builder.AppendLine(
-            $"        return TryGetNode({SymbolDisplay.FormatLiteral(member.AutoLoadName, true)}, out value);");
+        builder.Append("        return TryGetNode(").Append(SymbolDisplay.FormatLiteral(member.AutoLoadName, quote: true)).AppendLine(", out value);");
         builder.AppendLine("    }");
         builder.AppendLine();
     }
@@ -539,10 +537,9 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
         foreach (var member in members)
         {
             builder.AppendLine("    /// <summary>");
-            builder.AppendLine($"    ///     Input Action <c>{member.ActionName}</c> 的稳定名称。");
+            builder.Append("    ///     Input Action <c>").Append(member.ActionName).AppendLine("</c> 的稳定名称。");
             builder.AppendLine("    /// </summary>");
-            builder.AppendLine(
-                $"    public const string {member.Identifier} = {SymbolDisplay.FormatLiteral(member.ActionName, true)};");
+            builder.Append("    public const string ").Append(member.Identifier).Append(" = ").Append(SymbolDisplay.FormatLiteral(member.ActionName, quote: true)).Append(';').AppendLine();
             builder.AppendLine();
         }
 
@@ -559,9 +556,9 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
         {
             return new ProjectMetadataParseResult(
                 file.Path,
-                ImmutableArray<ProjectAutoLoadEntry>.Empty,
-                ImmutableArray<string>.Empty,
-                ImmutableArray<Diagnostic>.Empty);
+                [],
+                [],
+                []);
         }
 
         var currentSection = string.Empty;
@@ -591,9 +588,9 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
 
         return new ProjectMetadataParseResult(
             file.Path,
-            autoLoads.ToImmutableArray(),
-            inputActions.ToImmutableArray(),
-            diagnostics.ToImmutableArray());
+            [.. autoLoads],
+            [.. inputActions],
+            [.. diagnostics]);
     }
 
     private static bool TryUpdateSection(string content, ref string currentSection)
@@ -698,165 +695,136 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
             new LinePositionSpan(new LinePosition(0, 0), new LinePosition(0, 0)));
     }
 
-    private sealed class GodotTypeCandidate
+    /// <summary>
+    ///     创建一个类型候选。
+    /// </summary>
+    /// <param name="classDeclaration">类型语法节点。</param>
+    /// <param name="typeSymbol">类型符号。</param>
+    private sealed class GodotTypeCandidate(
+        ClassDeclarationSyntax classDeclaration,
+        INamedTypeSymbol typeSymbol)
     {
-        /// <summary>
-        ///     创建一个类型候选。
-        /// </summary>
-        /// <param name="classDeclaration">类型语法节点。</param>
-        /// <param name="typeSymbol">类型符号。</param>
-        public GodotTypeCandidate(
-            ClassDeclarationSyntax classDeclaration,
-            INamedTypeSymbol typeSymbol)
-        {
-            ClassDeclaration = classDeclaration;
-            TypeSymbol = typeSymbol;
-        }
 
         /// <summary>
         ///     获取类型声明语法。
         /// </summary>
-        public ClassDeclarationSyntax ClassDeclaration { get; }
+        public ClassDeclarationSyntax ClassDeclaration { get; } = classDeclaration;
 
         /// <summary>
         ///     获取类型符号。
         /// </summary>
-        public INamedTypeSymbol TypeSymbol { get; }
+        public INamedTypeSymbol TypeSymbol { get; } = typeSymbol;
     }
 
-    private sealed class ProjectAutoLoadEntry
+    /// <summary>
+    ///     初始化 AutoLoad 条目。
+    /// </summary>
+    /// <param name="name">AutoLoad 名称。</param>
+    /// <param name="resourcePath">资源路径。</param>
+    private sealed class ProjectAutoLoadEntry(
+        string name,
+        string resourcePath)
     {
-        /// <summary>
-        ///     初始化 AutoLoad 条目。
-        /// </summary>
-        /// <param name="name">AutoLoad 名称。</param>
-        /// <param name="resourcePath">资源路径。</param>
-        public ProjectAutoLoadEntry(
-            string name,
-            string resourcePath)
-        {
-            Name = name;
-            ResourcePath = resourcePath;
-        }
 
         /// <summary>
         ///     获取 AutoLoad 名称。
         /// </summary>
-        public string Name { get; }
+        public string Name { get; } = name;
 
         /// <summary>
         ///     获取资源路径。
         /// </summary>
-        public string ResourcePath { get; }
+        public string ResourcePath { get; } = resourcePath;
     }
 
-    private sealed class GeneratedAutoLoadMember
+    /// <summary>
+    ///     初始化一个生成后的 AutoLoad 成员描述。
+    /// </summary>
+    /// <param name="autoLoadName">原始 AutoLoad 名称。</param>
+    /// <param name="identifier">生成后的标识符。</param>
+    /// <param name="typeName">类型名。</param>
+    /// <param name="resourcePath">资源路径。</param>
+    private sealed class GeneratedAutoLoadMember(
+        string autoLoadName,
+        string identifier,
+        string typeName,
+        string resourcePath)
     {
-        /// <summary>
-        ///     初始化一个生成后的 AutoLoad 成员描述。
-        /// </summary>
-        /// <param name="autoLoadName">原始 AutoLoad 名称。</param>
-        /// <param name="identifier">生成后的标识符。</param>
-        /// <param name="typeName">类型名。</param>
-        /// <param name="resourcePath">资源路径。</param>
-        public GeneratedAutoLoadMember(
-            string autoLoadName,
-            string identifier,
-            string typeName,
-            string resourcePath)
-        {
-            AutoLoadName = autoLoadName;
-            Identifier = identifier;
-            TypeName = typeName;
-            ResourcePath = resourcePath;
-        }
 
         /// <summary>
         ///     获取原始 AutoLoad 名称。
         /// </summary>
-        public string AutoLoadName { get; }
+        public string AutoLoadName { get; } = autoLoadName;
 
         /// <summary>
         ///     获取生成后的标识符。
         /// </summary>
-        public string Identifier { get; }
+        public string Identifier { get; } = identifier;
 
         /// <summary>
         ///     获取类型名。
         /// </summary>
-        public string TypeName { get; }
+        public string TypeName { get; } = typeName;
 
         /// <summary>
         ///     获取资源路径。
         /// </summary>
-        public string ResourcePath { get; }
+        public string ResourcePath { get; } = resourcePath;
     }
 
-    private sealed class GeneratedInputActionMember
+    /// <summary>
+    ///     初始化一个生成后的 Input Action 成员描述。
+    /// </summary>
+    /// <param name="actionName">原始动作名。</param>
+    /// <param name="identifier">生成后的标识符。</param>
+    private sealed class GeneratedInputActionMember(
+        string actionName,
+        string identifier)
     {
-        /// <summary>
-        ///     初始化一个生成后的 Input Action 成员描述。
-        /// </summary>
-        /// <param name="actionName">原始动作名。</param>
-        /// <param name="identifier">生成后的标识符。</param>
-        public GeneratedInputActionMember(
-            string actionName,
-            string identifier)
-        {
-            ActionName = actionName;
-            Identifier = identifier;
-        }
 
         /// <summary>
         ///     获取原始动作名。
         /// </summary>
-        public string ActionName { get; }
+        public string ActionName { get; } = actionName;
 
         /// <summary>
         ///     获取生成后的标识符。
         /// </summary>
-        public string Identifier { get; }
+        public string Identifier { get; } = identifier;
     }
 
-    private sealed class ProjectMetadataParseResult
+    /// <summary>
+    ///     初始化一个项目元数据解析结果。
+    /// </summary>
+    /// <param name="filePath">项目文件路径。</param>
+    /// <param name="autoLoads">AutoLoad 条目。</param>
+    /// <param name="inputActions">Input Action 条目。</param>
+    /// <param name="diagnostics">解析过程中的诊断。</param>
+    private sealed class ProjectMetadataParseResult(
+        string filePath,
+        ImmutableArray<GodotProjectMetadataGenerator.ProjectAutoLoadEntry> autoLoads,
+        ImmutableArray<string> inputActions,
+        ImmutableArray<Diagnostic> diagnostics)
     {
-        /// <summary>
-        ///     初始化一个项目元数据解析结果。
-        /// </summary>
-        /// <param name="filePath">项目文件路径。</param>
-        /// <param name="autoLoads">AutoLoad 条目。</param>
-        /// <param name="inputActions">Input Action 条目。</param>
-        /// <param name="diagnostics">解析过程中的诊断。</param>
-        public ProjectMetadataParseResult(
-            string filePath,
-            ImmutableArray<ProjectAutoLoadEntry> autoLoads,
-            ImmutableArray<string> inputActions,
-            ImmutableArray<Diagnostic> diagnostics)
-        {
-            FilePath = filePath;
-            AutoLoads = autoLoads;
-            InputActions = inputActions;
-            Diagnostics = diagnostics;
-        }
 
         /// <summary>
         ///     获取项目文件路径。
         /// </summary>
-        public string FilePath { get; }
+        public string FilePath { get; } = filePath;
 
         /// <summary>
         ///     获取 AutoLoad 条目。
         /// </summary>
-        public ImmutableArray<ProjectAutoLoadEntry> AutoLoads { get; }
+        public ImmutableArray<ProjectAutoLoadEntry> AutoLoads { get; } = autoLoads;
 
         /// <summary>
         ///     获取 Input Action 条目。
         /// </summary>
-        public ImmutableArray<string> InputActions { get; }
+        public ImmutableArray<string> InputActions { get; } = inputActions;
 
         /// <summary>
         ///     获取解析过程中的诊断。
         /// </summary>
-        public ImmutableArray<Diagnostic> Diagnostics { get; }
+        public ImmutableArray<Diagnostic> Diagnostics { get; } = diagnostics;
     }
 }

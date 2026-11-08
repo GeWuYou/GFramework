@@ -9,6 +9,4 @@ namespace GFramework.Core.Tests.Rule;
 ///     由真实生成器补齐上下文访问，用于验证消费项目中的生成行为。
 /// </summary>
 [ContextAware]
-public partial class GeneratedContextAwareProbe
-{
-}
+public partial class GeneratedContextAwareProbe;

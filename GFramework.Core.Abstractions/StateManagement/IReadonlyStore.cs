@@ -17,7 +17,10 @@ public interface IReadonlyStore<out TState>
     ///     获取当前状态快照。
     ///     Store 负责保证返回值与最近一次成功分发后的状态一致。
     /// </summary>
-    TState State { get; }
+    TState State
+    {
+        get;
+    }
 
     /// <summary>
     ///     订阅状态变化通知。

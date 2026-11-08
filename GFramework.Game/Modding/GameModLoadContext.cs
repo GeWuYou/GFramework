@@ -46,7 +46,8 @@ internal sealed class GameModLoadContext : AssemblyLoadContext
         {
             ContentPack.ValidateRelativePath(name + ".dll");
             var sibling = Path.Combine(_entryDirectory, name + ".dll");
-            if (File.Exists(sibling)) resolved = sibling;
+            if (File.Exists(sibling))
+                resolved = sibling;
         }
         if (resolved is not null)
         {
@@ -55,14 +56,16 @@ internal sealed class GameModLoadContext : AssemblyLoadContext
         }
         // A NuGet dependency can legitimately supply a newer package version of a framework library.
         // Private resolution precedes genuine platform fallback, following the standard .NET plugin pattern.
-        if (_platform.Contains(name)) return null;
+        if (_platform.Contains(name))
+            return null;
         throw new FileNotFoundException("Private mod dependency was not found inside its package, and is not explicitly shared: " + name);
     }
     /// <inheritdoc />
     protected override nint LoadUnmanagedDll(string unmanagedDllName)
     {
         var resolved = _resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
-        if (resolved is null) return nint.Zero;
+        if (resolved is null)
+            return nint.Zero;
         var relative = Path.GetRelativePath(_package.RootPath, resolved).Replace('\\', '/');
         return LoadUnmanagedDllFromPath(_package.GetFilePath(relative));
     }

@@ -274,7 +274,8 @@ public class YieldInstructionTests
 
         Assert.That(wait.IsDone, Is.False);
 
-        for (var i = 0; i < 10; i++) Assert.That(wait.IsDone, Is.False);
+        for (var i = 0; i < 10; i++)
+            Assert.That(wait.IsDone, Is.False);
 
         continueWaiting = false;
         Assert.That(wait.IsDone, Is.True);
@@ -426,7 +427,7 @@ public class YieldInstructionTests
     /// <summary>
     ///     创建简单的立即完成协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateSimpleCoroutine()
+    private static IEnumerator<IYieldInstruction> CreateSimpleCoroutine()
     {
         yield break;
     }

@@ -90,6 +90,27 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("  schedule:", codeql)
         self.assertNotIn("  pull_request:", codeql)
 
+    def test_docs_use_the_shared_pinned_bun_toolchain(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        docs = workflow.split("\n  docs:\n", 1)[1].split("\n  codeql:\n", 1)[0]
+        tool = workflow.split("\n  config-tool:\n", 1)[1].split("\n  docs:\n", 1)[0]
+        self.assertIn("npm install --global bun@1.4.4", docs)
+        self.assertNotIn("uses: oven-sh/setup-bun@", docs)
+        self.assertIn("npm install --global bun@1.4.4", tool)
+        self.assertNotIn("uses: oven-sh/setup-bun@", tool)
+        self.assertNotIn("bun-version: latest", docs)
+
+    def test_lint_errors_cannot_be_reported_as_success(self):
+        scan = (ROOT / ".github/workflows/megalinter.yml").read_text()
+        config = (ROOT / ".mega-linter.yml").read_text(encoding="utf-8-sig")
+        self.assertNotIn("continue-on-error: true", scan)
+        self.assertIn("FAIL_ON_ERROR: true", scan)
+        self.assertIn("FAIL_ON_ERROR: true", config)
+        self.assertNotIn("DISABLE_ERRORS: true", config)
+        # Drop the upstream single-depth shell glob so nested source participates in the solution scan.
+        self.assertIn('CSHARP_DOTNET_FORMAT_COMMAND_REMOVE_ARGUMENTS:\n  - "--include **/*.cs"', config)
+        self.assertIn('  - "--severity"\n  - "info"', config)
+
     def test_megalinter_reports_on_main_and_reuses_the_pr_scanner(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         scan = (ROOT / ".github/workflows/megalinter.yml").read_text()

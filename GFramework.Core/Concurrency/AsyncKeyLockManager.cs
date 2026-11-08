@@ -42,7 +42,7 @@ public sealed class AsyncKeyLockManager : IAsyncKeyLockManager
         var lockTimeoutValue = lockTimeout ?? TimeSpan.FromSeconds(300);
         _lockTimeoutMs = (long)lockTimeoutValue.TotalMilliseconds;
 
-        _cleanupTimer = new Timer(CleanupUnusedLocks, null, cleanupIntervalValue, cleanupIntervalValue);
+        _cleanupTimer = new Timer(CleanupUnusedLocks, state: null, cleanupIntervalValue, cleanupIntervalValue);
     }
 
     /// <summary>
@@ -101,7 +101,7 @@ public sealed class AsyncKeyLockManager : IAsyncKeyLockManager
             ActiveLockCount = _locks.Count,
             TotalAcquired = _totalAcquired,
             TotalReleased = _totalReleased,
-            TotalCleaned = _totalCleaned
+            TotalCleaned = _totalCleaned,
         };
     }
 
@@ -118,7 +118,7 @@ public sealed class AsyncKeyLockManager : IAsyncKeyLockManager
                 ReferenceCount = kvp.Value.ReferenceCount,
                 LastAccessTicks = kvp.Value.LastAccessTicks,
                 // CurrentCount == 0 表示锁被持有，可能有等待者（近似值）
-                WaitingCount = kvp.Value.Semaphore.CurrentCount == 0 ? 1 : 0
+                WaitingCount = kvp.Value.Semaphore.CurrentCount == 0 ? 1 : 0,
             },
             StringComparer.Ordinal);
     }
@@ -128,7 +128,8 @@ public sealed class AsyncKeyLockManager : IAsyncKeyLockManager
     /// </summary>
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
         _disposed = true;
 
         _cleanupTimer.Dispose();
@@ -147,6 +148,7 @@ public sealed class AsyncKeyLockManager : IAsyncKeyLockManager
     /// </summary>
     internal void ReleaseLock(string key, LockEntry entry)
     {
+        _ = key; // Retain the lease identity parameter without changing the existing internal release contract.
         entry.Semaphore.Release();
         Interlocked.Decrement(ref entry.ReferenceCount);
         Interlocked.Increment(ref _totalReleased);
@@ -158,7 +160,8 @@ public sealed class AsyncKeyLockManager : IAsyncKeyLockManager
     /// </summary>
     private void CleanupUnusedLocks(object? state)
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         var now = System.Environment.TickCount64;
 

@@ -36,7 +36,7 @@ public class WaitForAllCoroutinesTests
         var handles = new List<CoroutineHandle>
         {
             scheduler.Run(coroutine1),
-            scheduler.Run(coroutine2)
+            scheduler.Run(coroutine2),
         };
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
@@ -58,7 +58,7 @@ public class WaitForAllCoroutinesTests
         var handles = new List<CoroutineHandle>
         {
             scheduler.Run(coroutine1),
-            scheduler.Run(coroutine2)
+            scheduler.Run(coroutine2),
         };
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
@@ -87,7 +87,7 @@ public class WaitForAllCoroutinesTests
         {
             scheduler.Run(coroutine1),
             scheduler.Run(coroutine2),
-            scheduler.Run(coroutine3)
+            scheduler.Run(coroutine3),
         };
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
@@ -95,7 +95,8 @@ public class WaitForAllCoroutinesTests
         Assert.That(wait.IsDone, Is.False);
         Assert.That(executionCount, Is.EqualTo(0));
 
-        for (var i = 0; i < 12; i++) scheduler.Update();
+        for (var i = 0; i < 12; i++)
+            scheduler.Update();
 
         Assert.That(wait.IsDone, Is.True);
         Assert.That(executionCount, Is.EqualTo(3));
@@ -176,7 +177,7 @@ public class WaitForAllCoroutinesTests
         {
             scheduler.Run(coroutine1),
             scheduler.Run(coroutine2),
-            scheduler.Run(coroutine3)
+            scheduler.Run(coroutine3),
         };
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
@@ -202,7 +203,7 @@ public class WaitForAllCoroutinesTests
         var handles = new List<CoroutineHandle>
         {
             scheduler.Run(coroutine1),
-            scheduler.Run(coroutine2)
+            scheduler.Run(coroutine2),
         };
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
@@ -234,21 +235,23 @@ public class WaitForAllCoroutinesTests
         var handles = new List<CoroutineHandle>
         {
             scheduler.Run(coroutine1),
-            scheduler.Run(coroutine2)
+            scheduler.Run(coroutine2),
         };
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
 
         scheduler.Pause(handles[0]);
 
-        for (var i = 0; i < 12; i++) scheduler.Update();
+        for (var i = 0; i < 12; i++)
+            scheduler.Update();
 
         Assert.That(wait.IsDone, Is.False);
         Assert.That(executionCount, Is.EqualTo(1));
 
         scheduler.Resume(handles[0]);
 
-        for (var i = 0; i < 12; i++) scheduler.Update();
+        for (var i = 0; i < 12; i++)
+            scheduler.Update();
 
         Assert.That(wait.IsDone, Is.True);
         Assert.That(executionCount, Is.EqualTo(2));
@@ -303,7 +306,7 @@ public class WaitForAllCoroutinesTests
         var handles = new List<CoroutineHandle>
         {
             scheduler.Run(coroutine),
-            default
+            default,
         };
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
@@ -324,13 +327,15 @@ public class WaitForAllCoroutinesTests
         var executionCount = 0;
 
         var handles = new List<CoroutineHandle>();
-        for (var i = 0; i < 20; i++) handles.Add(scheduler.Run(CreateDelayedCoroutine(() => executionCount++, 1.0)));
+        for (var i = 0; i < 20; i++)
+            handles.Add(scheduler.Run(CreateDelayedCoroutine(() => executionCount++, 1.0)));
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
 
         Assert.That(wait.IsDone, Is.False);
 
-        for (var i = 0; i < 120; i++) scheduler.Update();
+        for (var i = 0; i < 120; i++)
+            scheduler.Update();
 
         Assert.That(wait.IsDone, Is.True);
         Assert.That(executionCount, Is.EqualTo(20));
@@ -353,7 +358,7 @@ public class WaitForAllCoroutinesTests
         {
             scheduler.Run(coroutine1),
             scheduler.Run(coroutine2),
-            scheduler.Run(coroutine3)
+            scheduler.Run(coroutine3),
         };
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
@@ -378,7 +383,7 @@ public class WaitForAllCoroutinesTests
         var coroutine3 = CreateDelayedCoroutine(() => executionOrder.Add(3), 0.5);
 
         var handle = scheduler.Run(context => context.ParallelCoroutines(coroutine1, coroutine2, coroutine3));
-        var wait = new WaitForAllCoroutines(scheduler, new[] { handle });
+        var wait = new WaitForAllCoroutines(scheduler, [handle]);
         Assert.That(wait.IsDone, Is.False);
 
         // 包装器的每次 MoveNext 必须由调度器消费其等待指令后驱动。
@@ -425,7 +430,7 @@ public class WaitForAllCoroutinesTests
         var handles = new List<CoroutineHandle>
         {
             scheduler.Run(coroutine1),
-            scheduler.Run(coroutine2)
+            scheduler.Run(coroutine2),
         };
 
         scheduler.Update();
@@ -451,7 +456,8 @@ public class WaitForAllCoroutinesTests
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
 
-        for (var i = 0; i < 12; i++) scheduler.Update();
+        for (var i = 0; i < 12; i++)
+            scheduler.Update();
 
         Assert.That(wait.IsDone, Is.True);
     }
@@ -459,7 +465,7 @@ public class WaitForAllCoroutinesTests
     /// <summary>
     ///     创建简单的立即完成协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateSimpleCoroutine()
+    private static IEnumerator<IYieldInstruction> CreateSimpleCoroutine()
     {
         yield break;
     }
@@ -467,7 +473,7 @@ public class WaitForAllCoroutinesTests
     /// <summary>
     ///     创建延迟协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateDelayedCoroutine(Action callback, double delay)
+    private static IEnumerator<IYieldInstruction> CreateDelayedCoroutine(Action callback, double delay)
     {
         yield return new Delay(delay);
         callback();
@@ -476,7 +482,7 @@ public class WaitForAllCoroutinesTests
     /// <summary>
     ///     创建抛出异常的协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateExceptionCoroutine()
+    private static IEnumerator<IYieldInstruction> CreateExceptionCoroutine()
     {
         yield return new WaitOneFrame();
         throw new InvalidOperationException("Test exception");
@@ -485,10 +491,16 @@ public class WaitForAllCoroutinesTests
     /// <summary>
     ///     测试用时间源类
     /// </summary>
-    private class TestTimeSource : ITimeSource
+    private sealed class TestTimeSource : ITimeSource
     {
-        public double CurrentTime { get; private set; }
-        public double DeltaTime { get; private set; }
+        public double CurrentTime
+        {
+            get; private set;
+        }
+        public double DeltaTime
+        {
+            get; private set;
+        }
 
         public void Update()
         {

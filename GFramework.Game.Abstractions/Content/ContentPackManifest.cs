@@ -21,15 +21,21 @@ public sealed class ContentPackManifest
     /// <summary>Gets the accepted game-owned content API version range.</summary>
     public ContentVersionRange ContentApiVersions { get; init; } = new();
     /// <summary>Gets explicitly declared dependencies.</summary>
-    public IReadOnlyList<ContentPackDependency> Dependencies { get; init; } = Array.Empty<ContentPackDependency>();
+    public IReadOnlyList<ContentPackDependency> Dependencies { get; init; } = [];
     /// <summary>Gets package IDs that must not be enabled alongside this package.</summary>
-    public IReadOnlyList<string> IncompatiblePackages { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> IncompatiblePackages { get; init; } = [];
     /// <summary>Gets package-relative YAML operation files, applied in declared order.</summary>
-    public IReadOnlyList<string> ContentFiles { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> ContentFiles { get; init; } = [];
     /// <summary>Gets package-relative PCK paths for an explicitly trusted host adapter; declaration is not trust.</summary>
-    public IReadOnlyList<string> ResourcePacks { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> ResourcePacks { get; init; } = [];
     /// <summary>Gets an optional trusted-code entrypoint, approved separately by the host.</summary>
-    public ContentCodeEntrypoint? Code { get; init; }
+    public ContentCodeEntrypoint? Code
+    {
+        get; init;
+    }
     /// <summary>Gets old package versions explicitly accepted for saves; absent means exact version and fingerprint.</summary>
-    public ContentVersionRange? SaveCompatibleVersions { get; init; }
+    public ContentVersionRange? SaveCompatibleVersions
+    {
+        get; init;
+    }
 }

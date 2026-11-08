@@ -21,7 +21,10 @@ public sealed class SaveDocument
     public SaveDataBlock Game { get; set; } = new();
 
     /// <summary>Gets or sets the effective content set, independently of game data.</summary>
-    public ContentSnapshot? Content { get; set; }
+    public ContentSnapshot? Content
+    {
+        get; set;
+    }
 
     /// <summary>Gets or sets namespaced mod payloads. Unavailable mods remain represented as plain data.</summary>
     public IDictionary<string, SaveDataBlock> Mods { get; set; } = new Dictionary<string, SaveDataBlock>(StringComparer.Ordinal);
@@ -34,6 +37,6 @@ public sealed class SaveDocument
         GameId = GameId,
         Game = Game.Clone(),
         Content = Content is null ? null : new ContentSnapshot(Content.Packs),
-        Mods = Mods.ToDictionary(static pair => pair.Key, static pair => pair.Value.Clone(), StringComparer.Ordinal)
+        Mods = Mods.ToDictionary(static pair => pair.Key, static pair => pair.Value.Clone(), StringComparer.Ordinal),
     };
 }

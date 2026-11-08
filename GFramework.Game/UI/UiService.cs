@@ -23,7 +23,7 @@ public sealed partial class UiService : IUiService
     private readonly IPauseStackManager? _pause;
     private readonly ILogger _logger;
     private readonly List<IUiGuard> _guards;
-    private readonly List<Entry> _entries = new();
+    private readonly List<Entry> _entries = [];
     private readonly AsyncLocal<bool> _executing = new();
     private readonly AsyncLocal<ActionScope?> _actionScope = new();
 #if NET9_0_OR_GREATER
@@ -35,7 +35,7 @@ public sealed partial class UiService : IUiService
     private Task? _stopTask;
     private long _nextId;
     private volatile bool _stopping;
-    private UiSnapshot _snapshot = new(Array.Empty<UiViewSnapshot>(), false, false);
+    private UiSnapshot _snapshot = new([], IsBusy: false, IsStopping: false);
 
     /// <summary>Creates an independent UI host. Dependencies are externally owned; view leases are service-owned.</summary>
     /// <param name="routes">Typed registration set copied for this service.</param>
@@ -53,7 +53,7 @@ public sealed partial class UiService : IUiService
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         _pause = pause;
         _logger = logger ?? NullLogger<UiService>.Instance;
-        _guards = guards?.ToList() ?? new List<IUiGuard>();
+        _guards = guards?.ToList() ?? [];
         if (_registrations.Values.Any(static registration => registration.Options.PauseWhileVisible) && pause is null)
             throw new ArgumentException("A pause manager is required by the registered UI pause policy.", nameof(pause));
     }
@@ -95,11 +95,15 @@ public sealed partial class UiService : IUiService
             return result;
         }, cancellationToken).ConfigureAwait(false);
         if (opened.Status == UiOperationStatus.Rejected || completion is null || handle is null)
-            return new DialogResult<TResult>(false, default);
+            return new DialogResult<TResult>(Accepted: false, default);
+
+        var registration = cancellationToken.Register(() => RequestDialogCancellation(handle.Value, cancellationToken));
 
         // Observe cancellation outside the mutation chain. Cleanup is queued, then its completion releases the waiter.
-        using var registration = cancellationToken.Register(() => RequestDialogCancellation(handle.Value, cancellationToken));
-        return await completion.Task.ConfigureAwait(false);
+        await using (registration.ConfigureAwait(false))
+        {
+            return await completion.Task.ConfigureAwait(false);
+        }
     }
 
     /// <inheritdoc />
@@ -121,7 +125,7 @@ public sealed partial class UiService : IUiService
         if (!await CanCloseAllAsync(_entries, ct).ConfigureAwait(true))
             return new UiOperationResult(UiOperationStatus.Rejected);
         var hadEntries = _entries.Count != 0;
-        await CloseAllCoreAsync(_entries.ToArray()).ConfigureAwait(true);
+        await CloseAllCoreAsync([.. _entries]).ConfigureAwait(true);
         return new UiOperationResult(hadEntries ? UiOperationStatus.Applied : UiOperationStatus.NoOp);
     }, cancellationToken);
 
@@ -158,10 +162,13 @@ public sealed partial class UiService : IUiService
         lock (_queueLock)
         {
             _stopping = true;
-            Volatile.Write(ref _snapshot, Snapshot with { IsStopping = true });
+            Volatile.Write(ref _snapshot, Snapshot with
+            {
+                IsStopping = true,
+            });
             return _stopTask ??= AppendAsync(async _ =>
             {
-                await CloseAllCoreAsync(_entries.ToArray()).ConfigureAwait(true);
+                await CloseAllCoreAsync([.. _entries]).ConfigureAwait(true);
                 return true;
             }, CancellationToken.None);
         }
@@ -189,7 +196,7 @@ public sealed partial class UiService : IUiService
     }
 
     /// <summary>Finds one service-owned instance on the mutation dispatcher.</summary>
-    private Entry? Find(UiInstanceHandle handle) => _entries.FirstOrDefault(entry => entry.Handle == handle);
+    private Entry? Find(UiInstanceHandle handle) => _entries.Find(entry => entry.Handle == handle);
 
     /// <summary>Orders visible interaction candidates using the same visual ordering passed to the host.</summary>
     private IEnumerable<Entry> InFrontOrder() =>
@@ -198,8 +205,8 @@ public sealed partial class UiService : IUiService
     /// <summary>Maps semantic actions without depending on any engine event type.</summary>
     private static bool Captures(UiRouteOptions options, UiInputAction action) => action switch
     {
-        UiInputAction.Cancel => (options.CapturedActions & UiInputActionMask.Cancel) != UiInputActionMask.None,
-        UiInputAction.Confirm => (options.CapturedActions & UiInputActionMask.Confirm) != UiInputActionMask.None,
-        _ => false
+        UiInputAction.Cancel => options.CapturedActions.HasFlag(UiInputActionMask.Cancel),
+        UiInputAction.Confirm => options.CapturedActions.HasFlag(UiInputActionMask.Confirm),
+        _ => false,
     };
 }

@@ -157,11 +157,11 @@ public sealed class GodotLoggerSettingsLoaderTests
     [Test]
     public void Provider_Should_Apply_Updated_Settings_To_Existing_Loggers()
     {
-        GodotLoggerSettings settings = new GodotLoggerSettings(new GodotLoggerOptions
+        GodotLoggerSettings settings = new(new GodotLoggerOptions
         {
             Mode = GodotLoggerMode.Debug,
             DebugMinLevel = LogLevel.Error,
-            ReleaseMinLevel = LogLevel.Error
+            ReleaseMinLevel = LogLevel.Error,
         });
         var provider = new GodotLogProvider(() => settings);
         var logger = provider.CreateLogger("Game.Services.Inventory");
@@ -173,12 +173,12 @@ public sealed class GodotLoggerSettingsLoaderTests
             {
                 Mode = GodotLoggerMode.Debug,
                 DebugMinLevel = LogLevel.Information,
-                ReleaseMinLevel = LogLevel.Information
+                ReleaseMinLevel = LogLevel.Information,
             },
             defaultLogLevel: LogLevel.Trace,
             loggerLevels: new Dictionary<string, LogLevel>(StringComparer.Ordinal)
             {
-                ["Game.Services"] = LogLevel.Debug
+                ["Game.Services"] = LogLevel.Debug,
             });
 
         Assert.Multiple(() =>
@@ -199,7 +199,7 @@ public sealed class GodotLoggerSettingsLoaderTests
             new("{OriginalFormat}", "template"),
             new(null!, "ignored"),
             new("   ", "ignored"),
-            new(" Player ", 42)
+            new(" Player ", 42),
         };
 
         var dictionary = GodotLogProvider.NormalizeProperties(properties);

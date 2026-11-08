@@ -13,7 +13,7 @@ namespace GFramework.Core.Coroutine.Instructions;
 ///     完成可以由任意线程竞争，首次终结获胜。Task 管理延续注册及异常传播；
 ///     异步延续不会在设置结果的线程内联执行。引擎对象仍须由宿主线程访问。
 /// </remarks>
-public sealed class AsyncOperation : IYieldInstruction, ICoroutineCompletionStatusSource
+public sealed class AsyncOperation : IYieldInstruction, ICoroutineCompletionStatusSource, ICoroutineCompletionConsumer
 {
     private readonly TaskCompletionSource<object?> _completion =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -47,6 +47,12 @@ public sealed class AsyncOperation : IYieldInstruction, ICoroutineCompletionStat
         {
             _ = Task.GetAwaiter().GetResult();
         }
+    }
+
+    /// <inheritdoc />
+    void ICoroutineCompletionConsumer.ConsumeCompletion()
+    {
+        _ = Task.GetAwaiter().GetResult();
     }
 
     /// <summary>

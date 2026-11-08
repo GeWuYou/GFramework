@@ -23,6 +23,8 @@ internal sealed class ArchitectureContextAccess
     public void BeginShutdown() => _stopping = true;
 
     /// <summary>检查配置期和停止期约束；业务停止回调在独立作用域中仍可解析其清理依赖。</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1513",
+        Justification = "Retain the published short ObjectName ArchitectureContext; ThrowIf(this) would report the internal access type instead.")]
     public void EnsureAvailable()
     {
         if (_stopping && _cleanupDepth.Value == 0)

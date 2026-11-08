@@ -26,8 +26,10 @@ internal sealed class AdditionalAssemblyNotificationHandlerRegistry : ICqrsHandl
         ArgumentNullException.ThrowIfNull(logger);
 
         services.AddTransient<INotificationHandler<AdditionalAssemblyNotification>>(_ => CreateHandler());
-        logger.LogDebug(
-            $"Registered CQRS handler proxy for {typeof(INotificationHandler<AdditionalAssemblyNotification>).FullName}.");
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Registered CQRS handler proxy for {HandlerContract}.", typeof(INotificationHandler<AdditionalAssemblyNotification>).FullName);
+        }
     }
 
     /// <summary>

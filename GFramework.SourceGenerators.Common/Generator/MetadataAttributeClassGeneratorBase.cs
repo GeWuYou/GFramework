@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.CodeAnalysis;
@@ -14,7 +14,10 @@ public abstract class MetadataAttributeClassGeneratorBase
     /// <summary>
     ///     获取特性元数据名称的抽象属性
     /// </summary>
-    protected abstract string AttributeMetadataName { get; }
+    protected abstract string AttributeMetadataName
+    {
+        get;
+    }
 
     /// <summary>
     ///     根据元数据名称解析指定符号上的特性

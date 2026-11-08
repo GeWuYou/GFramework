@@ -28,7 +28,7 @@ internal static class DispatcherStreamContextRefreshState
         {
             lock (_syncRoot)
             {
-                return _behaviorSnapshots.ToArray();
+                return [.. _behaviorSnapshots];
             }
         }
     }
@@ -44,7 +44,7 @@ internal static class DispatcherStreamContextRefreshState
         {
             lock (_syncRoot)
             {
-                return _handlerSnapshots.ToArray();
+                return [.. _handlerSnapshots];
             }
         }
     }

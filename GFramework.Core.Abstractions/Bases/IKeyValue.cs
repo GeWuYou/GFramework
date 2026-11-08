@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Core.Abstractions.Bases;
@@ -13,10 +13,16 @@ public interface IKeyValue<out TKey, out TValue>
     /// <summary>
     ///     获取键值对中的键
     /// </summary>
-    TKey Key { get; }
+    TKey Key
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取键值对中的值
     /// </summary>
-    TValue Value { get; }
+    TValue Value
+    {
+        get;
+    }
 }

@@ -23,22 +23,34 @@ public sealed class GameConfigBootstrapOptions
     ///     调用方通常应在这里调用生成器产出的 <c>RegisterAllGeneratedConfigTables()</c>，
     ///     或显式注册当前场景所需的手写表定义。
     /// </summary>
-    public Action<YamlConfigLoader>? ConfigureLoader { get; init; }
+    public Action<YamlConfigLoader>? ConfigureLoader
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     获取或设置要复用的配置注册表。
     ///     为空时启动帮助器会创建默认的 <see cref="ConfigRegistry" /> 实例。
     /// </summary>
-    public IConfigRegistry? Registry { get; init; }
+    public IConfigRegistry? Registry
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     获取或设置是否在初次加载成功后立即启用开发期热重载。
     /// </summary>
-    public bool EnableHotReload { get; init; }
+    public bool EnableHotReload
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     获取或设置初始化阶段启用热重载时使用的选项。
     ///     当 <see cref="EnableHotReload" /> 为 <see langword="false" /> 时，该值会被忽略。
     /// </summary>
-    public YamlConfigHotReloadOptions? HotReloadOptions { get; init; }
+    public YamlConfigHotReloadOptions? HotReloadOptions
+    {
+        get; init;
+    }
 }

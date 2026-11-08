@@ -56,7 +56,7 @@ public class SceneRouterReliabilityTests
         await router.PushAsync("current");
         var guard = CreateGuard();
         guard.Setup(value => value.CanEnterAsync("target", It.IsAny<IRouteContext?>(), It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.FromResult(false));
+            .Returns(() => ValueTask.FromResult(false));
         router.AddGuard(guard.Object);
 
         await router.ReplaceAsync("target");
@@ -181,7 +181,7 @@ public class SceneRouterReliabilityTests
         await router.PushAsync("current");
         await router.PushAsync("target");
         var guard = CreateGuard();
-        guard.Setup(value => value.CanLeaveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult(false));
+        guard.Setup(value => value.CanLeaveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(() => ValueTask.FromResult(false));
         router.AddGuard(guard.Object);
         target.Setup(value => value.OnExitAsync(It.IsAny<CancellationToken>()))
             .Returns(() => ValueTask.FromException(new InvalidOperationException("exit failed")));
@@ -221,8 +221,8 @@ public class SceneRouterReliabilityTests
         using var cancellation = new CancellationTokenSource();
 
         var navigation = router.PushAsync("target", cancellationToken: cancellation.Token);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        cancellation.Cancel();
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: global::System.Threading.CancellationToken.None);
+        await cancellation.CancelAsync();
         release.TrySetResult();
         await Assert.CatchAsync<OperationCanceledException>(() => navigation);
 
@@ -243,7 +243,7 @@ public class SceneRouterReliabilityTests
         Assert.That(await router.PushAsync("scene"), Is.EqualTo(SceneOperationResult.Applied));
         Assert.That(await router.PushAsync("scene"), Is.EqualTo(SceneOperationResult.NoOp));
         var guard = CreateGuard();
-        guard.Setup(value => value.CanLeaveAsync("scene", It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult(false));
+        guard.Setup(value => value.CanLeaveAsync("scene", It.IsAny<CancellationToken>())).Returns(() => ValueTask.FromResult(false));
         router.AddGuard(guard.Object);
         Assert.That(await router.ClearAsync(), Is.EqualTo(SceneOperationResult.Rejected));
         await router.StopAsync();
@@ -295,16 +295,16 @@ public class SceneRouterReliabilityTests
         var navigation = leaveGuard
             ? router.ReplaceAsync("target", cancellationToken: cancellation.Token)
             : router.PushAsync("target", cancellationToken: cancellation.Token);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        cancellation.Cancel();
-        await Assert.CatchAsync<OperationCanceledException>(() => navigation.WaitAsync(TimeSpan.FromSeconds(5)));
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: global::System.Threading.CancellationToken.None);
+        await cancellation.CancelAsync();
+        await Assert.CatchAsync<OperationCanceledException>(() => navigation.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None));
 
         Assert.That(router.Current, Is.SameAs(current.Object));
         Assert.That(router.Count, Is.EqualTo(1));
         target.Verify(value => value.OnLoadAsync(It.IsAny<ISceneEnterParam?>(), It.IsAny<CancellationToken>()), Times.Never);
         root.Verify(value => value.RemoveScene(current.Object), Times.Never);
         router.RemoveGuard(guard.Object);
-        Assert.That(await router.PushAsync("target"), Is.EqualTo(SceneOperationResult.Applied));
+        Assert.That(await router.PushAsync("target", cancellationToken: global::System.Threading.CancellationToken.None), Is.EqualTo(SceneOperationResult.Applied));
         await router.StopAsync();
     }
 
@@ -325,15 +325,15 @@ public class SceneRouterReliabilityTests
         using var cancellation = new CancellationTokenSource();
 
         var navigation = router.PushAsync("target", cancellationToken: cancellation.Token);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        cancellation.Cancel();
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: global::System.Threading.CancellationToken.None);
+        await cancellation.CancelAsync();
         var stop = router.StopAsync();
         Assert.That(navigation.IsCompleted, Is.False);
         Assert.That(stop.IsCompleted, Is.False);
         root.Verify(value => value.RemoveScene(current.Object), Times.Never);
         release.TrySetResult(true);
-        await Assert.CatchAsync<OperationCanceledException>(() => navigation.WaitAsync(TimeSpan.FromSeconds(5)));
-        await stop.WaitAsync(TimeSpan.FromSeconds(5));
+        await Assert.CatchAsync<OperationCanceledException>(() => navigation.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: global::System.Threading.CancellationToken.None));
+        await stop.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: global::System.Threading.CancellationToken.None);
 
         root.Verify(value => value.RemoveScene(current.Object), Times.Once);
         target.Verify(value => value.OnLoadAsync(It.IsAny<ISceneEnterParam?>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -377,8 +377,8 @@ public class SceneRouterReliabilityTests
     {
         var guard = new Mock<IRouteGuard<ISceneBehavior>>();
         guard.Setup(value => value.CanEnterAsync(It.IsAny<string>(), It.IsAny<IRouteContext?>(), It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.FromResult(true));
-        guard.Setup(value => value.CanLeaveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult(true));
+            .Returns(() => ValueTask.FromResult(true));
+        guard.Setup(value => value.CanLeaveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(() => ValueTask.FromResult(true));
         return guard;
     }
 

@@ -58,9 +58,15 @@ internal sealed class AbstractCqrsHandlerContextTests
     /// </summary>
     private sealed class TestRequestHandler : AbstractRequestHandler<TestRequest>
     {
-        public int OnContextReadyCallCount { get; private set; }
+        public int OnContextReadyCallCount
+        {
+            get; private set;
+        }
 
-        public IArchitectureContext? LastObservedContext { get; private set; }
+        public IArchitectureContext? LastObservedContext
+        {
+            get; private set;
+        }
 
         protected override void OnContextReady()
         {

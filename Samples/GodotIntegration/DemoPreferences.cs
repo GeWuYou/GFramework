@@ -20,7 +20,10 @@ public sealed class DemoPreferences : ISettingsData
     public bool ShowGrid { get; set; } = true;
 
     /// <summary>Gets or sets the framework input bindings snapshot, including the pause binding.</summary>
-    public InputBindingSnapshot? Bindings { get; set; }
+    public InputBindingSnapshot? Bindings
+    {
+        get; set;
+    }
 
     /// <summary>Restores this section to its initial values.</summary>
     public void Reset()

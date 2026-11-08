@@ -106,7 +106,10 @@ public sealed class GodotYamlConfigLoader : IConfigLoader
     /// <summary>
     ///     获取底层 <see cref="YamlConfigLoader" /> 实际使用的普通文件系统根目录。
     /// </summary>
-    public string LoaderRootPath { get; }
+    public string LoaderRootPath
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取底层 <see cref="YamlConfigLoader" /> 实例。
@@ -267,21 +270,17 @@ public sealed class GodotYamlConfigLoader : IConfigLoader
         string targetDirectoryPath,
         CancellationToken cancellationToken)
     {
-        var entries = _environment.EnumerateDirectory(sourceDirectoryPath);
-        if (entries == null)
-        {
-            throw CreateConfigLoadException(
+        var entries = _environment.EnumerateDirectory(sourceDirectoryPath) ?? throw CreateConfigLoadException(
                 ConfigLoadFailureKind.ConfigDirectoryNotFound,
                 tableName,
                 $"Config directory '{DescribePath(sourceDirectoryPath)}' was not found while preparing the Godot runtime cache.",
                 configDirectoryPath: DescribePath(sourceDirectoryPath));
-        }
 
         foreach (var entry in entries)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (entry.IsDirectory || entry.Name is "." or ".." || entry.Name.StartsWith(".", StringComparison.Ordinal))
+            if (entry.IsDirectory || entry.Name is "." or ".." || entry.Name.StartsWith('.'))
             {
                 continue;
             }
@@ -446,7 +445,7 @@ public sealed class GodotYamlConfigLoader : IConfigLoader
         ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
 
         var normalizedPath = relativePath.Replace('\\', '/').Trim();
-        if (normalizedPath.StartsWith("/", StringComparison.Ordinal) ||
+        if (normalizedPath.StartsWith('/') ||
             normalizedPath.StartsWith("res://", StringComparison.Ordinal) ||
             normalizedPath.StartsWith("user://", StringComparison.Ordinal) ||
             Path.IsPathRooted(normalizedPath) ||

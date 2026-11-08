@@ -38,7 +38,7 @@ public sealed class GeneratedStreamLifetimeBenchmarkRegistry :
         new GFramework.Cqrs.CqrsStreamInvokerDescriptorEntry(
             typeof(StreamLifetimeBenchmarks.GeneratedBenchmarkStreamRequest),
             typeof(StreamLifetimeBenchmarks.GeneratedBenchmarkResponse),
-            Descriptor)
+            Descriptor),
     ];
 
     /// <summary>

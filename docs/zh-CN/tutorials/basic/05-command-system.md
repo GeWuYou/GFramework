@@ -170,8 +170,18 @@ CQRS runtime 不随 Core 自动安装。在架构中显式接入：
 ```csharp
 using GFramework.Cqrs.Extensions;
 
+// 在已有 CounterArchitecture 中添加，保留该方法原有的模型与服务登记。
+protected override void ConfigureServices(IServiceCollection services)
+{
+    this.UseCqrsRuntime(); // 自动包含架构所在程序集的处理器
+    RegisterModel<CounterModel>();
+}
+```
+
+配置方法执行时安装模块，然后正常启动架构：
+
+```csharp
 var architecture = new CounterArchitecture();
-architecture.UseCqrsRuntime(); // 自动包含架构所在程序集的处理器
 await architecture.InitializeAsync();
 ```
 
@@ -295,16 +305,16 @@ AddButton.Pressed += async () =>
 所有逻辑在 Handler 中：
 
 ```csharp
-public override ValueTask<Unit> Handle(
+public override async ValueTask<Unit> Handle(
     IncreaseCountRequest request,
     CancellationToken cancellationToken)
 {
-    if (!CanIncrement()) return ValueTask.FromResult(Unit.Value);
+    if (!CanIncrement()) return Unit.Value;
     await SaveData();
     Context.GetModel<ICounterModel>()!.Increment();
     PlaySound();
     LogAnalytics();
-    return ValueTask.FromResult(Unit.Value);
+    return Unit.Value;
 }
 ```
 
@@ -347,7 +357,6 @@ AddButton.Pressed += () => { /* 逻辑 */ };
 public async Task IncreaseRequest_ShouldIncrementCount()
 {
     var architecture = new CounterArchitecture();
-    architecture.UseCqrsRuntime();
     await architecture.InitializeAsync();
 
     await architecture.Context.SendAsync(new IncreaseCountRequest());
@@ -364,7 +373,7 @@ pipeline behavior 可以统一处理日志、校验、性能统计，而不需�
 ```csharp
 protected override void ConfigureServices(IServiceCollection services)
 {
-    services.AddCqrsPipelineBehavior<LoggingBehavior<,>>();
+    services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 }
 ```
 

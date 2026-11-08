@@ -78,7 +78,7 @@ public class RequestStartupBenchmarks
     ///     可以把“清理静态缓存”留在测量边界之外，只保留宿主构建与首次发送本身。
     /// </remarks>
     [IterationSetup]
-    public void ResetColdStartCaches()
+    public static void ResetColdStartCaches()
     {
         BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
     }
@@ -131,11 +131,14 @@ public class RequestStartupBenchmarks
     /// <returns>当前 request 的响应结果。</returns>
     [Benchmark(Baseline = true)]
     [BenchmarkCategory("ColdStart")]
-    public async Task<BenchmarkResponse> ColdStart_MediatR()
+    public static async Task<BenchmarkResponse> ColdStart_MediatR()
     {
-        using var serviceProvider = CreateMediatRServiceProvider();
-        var mediator = serviceProvider.GetRequiredService<IMediator>();
-        return await mediator.Send(Request, CancellationToken.None).ConfigureAwait(false);
+        var serviceProvider = CreateMediatRServiceProvider();
+        await using (serviceProvider.ConfigureAwait(false))
+        {
+            var mediator = serviceProvider.GetRequiredService<IMediator>();
+            return await mediator.Send(Request, CancellationToken.None).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -144,11 +147,14 @@ public class RequestStartupBenchmarks
     /// <returns>当前 request 的响应结果。</returns>
     [Benchmark]
     [BenchmarkCategory("ColdStart")]
-    public async ValueTask<BenchmarkResponse> ColdStart_GFrameworkCqrs()
+    public static async ValueTask<BenchmarkResponse> ColdStart_GFrameworkCqrs()
     {
-        using var container = CreateGFrameworkContainer();
-        var runtime = CreateGFrameworkRuntime(container);
-        return await runtime.SendAsync(Request, CancellationToken.None).ConfigureAwait(false);
+        var container = CreateGFrameworkContainer();
+        await using (container.ConfigureAwait(false))
+        {
+            var runtime = CreateGFrameworkRuntime(container);
+            return await runtime.SendAsync(Request, CancellationToken.None).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -157,11 +163,14 @@ public class RequestStartupBenchmarks
     /// <returns>当前 request 的响应结果。</returns>
     [Benchmark]
     [BenchmarkCategory("ColdStart")]
-    public async ValueTask<BenchmarkResponse> ColdStart_Mediator()
+    public static async ValueTask<BenchmarkResponse> ColdStart_Mediator()
     {
-        using var serviceProvider = CreateMediatorServiceProvider();
-        var mediator = serviceProvider.GetRequiredService<GeneratedMediator>();
-        return await mediator.Send(Request, CancellationToken.None).ConfigureAwait(false);
+        var serviceProvider = CreateMediatorServiceProvider();
+        await using (serviceProvider.ConfigureAwait(false))
+        {
+            var mediator = serviceProvider.GetRequiredService<GeneratedMediator>();
+            return await mediator.Send(Request, CancellationToken.None).ConfigureAwait(false);
+        }
     }
 
     /// <summary>

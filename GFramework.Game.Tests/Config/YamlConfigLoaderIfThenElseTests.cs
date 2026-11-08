@@ -8,7 +8,7 @@ using GFramework.Game.Config;
 namespace GFramework.Game.Tests.Config;
 
 /// <summary>
-///     验证 YAML 配置加载器对 object-focused <c>if</c> / <c>then</c> / <c>else</c> 约束的运行时行为。
+///     验证 YAML 配置加载器对 object-focused <c language="json">if</c> / <c>then</c> / <c language="json">else</c> 约束的运行时行为。
 /// </summary>
 [TestFixture]
 public sealed class YamlConfigLoaderIfThenElseTests
@@ -76,7 +76,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
         {
             try
             {
-                Directory.Delete(_rootPath, true);
+                Directory.Delete(_rootPath, recursive: true);
             }
             catch (IOException)
             {
@@ -90,7 +90,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
     }
 
     /// <summary>
-    ///     验证 <c>if</c> 命中而 <c>then</c> 约束未满足时，运行时会拒绝加载。
+    ///     验证 <c language="json">if</c> 命中而 <c>then</c> 约束未满足时，运行时会拒绝加载。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Throw_When_If_Matches_But_Then_Is_Not_Satisfied()
@@ -121,7 +121,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
     }
 
     /// <summary>
-    ///     验证 <c>if</c> 命中且 <c>then</c> 约束满足时可以正常加载。
+    ///     验证 <c language="json">if</c> 命中且 <c>then</c> 约束满足时可以正常加载。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Accept_When_If_Matches_And_Then_Is_Satisfied()
@@ -154,7 +154,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
     }
 
     /// <summary>
-    ///     验证 <c>if</c> 未命中而 <c>else</c> 约束未满足时，运行时会拒绝加载。
+    ///     验证 <c language="json">if</c> 未命中而 <c language="json">else</c> 约束未满足时，运行时会拒绝加载。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Throw_When_If_Does_Not_Match_But_Else_Is_Not_Satisfied()
@@ -186,7 +186,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
     }
 
     /// <summary>
-    ///     验证 <c>if</c> 未命中且 <c>else</c> 约束满足时可以正常加载。
+    ///     验证 <c language="json">if</c> 未命中且 <c language="json">else</c> 约束满足时可以正常加载。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Accept_When_If_Does_Not_Match_And_Else_Is_Satisfied()
@@ -219,7 +219,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
     }
 
     /// <summary>
-    ///     验证非对象字段声明 <c>if</c> 时，会在 schema 解析阶段被拒绝。
+    ///     验证非对象字段声明 <c language="json">if</c> 时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Throw_When_NonObject_Schema_Declares_If()
@@ -279,7 +279,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
     }
 
     /// <summary>
-    ///     验证缺少 <c>if</c> 却声明 <c>then</c> 时，会在 schema 解析阶段被拒绝。
+    ///     验证缺少 <c language="json">if</c> 却声明 <c>then</c> 时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Throw_When_Then_Is_Declared_Without_If()
@@ -320,7 +320,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
     }
 
     /// <summary>
-    ///     验证缺少 <c>if</c> 却声明 <c>else</c> 时，会在 schema 解析阶段被拒绝。
+    ///     验证缺少 <c language="json">if</c> 却声明 <c language="json">else</c> 时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
     public async Task LoadAsync_Should_Throw_When_Else_Is_Declared_Without_If()
@@ -535,7 +535,10 @@ public sealed class YamlConfigLoaderIfThenElseTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置奖励对象。
@@ -556,12 +559,18 @@ public sealed class YamlConfigLoaderIfThenElseTests
         /// <summary>
         ///     获取或设置掉落物数量。
         /// </summary>
-        public int ItemCount { get; set; }
+        public int ItemCount
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置额外奖励值。
         /// </summary>
-        public int Bonus { get; set; }
+        public int Bonus
+        {
+            get; set;
+        }
     }
 
     /// <summary>
@@ -572,7 +581,10 @@ public sealed class YamlConfigLoaderIfThenElseTests
         /// <summary>
         ///     获取或设置主键。
         /// </summary>
-        public int Id { get; set; }
+        public int Id
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置标签。

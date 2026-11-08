@@ -53,48 +53,75 @@ public sealed class ConfigLoadDiagnostic
     /// <summary>
     ///     获取失败类别。
     /// </summary>
-    public ConfigLoadFailureKind FailureKind { get; }
+    public ConfigLoadFailureKind FailureKind
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取所属配置表名称。
     /// </summary>
-    public string TableName { get; }
+    public string TableName
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取配置目录绝对路径。
     /// </summary>
-    public string? ConfigDirectoryPath { get; }
+    public string? ConfigDirectoryPath
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取触发失败的 YAML 文件绝对路径。
     /// </summary>
-    public string? YamlPath { get; }
+    public string? YamlPath
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取触发失败的 schema 文件绝对路径。
     /// </summary>
-    public string? SchemaPath { get; }
+    public string? SchemaPath
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取便于展示的字段路径。
     ///     对于根级失败或文件级失败，该值可能为空。
     /// </summary>
-    public string? DisplayPath { get; }
+    public string? DisplayPath
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取跨表引用目标表名称。
     /// </summary>
-    public string? ReferencedTableName { get; }
+    public string? ReferencedTableName
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取与失败相关的原始值。
     ///     该字段通常用于 enum 违规、跨表引用缺失或类型转换失败等场景。
     /// </summary>
-    public string? RawValue { get; }
+    public string? RawValue
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取补充细节。
     ///     当失败上下文无法拆成更多稳定字段时，该值用于保留关键说明。
     /// </summary>
-    public string? Detail { get; }
+    public string? Detail
+    {
+        get;
+    }
 }

@@ -38,11 +38,11 @@ internal sealed class GeneratedRequestInvokerProviderRegistry :
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(logger);
 
-        services.AddTransient(
-            typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
-            typeof(GeneratedRequestInvokerRequestHandler));
-        logger.LogDebug(
-            $"Registered CQRS handler {typeof(GeneratedRequestInvokerRequestHandler).FullName} as {typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>).FullName}.");
+        services.AddTransient<IRequestHandler<GeneratedRequestInvokerRequest, string>, GeneratedRequestInvokerRequestHandler>();
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Registered CQRS handler {ImplementationType} as {HandlerContract}.", typeof(GeneratedRequestInvokerRequestHandler).FullName, typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>).FullName);
+        }
     }
 
     /// <summary>
@@ -85,6 +85,8 @@ internal sealed class GeneratedRequestInvokerProviderRegistry :
     /// <returns>带有 generated 前缀的结果，便于断言 dispatcher 走了 provider 路径。</returns>
     private static ValueTask<string> InvokeGenerated(object handler, object request, CancellationToken cancellationToken)
     {
+        // Keep the reflection/delegate contract even when this probe does not consume an input.
+        _ = cancellationToken;
         _ = handler as IRequestHandler<GeneratedRequestInvokerRequest, string>
             ?? throw new InvalidOperationException("Generated invoker received an incompatible handler instance.");
         var typedRequest = (GeneratedRequestInvokerRequest)request;

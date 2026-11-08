@@ -32,13 +32,13 @@ public class ResultExtensionsTests
         {
             Result<int>.Succeed(1),
             Result<int>.Succeed(2),
-            Result<int>.Succeed(3)
+            Result<int>.Succeed(3),
         };
         var combined = results.Combine();
         Assert.That(combined.IsSuccess, Is.True);
-        var list = combined.Match(succ: v => v, fail: _ => new List<int>());
+        var list = combined.Match(succ: v => v, fail: _ => []);
         Assert.That(list, Has.Count.EqualTo(3));
-        Assert.That(list, Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(list, Is.EqualTo([1, 2, 3]));
     }
 
     [Test]
@@ -49,7 +49,7 @@ public class ResultExtensionsTests
         {
             Result<int>.Succeed(1),
             Result<int>.Fail(exception),
-            Result<int>.Succeed(3)
+            Result<int>.Succeed(3),
         };
         var combined = results.Combine();
         Assert.That(combined.IsFaulted, Is.True);
@@ -65,7 +65,7 @@ public class ResultExtensionsTests
         var results = Array.Empty<Result<int>>();
         var combined = results.Combine();
         Assert.That(combined.IsSuccess, Is.True);
-        var list = combined.Match(succ: v => v, fail: _ => new List<int>());
+        var list = combined.Match(succ: v => v, fail: _ => []);
         Assert.That(list, Is.Empty);
     }
 
@@ -88,11 +88,11 @@ public class ResultExtensionsTests
         {
             Result<int>.Succeed(3),
             Result<int>.Succeed(1),
-            Result<int>.Succeed(2)
+            Result<int>.Succeed(2),
         };
         var combined = results.Combine();
-        var list = combined.Match(succ: v => v, fail: _ => new List<int>());
-        Assert.That(list, Is.EqualTo(new[] { 3, 1, 2 }));
+        var list = combined.Match(succ: v => v, fail: _ => []);
+        Assert.That(list, Is.EqualTo([3, 1, 2]));
     }
 
     /// <summary>
@@ -110,7 +110,7 @@ public class ResultExtensionsTests
             {
                 callCount++;
                 return 3;
-            })
+            }),
         };
         var combined = results.Combine();
         Assert.That(combined.IsFaulted, Is.True);
@@ -148,7 +148,7 @@ public class ResultExtensionsTests
     public void Map_Should_Throw_ArgumentNullException_When_Mapper_Is_Null()
     {
         var result = Result<int>.Succeed(42);
-        Assert.Throws<ArgumentNullException>(() => result.Map<string>(null!));
+        Assert.Throws<ArgumentNullException>(() => { _ = result.Map<string>(null!); });
     }
 
     /// <summary>
@@ -183,7 +183,7 @@ public class ResultExtensionsTests
     public void Bind_Should_Throw_ArgumentNullException_When_Binder_Is_Null()
     {
         var result = Result<int>.Succeed(42);
-        Assert.Throws<ArgumentNullException>(() => result.Bind<string>(null!));
+        Assert.Throws<ArgumentNullException>(() => { _ = result.Bind<string>(null!); });
     }
 
     /// <summary>
@@ -608,7 +608,7 @@ public class ResultExtensionsTests
             .Map(x => x * 2)
             .Bind(x => Result<int>.Succeed(x + 5))
             .Ensure(x => x > 20, "Value must be greater than 20")
-            .OnSuccess(x => Console.WriteLine($"Success: {x}"))
+            .OnSuccess(x => Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"Success: {x}")))
             .OnFailure(ex => Console.WriteLine($"Error: {ex.Message}"));
 
         Assert.That(result.IsSuccess, Is.True);

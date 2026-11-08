@@ -45,5 +45,5 @@ public enum SceneTransitionPhases
     /// 所有阶段的组合标志。
     /// 表示处理器适用于场景切换的所有阶段。
     /// </summary>
-    All = BeforeChange | AfterChange | Around
+    All = BeforeChange | AfterChange | Around,
 }

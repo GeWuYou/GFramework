@@ -19,7 +19,10 @@ public partial class GfRichTextLabel : RichTextLabel, IRichTextEffectHost
     ///     为空时将回退到内置默认配置。
     /// </summary>
     [Export]
-    public RichTextProfile? Profile { get; set; }
+    public RichTextProfile? Profile
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     获取或设置是否启用框架管理的富文本效果装配。
@@ -74,7 +77,7 @@ public partial class GfRichTextLabel : RichTextLabel, IRichTextEffectHost
     /// </summary>
     void IRichTextEffectHost.ClearCustomEffects()
     {
-        CustomEffects = new global::Godot.Collections.Array();
+        CustomEffects = [];
     }
 
     /// <summary>

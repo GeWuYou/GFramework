@@ -43,25 +43,40 @@ public sealed class InputBindingDescriptor
     /// <summary>
     ///     获取设备族。
     /// </summary>
-    public InputDeviceKind DeviceKind { get; }
+    public InputDeviceKind DeviceKind
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取绑定类型。
     /// </summary>
-    public InputBindingKind BindingKind { get; }
+    public InputBindingKind BindingKind
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取宿主无关的物理码值。
     /// </summary>
-    public string Code { get; }
+    public string Code
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取用于展示的标签。
     /// </summary>
-    public string DisplayName { get; }
+    public string DisplayName
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取轴向方向。
     /// </summary>
-    public float? AxisDirection { get; }
+    public float? AxisDirection
+    {
+        get;
+    }
 }

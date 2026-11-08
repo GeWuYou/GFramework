@@ -30,6 +30,27 @@ public sealed class MatchmakingService
 
 ## 架构实例接线
 
+### 保留 ILogger 构造入口的服务
+
+`ResourceManager`、`ConfigurationManager` 与 `PauseStackManager` 保留可选的 `ILogger` 构造参数。标准 `AddLogging()` 提供 `ILogger<T>`，不会自动提供按调用方类别区分的非泛型 `ILogger`。因此直接 `AddSingleton<ResourceManager>()` 等泛型激活仍会使用构造函数的空日志默认值；需要日志时，使用明确的注册工厂选择类别：
+
+```csharp
+using GFramework.Core.Resource;
+using GFramework.Core.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+services.AddLogging(builder => builder.AddConsole());
+services.AddSingleton(provider => new ResourceManager(
+    provider.GetRequiredService<ILogger<ResourceManager>>()));
+services.AddSingleton(provider => new ConfigurationManager(
+    provider.GetRequiredService<ILogger<ConfigurationManager>>()));
+```
+
+Game 默认服务登记对 `PauseStackManager` 使用同样的类别选择。不要为了这些构造入口注册一个全局非泛型 `ILogger`，否则不同服务会共用错误的类别。
+
+### 实例工厂
+
 日志工厂在 `ArchitectureConfiguration.LoggerProperties.LoggerFactory` 上配置，类型是标准 `ILoggerFactory?`：
 
 ```csharp
@@ -82,6 +103,7 @@ var configuration = new ArchitectureConfiguration
 - `LoggingConfiguration.LoggerLevels` 中的每一项映射为 `AddFilter(category, level)`。
 - JSON 中的级别别名使用 `Microsoft.Extensions.Logging` 名称（`information`、`critical` 等），大小写不敏感。
 - `LoadFromJson(string filePath)` 与 `LoadFromJsonString(string json)` 的读取方式保持不变。
+- 创建工厂时，省略、空或 `null` 的 `Appenders` 均采用默认控制台输出；`LoggerLevels` 为 `null` 时不添加分类覆盖规则。
 
 ## 输出引擎：appender 管线
 

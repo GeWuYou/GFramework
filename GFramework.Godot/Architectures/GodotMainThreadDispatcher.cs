@@ -27,30 +27,33 @@ internal sealed class GodotMainThreadDispatcher(Func<bool> isMainThread, Action<
             return;
         }
 
-        var pending = new PendingOperation(action, cancellationToken, ExecutionContext.Capture());
-        using var registration = cancellationToken.Register(pending.Cancel);
-        try
+        var pending = new PendingOperation(action, ExecutionContext.Capture(), cancellationToken);
+        var registration = cancellationToken.Register(pending.Cancel);
+        await using (registration.ConfigureAwait(false))
         {
-            defer(pending.Execute);
-        }
-        catch (Exception exception)
-        {
-            pending.Fail(exception);
-        }
+            try
+            {
+                defer(pending.Execute);
+            }
+            catch (Exception exception)
+            {
+                pending.Fail(exception);
+            }
 
-        await pending.Completion.ConfigureAwait(false);
+            await pending.Completion.ConfigureAwait(false);
+        }
     }
 
     /// <summary>
     ///     用原子状态连接宿主队列和取消回调，避免取消完成与正在执行的动作竞态。
     /// </summary>
     /// <param name="action">被调度的动作。</param>
-    /// <param name="cancellationToken">调用方取消令牌。</param>
     /// <param name="executionContext">调用方的清理访问和重入标记；显式抑制流动时为空。</param>
+    /// <param name="cancellationToken">调用方取消令牌。</param>
     private sealed class PendingOperation(
         Action action,
-        CancellationToken cancellationToken,
-        ExecutionContext? executionContext)
+        ExecutionContext? executionContext,
+        CancellationToken cancellationToken)
     {
         private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private int _state;

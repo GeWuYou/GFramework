@@ -9,7 +9,14 @@ namespace GFramework.Core.Localization;
 /// <summary>
 /// 本地化字符串实现
 /// </summary>
-public class LocalizationString : ILocalizationString
+/// <remarks>
+/// 初始化本地化字符串
+/// </remarks>
+/// <param name="manager">本地化管理器实例</param>
+/// <param name="table">本地化表名，用于定位本地化资源表</param>
+/// <param name="key">本地化键名，用于在表中定位具体的本地化文本</param>
+/// <exception cref="ArgumentNullException">当 manager、table 或 key 为 null 时抛出</exception>
+public partial class LocalizationString(ILocalizationManager manager, string table, string key) : ILocalizationString
 {
     /// <summary>
     /// 正则分组名：变量名。
@@ -35,35 +42,16 @@ public class LocalizationString : ILocalizationString
     /// <summary>
     /// 预编译的静态正则表达式，用于格式化字符串中的变量替换
     /// </summary>
-    private static readonly Regex FormatVariableRegex =
-        new(
-            FormatVariablePattern,
-            RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture,
-            TimeSpan.FromSeconds(1));
+    private static readonly Regex FormatVariableRegex = FormatVariableRegex_();
 
-    private readonly ILocalizationManager _manager;
-    private readonly Dictionary<string, object> _variables;
-
-    /// <summary>
-    /// 初始化本地化字符串
-    /// </summary>
-    /// <param name="manager">本地化管理器实例</param>
-    /// <param name="table">本地化表名，用于定位本地化资源表</param>
-    /// <param name="key">本地化键名，用于在表中定位具体的本地化文本</param>
-    /// <exception cref="ArgumentNullException">当 manager、table 或 key 为 null 时抛出</exception>
-    public LocalizationString(ILocalizationManager manager, string table, string key)
-    {
-        _manager = manager ?? throw new ArgumentNullException(nameof(manager));
-        Table = table ?? throw new ArgumentNullException(nameof(table));
-        Key = key ?? throw new ArgumentNullException(nameof(key));
-        _variables = new Dictionary<string, object>(StringComparer.Ordinal);
-    }
+    private readonly ILocalizationManager _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+    private readonly Dictionary<string, object> _variables = new(StringComparer.Ordinal);
 
     /// <inheritdoc/>
-    public string Table { get; }
+    public string Table { get; } = table ?? throw new ArgumentNullException(nameof(table));
 
     /// <inheritdoc/>
-    public string Key { get; }
+    public string Key { get; } = key ?? throw new ArgumentNullException(nameof(key));
 
     /// <summary>
     /// 添加单个变量到本地化字符串中
@@ -74,10 +62,7 @@ public class LocalizationString : ILocalizationString
     /// <exception cref="ArgumentNullException">当 name 为 null 时抛出</exception>
     public ILocalizationString WithVariable(string name, object value)
     {
-        if (name == null)
-        {
-            throw new ArgumentNullException(nameof(name));
-        }
+        ArgumentNullException.ThrowIfNull(name);
 
         _variables[name] = value;
         return this;
@@ -91,10 +76,7 @@ public class LocalizationString : ILocalizationString
     /// <exception cref="ArgumentNullException">当 variables 为 null 时抛出</exception>
     public ILocalizationString WithVariables(params (string name, object value)[] variables)
     {
-        if (variables == null)
-        {
-            throw new ArgumentNullException(nameof(variables));
-        }
+        ArgumentNullException.ThrowIfNull(variables);
 
         foreach (var (name, value) in variables)
         {
@@ -229,8 +211,8 @@ public class LocalizationString : ILocalizationString
     {
         return value switch
         {
-            IFormattable formattable => formattable.ToString(null, manager.CurrentCulture),
-            _ => value.ToString() ?? string.Empty
+            IFormattable formattable => formattable.ToString(format: null, manager.CurrentCulture),
+            _ => value.ToString() ?? string.Empty,
         };
     }
 
@@ -255,4 +237,10 @@ public class LocalizationString : ILocalizationString
     {
         return manager.GetFormatter(name);
     }
+
+    // Partial properties require C# 13; the same source must compile for the net8 C# 12 target.
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "MA0190",
+        Justification = "A partial method keeps GeneratedRegex compatible with every supported target compiler, including C# 12.")]
+    [GeneratedRegex(FormatVariablePattern, RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex FormatVariableRegex_();
 }

@@ -18,8 +18,15 @@ namespace GFramework.Core.Configuration;
 ///     配置管理器实现，提供线程安全的配置存储和访问
 ///     线程安全：所有公共方法都是线程安全的
 /// </summary>
-public class ConfigurationManager : IConfigurationManager
+/// <remarks>
+///     创建配置管理器；未注入日志时使用空输出，不读取进程级状态。
+/// </remarks>
+/// <param name="logger">标准日志记录器。</param>
+public class ConfigurationManager(ILogger? logger = null) : IConfigurationManager
 {
+    // Reuse the serializer's thread-safe metadata cache; callers never mutate these private save options.
+    private static readonly JsonSerializerOptions SaveOptions = new() { WriteIndented = true };
+
     /// <summary>
     ///     Key 参数验证错误消息常量
     /// </summary>
@@ -40,7 +47,7 @@ public class ConfigurationManager : IConfigurationManager
     /// </summary>
     private readonly ConcurrentDictionary<string, object> _configs = new(StringComparer.Ordinal);
 
-    private readonly ILogger _logger;
+    private readonly ILogger _logger = logger ?? NullLogger<ConfigurationManager>.Instance;
 
     /// <summary>
     ///     用于保护监听器列表的锁
@@ -58,15 +65,6 @@ public class ConfigurationManager : IConfigurationManager
     ///     键：配置键，值：监听器列表
     /// </summary>
     private readonly ConcurrentDictionary<string, List<Delegate>> _watchers = new(StringComparer.Ordinal);
-
-    /// <summary>
-    ///     创建配置管理器；未注入日志时使用空输出，不读取进程级状态。
-    /// </summary>
-    /// <param name="logger">标准日志记录器。</param>
-    public ConfigurationManager(ILogger? logger = null)
-    {
-        _logger = logger ?? NullLoggerFactory.Instance.CreateLogger(nameof(ConfigurationManager));
-    }
 
     /// <summary>
     ///     获取配置数量
@@ -181,14 +179,13 @@ public class ConfigurationManager : IConfigurationManager
         if (string.IsNullOrWhiteSpace(key))
             throw new ArgumentException(KeyCannotBeNullOrEmptyMessage, nameof(key));
 
-        if (onChange == null)
-            throw new ArgumentNullException(nameof(onChange));
+        ArgumentNullException.ThrowIfNull(onChange);
 
         lock (_watcherLock)
         {
             if (!_watchers.TryGetValue(key, out var watchers))
             {
-                watchers = new List<Delegate>();
+                watchers = [];
                 _watchers[key] = watchers;
             }
 
@@ -222,10 +219,7 @@ public class ConfigurationManager : IConfigurationManager
     public string SaveToJson()
     {
         var dict = _configs.ToDictionary(kvp => kvp.Key, kvp => kvp.Value, StringComparer.Ordinal);
-        return JsonSerializer.Serialize(dict, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
+        return JsonSerializer.Serialize(dict, SaveOptions);
     }
 
     /// <summary>
@@ -266,7 +260,7 @@ public class ConfigurationManager : IConfigurationManager
     /// </summary>
     public IEnumerable<string> GetAllKeys()
     {
-        return _configs.Keys.ToList();
+        return [.. _configs.Keys];
     }
 
     /// <summary>
@@ -299,7 +293,7 @@ public class ConfigurationManager : IConfigurationManager
         {
             if (_watchers.TryGetValue(key, out var watchers))
             {
-                watchersCopy = new List<Delegate>(watchers);
+                watchersCopy = [.. watchers];
             }
         }
 
@@ -318,7 +312,7 @@ public class ConfigurationManager : IConfigurationManager
             catch (Exception ex)
             {
                 // 防止监听器异常影响其他监听器
-                _logger.LogError(ex, $"Error in config watcher for key '{key}'");
+                _logger.LogError(ex, "Error in config watcher for key '{ConfigKey}'", key);
             }
         }
     }

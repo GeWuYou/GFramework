@@ -67,7 +67,8 @@ public sealed class GodotFileStorage : IStorage, IStorageBackup, IDisposable
     /// </summary>
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
         _disposed = true;
 
         // 只释放内部创建的锁管理器
@@ -85,7 +86,7 @@ public sealed class GodotFileStorage : IStorage, IStorageBackup, IDisposable
         // Resolve user:// before awaiting so native path access stays on the caller's Godot thread.
         var logicalPath = ToAbsolutePath(key);
         var path = ToSnapshotPath(logicalPath);
-        var pathLock = await _lockManager.AcquireLockAsync(logicalPath).ConfigureAwait(false);
+        var pathLock = await _lockManager.AcquireLockAsync(logicalPath, cancellationToken).ConfigureAwait(false);
         await using var configuredPathLock = pathLock.ConfigureAwait(false);
         return new StorageSnapshot(await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false));
     }
@@ -106,11 +107,12 @@ public sealed class GodotFileStorage : IStorage, IStorageBackup, IDisposable
         cancellationToken.ThrowIfCancellationRequested();
         var logicalPath = ToAbsolutePath(key);
         var path = ToSnapshotPath(logicalPath);
-        var pathLock = await _lockManager.AcquireLockAsync(logicalPath).ConfigureAwait(false);
+        var pathLock = await _lockManager.AcquireLockAsync(logicalPath, cancellationToken).ConfigureAwait(false);
         await using var configuredPathLock = pathLock.ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         var bytes = snapshot.ToArray();
-        await AtomicFileWriter.WriteAsync(path, stream => stream.WriteAsync(bytes).AsTask()).ConfigureAwait(false);
+        // Once admitted, the atomic snapshot write must finish even if its caller stops waiting.
+        await AtomicFileWriter.WriteAsync(path, stream => stream.WriteAsync(bytes, CancellationToken.None).AsTask()).ConfigureAwait(false);
     }
 
     /// <summary>Snapshots are for writable saves, never exported res:// resource packages.</summary>
@@ -165,7 +167,8 @@ public sealed class GodotFileStorage : IStorage, IStorageBackup, IDisposable
             // 处理标准文件系统路径的删除操作
             else
             {
-                if (File.Exists(path)) File.Delete(path);
+                if (File.Exists(path))
+                    File.Delete(path);
             }
         }
     }
@@ -252,7 +255,8 @@ public sealed class GodotFileStorage : IStorage, IStorageBackup, IDisposable
 
         await using (pathLock.ConfigureAwait(false))
         {
-            if (!path.IsGodotPath()) return File.Exists(path);
+            if (!path.IsGodotPath())
+                return File.Exists(path);
             using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
             return file != null;
         }
@@ -316,8 +320,7 @@ public sealed class GodotFileStorage : IStorage, IStorageBackup, IDisposable
 
             if (path.IsGodotPath())
             {
-                using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-                if (file == null) throw new FileNotFoundException($"Storage key not found: {key}", path);
+                using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read) ?? throw new FileNotFoundException($"Storage key not found: {key}", path);
                 content = file.GetAsText();
             }
             else
@@ -346,7 +349,9 @@ public sealed class GodotFileStorage : IStorage, IStorageBackup, IDisposable
         {
             var fullPath = string.IsNullOrEmpty(path) ? "user://" : ToAbsolutePath(path);
             var dir = DirAccess.Open(fullPath);
-            if (dir == null) return Array.Empty<string>();
+
+            if (dir == null)
+                return [];
 
             dir.ListDirBegin();
             var result = new List<string>();
@@ -354,8 +359,9 @@ public sealed class GodotFileStorage : IStorage, IStorageBackup, IDisposable
             while (true)
             {
                 var name = dir.GetNext();
-                if (string.IsNullOrEmpty(name)) break;
-                if (dir.CurrentIsDir() && !name.StartsWith(".", StringComparison.Ordinal))
+                if (string.IsNullOrEmpty(name))
+                    break;
+                if (dir.CurrentIsDir() && !name.StartsWith('.'))
                     result.Add(name);
             }
 
@@ -375,7 +381,9 @@ public sealed class GodotFileStorage : IStorage, IStorageBackup, IDisposable
         {
             var fullPath = string.IsNullOrEmpty(path) ? "user://" : ToAbsolutePath(path);
             var dir = DirAccess.Open(fullPath);
-            if (dir == null) return Array.Empty<string>();
+
+            if (dir == null)
+                return [];
 
             dir.ListDirBegin();
             var result = new List<string>();
@@ -383,7 +391,8 @@ public sealed class GodotFileStorage : IStorage, IStorageBackup, IDisposable
             while (true)
             {
                 var name = dir.GetNext();
-                if (string.IsNullOrEmpty(name)) break;
+                if (string.IsNullOrEmpty(name))
+                    break;
                 if (!dir.CurrentIsDir())
                     result.Add(name);
             }

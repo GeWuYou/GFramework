@@ -46,7 +46,7 @@ public class StateTests
     {
         var state = new ConcreteStateV2();
 
-        state.OnEnter(null);
+        state.OnEnter(from: null);
 
         Assert.That(state.EnterCalled, Is.True);
         Assert.That(state.EnterFrom, Is.Null);
@@ -75,7 +75,7 @@ public class StateTests
     {
         var state = new ConcreteStateV2();
 
-        state.OnExit(null);
+        state.OnExit(to: null);
 
         Assert.That(state.ExitCalled, Is.True);
         Assert.That(state.ExitTo, Is.Null);
@@ -131,7 +131,7 @@ public class StateTests
     [Test]
     public void State_WithComplexTransitionRules_Should_Work()
     {
-        var state1 = new ConditionalStateV2 { AllowedTransitions = new[] { typeof(ConcreteStateV3) } };
+        var state1 = new ConditionalStateV2 { AllowedTransitions = [typeof(ConcreteStateV3)] };
         var state2 = new ConcreteStateV3();
         var state3 = new ConcreteStateV4();
 
@@ -149,7 +149,7 @@ public class StateTests
         var state2 = new ConcreteStateV3();
         var state3 = new ConcreteStateV4();
 
-        state1.OnEnter(null);
+        state1.OnEnter(from: null);
         state2.OnEnter(state1);
         state3.OnEnter(state2);
 
@@ -173,7 +173,7 @@ public class StateTests
         state.OnEnter(other);
         state.OnExit(other);
         state.OnEnter(other);
-        state.OnExit(null);
+        state.OnExit(to: null);
 
         Assert.That(state.EnterCallCount, Is.EqualTo(2));
         Assert.That(state.ExitCallCount, Is.EqualTo(2));
@@ -189,7 +189,7 @@ public class StateTests
         var state2 = new ConcreteStateV3();
         var state3 = new ConcreteStateV2();
 
-        state1.OnEnter(null);
+        state1.OnEnter(from: null);
         state2.OnEnter(state1);
         state3.OnEnter(state2);
 
@@ -232,7 +232,7 @@ public class StateTests
     {
         var state = new ConcreteAsyncStateV2();
 
-        await state.OnEnterAsync(null);
+        await state.OnEnterAsync(from: null);
 
         Assert.That(state.EnterCalled, Is.True);
         Assert.That(state.EnterFrom, Is.Null);
@@ -261,7 +261,7 @@ public class StateTests
     {
         var state = new ConcreteAsyncStateV2();
 
-        await state.OnExitAsync(null);
+        await state.OnExitAsync(to: null);
 
         Assert.That(state.ExitCalled, Is.True);
         Assert.That(state.ExitTo, Is.Null);
@@ -323,7 +323,7 @@ public class StateTests
         await state.OnEnterAsync(other);
         await state.OnExitAsync(other);
         await state.OnEnterAsync(other);
-        await state.OnExitAsync(null);
+        await state.OnExitAsync(to: null);
 
         Assert.That(state.EnterCallCount, Is.EqualTo(2));
         Assert.That(state.ExitCallCount, Is.EqualTo(2));

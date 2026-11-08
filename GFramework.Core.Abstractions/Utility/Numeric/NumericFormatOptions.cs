@@ -36,7 +36,10 @@ public sealed record NumericFormatOptions
     /// <summary>
     /// 小于缩写阈值时是否启用千分位分组。
     /// </summary>
-    public bool UseGroupingBelowThreshold { get; init; }
+    public bool UseGroupingBelowThreshold
+    {
+        get; init;
+    }
 
     /// <summary>
     /// 进入缩写显示的阈值。
@@ -46,10 +49,16 @@ public sealed record NumericFormatOptions
     /// <summary>
     /// 格式提供者。
     /// </summary>
-    public IFormatProvider? FormatProvider { get; init; }
+    public IFormatProvider? FormatProvider
+    {
+        get; init;
+    }
 
     /// <summary>
     /// 自定义格式规则。
     /// </summary>
-    public INumericFormatRule? Rule { get; init; }
+    public INumericFormatRule? Rule
+    {
+        get; init;
+    }
 }

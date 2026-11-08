@@ -37,10 +37,9 @@ public class ConfigRegistryTests
         var registry = new ConfigRegistry();
         var oldTable = CreateMonsterTable();
         var newTable = new InMemoryConfigTable<int, MonsterConfigStub>(
-            new[]
-            {
-                new MonsterConfigStub(3, "Orc")
-            },
+            [
+                new MonsterConfigStub(3, "Orc"),
+            ],
             static config => config.Id);
 
         registry.RegisterTable("monster", oldTable);
@@ -112,14 +111,13 @@ public class ConfigRegistryTests
     ///     创建怪物配置表测试实例。
     /// </summary>
     /// <returns>怪物配置表。</returns>
-    private static IConfigTable<int, MonsterConfigStub> CreateMonsterTable()
+    private static InMemoryConfigTable<int, MonsterConfigStub> CreateMonsterTable()
     {
         return new InMemoryConfigTable<int, MonsterConfigStub>(
-            new[]
-            {
+            [
                 new MonsterConfigStub(1, "Slime"),
-                new MonsterConfigStub(2, "Goblin")
-            },
+                new MonsterConfigStub(2, "Goblin"),
+            ],
             static config => config.Id);
     }
 
@@ -127,13 +125,12 @@ public class ConfigRegistryTests
     ///     创建 NPC 配置表测试实例。
     /// </summary>
     /// <returns>NPC 配置表。</returns>
-    private static IConfigTable<Guid, NpcConfigStub> CreateNpcTable()
+    private static InMemoryConfigTable<Guid, NpcConfigStub> CreateNpcTable()
     {
         return new InMemoryConfigTable<Guid, NpcConfigStub>(
-            new[]
-            {
-                new NpcConfigStub(Guid.NewGuid(), "Guide")
-            },
+            [
+                new NpcConfigStub(Guid.NewGuid(), "Guide"),
+            ],
             static config => config.Id);
     }
 

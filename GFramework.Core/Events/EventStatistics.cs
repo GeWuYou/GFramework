@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using System.Text;
 using GFramework.Core.Abstractions.Events;
 
@@ -94,27 +95,27 @@ public sealed class EventStatistics : IEventStatistics
     public string GenerateReport()
     {
         var sb = new StringBuilder();
-        sb.AppendLine(FormattableString.Invariant($"=== 事件统计报告 ==="));
-        sb.AppendLine(FormattableString.Invariant($"总发布数: {TotalPublished}"));
-        sb.AppendLine(FormattableString.Invariant($"总处理数: {TotalHandled}"));
-        sb.AppendLine(FormattableString.Invariant($"总失败数: {TotalFailed}"));
-        sb.AppendLine(FormattableString.Invariant($"活跃事件类型: {ActiveEventTypes}"));
-        sb.AppendLine(FormattableString.Invariant($"活跃监听器: {ActiveListeners}"));
+        sb.AppendLine($"=== 事件统计报告 ===");
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"总发布数: {TotalPublished}"));
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"总处理数: {TotalHandled}"));
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"总失败数: {TotalFailed}"));
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"活跃事件类型: {ActiveEventTypes}"));
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"活跃监听器: {ActiveListeners}"));
 
         lock (_lock)
         {
             if (_publishCountByType.Count > 0)
             {
-                sb.AppendLine(FormattableString.Invariant($"\n按事件类型统计（发布次数）:"));
+                sb.AppendLine("\n按事件类型统计（发布次数）:");
                 foreach (var kvp in _publishCountByType.OrderByDescending(x => x.Value))
-                    sb.AppendLine(FormattableString.Invariant($"  {kvp.Key}: {kvp.Value}"));
+                    sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"  {kvp.Key}: {kvp.Value}"));
             }
 
             if (_listenerCountByType.Count > 0)
             {
-                sb.AppendLine(FormattableString.Invariant($"\n按事件类型统计（监听器数量）:"));
+                sb.AppendLine("\n按事件类型统计（监听器数量）:");
                 foreach (var kvp in _listenerCountByType.OrderByDescending(x => x.Value))
-                    sb.AppendLine(FormattableString.Invariant($"  {kvp.Key}: {kvp.Value}"));
+                    sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"  {kvp.Key}: {kvp.Value}"));
             }
         }
 

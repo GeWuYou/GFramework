@@ -31,7 +31,10 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <summary>
     ///     获取当前激活的状态
     /// </summary>
-    public IState? Current { get; protected set; }
+    public IState? Current
+    {
+        get; protected set;
+    }
 
     /// <summary>
     ///     注册一个状态到状态机中
@@ -58,11 +61,12 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
         try
         {
             var stateToUnregister = PrepareUnregister<T>(out var isCurrentState);
-            if (stateToUnregister == null) return this;
+            if (stateToUnregister == null)
+                return this;
 
             if (isCurrentState)
             {
-                await ExecuteExitAsync(Current!, null).ConfigureAwait(false);
+                await ExecuteExitAsync(Current!, to: null).ConfigureAwait(false);
                 Current = null;
             }
 
@@ -88,7 +92,8 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
             if (!States.TryGetValue(typeof(T), out var target))
                 return false;
 
-            if (Current == null) return true;
+            if (Current == null)
+                return true;
 
             return await CanTransitionToAsync(Current, target).ConfigureAwait(false);
         }
@@ -203,7 +208,8 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
         try
         {
             var previousState = FindValidPreviousState();
-            if (previousState == null) return false;
+            if (previousState == null)
+                return false;
 
             await ChangeInternalWithoutHistoryAsync(previousState).ConfigureAwait(false);
             return true;
@@ -288,7 +294,8 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <param name="next">下一个状态实例</param>
     protected virtual async Task ChangeInternalWithoutHistoryAsync(IState next)
     {
-        if (Current == next) return;
+        if (Current == next)
+            return;
 
         var old = Current;
         await OnStateChangingAsync(old, next).ConfigureAwait(false);
@@ -306,7 +313,8 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <param name="next">下一个状态实例</param>
     protected virtual async Task ChangeInternalAsync(IState next)
     {
-        if (Current == next) return;
+        if (Current == next)
+            return;
 
         var old = Current;
         await OnStateChangingAsync(old, next).ConfigureAwait(false);
@@ -328,7 +336,8 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// </summary>
     private void AddToHistory(IState? state)
     {
-        if (state == null) return;
+        if (state == null)
+            return;
 
         lock (_lock)
         {
@@ -350,7 +359,8 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// </summary>
     private static async Task ExecuteEnterAsync(IState? state, IState? from)
     {
-        if (state == null) return;
+        if (state == null)
+            return;
 
         if (state is IAsyncState asyncState)
             await asyncState.OnEnterAsync(from).ConfigureAwait(false);
@@ -363,7 +373,8 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// </summary>
     private static async Task ExecuteExitAsync(IState? state, IState? to)
     {
-        if (state == null) return;
+        if (state == null)
+            return;
 
         if (state is IAsyncState asyncState)
             await asyncState.OnExitAsync(to).ConfigureAwait(false);
@@ -396,6 +407,8 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// </summary>
     /// <param name="from">源状态</param>
     /// <param name="to">目标状态</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "The default async adapter preserves the synchronous virtual hook; choosing its Async counterpart would recurse into this method.")]
     protected virtual Task OnTransitionRejectedAsync(IState from, IState to)
     {
         OnTransitionRejected(from, to);
@@ -416,6 +429,8 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// </summary>
     /// <param name="from">源状态</param>
     /// <param name="to">目标状态</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "The default async adapter preserves the synchronous virtual hook; choosing its Async counterpart would recurse into this method.")]
     protected virtual Task OnStateChangingAsync(IState? from, IState to)
     {
         OnStateChanging(from, to);
@@ -436,6 +451,8 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// </summary>
     /// <param name="from">源状态</param>
     /// <param name="to">目标状态</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "The default async adapter preserves the synchronous virtual hook; choosing its Async counterpart would recurse into this method.")]
     protected virtual Task OnStateChangedAsync(IState? from, IState? to)
     {
         OnStateChanged(from, to);

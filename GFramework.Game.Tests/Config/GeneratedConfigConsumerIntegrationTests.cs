@@ -33,7 +33,7 @@ public class GeneratedConfigConsumerIntegrationTests
     {
         if (Directory.Exists(_rootPath))
         {
-            Directory.Delete(_rootPath, true);
+            Directory.Delete(_rootPath, recursive: true);
         }
     }
 
@@ -75,35 +75,35 @@ public class GeneratedConfigConsumerIntegrationTests
         var itemOnlyRegistrationTables = GeneratedConfigCatalog.GetTablesForRegistration(
             new GeneratedConfigRegistrationOptions
             {
-                IncludedTableNames = new[] { ItemConfigBindings.TableName }
+                IncludedTableNames = [ItemConfigBindings.TableName],
             });
         var predicateOnlyRegistrationTables = GeneratedConfigCatalog.GetTablesForRegistration(
             new GeneratedConfigRegistrationOptions
             {
                 TableFilter = static metadata =>
-                    string.Equals(metadata.TableName, MonsterConfigBindings.TableName, StringComparison.Ordinal)
+                    string.Equals(metadata.TableName, MonsterConfigBindings.TableName, StringComparison.Ordinal),
             });
         var monsterOnlyOptions = new GeneratedConfigRegistrationOptions
         {
-            IncludedConfigDomains = new[] { MonsterConfigBindings.ConfigDomain }
+            IncludedConfigDomains = [MonsterConfigBindings.ConfigDomain],
         };
         var predicateOnlyOptions = new GeneratedConfigRegistrationOptions
         {
             TableFilter = static metadata =>
-                string.Equals(metadata.TableName, MonsterConfigBindings.TableName, StringComparison.Ordinal)
+                string.Equals(metadata.TableName, MonsterConfigBindings.TableName, StringComparison.Ordinal),
         };
 
         Assert.Multiple(() =>
         {
             Assert.That(monsterDomainTables.Select(static metadata => metadata.TableName),
-                Is.EqualTo(new[] { MonsterConfigBindings.TableName }));
+                Is.EqualTo([MonsterConfigBindings.TableName]));
             Assert.That(missingDomainTables, Is.Empty);
             Assert.That(itemOnlyRegistrationTables.Select(static metadata => metadata.TableName),
-                Is.EqualTo(new[] { ItemConfigBindings.TableName }));
+                Is.EqualTo([ItemConfigBindings.TableName]));
             Assert.That(predicateOnlyRegistrationTables.Select(static metadata => metadata.TableName),
-                Is.EqualTo(new[] { MonsterConfigBindings.TableName }));
+                Is.EqualTo([MonsterConfigBindings.TableName]));
             Assert.That(GeneratedConfigCatalog.GetTablesForRegistration().Select(static metadata => metadata.TableName),
-                Is.SupersetOf(new[] { ItemConfigBindings.TableName, MonsterConfigBindings.TableName }));
+                Is.SupersetOf([ItemConfigBindings.TableName, MonsterConfigBindings.TableName]));
             Assert.That(GeneratedConfigCatalog.MatchesRegistrationOptions(monsterMetadata, monsterOnlyOptions),
                 Is.True);
             Assert.That(GeneratedConfigCatalog.MatchesRegistrationOptions(itemMetadata, monsterOnlyOptions), Is.False);
@@ -129,7 +129,7 @@ public class GeneratedConfigConsumerIntegrationTests
             .RegisterAllGeneratedConfigTables(
                 new GeneratedConfigRegistrationOptions
                 {
-                    IncludedConfigDomains = new[] { MonsterConfigBindings.ConfigDomain }
+                    IncludedConfigDomains = [MonsterConfigBindings.ConfigDomain],
                 });
         await domainLoader.LoadAsync(domainRegistry).ConfigureAwait(false);
 
@@ -138,7 +138,7 @@ public class GeneratedConfigConsumerIntegrationTests
             .RegisterAllGeneratedConfigTables(
                 new GeneratedConfigRegistrationOptions
                 {
-                    IncludedTableNames = new[] { ItemConfigBindings.TableName }
+                    IncludedTableNames = [ItemConfigBindings.TableName],
                 });
         await tableNameLoader.LoadAsync(tableNameRegistry).ConfigureAwait(false);
 
@@ -147,8 +147,8 @@ public class GeneratedConfigConsumerIntegrationTests
             .RegisterAllGeneratedConfigTables(
                 new GeneratedConfigRegistrationOptions
                 {
-                    IncludedConfigDomains = Array.Empty<string>(),
-                    IncludedTableNames = Array.Empty<string>()
+                    IncludedConfigDomains = [],
+                    IncludedTableNames = [],
                 });
         await emptyAllowListLoader.LoadAsync(emptyAllowListRegistry).ConfigureAwait(false);
 
@@ -159,7 +159,7 @@ public class GeneratedConfigConsumerIntegrationTests
                 new GeneratedConfigRegistrationOptions
                 {
                     TableFilter = metadata =>
-                        string.Equals(metadata.ConfigDomain, monsterDomain, StringComparison.Ordinal)
+                        string.Equals(metadata.ConfigDomain, monsterDomain, StringComparison.Ordinal),
                 });
         await predicateLoader.LoadAsync(predicateRegistry).ConfigureAwait(false);
 
@@ -183,7 +183,7 @@ public class GeneratedConfigConsumerIntegrationTests
             Id = 3,
             Name = "Bat",
             Hp = 12,
-            Faction = "cave"
+            Faction = "cave",
         };
 
         var yaml = MonsterConfigBindings.SerializeToYaml(config);
@@ -198,10 +198,9 @@ public class GeneratedConfigConsumerIntegrationTests
             Assert.That(yaml, Does.Contain("name: Bat"));
             Assert.That(yaml, Does.Contain("hp: 12"));
             Assert.That(yaml, Does.Contain("faction: cave"));
-            Assert.That(yaml.EndsWith("\n", StringComparison.Ordinal), Is.True);
+            Assert.That(yaml.EndsWith('\n'), Is.True);
         });
-
-        MonsterConfigBindings.ValidateYaml(_rootPath, "monster/generated.yaml", yaml);
+        await MonsterConfigBindings.ValidateYamlAsync(_rootPath, "monster/generated.yaml", yaml);
         Assert.That(
             async () => await MonsterConfigBindings.ValidateYamlAsync(_rootPath, "monster/generated.yaml", yaml).ConfigureAwait(false),
             Throws.Nothing);
@@ -324,7 +323,7 @@ public class GeneratedConfigConsumerIntegrationTests
         {
             Assert.That(
                 GeneratedConfigCatalog.Tables.Select(static metadata => metadata.TableName),
-                Is.SupersetOf(new[] { "item", "monster" }));
+                Is.SupersetOf(["item", "monster"]));
             Assert.That(GeneratedConfigCatalog.TryGetByTableName("item", out var itemCatalogEntry), Is.True);
             Assert.That(itemCatalogEntry.ConfigDomain, Is.EqualTo("item"));
             Assert.That(itemCatalogEntry.ConfigRelativePath, Is.EqualTo("item"));
@@ -364,9 +363,9 @@ public class GeneratedConfigConsumerIntegrationTests
             Assert.That(monsterTable.Count, Is.EqualTo(2));
             Assert.That(monsterTable.Get(1).Name, Is.EqualTo("Slime"));
             Assert.That(monsterTable.Get(2).Hp, Is.EqualTo(30));
-            Assert.That(monsterTable.FindByName("Slime").Select(static config => config.Id), Is.EqualTo(new[] { 1 }));
+            Assert.That(monsterTable.FindByName("Slime").Select(static config => config.Id), Is.EqualTo([1]));
             Assert.That(dungeonMonsters.Select(static config => config.Name),
-                Is.EquivalentTo(new[] { "Slime", "Goblin" }));
+                Is.EquivalentTo(["Slime", "Goblin"]));
             Assert.That(monsterTable.TryFindFirstByName("Goblin", out var goblin), Is.True);
             Assert.That(goblin, Is.Not.Null);
             Assert.That(goblin!.Id, Is.EqualTo(2));
@@ -378,7 +377,7 @@ public class GeneratedConfigConsumerIntegrationTests
             Assert.That(registry.TryGetMonsterTable(out var generatedTable), Is.True);
             Assert.That(generatedTable, Is.Not.Null);
             Assert.That(generatedTable!.All().Select(static config => config.Name),
-                Is.EquivalentTo(new[] { "Slime", "Goblin" }));
+                Is.EquivalentTo(["Slime", "Goblin"]));
         });
     }
 
@@ -394,7 +393,7 @@ public class GeneratedConfigConsumerIntegrationTests
             Assert.That(itemTable.Count, Is.EqualTo(2));
             Assert.That(itemTable.Get("potion").Name, Is.EqualTo("Potion"));
             Assert.That(itemTable.FindByCategory("consumable").Select(static config => config.Id),
-                Is.EquivalentTo(new[] { "potion", "ether" }));
+                Is.EquivalentTo(["potion", "ether"]));
             Assert.That(registry.TryGetItemTable(out var generatedItemTable), Is.True);
             Assert.That(generatedItemTable, Is.Not.Null);
             Assert.That(generatedItemTable!.Get("ether").Name, Is.EqualTo("Ether"));

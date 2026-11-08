@@ -68,7 +68,7 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
                 ArchitecturePhase.AfterModelInit,
                 ArchitecturePhase.BeforeSystemInit,
                 ArchitecturePhase.AfterSystemInit,
-                ArchitecturePhase.Ready
+                ArchitecturePhase.Ready,
             },
             Architecture.PhaseHistory
         );

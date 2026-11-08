@@ -16,7 +16,10 @@ public partial class GodotUiInputBridge : Node
     /// <summary>Gets or sets the host's action boundary, which must observe the supplied task.</summary>
     public Action<Func<Task>> RunAction { get; set; } = null!;
     /// <summary>Gets or sets the observed fallback when no UI owns Cancel, for example opening a gameplay pause menu.</summary>
-    public Func<Task>? UnhandledCancelAsync { get; set; }
+    public Func<Task>? UnhandledCancelAsync
+    {
+        get; set;
+    }
 
     /// <summary>Keeps UI navigation available while gameplay is paused.</summary>
     public override void _Ready() => ProcessMode = ProcessModeEnum.Always;

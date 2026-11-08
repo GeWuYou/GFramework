@@ -33,7 +33,7 @@ public static class GodotLoggingIntegration
             // 模板、颜色与 appsettings.json 首载/热重载能力保持原有行为。
             options.Mode = GodotLoggerMode.Debug;
         });
-        return LoggerFactory.Create(builder => builder.AddProvider(GodotLog.Provider));
+        return LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(GodotLog.Provider));
     }
 
     /// <summary>创建使用给定日志工厂的架构实例。</summary>
@@ -44,7 +44,7 @@ public static class GodotLoggingIntegration
         {
             LoggerProperties = new LoggerProperties
             {
-                LoggerFactory = loggerFactory
-            }
+                LoggerFactory = loggerFactory,
+            },
         });
 }

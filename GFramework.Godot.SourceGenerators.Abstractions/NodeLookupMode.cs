@@ -27,5 +27,5 @@ public enum NodeLookupMode
     /// <summary>
     ///     按绝对路径查找。
     /// </summary>
-    AbsolutePath = 3
+    AbsolutePath = 3,
 }

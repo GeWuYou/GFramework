@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using System.IO;
 using GFramework.Core.Configuration;
 using NUnit.Framework;
@@ -125,7 +126,7 @@ public class ConfigurationManagerTests
     {
         _configManager.SetConfig("int.key", 42);
         _configManager.SetConfig("string.key", "hello");
-        _configManager.SetConfig("bool.key", true);
+        _configManager.SetConfig("bool.key", value: true);
         _configManager.SetConfig("double.key", 3.14);
 
         Assert.That(_configManager.GetConfig<int>("int.key"), Is.EqualTo(42));
@@ -284,7 +285,7 @@ public class ConfigurationManagerTests
                 {
                     for (var j = 0; j < iterationsPerThread; j++)
                     {
-                        _configManager.SetConfig($"key.{threadId}", j);
+                        _configManager.SetConfig(string.Create(CultureInfo.InvariantCulture, $"key.{threadId}"), j);
                     }
                 }
                 catch (Exception ex)

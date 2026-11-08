@@ -41,63 +41,99 @@ internal sealed class YamlConfigSchemaNode
     /// <summary>
     ///     获取节点类型。
     /// </summary>
-    public YamlConfigSchemaPropertyType NodeType { get; }
+    public YamlConfigSchemaPropertyType NodeType
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取对象属性集合；非对象节点时返回空。
     /// </summary>
-    public IReadOnlyDictionary<string, YamlConfigSchemaNode>? Properties { get; }
+    public IReadOnlyDictionary<string, YamlConfigSchemaNode>? Properties
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取对象必填属性集合；非对象节点时返回空。
     /// </summary>
-    public IReadOnlyCollection<string>? RequiredProperties { get; }
+    public IReadOnlyCollection<string>? RequiredProperties
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取数组元素节点；非数组节点时返回空。
     /// </summary>
-    public YamlConfigSchemaNode? ItemNode { get; }
+    public YamlConfigSchemaNode? ItemNode
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取目标引用表名称；未声明跨表引用时返回空。
     /// </summary>
-    public string? ReferenceTableName { get; }
+    public string? ReferenceTableName
+    {
+        get;
+    }
 
     /// <summary>
-    ///     获取节点允许值集合；未声明 <c>enum</c> 时返回空。
+    ///     获取节点允许值集合；未声明 <c language="json">enum</c> 时返回空。
     /// </summary>
-    public IReadOnlyCollection<YamlConfigAllowedValue>? AllowedValues { get; }
+    public IReadOnlyCollection<YamlConfigAllowedValue>? AllowedValues
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取标量范围与长度约束；未声明时返回空。
     /// </summary>
-    public YamlConfigScalarConstraints? Constraints { get; }
+    public YamlConfigScalarConstraints? Constraints
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取对象属性数量约束；未声明时返回空。
     /// </summary>
-    public YamlConfigObjectConstraints? ObjectConstraints { get; }
+    public YamlConfigObjectConstraints? ObjectConstraints
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取数组元素数量约束；未声明时返回空。
     /// </summary>
-    public YamlConfigArrayConstraints? ArrayConstraints { get; }
+    public YamlConfigArrayConstraints? ArrayConstraints
+    {
+        get;
+    }
 
     /// <summary>
-    ///     获取节点常量约束；未声明 <c>const</c> 时返回空。
+    ///     获取节点常量约束；未声明 <c language="json">const</c> 时返回空。
     /// </summary>
-    public YamlConfigConstantValue? ConstantValue { get; }
+    public YamlConfigConstantValue? ConstantValue
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取节点声明的 <c>not</c> 子 schema；未声明时返回空。
     /// </summary>
-    public YamlConfigSchemaNode? NegatedSchemaNode { get; }
+    public YamlConfigSchemaNode? NegatedSchemaNode
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取用于诊断显示的 schema 路径提示。
     ///     当前节点本身不记录独立路径，因此对象校验会回退到所属根 schema 路径。
     /// </summary>
-    public string SchemaPathHint { get; }
+    public string SchemaPathHint
+    {
+        get;
+    }
 
     /// <summary>
     ///     创建对象节点描述。
@@ -201,7 +237,7 @@ internal sealed class YamlConfigSchemaNode
     }
 
     /// <summary>
-    ///     基于当前节点复制一个只替换 <c>enum</c> 允许值集合的新节点。
+    ///     基于当前节点复制一个只替换 <c language="json">enum</c> 允许值集合的新节点。
     /// </summary>
     /// <param name="allowedValues">新的允许值集合。</param>
     /// <returns>复制后的节点。</returns>
@@ -242,60 +278,42 @@ internal sealed class YamlConfigSchemaNode
             SchemaPathHint);
     }
 
-    private sealed class NodeChildren
+    private sealed class NodeChildren(
+        IReadOnlyDictionary<string, YamlConfigSchemaNode>? properties,
+        IReadOnlyCollection<string>? requiredProperties,
+        YamlConfigSchemaNode? itemNode)
     {
-        public NodeChildren(
-            IReadOnlyDictionary<string, YamlConfigSchemaNode>? properties,
-            IReadOnlyCollection<string>? requiredProperties,
-            YamlConfigSchemaNode? itemNode)
-        {
-            Properties = properties;
-            RequiredProperties = requiredProperties;
-            ItemNode = itemNode;
-        }
-
         public static NodeChildren None { get; } = new(properties: null, requiredProperties: null, itemNode: null);
 
-        public IReadOnlyDictionary<string, YamlConfigSchemaNode>? Properties { get; }
+        public IReadOnlyDictionary<string, YamlConfigSchemaNode>? Properties { get; } = properties;
 
-        public IReadOnlyCollection<string>? RequiredProperties { get; }
+        public IReadOnlyCollection<string>? RequiredProperties { get; } = requiredProperties;
 
-        public YamlConfigSchemaNode? ItemNode { get; }
+        public YamlConfigSchemaNode? ItemNode { get; } = itemNode;
     }
 
-    private sealed class NodeValidation
+    private sealed class NodeValidation(
+        string? referenceTableName,
+        IReadOnlyCollection<YamlConfigAllowedValue>? allowedValues,
+        YamlConfigScalarConstraints? constraints,
+        YamlConfigArrayConstraints? arrayConstraints,
+        YamlConfigObjectConstraints? objectConstraints,
+        YamlConfigConstantValue? constantValue,
+        YamlConfigSchemaNode? negatedSchemaNode)
     {
-        public NodeValidation(
-            string? referenceTableName,
-            IReadOnlyCollection<YamlConfigAllowedValue>? allowedValues,
-            YamlConfigScalarConstraints? constraints,
-            YamlConfigArrayConstraints? arrayConstraints,
-            YamlConfigObjectConstraints? objectConstraints,
-            YamlConfigConstantValue? constantValue,
-            YamlConfigSchemaNode? negatedSchemaNode)
-        {
-            ReferenceTableName = referenceTableName;
-            AllowedValues = allowedValues;
-            Constraints = constraints;
-            ArrayConstraints = arrayConstraints;
-            ObjectConstraints = objectConstraints;
-            ConstantValue = constantValue;
-            NegatedSchemaNode = negatedSchemaNode;
-        }
+        public string? ReferenceTableName { get; } = referenceTableName;
 
-        public string? ReferenceTableName { get; }
+        public IReadOnlyCollection<YamlConfigAllowedValue>? AllowedValues { get; } = allowedValues;
 
-        public IReadOnlyCollection<YamlConfigAllowedValue>? AllowedValues { get; }
+        public YamlConfigScalarConstraints? Constraints { get; } = constraints;
 
-        public YamlConfigScalarConstraints? Constraints { get; }
+        public YamlConfigArrayConstraints? ArrayConstraints { get; } = arrayConstraints;
 
-        public YamlConfigArrayConstraints? ArrayConstraints { get; }
+        public YamlConfigObjectConstraints? ObjectConstraints { get; } = objectConstraints;
 
-        public YamlConfigObjectConstraints? ObjectConstraints { get; }
+        public YamlConfigConstantValue? ConstantValue { get; } = constantValue;
 
-        public YamlConfigConstantValue? ConstantValue { get; }
-
-        public YamlConfigSchemaNode? NegatedSchemaNode { get; }
+        public YamlConfigSchemaNode? NegatedSchemaNode { get; } = negatedSchemaNode;
 
         public NodeValidation WithReferenceTable(string referenceTableName)
         {

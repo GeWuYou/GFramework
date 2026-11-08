@@ -21,7 +21,13 @@ public class UiRoute<TArgs>
     }
 
     /// <summary>Gets the stable registration identifier.</summary>
-    public string Key { get; }
+    public string Key
+    {
+        get;
+    }
     /// <summary>Gets immutable presentation and interaction policy.</summary>
-    public UiRouteOptions Options { get; }
+    public UiRouteOptions Options
+    {
+        get;
+    }
 }

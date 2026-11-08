@@ -61,7 +61,7 @@ public class PersistenceTests
         {
             SaveRoot = "saves",
             SaveSlotPrefix = "slot_",
-            SaveFileName = "save.json"
+            SaveFileName = "save.json",
         };
 
         var repository = new SaveRepository<TestSaveData>(storage, config, new SaveRepositoryOptions<TestSaveData> { GameId = "test", CurrentVersion = 1 });
@@ -74,7 +74,7 @@ public class PersistenceTests
         Assert.That(loaded.Name, Is.EqualTo(data.Name));
 
         var slots = await repository.ListSlotsAsync();
-        Assert.That(slots, Is.EqualTo(new[] { 1 }));
+        Assert.That(slots, Is.EqualTo([1]));
 
         await repository.DeleteAsync(1);
         Assert.That(await repository.ExistsAsync(1), Is.False);
@@ -130,7 +130,7 @@ public class PersistenceTests
             new DataRepositoryOptions
             {
                 AutoBackup = true,
-                EnableEvents = false
+                EnableEvents = false,
             });
         var location = new TestDataLocation("options", namespaceValue: "profile");
 
@@ -162,7 +162,7 @@ public class PersistenceTests
             new DataRepositoryOptions
             {
                 AutoBackup = false,
-                EnableEvents = true
+                EnableEvents = true,
             }, publishEvent: context.Publish);
 
         var location1 = new TestDataLocation("graphics", namespaceValue: "settings");
@@ -176,7 +176,7 @@ public class PersistenceTests
         await repository.SaveAllAsync(
         [
             (location1, new TestSimpleData { Value = 10 }),
-            (location2, new TestSimpleData { Value = 20 })
+            (location2, new TestSimpleData { Value = 20 }),
         ]);
 
         Assert.Multiple(() =>
@@ -200,7 +200,7 @@ public class PersistenceTests
             new DataRepositoryOptions
             {
                 AutoBackup = true,
-                EnableEvents = false
+                EnableEvents = false,
             });
         var numberLocation = new TestDataLocation("graphics", namespaceValue: "settings");
         var textLocation = new TestDataLocation("profile", namespaceValue: "settings");
@@ -208,13 +208,13 @@ public class PersistenceTests
         await repository.SaveAllAsync(
         [
             (numberLocation, new TestSimpleData { Value = 1 }),
-            (textLocation, new TestNamedData { Name = "old-name" })
+            (textLocation, new TestNamedData { Name = "old-name" }),
         ]);
 
         await repository.SaveAllAsync(
         [
             (numberLocation, new TestSimpleData { Value = 2 }),
-            (textLocation, new TestNamedData { Name = "new-name" })
+            (textLocation, new TestNamedData { Name = "new-name" }),
         ]);
 
         var currentNumber = await repository.LoadAsync<TestSimpleData>(numberLocation);
@@ -250,7 +250,7 @@ public class PersistenceTests
                 new DataRepositoryOptions
                 {
                     AutoBackup = true,
-                    EnableEvents = false
+                    EnableEvents = false,
                 });
             seedRepository.RegisterDataType(location1, typeof(TestSimpleData));
             seedRepository.RegisterDataType(location2, typeof(TestSimpleData));
@@ -266,7 +266,7 @@ public class PersistenceTests
             new DataRepositoryOptions
             {
                 AutoBackup = true,
-                EnableEvents = true
+                EnableEvents = true,
             }, publishEvent: context.Publish);
         repository.RegisterDataType(location1, typeof(TestSimpleData));
         repository.RegisterDataType(location2, typeof(TestSimpleData));
@@ -281,7 +281,7 @@ public class PersistenceTests
         await repository.SaveAllAsync(
         [
             (location1, new TestSimpleData { Value = 2 }),
-            (location2, new TestSimpleData { Value = 3 })
+            (location2, new TestSimpleData { Value = 3 }),
         ]);
 
         var current = await repository.LoadAsync<TestSimpleData>(location1);
@@ -316,7 +316,7 @@ public class PersistenceTests
                 new DataRepositoryOptions
                 {
                     AutoBackup = true,
-                    EnableEvents = false
+                    EnableEvents = false,
                 });
             repository.RegisterDataType(location1, typeof(TestSimpleData));
             repository.RegisterDataType(location2, typeof(TestSimpleData));
@@ -324,7 +324,7 @@ public class PersistenceTests
             await repository.SaveAllAsync(
             [
                 (location1, new TestSimpleData { Value = 7 }),
-                (location2, new TestSimpleData { Value = 11 })
+                (location2, new TestSimpleData { Value = 11 }),
             ]);
         }
 
@@ -335,7 +335,7 @@ public class PersistenceTests
             new DataRepositoryOptions
             {
                 AutoBackup = true,
-                EnableEvents = false
+                EnableEvents = false,
             });
         verifyRepository.RegisterDataType(location1, typeof(TestSimpleData));
         verifyRepository.RegisterDataType(location2, typeof(TestSimpleData));
@@ -436,7 +436,7 @@ public class PersistenceTests
             await seedRepository.SaveAllAsync(
             [
                 (primaryLocation, new TestSimpleData { Value = 3 }),
-                (secondaryLocation, new TestSimpleData { Value = 5 })
+                (secondaryLocation, new TestSimpleData { Value = 5 }),
             ]);
         }
 
@@ -492,7 +492,7 @@ public class PersistenceTests
             new DataRepositoryOptions
             {
                 AutoBackup = true,
-                EnableEvents = true
+                EnableEvents = true,
             }, publishEvent: context.Publish);
 
         var location1 = new TestDataLocation("settings/graphics");
@@ -515,7 +515,7 @@ public class PersistenceTests
         await repository.SaveAllAsync(
         [
             (location1, new TestSimpleData { Value = 6 }),
-            (location2, new TestSimpleData { Value = 7 })
+            (location2, new TestSimpleData { Value = 7 }),
         ]);
         await repository.DeleteAsync(location2);
 
@@ -531,14 +531,14 @@ public class PersistenceTests
     /// <summary>Dispatches explicit repository notifications to typed test subscribers.</summary>
     private sealed class TestEventSink
     {
-        private readonly Dictionary<Type, List<Action<object>>> _handlers = new();
+        private readonly Dictionary<Type, List<Action<object>>> _handlers = [];
 
         /// <summary>Registers a typed subscriber without an architecture dependency.</summary>
         public void RegisterEvent<T>(Action<T> handler)
         {
             if (!_handlers.TryGetValue(typeof(T), out var handlers))
             {
-                handlers = new List<Action<object>>();
+                handlers = [];
                 _handlers.Add(typeof(T), handlers);
             }
             handlers.Add(value => handler((T)value));
@@ -562,7 +562,10 @@ public class PersistenceTests
         /// <summary>
         ///     获取或设置是否在目标键写入时主动抛出异常。
         /// </summary>
-        public bool ThrowOnWrite { get; set; }
+        public bool ThrowOnWrite
+        {
+            get; set;
+        }
 
         /// <inheritdoc />
         public bool Exists(string key)

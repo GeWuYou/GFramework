@@ -58,5 +58,8 @@ public class WaitForProgress : IYieldInstruction
     /// <summary>
     ///     获取等待是否已完成
     /// </summary>
-    public bool IsDone { get; private set; }
+    public bool IsDone
+    {
+        get; private set;
+    }
 }

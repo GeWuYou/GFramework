@@ -18,37 +18,58 @@ public sealed class TestAsyncState : IState, IAsyncState
     /// <summary>
     ///     获取异步进入状态是否已被调用。
     /// </summary>
-    public bool EnterCalled { get; private set; }
+    public bool EnterCalled
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取异步离开状态是否已被调用。
     /// </summary>
-    public bool ExitCalled { get; private set; }
+    public bool ExitCalled
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取异步进入回调被调用的次数。
     /// </summary>
-    public int EnterCallCount { get; private set; }
+    public int EnterCallCount
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取异步离开回调被调用的次数。
     /// </summary>
-    public int ExitCallCount { get; private set; }
+    public int ExitCallCount
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取最近一次异步进入时的来源状态。
     /// </summary>
-    public IState? EnterFrom { get; private set; }
+    public IState? EnterFrom
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取最近一次异步离开时的目标状态。
     /// </summary>
-    public IState? ExitTo { get; private set; }
+    public IState? ExitTo
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取异步转移检查被调用的次数。
     /// </summary>
-    public int CanTransitionToCallCount { get; private set; }
+    public int CanTransitionToCallCount
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     异步记录进入状态的来源状态与调用次数。

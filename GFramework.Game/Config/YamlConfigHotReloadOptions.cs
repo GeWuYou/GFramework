@@ -14,13 +14,19 @@ public sealed class YamlConfigHotReloadOptions
     /// <summary>
     ///     获取或设置单个配置表重载成功后的可选回调。
     /// </summary>
-    public Action<string>? OnTableReloaded { get; init; }
+    public Action<string>? OnTableReloaded
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     获取或设置单个配置表重载失败后的可选回调。
     ///     当失败来自加载器本身时，异常通常为 <see cref="GFramework.Game.Abstractions.Config.ConfigLoadException" />。
     /// </summary>
-    public Action<string, Exception>? OnTableReloadFailed { get; init; }
+    public Action<string, Exception>? OnTableReloadFailed
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     获取或设置文件系统事件的防抖延迟。

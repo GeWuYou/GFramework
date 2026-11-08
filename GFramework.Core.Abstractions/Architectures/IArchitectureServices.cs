@@ -16,17 +16,26 @@ public interface IArchitectureServices : IContextAware
     ///     获取依赖注入容器
     /// </summary>
     /// <returns>IIocContainer类型的依赖注入容器实例</returns>
-    IIocContainer Container { get; }
+    IIocContainer Container
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取类型事件系统
     /// </summary>
     /// <returns>ITypeEventSystem类型的事件系统实例</returns>
-    IEventBus EventBus { get; }
+    IEventBus EventBus
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取服务模块管理器
     /// </summary>
     /// <returns>IServiceModuleManager类型的服务模块管理器实例</returns>
-    IServiceModuleManager ModuleManager { get; }
+    IServiceModuleManager ModuleManager
+    {
+        get;
+    }
 }

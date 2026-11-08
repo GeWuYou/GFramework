@@ -11,7 +11,11 @@ namespace GFramework.Core.Events;
 ///     线程安全：使用锁保护监听器列表的修改
 /// </summary>
 /// <typeparam name="T">事件数据类型</typeparam>
-public sealed class WeakEvent<T>
+/// <remarks>
+///     构造函数
+/// </remarks>
+/// <param name="statistics">事件统计对象（可选）</param>
+public sealed class WeakEvent<T>(EventStatistics? statistics = null)
 {
 #if NET9_0_OR_GREATER
     // net9.0 及以上目标使用专用 Lock，以满足分析器对专用同步原语的建议。
@@ -20,17 +24,8 @@ public sealed class WeakEvent<T>
     // net8.0 目标仍回退到 object 锁，以保持多目标编译兼容性。
     private readonly object _lock = new();
 #endif
-    private readonly EventStatistics? _statistics;
-    private readonly List<WeakReference<Action<T>>> _weakHandlers = new();
-
-    /// <summary>
-    ///     构造函数
-    /// </summary>
-    /// <param name="statistics">事件统计对象（可选）</param>
-    public WeakEvent(EventStatistics? statistics = null)
-    {
-        _statistics = statistics;
-    }
+    private readonly EventStatistics? _statistics = statistics;
+    private readonly List<WeakReference<Action<T>>> _weakHandlers = [];
 
     /// <summary>
     ///     注册事件监听器（弱引用）

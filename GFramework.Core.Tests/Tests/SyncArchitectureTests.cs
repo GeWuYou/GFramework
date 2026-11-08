@@ -96,7 +96,7 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
                 ArchitecturePhase.AfterModelInit,
                 ArchitecturePhase.BeforeSystemInit,
                 ArchitecturePhase.AfterSystemInit,
-                ArchitecturePhase.Ready
+                ArchitecturePhase.Ready,
             },
             phases
         );
@@ -130,7 +130,7 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
     [Test]
     public async Task Architecture_Destroy_Should_Destroy_All_Systems_And_Enter_Destroyed()
     {
-        Architecture!.Initialize();
+        await Architecture!.InitializeAsync();
         var context = Architecture.Context;
         var system = context.GetSystem<TestSystem>();
         await Architecture.DestroyAsync();
@@ -177,7 +177,7 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
         // 发送测试事件
         context.SendEvent(new TestEvent
         {
-            ReceivedValue = tagetValue
+            ReceivedValue = tagetValue,
         });
 
         Assert.That(receivedValue, Is.EqualTo(tagetValue));

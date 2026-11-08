@@ -21,7 +21,10 @@ public abstract class ContextAwareBase : IContextAware
     ///     获取或设置当前实例绑定的上下文；尚未绑定时为 null。
     /// </summary>
     /// <remarks>该属性不执行同步，派生类应通过自身线程模型约束访问。</remarks>
-    protected IArchitectureContext? Context { get; set; }
+    protected IArchitectureContext? Context
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     为当前实例绑定上下文，然后执行上下文就绪回调。

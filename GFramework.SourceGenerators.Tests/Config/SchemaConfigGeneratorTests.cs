@@ -87,7 +87,7 @@ public class SchemaConfigGeneratorTests
             new ThrowingAdditionalText("monster.schema.json"),
             cancellationTokenSource.Token,
             null,
-            null
+            null,
         };
 
         var exception = Assert.Throws<global::System.Reflection.TargetInvocationException>(() =>
@@ -220,19 +220,15 @@ public class SchemaConfigGeneratorTests
     /// <summary>
     ///     用于模拟 AdditionalFiles 读取阶段直接收到取消请求的测试桩。
     /// </summary>
-    private sealed class ThrowingAdditionalText : AdditionalText
+    /// <remarks>
+    ///     创建一个在读取时抛出取消异常的 AdditionalText。
+    /// </remarks>
+    /// <param name="path">虚拟 schema 路径。</param>
+    private sealed class ThrowingAdditionalText(string path) : AdditionalText
     {
-        /// <summary>
-        ///     创建一个在读取时抛出取消异常的 AdditionalText。
-        /// </summary>
-        /// <param name="path">虚拟 schema 路径。</param>
-        public ThrowingAdditionalText(string path)
-        {
-            Path = path;
-        }
 
         /// <inheritdoc />
-        public override string Path { get; }
+        public override string Path { get; } = path;
 
         /// <inheritdoc />
         public override SourceText GetText(CancellationToken cancellationToken = default)
@@ -242,7 +238,7 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
-    ///     验证空字符串 <c>const</c> 不会在生成 XML 文档时被当成“缺失约束”跳过。
+    ///     验证空字符串 <see langword="const" /> 不会在生成 XML 文档时被当成“缺失约束”跳过。
     /// </summary>
     [Test]
     public void Run_Should_Preserve_Empty_String_Const_In_Generated_Documentation()
@@ -1463,7 +1459,7 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
-    ///     验证 object-focused <c>if</c> / <c>then</c> / <c>else</c> 会写入生成 XML 文档。
+    ///     验证 object-focused <see langword="if" /> / <c>then</c> / <see langword="else" /> 会写入生成 XML 文档。
     /// </summary>
     [Test]
     public void Run_Should_Write_IfThenElse_Constraint_Into_Generated_Documentation()
@@ -1521,7 +1517,7 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
-    ///     验证缺少 <c>if</c> 时生成器会拒绝孤立的 <c>then</c>。
+    ///     验证缺少 <see langword="if" /> 时生成器会拒绝孤立的 <c>then</c>。
     /// </summary>
     [Test]
     public void Run_Should_Report_Diagnostic_When_Then_Is_Declared_Without_If()
@@ -1574,7 +1570,7 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
-    ///     验证缺少 <c>if</c> 时生成器也会拒绝孤立的 <c>else</c>。
+    ///     验证缺少 <see langword="if" /> 时生成器也会拒绝孤立的 <see langword="else" />。
     /// </summary>
     [Test]
     public void Run_Should_Report_Diagnostic_When_Else_Is_Declared_Without_If()
@@ -1627,7 +1623,7 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
-    ///     验证只声明 <c>if</c> 而没有分支时，生成器会给出对齐运行时的诊断。
+    ///     验证只声明 <see langword="if" /> 而没有分支时，生成器会给出对齐运行时的诊断。
     /// </summary>
     [Test]
     public void Run_Should_Report_Diagnostic_When_If_Is_Declared_Without_Then_Or_Else()
@@ -2133,7 +2129,7 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
-    ///     验证 <c>else</c> 子 schema 内的非法 <c>format</c> 也会在生成阶段直接给出诊断。
+    ///     验证 <see langword="else" /> 子 schema 内的非法 <c>format</c> 也会在生成阶段直接给出诊断。
     /// </summary>
     [Test]
     public void Run_Should_Report_Diagnostic_With_Runtime_Aligned_Path_When_Else_Inner_Schema_Is_Invalid()
@@ -2403,7 +2399,7 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
-    ///     验证生成器对 <c>required</c> 名称保持大小写敏感，避免与运行时 validator 对同一 schema 产生分歧。
+    ///     验证生成器对 <see langword="required" /> 名称保持大小写敏感，避免与运行时 validator 对同一 schema 产生分歧。
     /// </summary>
     [Test]
     public void Run_Should_Treat_Required_Property_Names_As_Case_Sensitive()
@@ -2825,7 +2821,7 @@ public class SchemaConfigGeneratorTests
     /// <param name="source">测试输入源码。</param>
     /// <param name="additionalFiles">参与本次生成的 schema 文件集合。</param>
     /// <returns>按 HintName 索引的生成源码字典。</returns>
-    private static IReadOnlyDictionary<string, string> RunAndCollectGeneratedSources(
+    private static Dictionary<string, string> RunAndCollectGeneratedSources(
         string source,
         params (string path, string content)[] additionalFiles)
     {

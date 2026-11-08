@@ -13,7 +13,10 @@ namespace GFramework.Game.Harmony;
 public interface IModPatchService
 {
     /// <summary>Gets the stable owner ID used by HarmonyBefore and HarmonyAfter annotations.</summary>
-    string OwnerId { get; }
+    string OwnerId
+    {
+        get;
+    }
     /// <summary>Applies annotations from an explicit assembly, avoiding caller-assembly inference.</summary>
     /// <param name="assembly">The mod assembly containing patch declarations.</param>
     void PatchAll(Assembly assembly);

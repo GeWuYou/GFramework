@@ -26,7 +26,7 @@ internal sealed class WeakKeyCache<TKey, TValue>
     // net8.0 目标仍回退到 object 锁，以保持多目标编译兼容性。
     private readonly object _gate = new();
 #endif
-    private ConditionalWeakTable<TKey, TValue> _entries = new();
+    private ConditionalWeakTable<TKey, TValue> _entries = [];
 
     /// <summary>
     ///     获取指定键对应的缓存值；若当前未命中，则在锁保护下创建并写入。
@@ -113,7 +113,7 @@ internal sealed class WeakKeyCache<TKey, TValue>
     {
         lock (_gate)
         {
-            _entries = new ConditionalWeakTable<TKey, TValue>();
+            _entries = [];
         }
     }
 

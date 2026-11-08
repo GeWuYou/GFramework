@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
@@ -15,7 +15,10 @@ public interface IGodotModule : IArchitectureModule
     /// <summary>
     ///     获取模块关联的Godot节点
     /// </summary>
-    Node Node { get; }
+    Node Node
+    {
+        get;
+    }
 
     /// <summary>
     ///     当模块被附加到架构时调用

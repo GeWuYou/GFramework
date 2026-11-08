@@ -32,7 +32,7 @@ public sealed partial class UiService
             if (!await guard.CanOpenAsync(route.Key, cancellationToken).ConfigureAwait(true))
                 return new UiOperationResult(UiOperationStatus.Rejected);
         }
-        var replacedPages = replace ? _entries.Where(static entry => entry.Options.Kind == UiRouteKind.Page).ToArray()
+        var replacedPages = replace ? [.. _entries.Where(static entry => entry.Options.Kind == UiRouteKind.Page)]
             : Array.Empty<Entry>();
         if (!await CanCloseAllAsync(replacedPages, cancellationToken).ConfigureAwait(true))
             return new UiOperationResult(UiOperationStatus.Rejected);
@@ -48,7 +48,10 @@ public sealed partial class UiService
             RecomputePresentation();
             if (entry.Active)
                 _host.Focus(entry.View);
-            _logger.LogDebug("Opened UI route {RouteKey}, instance {InstanceId}", route.Key, entry.Handle.InstanceId);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Opened UI route {RouteKey}, instance {InstanceId}", route.Key, entry.Handle.InstanceId);
+            }
             return new UiOperationResult(UiOperationStatus.Applied, entry.Handle);
         }
         catch (Exception failure)
@@ -72,14 +75,14 @@ public sealed partial class UiService
         var entry = new Entry(identity, route, view, identity.InstanceId, route.CreateDialog?.Invoke());
         try
         {
-            view.SetVisible(false);
+            view.SetVisible(visible: false);
             entry.FocusBookmark = _host.CaptureFocus();
             _host.Attach(view, route.Options.Layer, entry.Order);
             await view.OpenAsync(cancellationToken).ConfigureAwait(true);
             cancellationToken.ThrowIfCancellationRequested();
             // Native attachment/readiness and opening may create children. Disable their authored input only after
             // preparation, before computing modal eligibility, without issuing duplicate lifecycle transitions.
-            view.SetActive(false);
+            view.SetActive(active: false);
             return entry;
         }
         catch (Exception failure)
@@ -112,10 +115,10 @@ public sealed partial class UiService
     {
         if (entry is null)
             return new UiOperationResult(UiOperationStatus.NoOp);
-        if (!await CanCloseAllAsync(new[] { entry }, cancellationToken).ConfigureAwait(true))
+        if (!await CanCloseAllAsync([entry], cancellationToken).ConfigureAwait(true))
             return new UiOperationResult(UiOperationStatus.Rejected, entry.Handle);
         cancellationToken.ThrowIfCancellationRequested();
-        await CloseEntryAsync(entry, accepted, value).ConfigureAwait(true);
+        await CloseEntryAsync(entry, accepted, value, cancellationToken).ConfigureAwait(true);
         return new UiOperationResult(UiOperationStatus.Applied, entry.Handle);
     }
 
@@ -198,8 +201,8 @@ public sealed partial class UiService
         if (entry.Released)
             return;
         entry.Released = true;
-        TryAction(() => entry.View.SetActive(false), errors);
-        TryAction(() => entry.View.SetVisible(false), errors);
+        TryAction(() => entry.View.SetActive(active: false), errors);
+        TryAction(() => entry.View.SetVisible(visible: false), errors);
         try
         {
             await entry.View.CloseAsync(CancellationToken.None).ConfigureAwait(true);
@@ -300,14 +303,29 @@ public sealed partial class UiService
         /// <summary>Gets its optional typed dialog completion.</summary>
         public IUiDialogCompletion? Dialog { get; } = dialog;
         /// <summary>Gets or sets its committed visibility.</summary>
-        public bool Visible { get; set; }
+        public bool Visible
+        {
+            get; set;
+        }
         /// <summary>Gets or sets its committed input eligibility.</summary>
-        public bool Active { get; set; }
+        public bool Active
+        {
+            get; set;
+        }
         /// <summary>Gets or sets whether cleanup already consumed the lease.</summary>
-        public bool Released { get; set; }
+        public bool Released
+        {
+            get; set;
+        }
         /// <summary>Gets or sets its pause token.</summary>
-        public PauseToken? PauseToken { get; set; }
+        public PauseToken? PauseToken
+        {
+            get; set;
+        }
         /// <summary>Gets or sets its native focus restoration bookmark.</summary>
-        public object? FocusBookmark { get; set; }
+        public object? FocusBookmark
+        {
+            get; set;
+        }
     }
 }

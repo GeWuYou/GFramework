@@ -388,10 +388,10 @@ public class BindNodeSignalGeneratorTests
         {
             TestState =
             {
-                Sources = { source }
+                Sources = { source },
             },
             DisabledDiagnostics = { "GF_Common_Trace_001" },
-            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck,
         };
 
         foreach (DiagnosticResult expectedDiagnostic in expectedDiagnostics)

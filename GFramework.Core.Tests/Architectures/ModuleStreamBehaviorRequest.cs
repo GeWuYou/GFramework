@@ -8,6 +8,4 @@ namespace GFramework.Core.Tests.Architectures;
 /// <summary>
 ///     用于验证架构公开 stream pipeline 行为注册入口的最小流式请求。
 /// </summary>
-public sealed class ModuleStreamBehaviorRequest : IStreamRequest<int>
-{
-}
+public sealed class ModuleStreamBehaviorRequest : IStreamRequest<int>;

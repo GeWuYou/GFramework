@@ -9,19 +9,15 @@ namespace GFramework.Core.Abstractions.Architectures;
 ///     表示架构阶段变化事件的数据。
 ///     该类型用于向事件订阅者传递当前已进入的阶段值。
 /// </summary>
-public sealed class ArchitecturePhaseChangedEventArgs : EventArgs
+/// <remarks>
+///     初始化 <see cref="ArchitecturePhaseChangedEventArgs" /> 的新实例。
+/// </remarks>
+/// <param name="phase">当前已进入的架构阶段。</param>
+public sealed class ArchitecturePhaseChangedEventArgs(ArchitecturePhase phase) : EventArgs
 {
-    /// <summary>
-    ///     初始化 <see cref="ArchitecturePhaseChangedEventArgs" /> 的新实例。
-    /// </summary>
-    /// <param name="phase">当前已进入的架构阶段。</param>
-    public ArchitecturePhaseChangedEventArgs(ArchitecturePhase phase)
-    {
-        Phase = phase;
-    }
 
     /// <summary>
     ///     获取当前已进入的架构阶段。
     /// </summary>
-    public ArchitecturePhase Phase { get; }
+    public ArchitecturePhase Phase { get; } = phase;
 }

@@ -10,21 +10,42 @@ namespace GFramework.Game.Data;
 internal sealed class SavePreparationState
 {
     /// <summary>Gets the issuing repository.</summary>
-    public Guid Owner { get; init; }
+    public Guid Owner
+    {
+        get; init;
+    }
     /// <summary>Gets the inspected slot.</summary>
-    public int Slot { get; init; }
+    public int Slot
+    {
+        get; init;
+    }
     /// <summary>Gets original bytes.</summary>
-    public required StorageSnapshot Original { get; init; }
+    public required StorageSnapshot Original
+    {
+        get; init;
+    }
     /// <summary>Gets validated candidate bytes.</summary>
-    public required StorageSnapshot Candidate { get; init; }
+    public required StorageSnapshot Candidate
+    {
+        get; init;
+    }
     /// <summary>Gets the selected content session.</summary>
-    public ContentSnapshot? CurrentContent { get; init; }
+    public ContentSnapshot? CurrentContent
+    {
+        get; init;
+    }
     /// <summary>Gets original content diagnostics.</summary>
-    public IReadOnlyList<ContentSaveIssue> Issues { get; init; } = Array.Empty<ContentSaveIssue>();
+    public IReadOnlyList<ContentSaveIssue> Issues { get; init; } = [];
     /// <summary>Gets selected transformation edges.</summary>
-    public IReadOnlyList<SaveMigrationStep> MigrationPath { get; init; } = Array.Empty<SaveMigrationStep>();
+    public IReadOnlyList<SaveMigrationStep> MigrationPath { get; init; } = [];
     /// <summary>Gets whether a transformed file must be explicitly committed.</summary>
-    public bool RequiresCommit { get; init; }
+    public bool RequiresCommit
+    {
+        get; init;
+    }
     /// <summary>Gets whether the full candidate needs a player decision.</summary>
-    public bool RequiresConfirmation { get; init; }
+    public bool RequiresConfirmation
+    {
+        get; init;
+    }
 }

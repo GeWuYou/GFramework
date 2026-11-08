@@ -8,6 +8,4 @@ namespace GFramework.Core.Tests.Ioc;
 /// <summary>
 ///     优先级服务接口
 /// </summary>
-public interface IPrioritizedService : IPrioritized, IMixedService
-{
-}
+public interface IPrioritizedService : IPrioritized, IMixedService;

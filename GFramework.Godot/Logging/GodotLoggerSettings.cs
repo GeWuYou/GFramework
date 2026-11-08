@@ -16,9 +16,18 @@ namespace GFramework.Godot.Logging;
 ///     <c>Game.Services</c> for <c>Game.Services.Inventory</c>, and finally <see cref="DefaultLogLevel"/> is used when
 ///     present.
 /// </remarks>
-internal sealed class GodotLoggerSettings
+/// <remarks>
+///     Creates a settings snapshot from normalized options and optional category thresholds.
+/// </remarks>
+/// <param name="options">The formatting and mode options for this snapshot.</param>
+/// <param name="defaultLogLevel">The optional fallback level used when no category override matches.</param>
+/// <param name="loggerLevels">Exact category names or dotted prefixes mapped to minimum levels.</param>
+internal sealed class GodotLoggerSettings(
+    GodotLoggerOptions options,
+    LogLevel? defaultLogLevel = null,
+    IReadOnlyDictionary<string, LogLevel>? loggerLevels = null)
 {
-    private readonly IReadOnlyDictionary<string, LogLevel> _loggerLevels;
+    private readonly IReadOnlyDictionary<string, LogLevel> _loggerLevels = loggerLevels ?? new Dictionary<string, LogLevel>(StringComparer.Ordinal);
 
     /// <summary>
     ///     Gets the default settings snapshot used when no configuration file is available.
@@ -26,30 +35,14 @@ internal sealed class GodotLoggerSettings
     public static GodotLoggerSettings Default { get; } = new(new GodotLoggerOptions());
 
     /// <summary>
-    ///     Creates a settings snapshot from normalized options and optional category thresholds.
-    /// </summary>
-    /// <param name="options">The formatting and mode options for this snapshot.</param>
-    /// <param name="defaultLogLevel">The optional fallback level used when no category override matches.</param>
-    /// <param name="loggerLevels">Exact category names or dotted prefixes mapped to minimum levels.</param>
-    public GodotLoggerSettings(
-        GodotLoggerOptions options,
-        LogLevel? defaultLogLevel = null,
-        IReadOnlyDictionary<string, LogLevel>? loggerLevels = null)
-    {
-        Options = (options ?? throw new ArgumentNullException(nameof(options))).CreateNormalizedCopy();
-        DefaultLogLevel = defaultLogLevel;
-        _loggerLevels = loggerLevels ?? new Dictionary<string, LogLevel>(StringComparer.Ordinal);
-    }
-
-    /// <summary>
     ///     Gets the optional fallback minimum level for categories without exact or prefix overrides.
     /// </summary>
-    public LogLevel? DefaultLogLevel { get; }
+    public LogLevel? DefaultLogLevel { get; } = defaultLogLevel;
 
     /// <summary>
     ///     Gets normalized rendering and mode options for this snapshot.
     /// </summary>
-    public GodotLoggerOptions Options { get; }
+    public GodotLoggerOptions Options { get; } = (options ?? throw new ArgumentNullException(nameof(options))).CreateNormalizedCopy();
 
     /// <summary>
     ///     Gets exact and dotted-prefix category level overrides.

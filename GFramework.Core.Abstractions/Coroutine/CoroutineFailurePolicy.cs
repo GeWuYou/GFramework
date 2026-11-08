@@ -9,5 +9,5 @@ public enum CoroutineFailurePolicy
     /// <summary>A failing child fails its flow and cancels its siblings.</summary>
     FailFast,
     /// <summary>Independent tasks retain their results; one failure does not cancel siblings.</summary>
-    Supervisor
+    Supervisor,
 }

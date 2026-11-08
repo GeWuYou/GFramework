@@ -103,6 +103,8 @@ IEnumerator<IYieldInstruction> EnterBattle(CoroutineContext context)
 
 `context.RunChild` 继承当前阶段、暂停策略及生命周期。需要独立任务时，显式从它真正所属的容器作用域启动；等待某个任务不会自动取得其所有权。`scope.Cancel()` 取消当前任务，作用域仍可使用；`Dispose()` 关闭作用域并取消其全部任务。
 
+自定义枚举器包装器可实现 `ICoroutineCancellationSource` 并公开自己的 `CancellationToken`。调度器在所有启动入口执行首步前绑定该令牌，因此 `scope.Run`、`context.RunChild` 和工厂返回的枚举器都能在长等待或暂停期间响应取消。包装器负责令牌源的释放；组合多个包装器时需要传递或链接内层令牌。取消回调只提交请求，资源清理仍在调度线程完成。`Then` 和 `Sequence` 会绑定仍拥有的枚举器（包括尚未开始的后续项）的取消来源；任一来源取消会终止整个组合并跳过成功回调。某项自然完成后解除其绑定，避免之后的取消影响后续流程。
+
 ## 等待子任务与观察已有任务
 
 ```csharp
@@ -149,7 +151,7 @@ if (scheduler.TryGetSnapshot(handle, out var snapshot))
 }
 ```
 
-最终状态为 `Completed`、`Cancelled`、`Faulted` 或未知结果 `Unknown`。`WaitForCompletionAsync` 仅返回状态，`WaitForResultAsync` 返回状态与异常。调度器保留最近 1024 个终结结果；历史淘汰后查询可能得到 `Unknown`，已取得的完成任务不受淘汰影响。
+最终状态为 `Completed`、`Cancelled`、`Faulted` 或未知结果 `Unknown`。`WaitForCompletionAsync` 仅返回状态，`WaitForResultAsync` 返回状态与异常。调度器保留最近 1024 个终结结果；历史淘汰后查询可能得到 `Unknown`，已取得的完成任务不受淘汰影响。`WhenAll` 在启动每个子任务时保留其完成结果，慢任务不会让先完成的同级任务因历史淘汰而变成未知状态。
 
 父任务终结前等待后代清理完成；生命周期收尾统一处理资源释放、索引移除、等待者与完成任务通知。等待指令和枚举器的释放异常仍会保留，并继续处理其他清理；通知订阅者分别隔离，某个订阅者抛错不会阻止其他任务收尾。通知在驱动线程调用，不应执行长时间阻塞操作。
 

@@ -24,20 +24,32 @@ public readonly struct LockStatistics
     /// <summary>
     ///     当前活跃的锁数量
     /// </summary>
-    public int ActiveLockCount { get; init; }
+    public int ActiveLockCount
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     累计获取锁的次数
     /// </summary>
-    public int TotalAcquired { get; init; }
+    public int TotalAcquired
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     累计释放锁的次数
     /// </summary>
-    public int TotalReleased { get; init; }
+    public int TotalReleased
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     累计清理的锁数量
     /// </summary>
-    public int TotalCleaned { get; init; }
+    public int TotalCleaned
+    {
+        get; init;
+    }
 }

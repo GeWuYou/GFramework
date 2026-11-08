@@ -22,8 +22,11 @@ public sealed class ArchitectureConfiguration : IArchitectureConfiguration
     ///     获取或设置架构选项
     ///     默认创建新的ArchitectureOptions实例
     /// </summary>
-    public ArchitectureProperties ArchitectureProperties { get; set; } = new()
+    public ArchitectureProperties ArchitectureProperties
     {
-        StrictPhaseValidation = true
+        get; set;
+    } = new()
+    {
+        StrictPhaseValidation = true,
     };
 }

@@ -32,6 +32,8 @@ namespace GFramework.Core.Functional;
 ///     </para>
 /// </remarks>
 /// <typeparam name="T">值的类型</typeparam>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0018",
+    Justification = "Some/None are established factories for Option<T>; moving them off this type breaks its public construction API.")]
 public readonly struct Option<T> : IEquatable<Option<T>>
 {
     private readonly T _value;

@@ -21,7 +21,10 @@ public sealed class AppenderConfiguration
     /// <summary>
     ///     文件路径（仅用于 File 和 RollingFile）。
     /// </summary>
-    public string? FilePath { get; set; }
+    public string? FilePath
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     是否使用颜色（仅用于 Console）。
@@ -46,10 +49,16 @@ public sealed class AppenderConfiguration
     /// <summary>
     ///     过滤器配置。
     /// </summary>
-    public FilterConfiguration? Filter { get; set; }
+    public FilterConfiguration? Filter
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     内部 Appender 配置（仅用于 Async）。
     /// </summary>
-    public AppenderConfiguration? InnerAppender { get; set; }
+    public AppenderConfiguration? InnerAppender
+    {
+        get; set;
+    }
 }

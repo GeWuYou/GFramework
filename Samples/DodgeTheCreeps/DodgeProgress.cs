@@ -23,7 +23,10 @@ public sealed class DodgeProgress : IData
     /// <summary>Gets or sets the time this portable board was captured.</summary>
     public DateTime LastModified { get; set; } = DateTime.UtcNow;
     /// <summary>Gets or sets completed survival seconds.</summary>
-    public int Score { get; set; }
+    public int Score
+    {
+        get; set;
+    }
     /// <summary>Gets or sets logical horizontal position.</summary>
     public float X { get; set; } = 240;
     /// <summary>Gets or sets logical vertical position.</summary>
@@ -31,9 +34,15 @@ public sealed class DodgeProgress : IData
     /// <summary>Gets or sets the stable arena ID instead of an engine resource path.</summary>
     public string ArenaId { get; set; } = "base:yard";
     /// <summary>Gets or sets the player's last heading, clockwise from east in sectors zero through seven.</summary>
-    public int PlayerFacing { get; set; }
+    public int PlayerFacing
+    {
+        get; set;
+    }
     /// <summary>Gets or sets the unscored fraction of one survival second.</summary>
-    public double ScoreElapsed { get; set; }
+    public double ScoreElapsed
+    {
+        get; set;
+    }
     /// <summary>Gets or sets the exact time until the next enemy spawn.</summary>
     public double SpawnRemaining { get; set; } = 1.5;
     /// <summary>Gets or sets remaining collision grace; exact restoration never grants additional grace.</summary>
@@ -41,9 +50,12 @@ public sealed class DodgeProgress : IData
     /// <summary>Gets or sets the RNG seed, restored before its state.</summary>
     public ulong RandomSeed { get; set; } = 1;
     /// <summary>Gets or sets the RNG state immediately before the next random draw.</summary>
-    public ulong? RandomState { get; set; }
+    public ulong? RandomState
+    {
+        get; set;
+    }
     /// <summary>Gets or sets every living enemy in the world's stable iteration order.</summary>
-    public IList<DodgeMobProgress> Enemies { get; set; } = new List<DodgeMobProgress>();
+    public IList<DodgeMobProgress> Enemies { get; set; } = [];
 
     /// <summary>Rejects unsupported or dangerous state before allocating native enemies or modifying a live board.</summary>
     /// <param name="save">Snapshot to validate; this method has no engine or persistence side effects.</param>
@@ -60,7 +72,8 @@ public sealed class DodgeProgress : IData
             throw new InvalidOperationException("The save has invalid timers, facing or enemy count.");
         foreach (var enemy in save.Enemies)
         {
-            if (enemy is null) throw new InvalidOperationException("The save contains an empty enemy record.");
+            if (enemy is null)
+                throw new InvalidOperationException("The save contains an empty enemy record.");
             enemy.Validate();
         }
     }

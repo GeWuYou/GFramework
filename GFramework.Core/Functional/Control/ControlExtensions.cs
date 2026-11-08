@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025 GeWuYou
+// Copyright (c) 2025 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -10,6 +10,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+using System.Globalization;
 
 namespace GFramework.Core.Functional.Control;
 
@@ -162,7 +164,7 @@ public static class ControlExtensions
         {
             if (iterations >= maxIterations)
                 throw new InvalidOperationException(
-                    $"RepeatUntil 达到最大迭代次数 {maxIterations} 但条件仍未满足");
+                    string.Create(CultureInfo.InvariantCulture, $"RepeatUntil 达到最大迭代次数 {maxIterations} 但条件仍未满足"));
 
             current = func(current);
             iterations++;
@@ -219,7 +221,7 @@ public static class ControlExtensions
         }
 
         throw new AggregateException(
-            $"操作在 {attempts} 次尝试后仍然失败",
+            string.Create(CultureInfo.InvariantCulture, $"操作在 {attempts} 次尝试后仍然失败"),
             exceptions);
     }
 }

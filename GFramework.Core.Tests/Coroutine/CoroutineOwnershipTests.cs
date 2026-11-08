@@ -16,15 +16,15 @@ public sealed class CoroutineOwnershipTests
     public void SynchronousChildCompletion_ResumesParent()
     {
         var scheduler = Create();
-        var resumed = false;
+        var resumed = new global::System.Runtime.CompilerServices.StrongBox<bool>(value: false);
         IEnumerator<IYieldInstruction> Parent()
         {
             yield return new WaitForCoroutine(Immediate());
-            resumed = true;
+            resumed.Value = true;
         }
         var handle = scheduler.Run(Parent());
         scheduler.Update();
-        Assert.That(resumed, Is.True);
+        Assert.That(resumed.Value, Is.True);
         Assert.That(Result(scheduler, handle).Status, Is.EqualTo(CoroutineCompletionStatus.Completed));
     }
 
@@ -36,12 +36,18 @@ public sealed class CoroutineOwnershipTests
         var childDisposed = false;
         IEnumerator<IYieldInstruction> Child()
         {
-            try { yield return new WaitOneFrame(); }
-            finally { childDisposed = true; }
+            try
+            {
+                yield return new WaitOneFrame();
+            }
+            finally
+            {
+                childDisposed = true;
+            }
         }
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            context.RunChild(Child());
+            context.RunChild(Child(), cancellationToken: global::System.Threading.CancellationToken.None);
             yield break;
         }
         var handle = scheduler.Run(Parent);
@@ -61,8 +67,8 @@ public sealed class CoroutineOwnershipTests
         CoroutineHandle sibling = default;
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            sibling = context.RunChild(Wait());
-            context.RunChild(FailAfterFrame(failure));
+            sibling = context.RunChild(Wait(), cancellationToken: global::System.Threading.CancellationToken.None);
+            context.RunChild(FailAfterFrame(failure), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
         var parent = scheduler.Run(Parent);
@@ -81,7 +87,7 @@ public sealed class CoroutineOwnershipTests
         CoroutineHandle child = default;
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            child = context.RunChild(FailAfterFrame(new InvalidOperationException("isolated")));
+            child = context.RunChild(FailAfterFrame(new InvalidOperationException("isolated")), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
         var parent = scope.Run(Parent, childFailurePolicy: CoroutineFailurePolicy.Supervisor);
@@ -114,7 +120,7 @@ public sealed class CoroutineOwnershipTests
         CoroutineHandle child = default;
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            child = context.RunChild(Wait());
+            child = context.RunChild(Wait(), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
         var parent = scheduler.Run(Parent);
@@ -136,7 +142,7 @@ public sealed class CoroutineOwnershipTests
         }
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            child = context.RunChild(Child());
+            child = context.RunChild(Child(), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
         var parent = scheduler.Run(Parent);
@@ -169,11 +175,14 @@ public sealed class CoroutineOwnershipTests
                 Assert.That(childFinally, Is.False);
                 yield return new Delay(100);
             }
-            finally { childFinally = true; }
+            finally
+            {
+                childFinally = true;
+            }
         }
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            context.RunChild(Child());
+            context.RunChild(Child(), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
         parent = scheduler.Run(Parent);
@@ -196,7 +205,7 @@ public sealed class CoroutineOwnershipTests
     public void SelfKill_DoesNotDisposeExecutingIterator()
     {
         var scheduler = Create();
-        CoroutineHandle handle = default;
+        var handle = new global::System.Runtime.CompilerServices.StrongBox<CoroutineHandle>(default);
         var unwound = false;
         var disposed = false;
         IEnumerator<IYieldInstruction> Routine()
@@ -204,14 +213,17 @@ public sealed class CoroutineOwnershipTests
             try
             {
                 yield return new WaitOneFrame();
-                scheduler.Kill(handle);
+                scheduler.Kill(handle.Value);
                 Assert.That(disposed, Is.False);
                 unwound = true;
                 yield return new Delay(100);
             }
-            finally { disposed = true; }
+            finally
+            {
+                disposed = true;
+            }
         }
-        handle = scheduler.Run(Routine());
+        handle.Value = scheduler.Run(Routine());
         scheduler.Update();
         Assert.That(unwound && disposed, Is.True);
     }
@@ -227,7 +239,10 @@ public sealed class CoroutineOwnershipTests
         scheduler.OnCoroutineFinished += (_, _) =>
         {
             notified++;
-            if (!replacement.IsValid) { replacement = scheduler.Run(Wait()); }
+            if (!replacement.IsValid)
+            {
+                replacement = scheduler.Run(Wait());
+            }
         };
         var handle = scheduler.Run(Immediate());
         Assert.That(notified, Is.EqualTo(1));
@@ -245,7 +260,10 @@ public sealed class CoroutineOwnershipTests
         var rejected = false;
         IEnumerator<IYieldInstruction> Routine()
         {
-            try { yield return new Delay(100); }
+            try
+            {
+                yield return new Delay(100);
+            }
             finally
             {
                 rejected = Assert.Throws<ObjectDisposedException>(() => retained.Run(Wait())) != null;
@@ -296,7 +314,10 @@ public sealed class CoroutineOwnershipTests
         var scheduler = Create();
         var target = scheduler.Run(Immediate());
         var captured = scheduler.Join(target);
-        for (var index = 0; index < 1100; index++) { scheduler.Run(Immediate()); }
+        for (var index = 0; index < 1100; index++)
+        {
+            scheduler.Run(Immediate());
+        }
         Assert.That(scheduler.TryGetResult(target, out _), Is.False);
         var waiter = scheduler.Run(WaitFor(captured));
         scheduler.Update();
@@ -317,7 +338,7 @@ public sealed class CoroutineOwnershipTests
         }
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
-            context.RunChild(Child());
+            context.RunChild(Child(), cancellationToken: global::System.Threading.CancellationToken.None);
             yield return new Delay(100);
         }
         parent = scheduler.Run(Parent);
@@ -331,10 +352,16 @@ public sealed class CoroutineOwnershipTests
     public void DeepOwnedChain_CancelsWithoutRecursiveTeardown()
     {
         var scheduler = Create();
-        IEnumerator<IYieldInstruction> Chain(int remaining)
+        static IEnumerator<IYieldInstruction> Chain(int remaining)
         {
-            if (remaining > 0) { yield return new WaitForCoroutine(Chain(remaining - 1)); }
-            else { yield return new Delay(100); }
+            if (remaining > 0)
+            {
+                yield return new WaitForCoroutine(Chain(remaining - 1));
+            }
+            else
+            {
+                yield return new Delay(100);
+            }
         }
         var parent = scheduler.Run(Chain(2000));
         Assert.That(scheduler.ActiveCoroutineCount, Is.EqualTo(2001));
@@ -348,7 +375,10 @@ public sealed class CoroutineOwnershipTests
     public void RepeatedStarts_DoNotGrowHistoricalSlotScan()
     {
         var scheduler = Create();
-        for (var index = 0; index < 10000; index++) { scheduler.Run(Immediate()); }
+        for (var index = 0; index < 10000; index++)
+        {
+            scheduler.Run(Immediate());
+        }
         Assert.That(scheduler.AllocatedSlotCount, Is.EqualTo(1));
         Assert.That(scheduler.ActiveCoroutineCount, Is.Zero);
     }
@@ -359,15 +389,15 @@ public sealed class CoroutineOwnershipTests
     {
         var scheduler = Create();
         var failure = new OperationCanceledException("cleanup failure");
-        var continued = false;
+        var continued = new global::System.Runtime.CompilerServices.StrongBox<bool>(value: false);
         IEnumerator<IYieldInstruction> Routine()
         {
             yield return new CleanupFailureWait(failure);
-            continued = true;
+            continued.Value = true;
         }
-        var handle = scheduler.Run(Routine());
+        var handle = scheduler.Run(Routine(), cancellationToken: global::System.Threading.CancellationToken.None);
         scheduler.Update();
-        Assert.That(continued, Is.False);
+        Assert.That(continued.Value, Is.False);
         Assert.That(Result(scheduler, handle).Status, Is.EqualTo(CoroutineCompletionStatus.Faulted));
         Assert.That(Result(scheduler, handle).Exception, Is.SameAs(failure));
     }
@@ -377,7 +407,9 @@ public sealed class CoroutineOwnershipTests
         /// <inheritdoc />
         public bool IsDone => true;
         /// <inheritdoc />
-        public void Update(double deltaTime) { }
+        public void Update(double deltaTime)
+        {
+        }
         /// <inheritdoc />
         public void Dispose() => throw exception;
     }
@@ -388,9 +420,18 @@ public sealed class CoroutineOwnershipTests
         Assert.That(scheduler.TryGetResult(handle, out var result), Is.True);
         return result;
     }
-    private static IEnumerator<IYieldInstruction> Immediate() { yield break; }
-    private static IEnumerator<IYieldInstruction> Wait() { yield return new Delay(100); }
-    private static IEnumerator<IYieldInstruction> WaitFor(IYieldInstruction instruction) { yield return instruction; }
+    private static IEnumerator<IYieldInstruction> Immediate()
+    {
+        yield break;
+    }
+    private static IEnumerator<IYieldInstruction> Wait()
+    {
+        yield return new Delay(100);
+    }
+    private static IEnumerator<IYieldInstruction> WaitFor(IYieldInstruction instruction)
+    {
+        yield return instruction;
+    }
     private static IEnumerator<IYieldInstruction> FailAfterFrame(Exception exception)
     {
         yield return new WaitOneFrame();

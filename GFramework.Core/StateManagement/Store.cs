@@ -214,7 +214,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     {
         ArgumentNullException.ThrowIfNull(action);
 
-        Action<TState>[] listenersSnapshot = Array.Empty<Action<TState>>();
+        Action<TState>[] listenersSnapshot = [];
         TState notificationState = default!;
         var hasNotification = false;
         var enteredDispatchScope = false;
@@ -280,7 +280,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     /// <exception cref="ArgumentOutOfRangeException">当 <paramref name="historyIndex"/> 超出历史范围时抛出。</exception>
     public void TimeTravelTo(int historyIndex)
     {
-        MoveToHistoryIndex(historyIndex, isRelative: false, nameof(historyIndex), null);
+        MoveToHistoryIndex(historyIndex, isRelative: false, nameof(historyIndex), emptyHistoryMessage: null);
     }
 
     /// <summary>
@@ -318,7 +318,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
             _batchDepth++;
         }
 
-        Action<TState>[] listenersSnapshot = Array.Empty<Action<TState>>();
+        Action<TState>[] listenersSnapshot = [];
         TState notificationState = default!;
 
         try
@@ -385,7 +385,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
 
         var subscription = new ListenerSubscription(listener)
         {
-            IsActive = false
+            IsActive = false,
         };
         TState currentState;
         TState? pendingState = default;
@@ -571,7 +571,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     {
         lock (_lock)
         {
-            return _history.Count == 0 ? Array.Empty<StoreHistoryEntry<TState>>() : _history.ToArray();
+            return _history.Count == 0 ? Array.Empty<StoreHistoryEntry<TState>>() : [.. _history];
         }
     }
 
@@ -579,6 +579,8 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     ///     创建一个用于当前状态类型的 Store 构建器。
     /// </summary>
     /// <returns>新的 Store 构建器实例。</returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0018",
+        Justification = "The builder returns this exact TState-specific store contract; preserve the existing public factory.")]
     public static StoreBuilder<TState> CreateBuilder()
     {
         return new StoreBuilder<TState>();
@@ -758,13 +760,13 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     /// <param name="stateComparer">本次分发使用的状态比较器快照。</param>
     private static void ExecuteDispatchPipeline(
         StoreDispatchContext<TState> context,
-        IReadOnlyList<IStoreMiddleware<TState>> middlewares,
+        IStoreMiddleware<TState>[] middlewares,
         IReadOnlyList<IStoreReducerAdapter> reducers,
         IEqualityComparer<TState> stateComparer)
     {
         Action pipeline = () => ApplyReducers(context, reducers, stateComparer);
 
-        for (var i = middlewares.Count - 1; i >= 0; i--)
+        for (var i = middlewares.Length - 1; i >= 0; i--)
         {
             var middleware = middlewares[i];
             var next = pipeline;
@@ -877,7 +879,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
 
             if (!context.HasStateChanged)
             {
-                listenersSnapshot = Array.Empty<Action<TState>>();
+                listenersSnapshot = [];
                 notificationState = default!;
                 return false;
             }
@@ -934,7 +936,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     {
         if (_listeners.Count == 0)
         {
-            return Array.Empty<Action<TState>>();
+            return [];
         }
 
         var activeListeners = new List<Action<TState>>(_listeners.Count);
@@ -955,7 +957,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
             subscription.HasPendingState = true;
         }
 
-        return activeListeners.Count > 0 ? activeListeners.ToArray() : Array.Empty<Action<TState>>();
+        return activeListeners.Count > 0 ? [.. activeListeners] : [];
     }
 
     /// <summary>
@@ -971,7 +973,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
             _pendingBatchState = nextState;
             _hasPendingBatchNotification = true;
             notificationState = default!;
-            return Array.Empty<Action<TState>>();
+            return [];
         }
 
         notificationState = nextState;
@@ -991,7 +993,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
 
         if (_middlewares.Count == 0)
         {
-            return Array.Empty<IStoreMiddleware<TState>>();
+            return [];
         }
 
         var snapshot = new IStoreMiddleware<TState>[_middlewares.Count];
@@ -1032,7 +1034,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     {
         if (!_reducers.TryGetValue(actionType, out var exactReducers) || exactReducers.Count == 0)
         {
-            return Array.Empty<IStoreReducerAdapter>();
+            return [];
         }
 
         var exactSnapshot = new IStoreReducerAdapter[exactReducers.Count];
@@ -1055,7 +1057,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
         var matches = CollectReducerMatches(actionType);
         if (matches is null || matches.Count == 0)
         {
-            return Array.Empty<IStoreReducerAdapter>();
+            return [];
         }
 
         matches.Sort(CompareReducerMatch);
@@ -1086,7 +1088,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
                 continue;
             }
 
-            matches ??= new List<ReducerMatch>();
+            matches ??= [];
             foreach (var registration in reducerBucket.Value)
             {
                 matches.Add(new ReducerMatch(
@@ -1247,7 +1249,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
         string argumentName,
         string? emptyHistoryMessage)
     {
-        Action<TState>[] listenersSnapshot = Array.Empty<Action<TState>>();
+        Action<TState>[] listenersSnapshot = [];
         TState notificationState = default!;
 
         lock (_dispatchGate)
@@ -1513,7 +1515,10 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
         /// <summary>
         ///     获取或设置是否存在待补发的最新状态。
         /// </summary>
-        public bool HasPendingState { get; set; }
+        public bool HasPendingState
+        {
+            get; set;
+        }
 
         /// <summary>
         ///     获取或设置初始化阶段积累的最新状态。

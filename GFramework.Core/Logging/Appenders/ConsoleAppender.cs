@@ -89,7 +89,7 @@ public sealed class ConsoleAppender : ILogAppender, IDisposable
             LogLevel.Warning => "33", // 黄色
             LogLevel.Error => "31", // 红色
             LogLevel.Critical => "35", // 洋红色
-            _ => "37"
+            _ => "37",
         };
     }
 }

@@ -19,5 +19,5 @@ public enum StoreActionMatchingMode
     ///     在精确类型匹配之外，额外匹配可赋值的基类和接口 reducer。
     ///     Store 会保持确定性的执行顺序：精确类型优先，其次是最近的基类，最后是接口注册。
     /// </summary>
-    IncludeAssignableTypes = 1
+    IncludeAssignableTypes = 1,
 }

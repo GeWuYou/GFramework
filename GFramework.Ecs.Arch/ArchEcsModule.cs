@@ -11,23 +11,17 @@ namespace GFramework.Ecs.Arch;
 ///     把 Arch 的 World 和系统接入当前架构。配置只声明服务，正式 provider 创建并拥有 World；
 ///     模块负责系统开始、更新与停止，provider 在模块停止后释放资源。
 /// </summary>
-public sealed class ArchEcsModule : IArchEcsModule
+/// <remarks>
+///     创建属于单个架构实例的 ECS 服务模块。
+/// </remarks>
+/// <param name="options">World 容量和模块优先级。</param>
+/// <param name="enabled">是否参与本架构生命周期。</param>
+public sealed class ArchEcsModule(ArchOptions? options = null, bool enabled = true) : IArchEcsModule
 {
-    private readonly ArchOptions _options;
+    private readonly ArchOptions _options = options ?? new ArchOptions();
     private IIocContainer? _container;
     private bool _isInitialized;
     private readonly List<ArchSystemAdapter<float>> _startedSystems = [];
-
-    /// <summary>
-    ///     创建属于单个架构实例的 ECS 服务模块。
-    /// </summary>
-    /// <param name="options">World 容量和模块优先级。</param>
-    /// <param name="enabled">是否参与本架构生命周期。</param>
-    public ArchEcsModule(ArchOptions? options = null, bool enabled = true)
-    {
-        _options = options ?? new ArchOptions();
-        IsEnabled = enabled;
-    }
 
     /// <inheritdoc />
     public string ModuleName => nameof(ArchEcsModule);
@@ -36,7 +30,7 @@ public sealed class ArchEcsModule : IArchEcsModule
     public int Priority => _options.Priority;
 
     /// <inheritdoc />
-    public bool IsEnabled { get; }
+    public bool IsEnabled { get; } = enabled;
 
     /// <summary>
     ///     声明单一 owning World 工厂；注册阶段不创建原生资源。

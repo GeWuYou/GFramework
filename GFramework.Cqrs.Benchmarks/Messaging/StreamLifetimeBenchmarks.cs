@@ -55,13 +55,19 @@ public class StreamLifetimeBenchmarks
     ///     控制当前 benchmark 使用的 handler 生命周期。
     /// </summary>
     [Params(HandlerLifetime.Singleton, HandlerLifetime.Scoped, HandlerLifetime.Transient)]
-    public HandlerLifetime Lifetime { get; set; }
+    public HandlerLifetime Lifetime
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     控制当前 benchmark 观察“只推进首个元素”还是“完整枚举整个 stream”。
     /// </summary>
     [Params(StreamObservation.FirstItem, StreamObservation.DrainAll)]
-    public StreamObservation Observation { get; set; }
+    public StreamObservation Observation
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     可公平比较的 benchmark handler 生命周期集合。
@@ -81,7 +87,7 @@ public class StreamLifetimeBenchmarks
         /// <summary>
         ///     每次建流都重新解析新的 handler 实例。
         /// </summary>
-        Transient
+        Transient,
     }
 
     /// <summary>
@@ -97,7 +103,7 @@ public class StreamLifetimeBenchmarks
         /// <summary>
         ///     完整枚举整个 stream，保留原有 benchmark 语义。
         /// </summary>
-        DrainAll
+        DrainAll,
     }
 
     /// <summary>
@@ -308,7 +314,7 @@ public class StreamLifetimeBenchmarks
             HandlerLifetime.Singleton => ServiceLifetime.Singleton,
             HandlerLifetime.Scoped => ServiceLifetime.Scoped,
             HandlerLifetime.Transient => ServiceLifetime.Transient,
-            _ => throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Unsupported benchmark handler lifetime.")
+            _ => throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Unsupported benchmark handler lifetime."),
         };
     }
 
@@ -424,7 +430,7 @@ public class StreamLifetimeBenchmarks
             _ => throw new ArgumentOutOfRangeException(
                 nameof(observation),
                 observation,
-                "Unsupported stream observation mode.")
+                "Unsupported stream observation mode."),
         };
     }
 

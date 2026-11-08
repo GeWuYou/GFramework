@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Core.Extensions;
@@ -28,7 +28,8 @@ public static class ObjectExtensions
     /// </example>
     public static bool IfType<T>(this object obj, Action<T> action)
     {
-        if (obj is not T target) return false;
+        if (obj is not T target)
+            return false;
         action(target);
         return true;
     }
@@ -42,7 +43,7 @@ public static class ObjectExtensions
     /// <param name="obj">源对象</param>
     /// <param name="func">当类型匹配时执行的函数</param>
     /// <returns>
-    ///     类型匹配时返回函数计算结果，否则返回 <c>default</c>
+    ///     类型匹配时返回函数计算结果，否则返回 <see langword="default"/>
     /// </returns>
     /// <example>
     ///     <code>
@@ -126,7 +127,7 @@ public static class ObjectExtensions
     /// <typeparam name="T">目标引用类型</typeparam>
     /// <param name="obj">源对象</param>
     /// <returns>
-    ///     如果类型匹配则返回转换后的对象，否则返回 <c>null</c>
+    ///     如果类型匹配则返回转换后的对象，否则返回 <see langword="null" />
     /// </returns>
     /// <example>
     ///     <code>
@@ -162,7 +163,8 @@ public static class ObjectExtensions
     {
         foreach (var (type, action) in handlers)
         {
-            if (!type.IsInstanceOfType(obj)) continue;
+            if (!type.IsInstanceOfType(obj))
+                continue;
             action(obj);
             return;
         }

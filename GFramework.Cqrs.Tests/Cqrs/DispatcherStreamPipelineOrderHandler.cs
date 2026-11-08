@@ -12,6 +12,7 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 /// <summary>
 ///     处理 <see cref="DispatcherStreamPipelineOrderRequest" /> 并记录最终 handler 执行位置。
 /// </summary>
+[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
 internal sealed class DispatcherStreamPipelineOrderHandler : IStreamRequestHandler<DispatcherStreamPipelineOrderRequest, int>
 {
     /// <summary>

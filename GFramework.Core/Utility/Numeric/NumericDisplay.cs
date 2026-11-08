@@ -40,7 +40,7 @@ public static class NumericDisplay
         return Format(value, new NumericFormatOptions
         {
             MaxDecimalPlaces = maxDecimalPlaces,
-            FormatProvider = formatProvider
+            FormatProvider = formatProvider,
         });
     }
 
@@ -55,7 +55,7 @@ public static class NumericDisplay
         return Format(value, new NumericFormatOptions
         {
             MaxDecimalPlaces = maxDecimalPlaces,
-            FormatProvider = formatProvider
+            FormatProvider = formatProvider,
         });
     }
 }

@@ -13,5 +13,8 @@ namespace GodotIntegration;
 public partial class DemoPanel : PanelContainer
 {
     /// <summary>Gets the owning instance identity used by the native integration checks.</summary>
-    internal UiInstanceHandle InstanceHandle { get; init; }
+    internal UiInstanceHandle InstanceHandle
+    {
+        get; init;
+    }
 }

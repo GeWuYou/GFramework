@@ -85,7 +85,10 @@ public sealed class GodotLogProvider : ILoggerProvider
     ///     The floor participates in the merged-max level calculation together with option floors and
     ///     category overrides; configuration can only make categories stricter, never more verbose.
     /// </remarks>
-    public LogLevel MinLevel { get; set; }
+    public LogLevel MinLevel
+    {
+        get; set;
+    }
 
     /// <inheritdoc />
     /// <exception cref="ObjectDisposedException">Thrown when the provider has been disposed.</exception>
@@ -187,21 +190,15 @@ public sealed class GodotLogProvider : ILoggerProvider
     ///     记录器实例由 provider 按类别缓存，因此级别检查与渲染都通过 provider 读取最新设置快照，
     ///     热重载后无需重建记录器。
     /// </remarks>
-    internal sealed class GodotLogger : ILogger
+    /// <remarks>
+    ///     Creates a logger bound to the specified category and provider.
+    /// </remarks>
+    /// <param name="categoryName">The category name used for level gating and rendered output.</param>
+    /// <param name="provider">The owning provider that renders log entries.</param>
+    internal sealed class GodotLogger(string categoryName, GodotLogProvider provider) : ILogger
     {
-        private readonly string _categoryName;
-        private readonly GodotLogProvider _provider;
-
-        /// <summary>
-        ///     Creates a logger bound to the specified category and provider.
-        /// </summary>
-        /// <param name="categoryName">The category name used for level gating and rendered output.</param>
-        /// <param name="provider">The owning provider that renders log entries.</param>
-        public GodotLogger(string categoryName, GodotLogProvider provider)
-        {
-            _categoryName = categoryName;
-            _provider = provider;
-        }
+        private readonly string _categoryName = categoryName;
+        private readonly GodotLogProvider _provider = provider;
 
         /// <inheritdoc />
         /// <remarks>Godot 输出不支持作用域；作用域状态被忽略。</remarks>

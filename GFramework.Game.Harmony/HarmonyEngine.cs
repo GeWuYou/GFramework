@@ -38,34 +38,38 @@ internal sealed class HarmonyEngine
         _methodType = Assembly.GetType("HarmonyLib.HarmonyMethod", throwOnError: true)!;
         _patchesType = Assembly.GetType("HarmonyLib.Patches", throwOnError: true)!;
         _patchType = Assembly.GetType("HarmonyLib.Patch", throwOnError: true)!;
-        _harmonyConstructor = harmonyType.GetConstructor(new[] { typeof(string) })!;
-        _methodConstructor = _methodType.GetConstructor(new[] { typeof(MethodInfo) })!;
-        _patchAll = harmonyType.GetMethod("PatchAll", new[] { typeof(Assembly) })!;
-        _patch = harmonyType.GetMethod("Patch", new[] { typeof(MethodBase), _methodType, _methodType, _methodType, _methodType })!;
-        _unpatchAll = harmonyType.GetMethod("UnpatchAll", new[] { typeof(string) })!;
+        _harmonyConstructor = harmonyType.GetConstructor([typeof(string)])!;
+        _methodConstructor = _methodType.GetConstructor([typeof(MethodInfo)])!;
+        _patchAll = harmonyType.GetMethod("PatchAll", [typeof(Assembly)])!;
+        _patch = harmonyType.GetMethod("Patch", [typeof(MethodBase), _methodType, _methodType, _methodType, _methodType])!;
+        _unpatchAll = harmonyType.GetMethod("UnpatchAll", [typeof(string)])!;
         _allPatchedMethods = harmonyType.GetMethod("GetAllPatchedMethods", Type.EmptyTypes)!;
-        _patchInfo = harmonyType.GetMethod("GetPatchInfo", new[] { typeof(MethodBase) })!;
+        _patchInfo = harmonyType.GetMethod("GetPatchInfo", [typeof(MethodBase)])!;
     }
     /// <summary>Gets the single Default-ALC engine assembly shared with all code mods.</summary>
-    internal Assembly Assembly { get; }
+    internal Assembly Assembly
+    {
+        get;
+    }
     /// <summary>Creates an owner instance without applying any patches.</summary>
-    internal object CreateOwner(string ownerId) => Construct(_harmonyConstructor, new object?[] { ownerId });
+    internal object CreateOwner(string ownerId) => Construct(_harmonyConstructor, [ownerId]);
     /// <summary>Applies explicit assembly annotations in the Default-owned engine.</summary>
-    internal void PatchAll(object owner, Assembly assembly) => Invoke(_patchAll, owner, new object?[] { assembly });
+    internal void PatchAll(object owner, Assembly assembly) => Invoke(_patchAll, owner, [assembly]);
     /// <summary>Converts neutral declarations to native engine objects inside the bridge.</summary>
     internal MethodInfo? Patch(object owner, MethodBase original, ModPatchMethod? prefix, ModPatchMethod? postfix,
         ModPatchMethod? transpiler, ModPatchMethod? finalizer) =>
-        (MethodInfo?)Invoke(_patch, owner, new[] { original, CreateMethod(prefix), CreateMethod(postfix), CreateMethod(transpiler), CreateMethod(finalizer) });
+        (MethodInfo?)Invoke(_patch, owner, [original, CreateMethod(prefix), CreateMethod(postfix), CreateMethod(transpiler), CreateMethod(finalizer)]);
     /// <summary>Removes exactly one owner, never every Harmony user's patches.</summary>
-    internal void UnpatchAll(object owner, string ownerId) => Invoke(_unpatchAll, owner, new object?[] { ownerId });
+    internal void UnpatchAll(object owner, string ownerId) => Invoke(_unpatchAll, owner, [ownerId]);
     /// <summary>Projects public engine diagnostics into adapter-owned records.</summary>
     internal IReadOnlyList<ModPatchDiagnostic> GetPatches(string ownerId)
     {
         var result = new List<ModPatchDiagnostic>();
-        foreach (var target in ((IEnumerable)Invoke(_allPatchedMethods, null, Array.Empty<object?>())!).Cast<MethodBase>())
+        foreach (var target in ((IEnumerable)Invoke(_allPatchedMethods, owner: null, [])!).Cast<MethodBase>())
         {
-            var info = Invoke(_patchInfo, null, new object?[] { target });
-            if (info is null) continue;
+            var info = Invoke(_patchInfo, owner: null, [target]);
+            if (info is null)
+                continue;
             AddDiagnostics(result, target, info, ownerId, "Prefix", "Prefixes");
             AddDiagnostics(result, target, info, ownerId, "Postfix", "Postfixes");
             AddDiagnostics(result, target, info, ownerId, "Transpiler", "Transpilers");
@@ -91,10 +95,14 @@ internal sealed class HarmonyEngine
             return existing;
         }
         Assembly engine;
-        if (assemblyPath is not null) engine = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
+        if (assemblyPath is not null)
+            engine = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
         else
         {
-            try { engine = AssemblyLoadContext.Default.LoadFromAssemblyName(new AssemblyName("0Harmony")); }
+            try
+            {
+                engine = AssemblyLoadContext.Default.LoadFromAssemblyName(new AssemblyName("0Harmony"));
+            }
             catch (FileNotFoundException exception)
             {
                 var candidate = Path.Combine(AppContext.BaseDirectory, "0Harmony.dll");
@@ -118,13 +126,17 @@ internal sealed class HarmonyEngine
     /// <summary>Applies only supplied overrides, retaining Harmony attributes when declarations omit them.</summary>
     private object? CreateMethod(ModPatchMethod? declaration)
     {
-        if (declaration is null) return null;
+        if (declaration is null)
+            return null;
         ArgumentNullException.ThrowIfNull(declaration.Before, nameof(declaration));
         ArgumentNullException.ThrowIfNull(declaration.After, nameof(declaration));
-        var method = Construct(_methodConstructor, new object?[] { declaration.Method });
-        if (declaration.Priority.HasValue) _methodType.GetField("priority")!.SetValue(method, declaration.Priority.Value);
-        if (declaration.Before.Count != 0) _methodType.GetField("before")!.SetValue(method, declaration.Before.ToArray());
-        if (declaration.After.Count != 0) _methodType.GetField("after")!.SetValue(method, declaration.After.ToArray());
+        var method = Construct(_methodConstructor, [declaration.Method]);
+        if (declaration.Priority.HasValue)
+            _methodType.GetField("priority")!.SetValue(method, declaration.Priority.Value);
+        if (declaration.Before.Count != 0)
+            _methodType.GetField("before")!.SetValue(method, declaration.Before.ToArray());
+        if (declaration.After.Count != 0)
+            _methodType.GetField("after")!.SetValue(method, declaration.After.ToArray());
         return method;
     }
     /// <summary>Reads documented public Patch/Patches fields without modifying library internals or caches.</summary>
@@ -134,7 +146,8 @@ internal sealed class HarmonyEngine
         var patches = (IEnumerable)_patchesType.GetField(collection)!.GetValue(info)!;
         foreach (var patch in patches)
         {
-            if (!string.Equals((string?)_patchType.GetField("owner")!.GetValue(patch), ownerId, StringComparison.Ordinal)) continue;
+            if (!string.Equals((string?)_patchType.GetField("owner")!.GetValue(patch), ownerId, StringComparison.Ordinal))
+                continue;
             var patchMethod = (MethodInfo)_patchType.GetProperty("PatchMethod")!.GetValue(patch)!;
             var priority = (int)_patchType.GetField("priority")!.GetValue(patch)!;
             var before = (string[])_patchType.GetField("before")!.GetValue(patch)!;
@@ -149,7 +162,10 @@ internal sealed class HarmonyEngine
     /// <summary>Preserves the actual engine exception and stack instead of exposing reflection wrappers.</summary>
     private static object? Invoke(MethodInfo method, object? owner, object?[] arguments)
     {
-        try { return method.Invoke(owner, arguments); }
+        try
+        {
+            return method.Invoke(owner, arguments);
+        }
         catch (TargetInvocationException exception) when (exception.InnerException is not null)
         {
             ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
@@ -159,7 +175,10 @@ internal sealed class HarmonyEngine
     /// <summary>Constructs only known public engine types while preserving underlying failures.</summary>
     private static object Construct(ConstructorInfo constructor, object?[] arguments)
     {
-        try { return constructor.Invoke(arguments); }
+        try
+        {
+            return constructor.Invoke(arguments);
+        }
         catch (TargetInvocationException exception) when (exception.InnerException is not null)
         {
             ExceptionDispatchInfo.Capture(exception.InnerException).Throw();

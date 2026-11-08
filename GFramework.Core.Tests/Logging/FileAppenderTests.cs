@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using System.IO;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Appenders;
@@ -68,7 +69,7 @@ public class FileAppenderTests
         {
             if (Directory.Exists(dirPath))
             {
-                Directory.Delete(dirPath, true);
+                Directory.Delete(dirPath, recursive: true);
             }
         }
     }
@@ -78,7 +79,7 @@ public class FileAppenderTests
     {
         using (var appender = new FileAppender(_testFilePath))
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, Properties: null);
             appender.Append(entry);
             appender.Flush();
         }
@@ -95,7 +96,7 @@ public class FileAppenderTests
         {
             for (int i = 0; i < 10; i++)
             {
-                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", string.Create(CultureInfo.InvariantCulture, $"Message {i}"), Exception: null, Properties: null);
                 appender.Append(entry);
             }
 
@@ -106,7 +107,7 @@ public class FileAppenderTests
         Assert.That(lines.Length, Is.EqualTo(10));
         for (int i = 0; i < 10; i++)
         {
-            Assert.That(lines[i], Does.Contain($"Message {i}"));
+            Assert.That(lines[i], Does.Contain(string.Create(CultureInfo.InvariantCulture, $"Message {i}")));
         }
     }
 
@@ -115,7 +116,7 @@ public class FileAppenderTests
     {
         using (var appender = new FileAppender(_testFilePath, new JsonLogFormatter()))
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, Properties: null);
             appender.Append(entry);
             appender.Flush();
         }
@@ -131,7 +132,7 @@ public class FileAppenderTests
         var appender = new FileAppender(_testFilePath);
         appender.Dispose();
 
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, Properties: null);
 
         Assert.Throws<ObjectDisposedException>(() => appender.Append(entry));
     }
@@ -142,7 +143,7 @@ public class FileAppenderTests
         // 第一次写入
         using (var appender1 = new FileAppender(_testFilePath))
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "First message", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "First message", Exception: null, Properties: null);
             appender1.Append(entry);
             appender1.Flush();
         }
@@ -150,7 +151,7 @@ public class FileAppenderTests
         // 第二次写入
         using (var appender2 = new FileAppender(_testFilePath))
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Second message", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Second message", Exception: null, Properties: null);
             appender2.Append(entry);
             appender2.Flush();
         }
@@ -166,7 +167,7 @@ public class FileAppenderTests
     {
         using (var appender = new FileAppender(_testFilePath))
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", Exception: null, Properties: null);
 
             appender.Append(entry);
             appender.Flush();

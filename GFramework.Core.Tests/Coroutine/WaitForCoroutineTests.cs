@@ -37,7 +37,7 @@ namespace GFramework.Core.Tests.Coroutine
             Assert.That(waitForCoroutine.IsDone, Is.False);
         }
 
-        private static IEnumerator<IYieldInstruction> CreateDummyCoroutine()
+        private static List<IYieldInstruction>.Enumerator CreateDummyCoroutine()
         {
             return new List<IYieldInstruction>().GetEnumerator();
         }

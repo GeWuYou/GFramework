@@ -127,7 +127,7 @@ public class MicrosoftDiContainerTests
     {
         var instance = new TestService();
 
-        _container.Register(typeof(TestService), instance);
+        _container.Register(instance);
 
         Assert.That(_container.Contains<TestService>(), Is.True);
     }
@@ -334,7 +334,7 @@ public class MicrosoftDiContainerTests
         _container.Register<IPrimaryAliasService>(instance);
         _container.Register<ISecondaryAliasService>(instance);
 
-        var results = _container.GetAll(typeof(ISharedAliasService));
+        var results = _container.GetAll<ISharedAliasService>();
 
         Assert.That(results, Has.Count.EqualTo(2));
         Assert.That(results[0], Is.SameAs(instance));
@@ -433,7 +433,7 @@ public class MicrosoftDiContainerTests
     [Test]
     public void HasRegistration_Should_ReturnFalse_For_Interface_When_Only_Concrete_Service_Key_Is_Registered()
     {
-        _container.GetServicesUnsafe.AddSingleton(typeof(SelfRegisteredConcreteBehavior), typeof(SelfRegisteredConcreteBehavior));
+        _container.GetServicesUnsafe.AddSingleton<SelfRegisteredConcreteBehavior, SelfRegisteredConcreteBehavior>();
 
         Assert.That(_container.HasRegistration(typeof(IPipelineBehavior<HasRegistrationRequest, int>)), Is.False);
 
@@ -851,7 +851,7 @@ public class MicrosoftDiContainerTests
         _container.Freeze();
 
         // Act
-        var services = _container.GetAllByPriority(typeof(IPrioritizedService));
+        var services = _container.GetAllByPriority<IPrioritizedService>();
 
         // Assert
         Assert.That(services, Has.Count.EqualTo(2));
@@ -865,7 +865,7 @@ public class MicrosoftDiContainerTests
     [Test]
     public async Task Dispose_Should_Block_Subsequent_Registration_And_Query_Operations()
     {
-        _container.Dispose();
+        await _container.DisposeAsync();
 
         Assert.Throws<ObjectDisposedException>(() => _container.Register(new TestService()));
         Assert.Throws<ObjectDisposedException>(() => _container.Contains<TestService>());
@@ -883,7 +883,7 @@ public class MicrosoftDiContainerTests
 
         var containerLock = GetContainerLock(_container);
         var releasedGate = false;
-        using var queryStarted = new ManualResetEventSlim(false);
+        using var queryStarted = new ManualResetEventSlim(initialState: false);
 
         containerLock.EnterWriteLock();
         try
@@ -897,7 +897,9 @@ public class MicrosoftDiContainerTests
             Assert.That(queryStarted.Wait(TimeSpan.FromSeconds(1)), Is.True);
 
             var disposeTask = Task.Run(_container.Dispose);
-            Thread.Sleep(50);
+            // Stay on the write-lock owner thread, and prove disposal is queued before releasing the lock.
+            Assert.That(SpinWait.SpinUntil(() => containerLock.WaitingWriteCount > 0,
+                TimeSpan.FromSeconds(5)), Is.True);
 
             containerLock.ExitWriteLock();
             releasedGate = true;
@@ -931,9 +933,7 @@ public class MicrosoftDiContainerTests
     /// <summary>
     ///     供 HasRegistration 回归使用的最小请求类型。
     /// </summary>
-    private sealed class HasRegistrationRequest : IRequest<int>
-    {
-    }
+    private sealed class HasRegistrationRequest : IRequest<int>;
 
     /// <summary>
     ///     供 HasRegistration 回归使用的开放泛型 pipeline 行为。

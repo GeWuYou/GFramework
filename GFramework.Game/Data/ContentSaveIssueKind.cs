@@ -17,5 +17,5 @@ public enum ContentSaveIssueKind
     /// <summary>The order of retained packages changed; this is advisory.</summary>
     LoadOrderChanged,
     /// <summary>The envelope lacks content metadata and requires an explicit game-owned recovery decision.</summary>
-    MissingMetadata
+    MissingMetadata,
 }

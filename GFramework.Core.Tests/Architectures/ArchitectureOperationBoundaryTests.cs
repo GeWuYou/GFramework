@@ -85,8 +85,7 @@ public sealed class ArchitectureOperationBoundaryTests
             async () => await architecture.InitializeAsync(external.Token).ConfigureAwait(false),
             Throws.InvalidOperationException.With.Message.EqualTo("startup hook failed"));
         Assert.That(captured.CanBeCanceled, Is.True);
-
-        external.Cancel();
+        await external.CancelAsync().ConfigureAwait(false);
 
         Assert.That(captured.IsCancellationRequested, Is.False,
             "Completed failed startup must detach its linked token from the caller's later cancellation.");
@@ -112,14 +111,13 @@ public sealed class ArchitectureOperationBoundaryTests
         var architecture = new BoundaryArchitecture((owner, _) => owner.RegisterLifecycleHook(hook));
         var startup = architecture.InitializeAsync(external.Token);
         var ready = architecture.WaitUntilReadyAsync();
-        await entered.Task.WaitAsync(OperationTimeout).ConfigureAwait(false);
-
-        external.Cancel();
+        await entered.Task.WaitAsync(OperationTimeout, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+        await external.CancelAsync().ConfigureAwait(false);
 
         var startupError = await Assert.CatchAsync<OperationCanceledException>(
-            async () => await startup.WaitAsync(OperationTimeout).ConfigureAwait(false)).ConfigureAwait(false);
+            async () => await startup.WaitAsync(OperationTimeout, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false)).ConfigureAwait(false);
         var readyError = await Assert.CatchAsync<OperationCanceledException>(
-            async () => await ready.WaitAsync(OperationTimeout).ConfigureAwait(false)).ConfigureAwait(false);
+            async () => await ready.WaitAsync(OperationTimeout, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false)).ConfigureAwait(false);
         Assert.Multiple(() =>
         {
             Assert.That(startupError!.CancellationToken, Is.EqualTo(external.Token));
@@ -267,17 +265,17 @@ public sealed class ArchitectureOperationBoundaryTests
         });
 
         await architecture.InitializeAsync().ConfigureAwait(false);
-        Assert.That(calls, Is.EqualTo(new[]
-        {
-            "register:first", "register:second", "initialize:first", "initialize:second"
-        }));
+        Assert.That(calls, Is.EqualTo(
+        [
+            "register:first", "register:second", "initialize:first", "initialize:second",
+        ]));
 
         await architecture.DestroyAsync().ConfigureAwait(false);
-        Assert.That(calls, Is.EqualTo(new[]
-        {
+        Assert.That(calls, Is.EqualTo(
+        [
             "register:first", "register:second", "initialize:first", "initialize:second",
-            "stop:second", "stop:first"
-        }));
+            "stop:second", "stop:first",
+        ]));
     }
 
     /// <summary>独立的小型架构夹具，不依赖其他测试类的内部实现。</summary>
@@ -285,7 +283,10 @@ public sealed class ArchitectureOperationBoundaryTests
     private sealed class BoundaryArchitecture(Action<BoundaryArchitecture, IServiceCollection> configure) : Architecture
     {
         /// <summary>组件启动之后的宿主动作。</summary>
-        public Action? Started { get; set; }
+        public Action? Started
+        {
+            get; set;
+        }
 
         /// <summary>仅声明本用例需要的依赖与参与者。</summary>
         /// <param name="services">当前架构的服务集合。</param>
@@ -322,16 +323,28 @@ public sealed class ArchitectureOperationBoundaryTests
         private ArchitecturePhase _phase;
 
         /// <summary>已观察到的初始化调用次数。</summary>
-        public int InitializeCalls { get; private set; }
+        public int InitializeCalls
+        {
+            get; private set;
+        }
 
         /// <summary>上下文就绪回调次数。</summary>
-        public int ContextReadyCalls { get; private set; }
+        public int ContextReadyCalls
+        {
+            get; private set;
+        }
 
         /// <summary>业务停止调用次数。</summary>
-        public int StopCalls { get; private set; }
+        public int StopCalls
+        {
+            get; private set;
+        }
 
         /// <summary>开始初始化时的实际阶段。</summary>
-        public ArchitecturePhase InitializedAtPhase { get; private set; }
+        public ArchitecturePhase InitializedAtPhase
+        {
+            get; private set;
+        }
 
         /// <summary>所有实际阶段通知。</summary>
         public List<ArchitecturePhase> Phases { get; } = [];
@@ -362,10 +375,16 @@ public sealed class ArchitectureOperationBoundaryTests
     private sealed class AsyncOnlySystem : AbstractSystem, IAsyncInitializable
     {
         /// <summary>异步初始化调用次数。</summary>
-        public int AsyncInitializeCalls { get; private set; }
+        public int AsyncInitializeCalls
+        {
+            get; private set;
+        }
 
         /// <summary>基类停止入口实际抵达派生清理的次数。</summary>
-        public int StopCalls { get; private set; }
+        public int StopCalls
+        {
+            get; private set;
+        }
 
         /// <summary>提供真实异步契约，不调用同步初始化。</summary>
         /// <param name="cancellationToken">启动取消令牌。</param>
@@ -388,10 +407,15 @@ public sealed class ArchitectureOperationBoundaryTests
     private sealed class ThrowingStopSystem : AbstractSystem
     {
         /// <summary>实际停止次数。</summary>
-        public int StopCalls { get; private set; }
+        public int StopCalls
+        {
+            get; private set;
+        }
 
         /// <summary>启动不需要额外动作。</summary>
-        protected override void OnInit() { }
+        protected override void OnInit()
+        {
+        }
 
         /// <summary>记录尝试后报告具体停止失败。</summary>
         protected override void OnDestroy()
@@ -406,7 +430,10 @@ public sealed class ArchitectureOperationBoundaryTests
     private sealed class OwnedResource(bool throwOnDispose = false) : IDisposable
     {
         /// <summary>实际资源释放次数。</summary>
-        public int DisposeCalls { get; private set; }
+        public int DisposeCalls
+        {
+            get; private set;
+        }
 
         /// <summary>记录真正的资源释放尝试。</summary>
         public void Dispose()

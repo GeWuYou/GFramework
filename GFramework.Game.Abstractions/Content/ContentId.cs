@@ -13,7 +13,7 @@ public readonly record struct ContentId
     {
         if (string.IsNullOrWhiteSpace(value))
             throw new ArgumentException("Content IDs cannot be empty.", nameof(value));
-        var separator = value.IndexOf(':');
+        var separator = value.IndexOf(':', StringComparison.Ordinal);
         if (separator <= 0 || separator != value.LastIndexOf(':') ||
             !IsCanonicalSegment(value[..separator]) || !IsCanonicalSegment(value[(separator + 1)..]))
         {
@@ -24,10 +24,16 @@ public readonly record struct ContentId
     }
 
     /// <summary>Gets the package that originally owns this identifier.</summary>
-    public string PackId { get; }
+    public string PackId
+    {
+        get;
+    }
 
     /// <summary>Gets the stable identifier inside the owning package.</summary>
-    public string LocalId { get; }
+    public string LocalId
+    {
+        get;
+    }
 
     /// <summary>Checks package and local names without treating them as filesystem paths.</summary>
     /// <param name="value">Name to check.</param>

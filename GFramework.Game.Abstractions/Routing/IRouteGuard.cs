@@ -26,7 +26,10 @@ public interface IRouteGuard<TRoute> where TRoute : IRoute
     /// 守卫按优先级从小到大依次执行。
     /// 建议使用 0-100 的范围,默认为 50。
     /// </remarks>
-    int Priority { get; }
+    int Priority
+    {
+        get;
+    }
 
     /// <summary>
     /// 是否可以中断后续守卫的执行
@@ -35,7 +38,10 @@ public interface IRouteGuard<TRoute> where TRoute : IRoute
     /// 如果为 true,当此守卫返回 true 或抛出异常时,将中断后续守卫的执行。
     /// 如果为 false,将继续执行后续守卫。
     /// </remarks>
-    bool CanInterrupt { get; }
+    bool CanInterrupt
+    {
+        get;
+    }
 
     /// <summary>
     /// 检查是否可以进入指定路由

@@ -19,7 +19,7 @@ public class ArrayExtensionsTests
         var array = new[,]
         {
             { 1, 2 },
-            { 3, 4 }
+            { 3, 4 },
         };
 
         // Act
@@ -43,7 +43,7 @@ public class ArrayExtensionsTests
         var array = new[,]
         {
             { 1, 2 },
-            { 3, 4 }
+            { 3, 4 },
         };
 
         // Act
@@ -67,7 +67,7 @@ public class ArrayExtensionsTests
         var array = new string[,]
         {
             { "A", "B" },
-            { "C", "D" }
+            { "C", "D" },
         };
 
         // Act
@@ -91,7 +91,7 @@ public class ArrayExtensionsTests
         var array = new[,]
         {
             { 10, 20, 30 },
-            { 40, 50, 60 }
+            { 40, 50, 60 },
         };
 
         // Act
@@ -108,7 +108,7 @@ public class ArrayExtensionsTests
                     (0, 2, 30),
                     (1, 0, 40),
                     (1, 1, 50),
-                    (1, 2, 60)
+                    (1, 2, 60),
                 }));
     }
 }

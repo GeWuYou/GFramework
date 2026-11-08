@@ -26,13 +26,19 @@ public interface ISceneTransitionHandler
     /// 数值越小优先级越高，越先执行。
     /// 建议范围：-1000 到 1000。
     /// </summary>
-    int Priority { get; }
+    int Priority
+    {
+        get;
+    }
 
     /// <summary>
     /// 获取处理器适用的场景过渡阶段。
     /// 可以使用 Flags 组合多个阶段（如 BeforeChange | AfterChange）。
     /// </summary>
-    SceneTransitionPhases Phases { get; }
+    SceneTransitionPhases Phases
+    {
+        get;
+    }
 
     /// <summary>
     /// 判断处理器是否应该处理当前场景过渡事件。

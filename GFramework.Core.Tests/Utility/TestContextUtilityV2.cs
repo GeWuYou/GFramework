@@ -13,17 +13,26 @@ public sealed class TestContextUtilityV2 : AbstractContextUtility
     /// <summary>
     ///     获取一个值，该值指示当前工具是否已完成初始化。
     /// </summary>
-    public bool Initialized { get; private set; }
+    public bool Initialized
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取一个值，该值指示当前工具是否已执行销毁逻辑。
     /// </summary>
-    public bool Destroyed { get; private set; }
+    public bool Destroyed
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取一个值，该值指示自定义初始化步骤是否已完成。
     /// </summary>
-    public bool CustomInitializationDone { get; private set; }
+    public bool CustomInitializationDone
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     在基础初始化期间记录自定义初始化步骤已执行。

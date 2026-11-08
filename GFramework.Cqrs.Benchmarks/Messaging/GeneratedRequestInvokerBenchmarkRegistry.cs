@@ -35,7 +35,7 @@ public sealed class GeneratedRequestInvokerBenchmarkRegistry :
         new GFramework.Cqrs.CqrsRequestInvokerDescriptorEntry(
             typeof(RequestInvokerBenchmarks.GeneratedBenchmarkRequest),
             typeof(RequestInvokerBenchmarks.GeneratedBenchmarkResponse),
-            Descriptor)
+            Descriptor),
     ];
 
     /// <summary>
@@ -46,11 +46,7 @@ public sealed class GeneratedRequestInvokerBenchmarkRegistry :
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(logger);
 
-        services.AddTransient(
-            typeof(IRequestHandler<
-                RequestInvokerBenchmarks.GeneratedBenchmarkRequest,
-                RequestInvokerBenchmarks.GeneratedBenchmarkResponse>),
-            typeof(RequestInvokerBenchmarks.GeneratedBenchmarkRequestHandler));
+        services.AddTransient<IRequestHandler<RequestInvokerBenchmarks.GeneratedBenchmarkRequest, RequestInvokerBenchmarks.GeneratedBenchmarkResponse>, RequestInvokerBenchmarks.GeneratedBenchmarkRequestHandler>();
         logger.LogDebug("Registered generated request invoker benchmark handler.");
     }
 

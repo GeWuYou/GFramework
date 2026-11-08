@@ -13,7 +13,10 @@ public sealed class ContentHostCompatibility
     /// <summary>Gets the game-owned data interpretation API version.</summary>
     public string ContentApiVersion { get; init; } = "1.0.0";
     /// <summary>Gets the game-owned code API version, or null when this host does not support code mods.</summary>
-    public string? CodeApiVersion { get; init; }
+    public string? CodeApiVersion
+    {
+        get; init;
+    }
     /// <summary>Gets the package that is mandatory and always loads first.</summary>
     public string BasePackId { get; init; } = "base";
 }

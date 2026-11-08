@@ -7,8 +7,14 @@ namespace GFramework.Game.Abstractions.Content;
 public sealed class ContentVersionRange
 {
     /// <summary>Gets the inclusive lower bound in three-component numeric version syntax.</summary>
-    public string? MinimumInclusive { get; init; }
+    public string? MinimumInclusive
+    {
+        get; init;
+    }
 
     /// <summary>Gets the exclusive upper bound in three-component numeric version syntax.</summary>
-    public string? MaximumExclusive { get; init; }
+    public string? MaximumExclusive
+    {
+        get; init;
+    }
 }

@@ -54,14 +54,14 @@ public sealed class AsyncLogAppender : ILogAppender
         {
             FullMode = BoundedChannelFullMode.Wait, // 缓冲区满时等待
             SingleReader = true,
-            SingleWriter = false
+            SingleWriter = false,
         };
 
         _channel = Channel.CreateBounded<LogEntry>(options);
         _cts = new CancellationTokenSource();
 
         // 启动后台处理任务
-        _processingTask = Task.Run(() => ProcessLogsAsync(_cts.Token));
+        _processingTask = Task.Run(() => ProcessLogsAsync(_cts.Token), _cts.Token);
     }
 
     /// <summary>
@@ -79,13 +79,14 @@ public sealed class AsyncLogAppender : ILogAppender
     /// </summary>
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         // 标记 Channel 为完成状态
         _channel.Writer.Complete();
 
         // 等待处理任务完成（最多等待 5 秒）
-        if (!_processingTask.Wait(TimeSpan.FromSeconds(5)))
+        if (!_processingTask.Wait(TimeSpan.FromSeconds(5), _cts.Token))
         {
             _cts.Cancel();
         }
@@ -105,6 +106,8 @@ public sealed class AsyncLogAppender : ILogAppender
     ///     追加日志条目（非阻塞）
     /// </summary>
     /// <param name="entry">日志条目</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1513",
+        Justification = "Preserve the established short ObjectName AsyncLogAppender; the ThrowIf instance overload reports the qualified runtime type.")]
     public void Append(LogEntry entry)
     {
         if (_disposed)
@@ -138,7 +141,8 @@ public sealed class AsyncLogAppender : ILogAppender
     /// <returns>是否成功刷新所有日志（true=成功，false=超时）</returns>
     public bool Flush(TimeSpan? timeout = null)
     {
-        if (_disposed) return false;
+        if (_disposed)
+            return false;
 
         var actualTimeout = timeout ?? TimeSpan.FromSeconds(30);
 
@@ -149,7 +153,7 @@ public sealed class AsyncLogAppender : ILogAppender
         try
         {
             // 等待处理任务发出完成信号
-            var success = _flushSemaphore.Wait(actualTimeout);
+            var success = _flushSemaphore.Wait(actualTimeout, _cts.Token);
             OnFlushCompleted?.Invoke(this, new AsyncLogFlushCompletedEventArgs(success));
             return success;
         }

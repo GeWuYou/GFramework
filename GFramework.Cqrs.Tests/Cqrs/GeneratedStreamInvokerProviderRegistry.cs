@@ -38,11 +38,11 @@ internal sealed class GeneratedStreamInvokerProviderRegistry :
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(logger);
 
-        services.AddTransient(
-            typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
-            typeof(GeneratedStreamInvokerRequestHandler));
-        logger.LogDebug(
-            $"Registered CQRS handler {typeof(GeneratedStreamInvokerRequestHandler).FullName} as {typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>).FullName}.");
+        services.AddTransient<IStreamRequestHandler<GeneratedStreamInvokerRequest, int>, GeneratedStreamInvokerRequestHandler>();
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Registered CQRS handler {ImplementationType} as {HandlerContract}.", typeof(GeneratedStreamInvokerRequestHandler).FullName, typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>).FullName);
+        }
     }
 
     /// <summary>

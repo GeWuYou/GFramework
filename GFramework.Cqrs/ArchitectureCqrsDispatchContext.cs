@@ -22,6 +22,9 @@ public sealed class ArchitectureCqrsDispatchContext(IArchitectureContext archite
     /// <summary>
     ///     获取当前分发绑定的架构上下文。
     /// </summary>
-    public IArchitectureContext ArchitectureContext { get; } =
+    public IArchitectureContext ArchitectureContext
+    {
+        get;
+    } =
         architectureContext ?? throw new ArgumentNullException(nameof(architectureContext));
 }

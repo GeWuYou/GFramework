@@ -38,6 +38,8 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
     /// <summary>
     ///     获取或设置属性值比较器，默认使用Equals方法进行比较
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0018",
+        Justification = "The public comparison policy is intentionally stored per closed property value type; moving it changes both API and state isolation.")]
     public static Func<T, T, bool> Comparer { get; set; } = (a, b) => a!.Equals(b);
 
     /// <summary>

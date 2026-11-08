@@ -29,7 +29,7 @@ namespace DodgeTheCreeps;
 /// <summary>Composes ordinary framework services and native gameplay, observing asynchronous actions until shutdown.</summary>
 public partial class DodgeApp : Node, ISceneRoot
 {
-    private readonly List<Task> _actions = new();
+    private readonly List<Task> _actions = [];
     private readonly CancellationTokenSource _lifetime = new();
     private readonly PauseStackManager _pause = new();
     private GodotFileStorage _storage = null!;
@@ -46,6 +46,7 @@ public partial class DodgeApp : Node, ISceneRoot
     private Task _startup = Task.CompletedTask;
     private bool _stopping;
     private bool _dirty;
+    private Vector2? _savedPlayerPosition;
     private bool _saveRetired;
     private string _dataRoot = "user://dodge_the_creeps";
 
@@ -77,8 +78,10 @@ public partial class DodgeApp : Node, ISceneRoot
         AddChild(startupCanvas);
         _startupStatus = new Label
         {
-            Text = Text.Get("loading"), Position = new Vector2(20, 24), Size = new Vector2(440, 200),
-            AutowrapMode = TextServer.AutowrapMode.WordSmart
+            Text = Text.Get("loading"),
+            Position = new Vector2(20, 24),
+            Size = new Vector2(440, 200),
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
         _startupFont = DodgeLocalization.CreateChineseFont();
         _startupStatus.AddThemeFontOverride("font", _startupFont);
@@ -98,9 +101,13 @@ public partial class DodgeApp : Node, ISceneRoot
         _menus = new DodgeMenus(this);
         _menus.Register(registry);
         _ui = new UiService(registry, root, dispatcher, _pause);
-        var input = new GodotUiInputBridge { Service = _ui, RunAction = RunAction };
-        input.UnhandledCancelAsync = () => _world is { IsRunning: true }
-            ? _ui.ShowAsync(DodgeRoutes.Pause, _world.Score, _lifetime.Token) : Task.CompletedTask;
+        var input = new GodotUiInputBridge
+        {
+            Service = _ui,
+            RunAction = RunAction,
+            UnhandledCancelAsync = () => _world is { IsRunning: true }
+                ? _ui.ShowAsync(DodgeRoutes.Pause, _world.Score, _lifetime.Token) : Task.CompletedTask,
+        };
         AddChild(input);
         _startup = StartAsync();
         // #endregion tutorial-services
@@ -121,12 +128,14 @@ public partial class DodgeApp : Node, ISceneRoot
             if (await _storage.ExistsAsync(_dataRoot + "/preferences.json").ConfigureAwait(true))
                 Preferences = await _storage.ReadAsync<DodgePreferences>(_dataRoot + "/preferences.json").ConfigureAwait(true);
             ApplyPreferences();
-            if (_captureLanguage is not null) Text.SetLanguage(_captureLanguage);
+            if (_captureLanguage is not null)
+                Text.SetLanguage(_captureLanguage);
             var canContinue = await _saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true);
             if (canContinue && await _storage.ExistsAsync(_dataRoot + "/last-content-backup.json").ConfigureAwait(true))
                 _latestBackup = await _storage.ReadAsync<string>(_dataRoot + "/last-content-backup.json").ConfigureAwait(true);
             await _ui.ReplaceAsync(DodgeRoutes.Menu, canContinue, _lifetime.Token).ConfigureAwait(true);
-            if (!CanStart) _menus.SetStatus(() => Text.Get("content_start_failed", ("error", _content.Error ?? string.Empty)));
+            if (!CanStart)
+                _menus.SetStatus(() => Text.Get("content_start_failed", ("error", _content.Error ?? string.Empty)));
             _startupStatus!.GetParent().QueueFree();
             _startupStatus = null;
             // #endregion tutorial-load-data
@@ -135,13 +144,15 @@ public partial class DodgeApp : Node, ISceneRoot
                 await CaptureMenuAsync().ConfigureAwait(true);
                 return;
             }
-            if (_smokeMode) await RunSmokeAsync().ConfigureAwait(true);
+            if (_smokeMode)
+                await RunSmokeAsync().ConfigureAwait(true);
         }
         catch (OperationCanceledException) when (_stopping) { }
         catch (Exception exception)
         {
             ReportError(exception);
-            if (_smokeMode) FinishSmoke(false);
+            if (_smokeMode)
+                FinishSmoke(passed: false);
         }
     }
 
@@ -150,13 +161,17 @@ public partial class DodgeApp : Node, ISceneRoot
     /// <param name="action">Business operation called from a signal.</param>
     internal void RunAction(Func<Task> action)
     {
-        if (!_stopping) _actions.Add(ObserveAsync(action));
+        if (!_stopping)
+            _actions.Add(ObserveAsync(action));
     }
 
     /// <summary>Reports recoverable operation failures on the visible status line.</summary>
     private async Task ObserveAsync(Func<Task> action)
     {
-        try { await action().ConfigureAwait(true); }
+        try
+        {
+            await action().ConfigureAwait(true);
+        }
         catch (OperationCanceledException) when (_stopping) { }
         catch (Exception exception) { ReportError(exception); }
         _actions.RemoveAll(static task => task.IsCompleted);
@@ -167,17 +182,23 @@ public partial class DodgeApp : Node, ISceneRoot
     /// <summary>Begins a fresh or restored run through the scene service.</summary>
     internal async Task StartGameAsync(bool restore)
     {
-        if (!CanStart) throw new InvalidOperationException("Repair content selection and restart before playing.");
-        if (restore && _saveRetired) throw new InvalidOperationException("This run has ended and cannot be continued.");
+        if (!CanStart)
+            throw new InvalidOperationException("Repair content selection and restart before playing.");
+        if (restore && _saveRetired)
+            throw new InvalidOperationException("This run has ended and cannot be continued.");
         var saved = restore ? await LoadContentSaveAsync().ConfigureAwait(true) : null;
-        if (restore && saved is null) return;
-        if (!restore) _modState = _saves.CreateModState();
+        if (restore && saved is null)
+            return;
+        if (!restore)
+            _modState = _saves.CreateModState();
         _arenaId = saved?.ArenaId ?? _content.ArenaId;
         _world?.StopRun();
         await _ui.ClearAsync(_lifetime.Token).ConfigureAwait(true);
         await _scenes.ReplaceAsync("play", cancellationToken: _lifetime.Token).ConfigureAwait(true);
-        if (saved is null) _world!.StartRun();
-        else _world!.RestoreProgress(saved);
+        if (saved is null)
+            _world!.StartRun();
+        else
+            _world!.RestoreProgress(saved);
         _dirty = true;
         await _ui.ShowAsync(DodgeRoutes.Hud, _world!.Score, _lifetime.Token).ConfigureAwait(true);
     }
@@ -187,25 +208,30 @@ public partial class DodgeApp : Node, ISceneRoot
     /// <summary>Writes one explicit save slot, preserving the previous file on failure.</summary>
     internal async Task SaveGameAsync()
     {
-        if (_world is null) return;
-        await _saves.SaveDocumentAsync(1, _world.CaptureProgress(), _modState, _lifetime.Token).ConfigureAwait(true);
+        if (_world is null)
+            return;
+        var saved = _world.CaptureProgress();
+        await _saves.SaveDocumentAsync(1, saved, _modState, _lifetime.Token).ConfigureAwait(true);
         _saveRetired = false;
+        _savedPlayerPosition = new Vector2(saved.X, saved.Y);
         _dirty = false;
         _menus.SetStatus(() => Text.Get("run_saved"));
     }
     // #endregion tutorial-save-game
 
     /// <summary>Opens settings as an independent window with its own pause request.</summary>
-    internal Task OpenSettingsAsync() => _ui.ShowAsync(DodgeRoutes.Settings, true, _lifetime.Token);
+    internal Task OpenSettingsAsync() => _ui.ShowAsync(DodgeRoutes.Settings, args: true, _lifetime.Token);
 
     // #region tutorial-confirm-exit
     /// <summary>Confirms discarding unsaved gameplay with a typed dialog result.</summary>
     internal async Task ReturnToMenuAsync()
     {
-        if (_dirty && _world is { IsRunning: true })
+        if (_world is { IsRunning: true } &&
+            (_dirty || (_savedPlayerPosition is { } savedPosition && _world.PlayerPosition != savedPosition)))
         {
             var decision = await _ui.ShowDialogAsync(DodgeRoutes.Confirm, () => Text.Get("leave_question"), _lifetime.Token).ConfigureAwait(true);
-            if (!decision.Accepted || decision.Value != true || _stopping) return;
+            if (!decision.Accepted || !decision.Value || _stopping)
+                return;
         }
         _dirty = false;
         _world?.StopRun();
@@ -219,13 +245,17 @@ public partial class DodgeApp : Node, ISceneRoot
     /// <summary>Moves a completed score to the game-over page and persists the best score.</summary>
     private async Task GameOverAsync()
     {
-        if (_world is null) return;
+        if (_world is null)
+            return;
         _dirty = false;
         var score = _world.Score;
         var status = await RetireRunSaveAsync().ConfigureAwait(true);
         if (score > Preferences.BestScore)
         {
-            try { await SaveBestScoreAsync(score).ConfigureAwait(true); }
+            try
+            {
+                await SaveBestScoreAsync(score).ConfigureAwait(true);
+            }
             catch (Exception exception)
             {
                 // A failed best-score write must leave the game's retry and exit actions available.
@@ -247,7 +277,7 @@ public partial class DodgeApp : Node, ISceneRoot
         {
             // Death is terminal. Shutdown waits for this cleanup instead of cancelling
             // its admission and leaving an ended run available on the next launch.
-            await _saves.DeleteAsync(1).ConfigureAwait(true);
+            await _saves.DeleteAsync(1, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
             await StoreBackupKeyAsync().ConfigureAwait(true);
             return null;
         }
@@ -265,7 +295,8 @@ public partial class DodgeApp : Node, ISceneRoot
     {
         await _ui.ClearAsync(_lifetime.Token).ConfigureAwait(true);
         await _ui.ReplaceAsync(DodgeRoutes.GameOver, score, _lifetime.Token).ConfigureAwait(true);
-        if (status is not null) _menus.SetStatus(status);
+        if (status is not null)
+            _menus.SetStatus(status);
     }
 
     /// <summary>Attaches a prepared scene on the host thread.</summary>
@@ -274,7 +305,8 @@ public partial class DodgeApp : Node, ISceneRoot
     public void RemoveScene(ISceneBehavior scene)
     {
         var node = (Node)scene.Original;
-        if (GodotObject.IsInstanceValid(node) && node.GetParent() == this) RemoveChild(node);
+        if (GodotObject.IsInstanceValid(node) && node.GetParent() == this)
+            RemoveChild(node);
     }
 
     /// <summary>Registers gameplay controls separately from native UI navigation actions.</summary>
@@ -288,9 +320,11 @@ public partial class DodgeApp : Node, ISceneRoot
     /// <summary>Initializes missing project actions, leaving user-authored actions intact.</summary>
     private static void AddAction(string name, params Key[] keys)
     {
-        if (InputMap.HasAction(name)) return;
+        if (InputMap.HasAction(name))
+            return;
         InputMap.AddAction(name);
-        foreach (var key in keys) InputMap.ActionAddEvent(name, new InputEventKey { PhysicalKeycode = key });
+        foreach (var key in keys)
+            InputMap.ActionAddEvent(name, new InputEventKey { PhysicalKeycode = key });
     }
     /// <summary>Shows a concise error without hiding the current game.</summary>
     private void ReportError(Exception exception)
@@ -305,27 +339,32 @@ public partial class DodgeApp : Node, ISceneRoot
     /// <summary>Stops UI admission, cancels waiting dialogs and joins accepted actions before freeing native roots.</summary>
     internal async void RequestQuit()
     {
-        if (_stopping) return;
+        if (_stopping)
+            return;
         _stopping = true;
         var exit = System.Environment.ExitCode;
         var errors = new List<Exception>();
         try
         {
-            try { _lifetime.Cancel(); }
+            try
+            {
+                _lifetime.Cancel();
+            }
             catch (Exception exception) { errors.Add(exception); }
             _world?.StopRun();
             await CaptureStopAsync(_ui.StopAsync, errors).ConfigureAwait(true);
-            await CaptureStopAsync(() => Task.WhenAll(_actions.ToArray()), errors).ConfigureAwait(true);
+            await CaptureStopAsync(() => Task.WhenAll([.. _actions]), errors).ConfigureAwait(true);
             await CaptureStopAsync(() => _startup, errors).ConfigureAwait(true);
             await CaptureStopAsync(_scenes.StopAsync, errors).ConfigureAwait(true);
-            if (_content is not null) await CaptureStopAsync(_content.StopModsAsync, errors).ConfigureAwait(true);
+            if (_content is not null)
+                await CaptureStopAsync(_content.StopModsAsync, errors).ConfigureAwait(true);
             await CaptureStopAsync(() => _pause.DisposeAsync().AsTask(), errors).ConfigureAwait(true);
             // QueueFree is frame-deferred. Let owned views leave the tree before disposing their shared theme.
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             // Native audio playback retires on the mixer thread, independently of fast headless process frames.
             var audioDrain = Math.Clamp(AudioServer.GetTimeToNextMix() * 2, 0.12, 0.5);
-            await ToSignal(GetTree().CreateTimer(audioDrain, true, false, true), SceneTreeTimer.SignalName.Timeout);
+            await ToSignal(GetTree().CreateTimer(audioDrain, processAlways: true, processInPhysics: false, ignoreTimeScale: true), SceneTreeTimer.SignalName.Timeout);
         }
         catch (Exception exception) { errors.Add(exception); }
         finally
@@ -349,14 +388,20 @@ public partial class DodgeApp : Node, ISceneRoot
     /// <summary>Attempts every owned stop action even when an earlier callback reports an error.</summary>
     private static async Task CaptureStopAsync(Func<Task> stop, List<Exception> errors)
     {
-        try { await stop().ConfigureAwait(true); }
+        try
+        {
+            await stop().ConfigureAwait(true);
+        }
         catch (Exception exception) { errors.Add(exception); }
     }
 
     /// <summary>Releases one owned resource without skipping the remaining resources.</summary>
     private static void DisposeOwnedResource(IDisposable? resource, List<Exception> errors)
     {
-        try { resource?.Dispose(); }
+        try
+        {
+            resource?.Dispose();
+        }
         catch (Exception exception) { errors.Add(exception); }
     }
     // #endregion tutorial-shutdown
@@ -367,7 +412,8 @@ public partial class DodgeApp : Node, ISceneRoot
         /// <inheritdoc />
         public ISceneBehavior Create(string sceneKey)
         {
-            if (!string.Equals(sceneKey, "play", StringComparison.Ordinal)) throw new InvalidOperationException("Unknown scene: " + sceneKey);
+            if (!string.Equals(sceneKey, "play", StringComparison.Ordinal))
+                throw new InvalidOperationException("Unknown scene: " + sceneKey);
             app._world = new DodgeWorld { Name = "World" };
             app._world.ConfigureContent(app._content, app._content.Catalog.GetTable<DodgeArenaDefinition>("arenas").Get(new ContentId(app._arenaId)));
             app._world.ConfigureScoring(app.ModifyScore);

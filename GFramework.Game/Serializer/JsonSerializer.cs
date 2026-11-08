@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Serializer;
@@ -13,22 +13,17 @@ namespace GFramework.Game.Serializer;
 ///     该类型会直接持有并复用外部提供的 <see cref="JsonSerializerSettings" /> 实例及其转换器集合，而不会在构造时复制配置。
 ///     请在组合根或启动阶段完成全部配置，并在注册给其他组件后将这些配置视为只读；否则在并发调用期间同时修改设置或转换器集合可能导致不可预测行为。
 /// </remarks>
-public sealed class JsonSerializer
-    : IRuntimeTypeSerializer
+/// <remarks>
+///     初始化 JSON 序列化器。
+/// </remarks>
+/// <param name="settings">
+///     可选的 Newtonsoft.Json 配置实例；不提供时使用默认配置。
+///     传入的实例会被当前序列化器直接复用，后续对该实例的修改会影响所有后续序列化与反序列化调用。
+/// </param>
+public sealed class JsonSerializer(JsonSerializerSettings? settings = null)
+        : IRuntimeTypeSerializer
 {
-    private readonly JsonSerializerSettings _settings;
-
-    /// <summary>
-    ///     初始化 JSON 序列化器。
-    /// </summary>
-    /// <param name="settings">
-    ///     可选的 Newtonsoft.Json 配置实例；不提供时使用默认配置。
-    ///     传入的实例会被当前序列化器直接复用，后续对该实例的修改会影响所有后续序列化与反序列化调用。
-    /// </param>
-    public JsonSerializer(JsonSerializerSettings? settings = null)
-    {
-        _settings = settings ?? new JsonSerializerSettings();
-    }
+    private readonly JsonSerializerSettings _settings = settings ?? new JsonSerializerSettings();
 
     /// <summary>
     ///     获取当前序列化器使用的 Newtonsoft.Json 配置实例。

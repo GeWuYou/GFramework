@@ -10,13 +10,14 @@ namespace GFramework.Godot.UI;
 /// <remarks>Attach it before constructing UiService. Stop the service before freeing this root.</remarks>
 public partial class GodotUiRoot : Node, IUiHost
 {
-    private readonly Dictionary<int, CanvasLayer> _layers = new();
-    private readonly Dictionary<IUiView, Control> _mounts = new();
+    private readonly Dictionary<int, CanvasLayer> _layers = [];
+    private readonly Dictionary<IUiView, Control> _mounts = [];
 
     /// <inheritdoc />
     public void Attach(IUiView view, int layer, long order)
     {
-        if (view is not GodotUiView native) throw new ArgumentException("GodotUiRoot requires a GodotUiView lease.", nameof(view));
+        if (view is not GodotUiView native)
+            throw new ArgumentException("GodotUiRoot requires a GodotUiView lease.", nameof(view));
         if (_mounts.TryGetValue(view, out var existing))
         {
             // Singleton reuse updates native child order as well as the service's logical input order.
@@ -46,18 +47,22 @@ public partial class GodotUiRoot : Node, IUiHost
     /// <inheritdoc />
     public void Detach(IUiView view)
     {
-        if (!_mounts.Remove(view, out var mount)) return;
-        if (view is GodotUiView owned) owned.Mount = null;
+        if (!_mounts.Remove(view, out var mount))
+            return;
+        if (view is GodotUiView owned)
+            owned.Mount = null;
         if (view is GodotUiView native && GodotObject.IsInstanceValid(native.Control) && native.Control.GetParent() == mount)
             mount.RemoveChild(native.Control);
-        if (GodotObject.IsInstanceValid(mount) && !mount.IsQueuedForDeletion()) mount.QueueFree();
+        if (GodotObject.IsInstanceValid(mount) && !mount.IsQueuedForDeletion())
+            mount.QueueFree();
     }
     /// <inheritdoc />
     public object? CaptureFocus() => GetViewport().GuiGetFocusOwner();
     /// <inheritdoc />
     public void Focus(IUiView view)
     {
-        if (view is not GodotUiView native || !native.IsAlive) return;
+        if (view is not GodotUiView native || !native.IsAlive)
+            return;
         var target = GodotUiView.EnumerateControls(native.Control).FirstOrDefault(control =>
             control.FocusMode == Control.FocusModeEnum.All && control.IsVisibleInTree() && control is not BaseButton { Disabled: true });
         target?.GrabFocus();

@@ -28,7 +28,10 @@ public sealed class LogAttribute : Attribute
 
 
     /// <summary>日志分类名（默认使用类名）</summary>
-    public string? Name { get; set; }
+    public string? Name
+    {
+        get; set;
+    }
 
     /// <summary>生成字段名</summary>
     public string FieldName { get; set; } = "Logger";

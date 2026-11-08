@@ -56,34 +56,52 @@ internal sealed class YamlConfigObjectConstraints
     /// <summary>
     ///     获取最小属性数量约束。
     /// </summary>
-    public int? MinProperties { get; }
+    public int? MinProperties
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取最大属性数量约束。
     /// </summary>
-    public int? MaxProperties { get; }
+    public int? MaxProperties
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取对象内字段依赖约束。
     ///     键表示“触发字段”，值表示“触发字段出现后还必须存在的同级字段集合”。
     /// </summary>
-    public IReadOnlyDictionary<string, IReadOnlyList<string>>? DependentRequired { get; }
+    public IReadOnlyDictionary<string, IReadOnlyList<string>>? DependentRequired
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取对象内条件 schema 约束。
     ///     键表示“触发字段”，值表示“触发字段出现后当前对象还必须满足的额外 schema 子树”。
     /// </summary>
-    public IReadOnlyDictionary<string, YamlConfigSchemaNode>? DependentSchemas { get; }
+    public IReadOnlyDictionary<string, YamlConfigSchemaNode>? DependentSchemas
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取对象内 <c>allOf</c> 组合约束。
     ///     每个条目都表示“当前对象还必须额外满足的 focused constraint block”。
     /// </summary>
-    public IReadOnlyList<YamlConfigSchemaNode>? AllOfSchemas { get; }
+    public IReadOnlyList<YamlConfigSchemaNode>? AllOfSchemas
+    {
+        get;
+    }
 
     /// <summary>
-    ///     获取对象内 object-focused <c>if</c> / <c>then</c> / <c>else</c> 条件约束。
-    ///     该模型会先用 <c>if</c> 试匹配当前对象，再只对命中的分支叠加 focused constraint block。
+    ///     获取对象内 object-focused <c language="json">if</c> / <c>then</c> / <c language="json">else</c> 条件约束。
+    ///     该模型会先用 <c language="json">if</c> 试匹配当前对象，再只对命中的分支叠加 focused constraint block。
     /// </summary>
-    public YamlConfigConditionalSchemas? ConditionalSchemas { get; }
+    public YamlConfigConditionalSchemas? ConditionalSchemas
+    {
+        get;
+    }
 }

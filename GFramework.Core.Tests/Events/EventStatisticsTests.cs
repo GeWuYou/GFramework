@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using GFramework.Core.Events;
 
 namespace GFramework.Core.Tests.Events;
@@ -160,12 +161,12 @@ public sealed class EventStatisticsTests
             {
                 for (var j = 0; j < 100; j++)
                 {
-                    eventBus.SendFilterable(new TestEvent { Message = $"Test-{j}" });
+                    eventBus.SendFilterable(new TestEvent { Message = string.Create(CultureInfo.InvariantCulture, $"Test-{j}") });
                 }
             }));
         }
 
-        Task.WaitAll(tasks.ToArray());
+        Task.WaitAll([.. tasks]);
 
         // Assert
         Assert.That(eventBus.Statistics!.TotalPublished, Is.EqualTo(1000));

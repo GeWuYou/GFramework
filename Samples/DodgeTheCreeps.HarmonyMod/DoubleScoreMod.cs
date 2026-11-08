@@ -32,10 +32,11 @@ public sealed class DoubleScoreMod : IGameMod
 
     /// <summary>Targets the named internal implementation; a renamed method fails startup instead of silently doing nothing.</summary>
     [HarmonyPatch]
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     internal static class ScorePatch
     {
         /// <summary>Locates one exact game-owned method without requiring the game implementation as a build dependency.</summary>
-        private static MethodBase TargetMethod() => AccessTools.Method("DodgeTheCreeps.Modding.DodgeScoreRules:Calculate")
+        private static MethodInfo TargetMethod() => AccessTools.Method("DodgeTheCreeps.Modding.DodgeScoreRules:Calculate")
             ?? throw new MissingMethodException("The game no longer contains DodgeScoreRules.Calculate.");
 
         /// <summary>Doubles the method's result after the ordinary game's calculation.</summary>

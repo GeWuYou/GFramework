@@ -14,8 +14,8 @@ public static class DodgeProgressMigration
     /// <summary>Creates conversions for sparse v1 and a nested-coordinate v3 demonstration format.</summary>
     /// <param name="initialRandomState">State captured by the host for the known seed before conversion runs.</param>
     /// <returns>The immutable graph targeting this game's v2 complete-board schema.</returns>
-    public static SaveMigrationGraph CreateGraph(ulong initialRandomState) => new(new[]
-    {
+    public static SaveMigrationGraph CreateGraph(ulong initialRandomState) => new(
+    [
         new SaveMigrationStep(1, 2, "Initialize board state absent from sparse saves", (block, cancellationToken) =>
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -42,6 +42,6 @@ public static class DodgeProgressMigration
             data.Remove("Position");
             data.Remove("FutureMode");
             return Task.FromResult(new SaveDataBlock { Version = 2, Data = data });
-        }, isLossy: true)
-    });
+        }, isLossy: true),
+    ]);
 }

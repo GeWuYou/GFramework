@@ -8,6 +8,7 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 /// <summary>
 ///     为双行为顺序回归提供最终请求处理器。
 /// </summary>
+[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
 internal sealed class DispatcherPipelineOrderCacheRequestHandler : IRequestHandler<DispatcherPipelineOrderCacheRequest, int>
 {
     /// <summary>

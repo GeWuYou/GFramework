@@ -41,5 +41,5 @@ public enum PauseGroup
     /// <summary>
     /// 自定义组 3
     /// </summary>
-    Custom3 = 12
+    Custom3 = 12,
 }

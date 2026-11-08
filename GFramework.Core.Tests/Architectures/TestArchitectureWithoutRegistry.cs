@@ -30,12 +30,18 @@ public class TestArchitectureWithoutRegistry : IArchitecture
     ///     获取测试替身公开的服务配置入口。
     ///     当前切片不验证服务配置流程，因此始终保持为空。
     /// </summary>
-    public Action<IServiceCollection>? Configurator { get; }
+    public Action<IServiceCollection>? Configurator
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取当前测试替身使用的架构上下文。
     /// </summary>
-    public IArchitectureContext Context { get; }
+    public IArchitectureContext Context
+    {
+        get;
+    }
 
     T IArchitecture.RegisterSystem<T>(T system)
     {
@@ -69,6 +75,7 @@ public class TestArchitectureWithoutRegistry : IArchitecture
     /// <returns>已完成的资源释放操作。</returns>
     public ValueTask DisposeAsync()
     {
+        GC.SuppressFinalize(this);
         return ValueTask.CompletedTask;
     }
 
@@ -175,7 +182,8 @@ public class TestArchitectureWithoutRegistry : IArchitecture
     ///     当前切片不依赖生命周期钩子执行，因此保持空实现。
     /// </summary>
     /// <param name="hook">要忽略的生命周期钩子。</param>
-    public void RegisterLifecycleHook(IArchitectureLifecycleHook hook)
+    public static void RegisterLifecycleHook(IArchitectureLifecycleHook hook)
     {
+        _ = hook;
     }
 }

@@ -14,17 +14,26 @@ public interface ILocalizationManager : ISystem
     /// <summary>
     /// 当前语言代码
     /// </summary>
-    string CurrentLanguage { get; }
+    string CurrentLanguage
+    {
+        get;
+    }
 
     /// <summary>
     /// 当前文化信息
     /// </summary>
-    CultureInfo CurrentCulture { get; }
+    CultureInfo CurrentCulture
+    {
+        get;
+    }
 
     /// <summary>
     /// 可用语言列表
     /// </summary>
-    IReadOnlyList<string> AvailableLanguages { get; }
+    IReadOnlyList<string> AvailableLanguages
+    {
+        get;
+    }
 
     /// <summary>
     /// 设置当前语言

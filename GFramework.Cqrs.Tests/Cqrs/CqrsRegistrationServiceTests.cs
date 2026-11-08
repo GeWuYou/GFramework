@@ -46,7 +46,7 @@ internal sealed class CqrsRegistrationServiceTests
 
         registrar
             .Setup(static currentRegistrar => currentRegistrar.RegisterHandlers(It.IsAny<IEnumerable<Assembly>>()))
-            .Callback<IEnumerable<Assembly>>(assemblies => registeredAssemblies = assemblies.ToArray());
+            .Callback<IEnumerable<Assembly>>(assemblies => registeredAssemblies = [.. assemblies]);
 
         var service = CqrsRuntimeFactory.CreateRegistrationService(registrar.Object, logger);
 
@@ -77,7 +77,7 @@ internal sealed class CqrsRegistrationServiceTests
 
         registrar
             .Setup(static currentRegistrar => currentRegistrar.RegisterHandlers(It.IsAny<IEnumerable<Assembly>>()))
-            .Callback<IEnumerable<Assembly>>(assemblies => registeredAssemblies = assemblies.ToArray());
+            .Callback<IEnumerable<Assembly>>(assemblies => registeredAssemblies = [.. assemblies]);
 
         var service = CqrsRuntimeFactory.CreateRegistrationService(registrar.Object, logger);
 
@@ -201,7 +201,7 @@ internal sealed class CqrsRegistrationServiceTests
 
         registrar
             .Setup(static currentRegistrar => currentRegistrar.RegisterHandlers(It.IsAny<IEnumerable<Assembly>>()))
-            .Callback<IEnumerable<Assembly>>(assemblies => registeredAssemblies = assemblies.ToArray());
+            .Callback<IEnumerable<Assembly>>(assemblies => registeredAssemblies = [.. assemblies]);
 
         var service = CqrsRuntimeFactory.CreateRegistrationService(registrar.Object, logger);
 
@@ -246,7 +246,7 @@ internal sealed class CqrsRegistrationServiceTests
 
         registrar
             .Setup(static currentRegistrar => currentRegistrar.RegisterHandlers(It.IsAny<IEnumerable<Assembly>>()))
-            .Callback<IEnumerable<Assembly>>(assemblies => registeredAssemblies = assemblies.ToArray());
+            .Callback<IEnumerable<Assembly>>(assemblies => registeredAssemblies = [.. assemblies]);
 
         var service = CqrsRuntimeFactory.CreateRegistrationService(registrar.Object, logger);
 

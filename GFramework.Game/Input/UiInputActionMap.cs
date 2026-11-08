@@ -15,14 +15,14 @@ namespace GFramework.Game.Input;
 /// </remarks>
 public sealed class UiInputActionMap : IUiInputActionMap
 {
-    private static readonly IReadOnlyDictionary<string, UiInputAction> DefaultMappings =
-        new Dictionary<string, UiInputAction>(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, UiInputAction> DefaultMappings =
+        new(StringComparer.OrdinalIgnoreCase)
         {
             ["cancel"] = UiInputAction.Cancel,
             ["ui_cancel"] = UiInputAction.Cancel,
             ["confirm"] = UiInputAction.Confirm,
             ["ui_accept"] = UiInputAction.Confirm,
-            ["submit"] = UiInputAction.Confirm
+            ["submit"] = UiInputAction.Confirm,
         };
 
     /// <inheritdoc />

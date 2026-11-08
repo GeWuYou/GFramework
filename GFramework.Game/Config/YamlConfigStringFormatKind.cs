@@ -41,5 +41,5 @@ internal enum YamlConfigStringFormatKind
     /// <summary>
     ///     表示连字符分隔的 UUID 文本。
     /// </summary>
-    Uuid
+    Uuid,
 }

@@ -20,8 +20,9 @@ internal static class Program
     private const int WarmupTicks = 2_000;
     private const int MeasuredTicks = 10_000;
     private const int ChurnStarts = 100_000;
-    private static readonly IYieldInstruction Ready = new ProbeInstruction(true);
-    private static readonly IYieldInstruction Waiting = new ProbeInstruction(false);
+    private static readonly IYieldInstruction Ready = new ProbeInstruction(done: true);
+    private static readonly IYieldInstruction Waiting = new ProbeInstruction(done: false);
+    private static readonly JsonSerializerOptions ReportJsonOptions = new() { WriteIndented = true };
 
     /// <summary>
     ///     Runs three repeats and emits machine-readable observations; threshold failures return a nonzero exit code.
@@ -50,8 +51,8 @@ internal static class Program
             WarmupTicks,
             MeasuredTicks,
             ChurnStarts,
-            Observations = observations
-        }, new JsonSerializerOptions { WriteIndented = true }));
+            Observations = observations,
+        }, ReportJsonOptions));
         return passed ? 0 : 1;
     }
 
@@ -101,7 +102,7 @@ internal static class Program
         return observation with
         {
             Passed = observation.Passed && scheduler.AllocatedSlotCount <= peak * 2 &&
-                     scheduler.SlotCapacity <= peak * 4
+                     scheduler.SlotCapacity <= peak * 4,
         };
     }
 
@@ -167,7 +168,10 @@ internal static class Program
     private sealed class ProbeTimeSource : ITimeSource
     {
         /// <inheritdoc />
-        public double CurrentTime { get; private set; }
+        public double CurrentTime
+        {
+            get; private set;
+        }
 
         /// <inheritdoc />
         public double DeltaTime => 1.0 / 60;

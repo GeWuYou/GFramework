@@ -20,7 +20,7 @@ public static class BindNodeSignalDiagnostics
             "Class '{0}' cannot use [BindNodeSignal] inside a nested type",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Error,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     static 方法不受支持。
@@ -32,7 +32,7 @@ public static class BindNodeSignalDiagnostics
             "Method '{0}' cannot be static when using [BindNodeSignal]",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Error,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     节点字段不存在。
@@ -44,7 +44,7 @@ public static class BindNodeSignalDiagnostics
             "Method '{0}' references node field '{1}', but no matching field exists on class '{2}'",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Error,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     节点字段必须是实例字段。
@@ -56,7 +56,7 @@ public static class BindNodeSignalDiagnostics
             "Method '{0}' references node field '{1}', but that field must be an instance field",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Error,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     字段类型必须继承自 Godot.Node。
@@ -68,7 +68,7 @@ public static class BindNodeSignalDiagnostics
             "Field '{0}' must be a Godot.Node type to use [BindNodeSignal]",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Error,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     目标事件不存在。
@@ -80,7 +80,7 @@ public static class BindNodeSignalDiagnostics
             "Field '{0}' does not contain an event named '{1}'",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Error,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     方法签名与事件委托不兼容。
@@ -92,7 +92,7 @@ public static class BindNodeSignalDiagnostics
             "Method '{0}' is not compatible with event '{1}' on field '{2}'",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Error,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     现有 _Ready 中未调用生成绑定逻辑。
@@ -104,7 +104,7 @@ public static class BindNodeSignalDiagnostics
             "Class '{0}' defines _Ready(); call __BindNodeSignals_Generated() there to bind [BindNodeSignal] handlers",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Warning,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     现有 _ExitTree 中未调用生成解绑逻辑。
@@ -116,7 +116,7 @@ public static class BindNodeSignalDiagnostics
             "Class '{0}' defines _ExitTree(); call __UnbindNodeSignals_Generated() there to unbind [BindNodeSignal] handlers",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Warning,
-            true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     BindNodeSignalAttribute 构造参数无效。
@@ -128,5 +128,5 @@ public static class BindNodeSignalDiagnostics
             "Method '{0}' uses [BindNodeSignal] with an invalid '{1}' constructor argument; it must be a non-empty string literal",
             PathContests.GodotNamespace,
             DiagnosticSeverity.Error,
-            true);
+isEnabledByDefault: true);
 }

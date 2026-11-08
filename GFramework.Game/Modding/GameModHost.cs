@@ -17,7 +17,7 @@ public sealed class GameModHost : IAsyncDisposable
 {
     private readonly GameModHostOptions _options;
     private readonly IReadOnlyList<IGameModExtension> _extensions;
-    private readonly List<LoadedMod> _mods = new();
+    private readonly List<LoadedMod> _mods = [];
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private HostState _state = HostState.Prepared;
 
@@ -29,7 +29,10 @@ public sealed class GameModHost : IAsyncDisposable
         Admission = new CodeModAdmission(plan, this);
     }
     /// <summary>Gets the proof required by ContentCatalogLoader when a plan contains code.</summary>
-    public CodeModAdmission Admission { get; }
+    public CodeModAdmission Admission
+    {
+        get;
+    }
     /// <summary>Gets whether all selected mods reached startup.</summary>
     public bool IsStarted => _state == HostState.Started;
     /// <summary>Gets whether admission still belongs to a usable preparing or running session.</summary>
@@ -56,7 +59,7 @@ public sealed class GameModHost : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(options.SharedAssemblies, nameof(options));
         var extensions = options.Extensions.ToArray();
         if (extensions.Any(static extension => extension is null || !ContentId.IsCanonicalSegment(extension.Capability)) ||
-            extensions.Select(static extension => extension.Capability).Distinct(StringComparer.Ordinal).Count() != extensions.Length)
+            extensions.Select(static extension => extension.Capability).Distinct(StringComparer.Ordinal).Take(extensions.Length + 1).Count() != extensions.Length)
             throw new ArgumentException("Mod extension capabilities must be unique canonical names.", nameof(options));
         var capabilities = extensions.Select(static extension => extension.Capability).ToHashSet(StringComparer.Ordinal);
         var selected = plan.Packages.Where(static pack => pack.Manifest.Code is not null).ToArray();
@@ -95,8 +98,10 @@ public sealed class GameModHost : IAsyncDisposable
         await _lifecycle.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_state == HostState.Started) return;
-            if (_state != HostState.Prepared) throw new InvalidOperationException("This mod session cannot start; restart the process.");
+            if (_state == HostState.Started)
+                return;
+            if (_state != HostState.Prepared)
+                throw new InvalidOperationException("This mod session cannot start; restart the process.");
             _state = HostState.Starting;
             try
             {
@@ -121,7 +126,10 @@ public sealed class GameModHost : IAsyncDisposable
             catch (Exception startupFailure)
             {
                 _state = HostState.Failed;
-                try { await CleanupOnDispatcherAsync().ConfigureAwait(false); }
+                try
+                {
+                    await CleanupOnDispatcherAsync().ConfigureAwait(false);
+                }
                 catch (Exception cleanupFailure) { throw new AggregateException("Mod startup and cleanup failed.", startupFailure, cleanupFailure); }
                 throw;
             }
@@ -136,7 +144,8 @@ public sealed class GameModHost : IAsyncDisposable
         await _lifecycle.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_state == HostState.Stopped) return;
+            if (_state == HostState.Stopped)
+                return;
             _state = HostState.Stopped;
             await CleanupOnDispatcherAsync().ConfigureAwait(false);
         }
@@ -158,16 +167,23 @@ public sealed class GameModHost : IAsyncDisposable
             mod.Context = null;
             if (instance is not null)
             {
-                try { await instance.StopAsync(CancellationToken.None).ConfigureAwait(true); }
+                try
+                {
+                    await instance.StopAsync(CancellationToken.None).ConfigureAwait(true);
+                }
                 catch (Exception exception) { errors.Add(new GameModException(mod.Stamp.Id, "stop", exception)); }
             }
             if (context is not null)
             {
-                try { await context.DisposeAsync().ConfigureAwait(true); }
+                try
+                {
+                    await context.DisposeAsync().ConfigureAwait(true);
+                }
                 catch (Exception exception) { errors.Add(new GameModException(mod.Stamp.Id, "resource cleanup", exception)); }
             }
         }
-        if (errors.Count != 0) throw new AggregateException("Mod shutdown failed.", errors);
+        if (errors.Count != 0)
+            throw new AggregateException("Mod shutdown failed.", errors);
     });
 
     /// <summary>Checks capabilities, trust and actual bytes before any selected mod assembly is loaded.</summary>
@@ -179,7 +195,8 @@ public sealed class GameModHost : IAsyncDisposable
             !ContentVersionRules.Contains(options.CodeApiVersion, code.ApiVersions))
             throw Failure("CodeApiIncompatible", pack, "The code API or game identity is incompatible.");
         foreach (var required in code.RequiredCapabilities)
-            if (!capabilities.Contains(required)) throw Failure("MissingCodeCapability", pack, "Missing required capability: " + required);
+            if (!capabilities.Contains(required))
+                throw Failure("MissingCodeCapability", pack, "Missing required capability: " + required);
         var stamp = new ContentPackStamp(pack.Manifest.Id, pack.Manifest.Version, pack.Fingerprint);
         if (options.TrustPolicy is null || !options.TrustPolicy(stamp))
             throw Failure("CodeNotApproved", pack, "This exact code package version and fingerprint are not approved.");
@@ -190,7 +207,7 @@ public sealed class GameModHost : IAsyncDisposable
     }
 
     /// <summary>Fixes shared contract identity, refusing conflicting copies before user code can execute.</summary>
-    private static IReadOnlyDictionary<string, Assembly> BuildSharedAssemblies(IReadOnlyList<Assembly> assemblies,
+    private static Dictionary<string, Assembly> BuildSharedAssemblies(IReadOnlyList<Assembly> assemblies,
         IReadOnlyList<IGameModExtension> extensions)
     {
         var shared = new Dictionary<string, Assembly>(StringComparer.OrdinalIgnoreCase);
@@ -198,7 +215,7 @@ public sealed class GameModHost : IAsyncDisposable
         // facade into their own ALC, so its defining assembly is part of this public ABI, just like ILogger.
         // Falling back to the default-context copy would give get_Services a different return type identity.
         var required = new[] { typeof(IGameMod).Assembly, typeof(GameModHost).Assembly, typeof(ILogger).Assembly,
-            typeof(IServiceProvider).Assembly, typeof(GFramework.Core.Abstractions.Events.IUnRegister).Assembly };
+            typeof(IServiceProvider).Assembly, typeof(GFramework.Core.Abstractions.Events.IUnRegister).Assembly, };
         foreach (var assembly in required.Concat(assemblies).Concat(extensions.SelectMany(static extension => extension.SharedAssemblies)))
         {
             ArgumentNullException.ThrowIfNull(assembly, nameof(assemblies));
@@ -223,14 +240,29 @@ public sealed class GameModHost : IAsyncDisposable
             EntryType = entryType;
         }
         /// <summary>Gets the approved package identity.</summary>
-        internal ContentPackStamp Stamp { get; }
+        internal ContentPackStamp Stamp
+        {
+            get;
+        }
         /// <summary>Gets the exact validated mod type.</summary>
-        internal Type EntryType { get; }
+        internal Type EntryType
+        {
+            get;
+        }
         /// <summary>Gets or sets the instance after constructor admission.</summary>
-        internal IGameMod? Instance { get; set; }
+        internal IGameMod? Instance
+        {
+            get; set;
+        }
         /// <summary>Gets or sets the scope as soon as initialization enters, including partial failure.</summary>
-        internal GameModContext? Context { get; set; }
+        internal GameModContext? Context
+        {
+            get; set;
+        }
     }
     /// <summary>Encodes the single-start process-lifetime state machine.</summary>
-    private enum HostState { Prepared, Starting, Started, Failed, Stopped }
+    private enum HostState
+    {
+        Prepared, Starting, Started, Failed, Stopped,
+    }
 }

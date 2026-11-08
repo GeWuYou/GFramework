@@ -65,7 +65,7 @@ public class NumericDisplayFormatterTests
         var result = NumericDisplay.Format(1_234.5m, new NumericFormatOptions
         {
             CompactThreshold = 10_000m,
-            FormatProvider = CultureInfo.GetCultureInfo("de-DE")
+            FormatProvider = CultureInfo.GetCultureInfo("de-DE"),
         });
 
         Assert.That(result, Is.EqualTo("1234,5"));
@@ -78,7 +78,7 @@ public class NumericDisplayFormatterTests
         {
             CompactThreshold = 1_000_000m,
             UseGroupingBelowThreshold = true,
-            FormatProvider = CultureInfo.InvariantCulture
+            FormatProvider = CultureInfo.InvariantCulture,
         });
 
         Assert.That(result, Is.EqualTo("12,345"));
@@ -90,14 +90,14 @@ public class NumericDisplayFormatterTests
         var rule = new NumericSuffixFormatRule("custom",
         [
             new NumericSuffixThreshold(10m, "X"),
-            new NumericSuffixThreshold(100m, "Y")
+            new NumericSuffixThreshold(100m, "Y"),
         ]);
 
         var result = NumericDisplay.Format(123, new NumericFormatOptions
         {
             Rule = rule,
             CompactThreshold = 10m,
-            FormatProvider = CultureInfo.InvariantCulture
+            FormatProvider = CultureInfo.InvariantCulture,
         });
 
         Assert.That(result, Is.EqualTo("1.2Y"));
@@ -108,7 +108,7 @@ public class NumericDisplayFormatterTests
     {
         var result = NumericDisplay.Format(double.PositiveInfinity, new NumericFormatOptions
         {
-            FormatProvider = CultureInfo.InvariantCulture
+            FormatProvider = CultureInfo.InvariantCulture,
         });
 
         Assert.That(result, Is.EqualTo("Infinity"));

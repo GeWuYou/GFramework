@@ -139,6 +139,8 @@ internal static class BenchmarkHostFactory
     /// <remarks>
     ///     这里显式从新的 scope 解析 <see cref="IMediator" />，确保 `Scoped` handler 与其依赖绑定到 request 边界。
     /// </remarks>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "This matched benchmark workload deliberately measures synchronous scope disposal on both frameworks; changing only the baseline to async disposal would alter the comparison.")]
     internal static async Task<TResponse> SendScopedMediatRRequestAsync<TResponse>(
         ServiceProvider rootServiceProvider,
         MediatR.IRequest<TResponse> request,
@@ -249,7 +251,7 @@ internal static class BenchmarkHostFactory
         using var scopeLease = scopedContainer.EnterScope();
         var stream = runtime.CreateStream(request, cancellationToken);
 
-        await foreach (var response in stream.ConfigureAwait(false))
+        await foreach (var response in stream.ConfigureAwait(false).WithCancellation(cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
             yield return response;
@@ -259,6 +261,8 @@ internal static class BenchmarkHostFactory
     /// <summary>
     ///     在单个显式作用域内创建并枚举 MediatR stream。
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "This matched benchmark workload deliberately measures synchronous scope disposal on both frameworks; changing only the baseline to async disposal would alter the comparison.")]
     private static async IAsyncEnumerable<TResponse> EnumerateScopedMediatRStreamAsync<TResponse>(
         ServiceProvider rootServiceProvider,
         MediatR.IStreamRequest<TResponse> request,
@@ -268,7 +272,7 @@ internal static class BenchmarkHostFactory
         var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
         var stream = mediator.CreateStream(request, cancellationToken);
 
-        await foreach (var response in stream.ConfigureAwait(false))
+        await foreach (var response in stream.ConfigureAwait(false).WithCancellation(cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
             yield return response;

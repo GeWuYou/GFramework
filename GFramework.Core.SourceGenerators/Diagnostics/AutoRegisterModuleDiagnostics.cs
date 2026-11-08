@@ -15,7 +15,7 @@ internal static class AutoRegisterModuleDiagnostics
         "AutoRegisterModule does not support nested class '{0}'",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     public static readonly DiagnosticDescriptor RegistrationTypeRequired = new(
         "GF_AutoModule_002",
@@ -23,7 +23,7 @@ internal static class AutoRegisterModuleDiagnostics
         "Attribute '{0}' on '{1}' requires a concrete type argument",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     public static readonly DiagnosticDescriptor RegistrationTypeMustImplementExpectedInterface = new(
         "GF_AutoModule_003",
@@ -31,7 +31,7 @@ internal static class AutoRegisterModuleDiagnostics
         "Type '{0}' used by '{1}' must implement '{2}'",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     public static readonly DiagnosticDescriptor RegistrationTypeMustHaveParameterlessConstructor = new(
         "GF_AutoModule_004",
@@ -39,7 +39,7 @@ internal static class AutoRegisterModuleDiagnostics
         "Type '{0}' used by '{1}' must have an accessible parameterless constructor",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 
     public static readonly DiagnosticDescriptor InstallMethodConflict = new(
         "GF_AutoModule_005",
@@ -47,5 +47,5 @@ internal static class AutoRegisterModuleDiagnostics
         "Class '{0}' already defines 'Install(IArchitecture)', which conflicts with AutoRegisterModule generated code",
         Category,
         DiagnosticSeverity.Error,
-        true);
+isEnabledByDefault: true);
 }

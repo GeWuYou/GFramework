@@ -29,7 +29,7 @@ public partial class RichTextJitterEffect : RichTextEffectBase
         {
             NoiseType = FastNoiseLite.NoiseTypeEnum.Perlin,
             FractalOctaves = 8,
-            FractalGain = 0.8f
+            FractalGain = 0.8f,
         };
     }
 

@@ -19,7 +19,7 @@ public sealed class CoroutineGroupTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource);
 
-        IEnumerator<IYieldInstruction> TestCoroutine()
+        static IEnumerator<IYieldInstruction> TestCoroutine()
         {
             yield return new WaitOneFrame();
         }
@@ -103,7 +103,7 @@ public sealed class CoroutineGroupTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource);
 
-        IEnumerator<IYieldInstruction> TestCoroutine()
+        static IEnumerator<IYieldInstruction> TestCoroutine()
         {
             yield return new WaitOneFrame();
         }
@@ -141,7 +141,7 @@ public sealed class CoroutineGroupTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(timeSource);
 
-        IEnumerator<IYieldInstruction> TestCoroutine()
+        static IEnumerator<IYieldInstruction> TestCoroutine()
         {
             yield return new WaitOneFrame(); // 等待一帧后完成
         }

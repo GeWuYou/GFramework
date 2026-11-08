@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Generic;
+using System.Globalization;
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Coroutine.Instructions;
 using GFramework.Godot.Coroutine;
@@ -21,7 +22,10 @@ public partial class DemoWorld : Node2D
     internal DemoRoot Host { get; init; } = null!;
 
     /// <summary>Gets the number of unpaused seconds observed by the framework coroutine.</summary>
-    internal int ActiveSeconds { get; private set; }
+    internal int ActiveSeconds
+    {
+        get; private set;
+    }
 
     /// <summary>Starts a coroutine that terminates automatically when this scene leaves the tree.</summary>
     public override void _Ready()
@@ -47,7 +51,7 @@ public partial class DemoWorld : Node2D
         }
 
         QueueRedraw();
-        Host.SetHud($"Circles: {Host.Save.Collected}    Active seconds: {ActiveSeconds}    WASD to move");
+        Host.SetHud(string.Create(CultureInfo.InvariantCulture, $"Circles: {Host.Save.Collected}    Active seconds: {ActiveSeconds}    WASD to move"));
     }
 
     /// <summary>Draws simple geometry so the example needs no external assets.</summary>

@@ -46,13 +46,19 @@ public class StreamPipelineBenchmarks
     ///     控制当前场景注册的 stream pipeline 行为数量，保持与 request pipeline benchmark 相同的 <c>0 / 1 / 4</c> 矩阵。
     /// </summary>
     [Params(0, 1, 4)]
-    public int PipelineCount { get; set; }
+    public int PipelineCount
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     控制当前 benchmark 观察“只推进首个元素”还是“完整枚举整个 stream”。
     /// </summary>
     [Params(StreamObservation.FirstItem, StreamObservation.DrainAll)]
-    public StreamObservation Observation { get; set; }
+    public StreamObservation Observation
+    {
+        get; set;
+    }
 
     /// <summary>
     ///     用于拆分 stream dispatch 固定成本与后续枚举成本的观测模式。
@@ -67,7 +73,7 @@ public class StreamPipelineBenchmarks
         /// <summary>
         ///     完整枚举整个 stream，保留原有 benchmark 语义。
         /// </summary>
-        DrainAll
+        DrainAll,
     }
 
     /// <summary>
@@ -250,7 +256,7 @@ public class StreamPipelineBenchmarks
             _ => throw new ArgumentOutOfRangeException(
                 nameof(observation),
                 observation,
-                "Unsupported stream observation mode.")
+                "Unsupported stream observation mode."),
         };
     }
 
@@ -399,30 +405,22 @@ public class StreamPipelineBenchmarks
     /// <summary>
     ///     pipeline 矩阵中的第一个 no-op stream 行为。
     /// </summary>
-    public sealed class BenchmarkStreamPipelineBehavior1 : BenchmarkStreamPipelineBehaviorBase
-    {
-    }
+    public sealed class BenchmarkStreamPipelineBehavior1 : BenchmarkStreamPipelineBehaviorBase;
 
     /// <summary>
     ///     pipeline 矩阵中的第二个 no-op stream 行为。
     /// </summary>
-    public sealed class BenchmarkStreamPipelineBehavior2 : BenchmarkStreamPipelineBehaviorBase
-    {
-    }
+    public sealed class BenchmarkStreamPipelineBehavior2 : BenchmarkStreamPipelineBehaviorBase;
 
     /// <summary>
     ///     pipeline 矩阵中的第三个 no-op stream 行为。
     /// </summary>
-    public sealed class BenchmarkStreamPipelineBehavior3 : BenchmarkStreamPipelineBehaviorBase
-    {
-    }
+    public sealed class BenchmarkStreamPipelineBehavior3 : BenchmarkStreamPipelineBehaviorBase;
 
     /// <summary>
     ///     pipeline 矩阵中的第四个 no-op stream 行为。
     /// </summary>
-    public sealed class BenchmarkStreamPipelineBehavior4 : BenchmarkStreamPipelineBehaviorBase
-    {
-    }
+    public sealed class BenchmarkStreamPipelineBehavior4 : BenchmarkStreamPipelineBehaviorBase;
 
     /// <summary>
     ///     为 stream pipeline benchmark 提供 handwritten generated registry，
@@ -448,7 +446,7 @@ public class StreamPipelineBenchmarks
             new GFramework.Cqrs.CqrsStreamInvokerDescriptorEntry(
                 typeof(BenchmarkStreamRequest),
                 typeof(BenchmarkResponse),
-                Descriptor)
+                Descriptor),
         ];
 
         /// <summary>
@@ -461,9 +459,7 @@ public class StreamPipelineBenchmarks
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(logger);
 
-            services.AddSingleton(
-                typeof(GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<BenchmarkStreamRequest, BenchmarkResponse>),
-                typeof(BenchmarkStreamHandler));
+            services.AddSingleton<Abstractions.Cqrs.IStreamRequestHandler<BenchmarkStreamRequest, BenchmarkResponse>, BenchmarkStreamHandler>();
             logger.LogDebug("Registered generated stream pipeline benchmark handler.");
         }
 

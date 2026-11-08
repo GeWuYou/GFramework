@@ -12,7 +12,10 @@ public interface IStateMachine
     /// <summary>
     ///     获取当前激活的状态
     /// </summary>
-    IState? Current { get; }
+    IState? Current
+    {
+        get;
+    }
 
     /// <summary>
     ///     注册一个状态到状态机中

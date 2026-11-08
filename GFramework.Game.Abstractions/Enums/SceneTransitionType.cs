@@ -40,5 +40,5 @@ public enum SceneTransitionType
     /// 清空所有已加载的场景。
     /// 卸载场景栈中的所有场景，使系统回到无场景状态。
     /// </summary>
-    Clear
+    Clear,
 }

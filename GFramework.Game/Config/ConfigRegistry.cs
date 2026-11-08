@@ -27,7 +27,7 @@ public sealed class ConfigRegistry : IConfigRegistry
     /// <returns>返回只读的配置表名称集合。</returns>
     public IReadOnlyCollection<string> GetTableNames()
     {
-        return _tables.Keys.OrderBy(static key => key, StringComparer.Ordinal).ToArray();
+        return [.. _tables.Keys.Order(StringComparer.Ordinal)];
     }
 
     /// <summary>

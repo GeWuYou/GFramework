@@ -39,7 +39,7 @@ public sealed class GodotFileStorageTests
     public async Task WriteAsync_UserPath_ResolvesBeforeWritingAndPreservesFileName()
     {
         string? resolvedKey = null;
-        using var storage = new GodotFileStorage(new JsonSerializer(), null, key =>
+        using var storage = new GodotFileStorage(new JsonSerializer(), lockManager: null, key =>
         {
             resolvedKey = key;
             return Path.Combine(_root, key["user://".Length..]);
@@ -52,7 +52,7 @@ public sealed class GodotFileStorageTests
         {
             Assert.That(resolvedKey, Is.EqualTo("user://saves/slot_1/save.json"));
             Assert.That(File.ReadAllText(path), Is.EqualTo("42"));
-            Assert.That(File.ReadAllBytes(path), Is.EqualTo(new byte[] { 52, 50 }));
+            Assert.That(File.ReadAllBytes(path), Is.EqualTo("42"u8.ToArray()));
             Assert.That(Directory.GetFiles(Path.GetDirectoryName(path)!), Has.Length.EqualTo(1));
         });
     }
@@ -62,7 +62,7 @@ public sealed class GodotFileStorageTests
     public async Task WriteAsync_AbsolutePath_PreservesRootAndRoundTrips()
     {
         var path = Path.Combine(_root, "nested", "save.json");
-        using var storage = new GodotFileStorage(new JsonSerializer(), null,
+        using var storage = new GodotFileStorage(new JsonSerializer(), lockManager: null,
             _ => throw new InvalidOperationException("Ordinary paths do not need native resolution"));
 
         await storage.WriteAsync(path, 42);
@@ -77,7 +77,7 @@ public sealed class GodotFileStorageTests
     {
         var path = Path.Combine(_root, "save.json");
         await File.WriteAllTextAsync(path, "old valid save");
-        using var storage = new GodotFileStorage(new FailingSerializer(), null, _ => path);
+        using var storage = new GodotFileStorage(new FailingSerializer(), lockManager: null, _ => path);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => storage.WriteAsync("user://save.json", 42));
 
@@ -92,7 +92,7 @@ public sealed class GodotFileStorageTests
     [Test]
     public async Task WriteAsync_ResourcePath_IsRejectedBeforeNativeResolution()
     {
-        using var storage = new GodotFileStorage(new JsonSerializer(), null,
+        using var storage = new GodotFileStorage(new JsonSerializer(), lockManager: null,
             _ => throw new InvalidOperationException("Resolver must not be called"));
 
         await Assert.ThrowsAsync<NotSupportedException>(() => storage.WriteAsync("res://save.json", 42));
@@ -102,7 +102,7 @@ public sealed class GodotFileStorageTests
     [Test]
     public async Task Snapshot_UserPath_PreservesBytesAndCanRestoreOriginalFile()
     {
-        using var storage = new GodotFileStorage(new JsonSerializer(), null,
+        using var storage = new GodotFileStorage(new JsonSerializer(), lockManager: null,
             key => Path.Combine(_root, key["user://".Length..]));
         var source = Path.Combine(_root, "source.json");
         var bytes = new byte[] { 0xEF, 0xBB, 0xBF, 52, 50, 32, 32 };
@@ -123,7 +123,7 @@ public sealed class GodotFileStorageTests
     [Test]
     public async Task Snapshot_ResourcePath_IsRejected()
     {
-        using var storage = new GodotFileStorage(new JsonSerializer(), null,
+        using var storage = new GodotFileStorage(new JsonSerializer(), lockManager: null,
             _ => throw new InvalidOperationException("Resolver must not be called"));
         await Assert.ThrowsAsync<ArgumentException>(() => storage.ReadSnapshotAsync("res://save.json"));
     }

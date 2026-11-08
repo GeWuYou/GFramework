@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -100,9 +101,9 @@ public partial class DemoRoot : Node, ISceneRoot
             {
                 SourceRootPath = "res://",
                 RuntimeCacheRootPath = _dataRootPath + "/config_cache",
-                TableSources = GeneratedConfigCatalog.Tables.Select(static entry =>
-                    new GodotYamlConfigTableSource(entry.TableName, entry.ConfigRelativePath, entry.SchemaRelativePath)).ToArray(),
-                ConfigureLoader = static loader => loader.RegisterAllGeneratedConfigTables()
+                TableSources = [.. GeneratedConfigCatalog.Tables.Select(static entry =>
+                    new GodotYamlConfigTableSource(entry.TableName, entry.ConfigRelativePath, entry.SchemaRelativePath))],
+                ConfigureLoader = static loader => loader.RegisterAllGeneratedConfigTables(),
             });
             await configLoader.LoadAsync(registry, _startupCancellation.Token).ConfigureAwait(true);
             Gameplay = registry.GetTable<int, GameplayConfig>("gameplay").Get(1);
@@ -111,12 +112,12 @@ public partial class DemoRoot : Node, ISceneRoot
             _storage = new GodotFileStorage(serializer);
             _saves = new SaveRepository<DemoSave>(_storage, new SaveConfiguration
             {
-                SaveRoot = _dataRootPath + "/saves"
+                SaveRoot = _dataRootPath + "/saves",
             }, new SaveRepositoryOptions<DemoSave> { GameId = "godot-integration", CurrentVersion = 1 });
             _settings = new UnifiedSettingsDataRepository(_storage, serializer,
                 new DataRepositoryOptions { BasePath = _dataRootPath, EnableEvents = false });
             _settings.RegisterDataType(_settingsLocation, typeof(DemoPreferences));
-            Preferences = await _settings.LoadAsync<DemoPreferences>(_settingsLocation).ConfigureAwait(true);
+            Preferences = await _settings.LoadAsync<DemoPreferences>(_settingsLocation, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
             _startupCancellation.Token.ThrowIfCancellationRequested();
             if (Preferences.Version != 1)
                 throw new InvalidOperationException("Unsupported settings version; existing data has been preserved.");
@@ -157,7 +158,7 @@ public partial class DemoRoot : Node, ISceneRoot
             RunAction = RunAction,
             UnhandledCancelAsync = () => Scenes.Current is null
                 ? Task.CompletedTask
-                : Ui.ShowAsync(DemoUiRoutes.Pause, "Paused")
+                : Ui.ShowAsync(DemoUiRoutes.Pause, "Paused", cancellationToken: global::System.Threading.CancellationToken.None),
         };
         AddChild(bridge);
     }
@@ -174,7 +175,7 @@ public partial class DemoRoot : Node, ISceneRoot
             var physicalKey = key.PhysicalKeycode != Key.None ? key.PhysicalKeycode : key.Keycode;
             _bindings.SetPrimaryBinding("demo_pause", new InputBindingDescriptor(
                 InputDeviceKind.KeyboardMouse, InputBindingKind.Key,
-                FormattableString.Invariant($"key:{(int)physicalKey}"), physicalKey.ToString()));
+string.Create(CultureInfo.InvariantCulture, $"key:{(int)physicalKey}"), physicalKey.ToString()));
             _awaitingBinding = false;
             GetViewport().SetInputAsHandled();
             _status.Text = $"Pause binding: {physicalKey}. Save settings to keep it after restart.";
@@ -237,7 +238,7 @@ public partial class DemoRoot : Node, ISceneRoot
             InstanceHandle = context.Handle,
             ProcessMode = ProcessModeEnum.Always,
             Position = new Vector2(285, 135),
-            CustomMinimumSize = new Vector2(390, 330)
+            CustomMinimumSize = new Vector2(390, 330),
         };
         var box = new VBoxContainer();
         box.AddThemeConstantOverride("separation", 12);
@@ -247,14 +248,14 @@ public partial class DemoRoot : Node, ISceneRoot
         {
             AddButton(box, "New game", () => StartGameAsync(loadExisting: false));
             AddButton(box, "Continue slot 1", () => StartGameAsync(loadExisting: true));
-            AddButton(box, "Settings", () => Ui.ShowAsync(DemoUiRoutes.Settings, "Settings"));
+            AddButton(box, "Settings", () => Ui.ShowAsync(DemoUiRoutes.Settings, "Settings", cancellationToken: global::System.Threading.CancellationToken.None));
             // Quit bypasses ordinary action suppression and never joins its own task.
             CreateButton(box, "Quit").Pressed += RequestQuit;
         }
         else if (string.Equals(key, "pause", StringComparison.Ordinal))
         {
-            AddButton(box, "Resume", () => context.CloseAsync());
-            AddButton(box, "Settings", () => Ui.ShowAsync(DemoUiRoutes.Settings, "Settings"));
+            AddButton(box, "Resume", () => context.CloseAsync(cancellationToken: global::System.Threading.CancellationToken.None));
+            AddButton(box, "Settings", () => Ui.ShowAsync(DemoUiRoutes.Settings, "Settings", cancellationToken: global::System.Threading.CancellationToken.None));
             AddButton(box, "Save slot 1", SaveGameAsync);
             AddButton(box, "Save and return to menu", async () =>
             {
@@ -283,7 +284,7 @@ public partial class DemoRoot : Node, ISceneRoot
             AddButton(box, "Back", () =>
             {
                 _awaitingBinding = false;
-                return context.CloseAsync();
+                return context.CloseAsync(cancellationToken: global::System.Threading.CancellationToken.None);
             });
         }
         return panel;
@@ -321,22 +322,23 @@ public partial class DemoRoot : Node, ISceneRoot
     /// <summary>Starts an unsaved run or loads a real slot, preserving corrupt data on load failure.</summary>
     private async Task StartGameAsync(bool loadExisting)
     {
-        if (loadExisting && !await _saves.ExistsAsync(1).ConfigureAwait(true))
+        if (loadExisting && !await _saves.ExistsAsync(1, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true))
         {
             _status.Text = "Slot 1 does not exist yet. Start a new game and save first.";
             return;
         }
-        Save = loadExisting ? await _saves.LoadAsync(1).ConfigureAwait(true) : new DemoSave();
-        await Scenes.ReplaceAsync("play").ConfigureAwait(true);
-        await Ui.ClearAsync().ConfigureAwait(true);
-        _status.Text = "Pause/back: " + _bindings.GetBindings("demo_pause").Bindings.FirstOrDefault()?.DisplayName;
+        Save = loadExisting ? await _saves.LoadAsync(1, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true) : new DemoSave();
+        await Scenes.ReplaceAsync("play", cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
+        await Ui.ClearAsync(cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
+        var pauseBindings = _bindings.GetBindings("demo_pause").Bindings;
+        _status.Text = "Pause/back: " + (pauseBindings.Count == 0 ? null : pauseBindings[0].DisplayName);
     }
 
     /// <summary>Saves only after an explicit player action; write failures keep the gameplay view open.</summary>
     private async Task SaveGameAsync()
     {
         Save.LastModified = DateTime.UtcNow;
-        await _saves.SaveAsync(1, Save).ConfigureAwait(true);
+        await _saves.SaveAsync(1, Save, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
         _status.Text = "Slot 1 saved.";
     }
 
@@ -345,7 +347,7 @@ public partial class DemoRoot : Node, ISceneRoot
     {
         Preferences.LastModified = DateTime.UtcNow;
         Preferences.Bindings = _bindings.ExportSnapshot();
-        await _settings.SaveAsync(_settingsLocation, Preferences).ConfigureAwait(true);
+        await _settings.SaveAsync(_settingsLocation, Preferences, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
         _status.Text = "Settings saved.";
     }
 
@@ -353,9 +355,9 @@ public partial class DemoRoot : Node, ISceneRoot
     private async Task ReturnToMenuAsync()
     {
         _awaitingBinding = false;
-        await Ui.ClearAsync().ConfigureAwait(true);
-        await Scenes.ClearAsync().ConfigureAwait(true);
-        await Ui.ReplaceAsync(DemoUiRoutes.Menu, "GFramework runtime sample").ConfigureAwait(true);
+        await Ui.ClearAsync(cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
+        await Scenes.ClearAsync(cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
+        await Ui.ReplaceAsync(DemoUiRoutes.Menu, "GFramework runtime sample", cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
         _hud.Text = "Move with WASD; collect the gold circles.";
     }
 

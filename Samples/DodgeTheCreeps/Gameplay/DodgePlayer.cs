@@ -17,7 +17,10 @@ internal sealed partial class DodgePlayer : Node2D
     private double _animationTime;
 
     /// <summary>Gets the last nonzero input heading, clockwise from east in eight screen-space sectors.</summary>
-    internal int FacingDirection { get; private set; }
+    internal int FacingDirection
+    {
+        get; private set;
+    }
 
     /// <summary>Gets the forgiving collision radius used by the sample's circle hit test.</summary>
     internal const float HitRadius = 17;
@@ -31,7 +34,7 @@ internal sealed partial class DodgePlayer : Node2D
             Name = "Sprite",
             SpriteFrames = DodgeSpriteFrames.CreatePlayer(),
             Animation = DodgeSpriteFrames.PlayerAnimationName(FacingDirection),
-            Scale = new Vector2(0.42f, 0.42f)
+            Scale = new Vector2(0.42f, 0.42f),
         };
         AddChild(_sprite);
         ApplyFacing();
@@ -74,7 +77,8 @@ internal sealed partial class DodgePlayer : Node2D
         if (direction is < 0 or > 7)
             throw new ArgumentOutOfRangeException(nameof(direction), direction, "Facing must be a sector from zero through seven.");
         FacingDirection = direction;
-        if (_sprite is null) return;
+        if (_sprite is null)
+            return;
         ApplyFacing();
         _sprite.Stop();
     }

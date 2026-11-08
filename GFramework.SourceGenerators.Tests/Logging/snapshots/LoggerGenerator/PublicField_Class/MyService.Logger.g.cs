@@ -17,5 +17,5 @@ partial class MyService
     /// 自动生成的日志记录器。
     /// </summary>
     /// <remarks>日志工厂经由当前实例绑定的架构上下文解析；访问未绑定上下文的实例会抛出异常。</remarks>
-    public ILogger _log => __gFrameworkLogBacking ??= Context.GetService<ILoggerFactory>().CreateLogger("MyService");
+    public ILogger _log => __gFrameworkLogBacking ??= ((global::GFramework.Core.Abstractions.Rule.IContextAware)this).GetContext().GetService<ILoggerFactory>().CreateLogger("MyService");
 }

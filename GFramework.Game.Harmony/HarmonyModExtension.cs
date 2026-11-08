@@ -22,12 +22,15 @@ public sealed class HarmonyModExtension : IGameModExtension
     public HarmonyModExtension(string? harmonyAssemblyPath = null)
     {
         _engine = new HarmonyEngine(harmonyAssemblyPath);
-        SharedAssemblies = Array.AsReadOnly(new[] { typeof(HarmonyModExtension).Assembly, _engine.Assembly });
+        SharedAssemblies = Array.AsReadOnly([typeof(HarmonyModExtension).Assembly, _engine.Assembly]);
     }
     /// <inheritdoc />
     public string Capability => "harmony";
     /// <inheritdoc />
-    public IReadOnlyList<Assembly> SharedAssemblies { get; }
+    public IReadOnlyList<Assembly> SharedAssemblies
+    {
+        get;
+    }
     /// <inheritdoc />
     public IGameModServiceScope CreateScope(IGameModContext context)
     {

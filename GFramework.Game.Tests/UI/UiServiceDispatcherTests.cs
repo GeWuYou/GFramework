@@ -41,7 +41,9 @@ public sealed class UiServiceDispatcherTests
         var hostContext = new MarkerSynchronizationContext();
         var route = new UiDialogRoute<string, int>("confirm", new UiRouteOptions
         {
-            Kind = UiRouteKind.Window, Modal = true, CapturedActions = UiInputActionMask.Confirm
+            Kind = UiRouteKind.Window,
+            Modal = true,
+            CapturedActions = UiInputActionMask.Confirm,
         });
         var ready = NewCompletion();
         var entered = NewCompletion();

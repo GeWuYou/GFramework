@@ -16,5 +16,5 @@ public enum GodotLoggerMode
     /// <summary>
     ///     Uses plain console output without rich text or debugger panel mirroring.
     /// </summary>
-    Release
+    Release,
 }

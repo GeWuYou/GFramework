@@ -9,7 +9,7 @@ namespace GFramework.Godot.UI;
 /// <remarks>The UI service disposes this lease on the Godot thread. Scene scripts never need a page-provider interface.</remarks>
 public sealed class GodotUiView : IUiView, IUiActionTarget
 {
-    private readonly Dictionary<Control, (Control.MouseFilterEnum Mouse, Control.FocusModeEnum Focus)> _input = new();
+    private readonly Dictionary<Control, (Control.MouseFilterEnum Mouse, Control.FocusModeEnum Focus)> _input = [];
     private readonly Node.ProcessModeEnum _processMode;
     private bool _disposed;
     private bool _active;
@@ -26,19 +26,41 @@ public sealed class GodotUiView : IUiView, IUiActionTarget
     }
 
     /// <summary>Gets the owned native view for mounting and native focus handling.</summary>
-    public Control Control { get; }
+    public Control Control
+    {
+        get;
+    }
     /// <summary>Gets the route policy shared with the service.</summary>
-    public UiRouteOptions Options { get; }
+    public UiRouteOptions Options
+    {
+        get;
+    }
     /// <summary>Gets or sets the host-owned mount, including any modal shield.</summary>
-    internal Control? Mount { get; set; }
+    internal Control? Mount
+    {
+        get; set;
+    }
     /// <inheritdoc />
     public bool IsAlive => !_disposed && GodotObject.IsInstanceValid(Control) && !Control.IsQueuedForDeletion();
     /// <inheritdoc />
     public Task OpenAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Control.ProcessMode = Options.ContinueProcessingWhenPaused ? Node.ProcessModeEnum.Always : _processMode;
+        Control.ProcessMode = ResolveProcessMode(_processMode, Options.ContinueProcessingWhenPaused);
         return Control is IGodotUiLifecycle lifecycle ? lifecycle.OpenAsync(cancellationToken) : Task.CompletedTask;
+    }
+
+    /// <summary>Prevents an inherited mode from adopting the Always-processing UI mount while preserving explicit authored modes.</summary>
+    /// <param name="authoredMode">The view root mode before mounting.</param>
+    /// <param name="continueWhenPaused">Whether route policy explicitly keeps the view running during scene pause.</param>
+    /// <returns>The effective root mode used while the view is open.</returns>
+    internal static Node.ProcessModeEnum ResolveProcessMode(Node.ProcessModeEnum authoredMode, bool continueWhenPaused)
+    {
+        if (continueWhenPaused)
+        {
+            return Node.ProcessModeEnum.Always;
+        }
+        return authoredMode == Node.ProcessModeEnum.Inherit ? Node.ProcessModeEnum.Pausable : authoredMode;
     }
     /// <inheritdoc />
     public Task CloseAsync(CancellationToken cancellationToken = default) =>
@@ -46,37 +68,45 @@ public sealed class GodotUiView : IUiView, IUiActionTarget
     /// <inheritdoc />
     public void SetVisible(bool visible)
     {
-        if (!IsAlive) return;
+        if (!IsAlive)
+            return;
         Control.Visible = visible;
-        if (Mount is not null && GodotObject.IsInstanceValid(Mount)) Mount.Visible = visible;
+        if (Mount is not null && GodotObject.IsInstanceValid(Mount))
+            Mount.Visible = visible;
     }
     /// <inheritdoc />
     public void SetActive(bool active)
     {
-        if (!IsAlive) return;
+        if (!IsAlive)
+            return;
         var changed = _active != active;
         _active = active;
         if (active)
         {
             foreach (var pair in _input)
             {
-                if (!GodotObject.IsInstanceValid(pair.Key)) continue;
+                if (!GodotObject.IsInstanceValid(pair.Key))
+                    continue;
                 pair.Key.MouseFilter = pair.Value.Mouse;
                 pair.Key.FocusMode = pair.Value.Focus;
             }
             _input.Clear();
-            if (changed && Control is IGodotUiActivation activation) activation.OnActivated();
+            if (changed && Control is IGodotUiActivation activation)
+                activation.OnActivated();
         }
         else
         {
             foreach (var item in EnumerateControls(Control))
             {
-                if (!_input.ContainsKey(item)) _input[item] = (item.MouseFilter, item.FocusMode);
+                if (!_input.ContainsKey(item))
+                    _input[item] = (item.MouseFilter, item.FocusMode);
                 item.MouseFilter = Control.MouseFilterEnum.Ignore;
                 item.FocusMode = Control.FocusModeEnum.None;
-                if (item.IsInsideTree()) item.ReleaseFocus();
+                if (item.IsInsideTree())
+                    item.ReleaseFocus();
             }
-            if (changed && Control is IGodotUiActivation activation) activation.OnDeactivated();
+            if (changed && Control is IGodotUiActivation activation)
+                activation.OnDeactivated();
         }
     }
     /// <inheritdoc />
@@ -85,17 +115,21 @@ public sealed class GodotUiView : IUiView, IUiActionTarget
     /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
-        if (_disposed) return ValueTask.CompletedTask;
+        if (_disposed)
+            return ValueTask.CompletedTask;
         _disposed = true;
         _input.Clear();
-        if (GodotObject.IsInstanceValid(Control) && !Control.IsQueuedForDeletion()) Control.QueueFree();
+        if (GodotObject.IsInstanceValid(Control) && !Control.IsQueuedForDeletion())
+            Control.QueueFree();
         return ValueTask.CompletedTask;
     }
     /// <summary>Visits native controls without changing their authored processing flags.</summary>
     internal static IEnumerable<Control> EnumerateControls(Node node)
     {
-        if (node is Control control) yield return control;
+        if (node is Control control)
+            yield return control;
         foreach (var child in node.GetChildren())
-            foreach (var descendant in EnumerateControls(child)) yield return descendant;
+            foreach (var descendant in EnumerateControls(child))
+                yield return descendant;
     }
 }

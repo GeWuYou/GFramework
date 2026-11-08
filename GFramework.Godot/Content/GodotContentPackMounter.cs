@@ -39,7 +39,10 @@ public sealed class GodotContentPackMounter
     }
 
     /// <summary>Gets whether mounting failed after entering the irreversible native operation.</summary>
-    public bool RequiresRestart { get; private set; }
+    public bool RequiresRestart
+    {
+        get; private set;
+    }
 
     /// <summary>Verifies every selected PCK before mounting any, then mounts in effective content order.</summary>
     /// <param name="packs">The host's final active package selection.</param>

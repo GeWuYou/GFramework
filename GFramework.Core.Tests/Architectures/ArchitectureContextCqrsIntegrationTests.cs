@@ -28,7 +28,7 @@ public class ArchitectureContextCqrsIntegrationTests
     ///     初始化测试所需的全局上下文状态。
     /// </summary>
     [SetUp]
-    public async Task SetUp()
+    public void SetUp()
     {
         GameContext.Clear();
     }
@@ -37,7 +37,7 @@ public class ArchitectureContextCqrsIntegrationTests
     ///     清理测试过程中写入的全局上下文状态。
     /// </summary>
     [TearDown]
-    public async Task TearDown()
+    public void TearDown()
     {
         GameContext.Clear();
     }
@@ -60,7 +60,7 @@ public class ArchitectureContextCqrsIntegrationTests
         }
         finally
         {
-            container.Dispose();
+            await container.DisposeAsync().ConfigureAwait(false);
         }
     }
 
@@ -83,7 +83,7 @@ public class ArchitectureContextCqrsIntegrationTests
         }
         finally
         {
-            container.Dispose();
+            await container.DisposeAsync().ConfigureAwait(false);
         }
     }
 
@@ -106,11 +106,11 @@ public class ArchitectureContextCqrsIntegrationTests
                 elements.Add(element);
             }
 
-            Assert.That(elements, Is.EqualTo(new[] { 1, 2, 3 }));
+            Assert.That(elements, Is.EqualTo([1, 2, 3]));
         }
         finally
         {
-            container.Dispose();
+            await container.DisposeAsync().ConfigureAwait(false);
         }
     }
 
@@ -138,7 +138,7 @@ public class ArchitectureContextCqrsIntegrationTests
         }
         finally
         {
-            container.Dispose();
+            await container.DisposeAsync().ConfigureAwait(false);
         }
     }
 
@@ -162,7 +162,7 @@ public class ArchitectureContextCqrsIntegrationTests
         }
         finally
         {
-            container.Dispose();
+            await container.DisposeAsync().ConfigureAwait(false);
         }
     }
 
@@ -206,7 +206,7 @@ public class ArchitectureContextCqrsIntegrationTests
         }
         finally
         {
-            container.Dispose();
+            await container.DisposeAsync().ConfigureAwait(false);
         }
     }
 
@@ -253,9 +253,7 @@ public class ArchitectureContextCqrsIntegrationTests
     /// <summary>
     ///     最小测试请求。
     /// </summary>
-    private sealed class PingRequest : IRequest<int>
-    {
-    }
+    private sealed class PingRequest : IRequest<int>;
 
     /// <summary>
     ///     返回固定结果的测试请求处理器。
@@ -287,7 +285,10 @@ public class ArchitectureContextCqrsIntegrationTests
         /// <summary>
         ///     获取处理器被调用的次数。
         /// </summary>
-        public int InvocationCount { get; private set; }
+        public int InvocationCount
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     处理通知并递增调用计数。
@@ -305,9 +306,7 @@ public class ArchitectureContextCqrsIntegrationTests
     /// <summary>
     ///     最小流式测试请求。
     /// </summary>
-    private sealed class CountingStreamRequest : IStreamRequest<int>
-    {
-    }
+    private sealed class CountingStreamRequest : IStreamRequest<int>;
 
     /// <summary>
     ///     依次产出 1、2、3 的流式请求处理器。
@@ -336,9 +335,7 @@ public class ArchitectureContextCqrsIntegrationTests
     /// <summary>
     ///     需要架构上下文注入的最小测试请求。
     /// </summary>
-    private sealed class ContextProbeRequest : IRequest<string>
-    {
-    }
+    private sealed class ContextProbeRequest : IRequest<string>;
 
     /// <summary>
     ///     声明 <c>IContextAware</c>（经 <see cref="AbstractRequestHandler{TRequest,TResponse}" />）的测试处理器，
@@ -349,7 +346,10 @@ public class ArchitectureContextCqrsIntegrationTests
         /// <summary>
         ///     获取分发期间注入的架构上下文。
         /// </summary>
-        public IArchitectureContext? ObservedContext { get; private set; }
+        public IArchitectureContext? ObservedContext
+        {
+            get; private set;
+        }
 
         /// <summary>
         ///     记录当前注入的上下文并返回固定结果。

@@ -113,5 +113,5 @@ public enum ConfigLoadFailureKind
     /// <summary>
     ///     兜底的未分类失败。
     /// </summary>
-    UnexpectedFailure
+    UnexpectedFailure,
 }

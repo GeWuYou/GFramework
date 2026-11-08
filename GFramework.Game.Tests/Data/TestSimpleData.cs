@@ -13,5 +13,8 @@ internal sealed class TestSimpleData : IData
     /// <summary>
     ///     获取或设置测试数据中的整数值。
     /// </summary>
-    public int Value { get; set; }
+    public int Value
+    {
+        get; set;
+    }
 }

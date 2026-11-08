@@ -21,7 +21,7 @@ public static class ContextRegistrationDiagnostics
         "Model '{0}' used by '{1}' is not statically registered in architecture '{2}'",
         SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Warning,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     当系统使用点在所属架构中找不到静态可见注册时报告。
@@ -32,7 +32,7 @@ public static class ContextRegistrationDiagnostics
         "System '{0}' used by '{1}' is not statically registered in architecture '{2}'",
         SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Warning,
-        true);
+isEnabledByDefault: true);
 
     /// <summary>
     ///     当工具使用点在所属架构中找不到静态可见注册时报告。
@@ -43,5 +43,5 @@ public static class ContextRegistrationDiagnostics
         "Utility '{0}' used by '{1}' is not statically registered in architecture '{2}'",
         SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Warning,
-        true);
+isEnabledByDefault: true);
 }

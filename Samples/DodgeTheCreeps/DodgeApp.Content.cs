@@ -16,7 +16,7 @@ namespace DodgeTheCreeps;
 public partial class DodgeApp
 {
     /// <summary>Opens package management even when gameplay startup failed.</summary>
-    internal Task OpenContentAsync() => _ui.ShowAsync(DodgeRoutes.Content, true, _lifetime.Token);
+    internal Task OpenContentAsync() => _ui.ShowAsync(DodgeRoutes.Content, args: true, _lifetime.Token);
 
     /// <summary>Requires exact installed-code approval before recording an enabled next-start choice.</summary>
     internal async Task ToggleContentAsync(string id)
@@ -30,7 +30,8 @@ public partial class DodgeApp
                 var decision = await _ui.ShowDialogAsync(DodgeRoutes.CodePermission,
                     () => Text.Get("code_execution_question", ("name", Text.PackageName(id, pack.Manifest.Name)), ("version", pack.Manifest.Version)),
                     _lifetime.Token).ConfigureAwait(true);
-                if (!decision.Accepted || decision.Value != true) return;
+                if (!decision.Accepted || !decision.Value)
+                    return;
                 await _content.ApproveCodeAsync(id, _lifetime.Token).ConfigureAwait(true);
             }
         }
@@ -44,7 +45,8 @@ public partial class DodgeApp
         var decision = await _ui.ShowDialogAsync(DodgeRoutes.CodePermission,
             () => Text.Get("code_execution_question", ("name", Text.PackageName(id, pack.Manifest.Name)), ("version", pack.Manifest.Version)),
             _lifetime.Token).ConfigureAwait(true);
-        if (decision.Accepted && decision.Value == true) await _content.ApproveCodeAsync(id, _lifetime.Token).ConfigureAwait(true);
+        if (decision.Accepted && decision.Value)
+            await _content.ApproveCodeAsync(id, _lifetime.Token).ConfigureAwait(true);
     }
 
     /// <summary>Records ordering without mutating the active content session.</summary>
@@ -57,10 +59,12 @@ public partial class DodgeApp
     /// <summary>Restores original bytes; a subsequent continue still checks their content and schema.</summary>
     internal async Task RestoreContentBackupAsync()
     {
-        if (_latestBackup is null) return;
+        if (_latestBackup is null)
+            return;
         var decision = await _ui.ShowDialogAsync(DodgeRoutes.Recover,
             () => Text.Get("restore_question", ("backup", _latestBackup ?? string.Empty)), _lifetime.Token).ConfigureAwait(true);
-        if (!decision.Accepted || decision.Value != true) return;
+        if (!decision.Accepted || !decision.Value)
+            return;
         _latestBackup = await _saves.RestoreBackupAsync(1, _latestBackup, _lifetime.Token).ConfigureAwait(true);
         await StoreBackupKeyAsync().ConfigureAwait(true);
         _menus.SetStatus(() => Text.Get("save_restored"));
@@ -73,10 +77,11 @@ public partial class DodgeApp
         using var random = new RandomNumberGenerator { Seed = 0xD0D63 };
         return new SaveRepositoryOptions<DodgeProgress>
         {
-            GameId = "dodge-the-creeps", CurrentVersion = DodgeProgress.CurrentVersion,
-            Migrations = DodgeProgressMigration.CreateGraph(random.State), Validate = ValidateProgress,
-            ModPolicies = _content.IsReady ? _content.Catalog.Packages.Where(static pack => pack.Manifest.Code is not null)
-                .Select(static pack => new ModSavePolicy(pack.Manifest.Id, 1)).ToArray() : Array.Empty<ModSavePolicy>(),
+            GameId = "dodge-the-creeps",
+            CurrentVersion = DodgeProgress.CurrentVersion,
+            Migrations = DodgeProgressMigration.CreateGraph(random.State),
+            Validate = ValidateProgress,
+            ModPolicies = _content.IsReady ? [.. _content.Catalog.Packages.Where(static pack => pack.Manifest.Code is not null).Select(static pack => new ModSavePolicy(pack.Manifest.Id, 1))] : Array.Empty<ModSavePolicy>(),
             Content = new ContentSaveOptions
             {
                 CurrentCatalog = () => _content.Catalog,
@@ -87,21 +92,27 @@ public partial class DodgeApp
                     var data = document.Game.Data;
                     // Preparation owns this detached DOM. Missing-content policies never touch the running world.
                     var arena = (string?)data["ArenaId"] ?? "base:yard";
-                    if (!_content.Catalog.Contains(new ContentReference("arenas", new ContentId(arena)))) data["ArenaId"] = "base:yard";
+                    if (!_content.Catalog.Contains(new ContentReference("arenas", new ContentId(arena))))
+                        data["ArenaId"] = "base:yard";
                     var enemies = data["Enemies"] as JArray ?? throw new InvalidOperationException("Enemies must be an array.");
                     foreach (var enemy in enemies.OfType<JObject>().ToArray())
                     {
                         var id = new ContentId((string?)enemy["EnemyId"] ?? string.Empty);
-                        if (!_content.Catalog.Contains(new ContentReference("enemies", id))) { enemy.Remove(); continue; }
+                        if (!_content.Catalog.Contains(new ContentReference("enemies", id)))
+                        {
+                            enemy.Remove();
+                            continue;
+                        }
                         var definition = _content.Catalog.GetTable<Content.DodgeEnemyDefinition>("enemies").Get(id);
                         if (((int?)enemy["AnimationFrame"] ?? 0) >= (definition.Texture.Length > 0 ? 1 : 2))
                         {
-                            enemy["AnimationFrame"] = 0; enemy["AnimationProgress"] = 0;
+                            enemy["AnimationFrame"] = 0;
+                            enemy["AnimationProgress"] = 0;
                         }
                     }
                     return Task.FromResult(document);
-                }
-            }
+                },
+            },
         };
     }
     // #endregion tutorial-save-policy
@@ -114,7 +125,8 @@ public partial class DodgeApp
         {
             var decision = await _ui.ShowDialogAsync(DodgeRoutes.Recover,
                 () => Text.Get("recovery_question") + "\n\n" + FormatPreparedSave(prepared), _lifetime.Token).ConfigureAwait(true);
-            if (!decision.Accepted || decision.Value != true) return null;
+            if (!decision.Accepted || !decision.Value)
+                return null;
             var result = await _saves.CommitPreparedAsync(1, prepared, _lifetime.Token).ConfigureAwait(true);
             _latestBackup = result.BackupKey;
             await StoreBackupKeyAsync().ConfigureAwait(true);
@@ -128,7 +140,7 @@ public partial class DodgeApp
         : _storage.WriteAsync(_dataRoot + "/last-content-backup.json", _latestBackup);
 
     /// <summary>Displays structural conversion steps and content differences together before a write.</summary>
-    private string FormatPreparedSave(PreparedSave<DodgeProgress> prepared) => string.Join("\n",
+    private string FormatPreparedSave(PreparedSave<DodgeProgress> prepared) => string.Join('\n',
         prepared.MigrationPath.Select(step => Text.Get("migration_step", ("from", step.FromVersion), ("to", step.ToVersion),
             ("detail", step.FromVersion == 1 && step.ToVersion == 2 ? Text.Get("migration_sparse") :
                 step.FromVersion == 3 && step.ToVersion == 2 ? Text.Get("migration_downgrade") : step.Description)))
@@ -148,7 +160,7 @@ public partial class DodgeApp
             ContentSaveIssueKind.AdditionalPack => Text.Get("issue_added_pack", ("id", id)),
             ContentSaveIssueKind.LoadOrderChanged => Text.Get("issue_order"),
             ContentSaveIssueKind.MissingMetadata => Text.Get("issue_missing_metadata"),
-            _ => issue.Detail
+            _ => issue.Detail,
         };
     }
 
@@ -157,7 +169,8 @@ public partial class DodgeApp
     {
         var data = document.Game.Data;
         yield return new ContentReference("arenas", new ContentId((string?)data["ArenaId"] ?? string.Empty));
-        if (data["Enemies"] is not JArray enemies) throw new InvalidOperationException("Enemies must be an array.");
+        if (data["Enemies"] is not JArray enemies)
+            throw new InvalidOperationException("Enemies must be an array.");
         foreach (var enemy in enemies)
             yield return new ContentReference("enemies", new ContentId((string?)enemy["EnemyId"] ?? string.Empty));
     }

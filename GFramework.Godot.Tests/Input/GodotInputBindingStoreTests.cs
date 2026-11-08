@@ -28,8 +28,8 @@ public sealed class GodotInputBindingStoreTests
                             InputDeviceKind.KeyboardMouse,
                             InputBindingKind.Key,
                             "key:13",
-                            "Enter")
-                    ])
+                            "Enter"),
+                    ]),
             ]));
 
         var store = new GodotInputBindingStore(backend);
@@ -56,8 +56,8 @@ public sealed class GodotInputBindingStoreTests
                             InputDeviceKind.KeyboardMouse,
                             InputBindingKind.Key,
                             "key:13",
-                            "Enter")
-                    ])
+                            "Enter"),
+                    ]),
             ]));
 
         var store = new GodotInputBindingStore(backend);
@@ -71,8 +71,8 @@ public sealed class GodotInputBindingStoreTests
                             InputDeviceKind.KeyboardMouse,
                             InputBindingKind.Key,
                             "key:32",
-                            "Space")
-                    ])
+                            "Space"),
+                    ]),
             ]));
 
         var snapshot = store.ExportSnapshot();
@@ -98,7 +98,7 @@ public sealed class GodotInputBindingStoreTests
                             InputDeviceKind.KeyboardMouse,
                             InputBindingKind.Key,
                             "key:13",
-                            "Enter")
+                            "Enter"),
                     ]),
                 new InputActionBinding(
                     "ui_cancel",
@@ -107,8 +107,8 @@ public sealed class GodotInputBindingStoreTests
                             InputDeviceKind.KeyboardMouse,
                             InputBindingKind.Key,
                             "key:27",
-                            "Escape")
-                    ])
+                            "Escape"),
+                    ]),
             ]));
 
         var store = new GodotInputBindingStore(backend);
@@ -122,8 +122,8 @@ public sealed class GodotInputBindingStoreTests
                             InputDeviceKind.KeyboardMouse,
                             InputBindingKind.Key,
                             "key:32",
-                            "Space")
-                    ])
+                            "Space"),
+                    ]),
             ]));
 
         var snapshot = store.ExportSnapshot();
@@ -155,7 +155,7 @@ public sealed class GodotInputBindingStoreTests
                             InputDeviceKind.KeyboardMouse,
                             InputBindingKind.Key,
                             "key:65",
-                            "A")
+                            "A"),
                     ]),
                 new InputActionBinding(
                     "move_right",
@@ -164,8 +164,8 @@ public sealed class GodotInputBindingStoreTests
                             InputDeviceKind.KeyboardMouse,
                             InputBindingKind.Key,
                             "key:68",
-                            "D")
-                    ])
+                            "D"),
+                    ]),
             ]));
 
         var store = new GodotInputBindingStore(backend);
@@ -206,8 +206,8 @@ public sealed class GodotInputBindingStoreTests
                             InputDeviceKind.KeyboardMouse,
                             InputBindingKind.Key,
                             "key:13",
-                            "Enter")
-                    ])
+                            "Enter"),
+                    ]),
             ]));
 
         var store = new GodotInputBindingStore(backend);
@@ -221,7 +221,7 @@ public sealed class GodotInputBindingStoreTests
                             InputDeviceKind.KeyboardMouse,
                             InputBindingKind.Key,
                             "key:13",
-                            "Enter")
+                            "Enter"),
                     ]),
                 new InputActionBinding(
                     "debug_toggle",
@@ -230,8 +230,8 @@ public sealed class GodotInputBindingStoreTests
                             InputDeviceKind.KeyboardMouse,
                             InputBindingKind.Key,
                             "key:192",
-                            "QuoteLeft")
-                    ])
+                            "QuoteLeft"),
+                    ]),
             ]));
 
         store.ResetAll();
@@ -252,43 +252,37 @@ public sealed class GodotInputBindingStoreTests
     /// <summary>
     ///     测试用的纯托管 InputMap 后端。
     /// </summary>
-    private sealed class FakeInputMapBackend : IGodotInputMapBackend
+    /// <remarks>
+    ///     初始化测试后端。
+    /// </remarks>
+    /// <param name="snapshot">初始快照。</param>
+    private sealed class FakeInputMapBackend(InputBindingSnapshot snapshot) : IGodotInputMapBackend
     {
-        private readonly Dictionary<string, List<InputBindingDescriptor>> _defaults;
-        private readonly Dictionary<string, List<InputBindingDescriptor>> _current;
-
-        /// <summary>
-        ///     初始化测试后端。
-        /// </summary>
-        /// <param name="snapshot">初始快照。</param>
-        public FakeInputMapBackend(InputBindingSnapshot snapshot)
-        {
-            _defaults = snapshot.Actions.ToDictionary(
+        private readonly Dictionary<string, List<InputBindingDescriptor>> _defaults = snapshot.Actions.ToDictionary(
                 static action => action.ActionName,
                 static action => action.Bindings.ToList(),
                 StringComparer.Ordinal);
-            _current = snapshot.Actions.ToDictionary(
+        private readonly Dictionary<string, List<InputBindingDescriptor>> _current = snapshot.Actions.ToDictionary(
                 static action => action.ActionName,
                 static action => action.Bindings.ToList(),
                 StringComparer.Ordinal);
-        }
 
         /// <inheritdoc />
         public IReadOnlyList<string> GetActionNames()
         {
-            return [.._current.Keys.OrderBy(static key => key, StringComparer.Ordinal)];
+            return [.. _current.Keys.Order(StringComparer.Ordinal)];
         }
 
         /// <inheritdoc />
         public IReadOnlyList<InputBindingDescriptor> GetBindings(string actionName)
         {
-            return _current.TryGetValue(actionName, out var bindings) ? [..bindings] : Array.Empty<InputBindingDescriptor>();
+            return _current.TryGetValue(actionName, out var bindings) ? [.. bindings] : Array.Empty<InputBindingDescriptor>();
         }
 
         /// <inheritdoc />
         public void SetBindings(string actionName, IReadOnlyList<InputBindingDescriptor> bindings)
         {
-            _current[actionName] = [..bindings];
+            _current[actionName] = [.. bindings];
         }
 
         /// <inheritdoc />
@@ -296,7 +290,7 @@ public sealed class GodotInputBindingStoreTests
         {
             if (_defaults.TryGetValue(actionName, out var bindings))
             {
-                _current[actionName] = [..bindings];
+                _current[actionName] = [.. bindings];
                 return;
             }
 
@@ -309,7 +303,7 @@ public sealed class GodotInputBindingStoreTests
             _current.Clear();
             foreach (var pair in _defaults)
             {
-                _current[pair.Key] = [..pair.Value];
+                _current[pair.Key] = [.. pair.Value];
             }
         }
     }

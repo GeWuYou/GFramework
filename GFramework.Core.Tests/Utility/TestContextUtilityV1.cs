@@ -14,18 +14,27 @@ public sealed class TestContextUtilityV1 : AbstractContextUtility
     /// <summary>
     ///     获取一个值，该值指示当前工具是否已完成初始化。
     /// </summary>
-    public bool Initialized { get; private set; }
+    public bool Initialized
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取一个值，该值指示当前工具是否已执行销毁逻辑。
     /// </summary>
-    public bool Destroyed { get; private set; }
+    public bool Destroyed
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取一个值，该值指示测试专用的 <see cref="OnInit" /> 钩子是否已被调用。
     ///     该标记与 <see cref="Initialized" /> 共享同一执行时机，但单独暴露以便断言钩子本身已运行。
     /// </summary>
-    public bool InitCalled { get; private set; }
+    public bool InitCalled
+    {
+        get; private set;
+    }
 
     /// <summary>
     ///     获取初始化阶段创建的日志记录器，供测试断言使用。

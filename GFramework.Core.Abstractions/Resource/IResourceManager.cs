@@ -14,7 +14,10 @@ public interface IResourceManager : IUtility
     /// <summary>
     ///     获取已加载资源的数量
     /// </summary>
-    int LoadedResourceCount { get; }
+    int LoadedResourceCount
+    {
+        get;
+    }
 
     /// <summary>
     ///     同步加载资源

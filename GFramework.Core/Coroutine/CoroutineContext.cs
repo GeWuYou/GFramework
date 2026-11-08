@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Diagnostics.CodeAnalysis;
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Coroutine.Instructions;
 
@@ -18,11 +19,20 @@ public sealed class CoroutineContext
     }
 
     /// <summary>The driver which executes this flow.</summary>
-    public CoroutineScheduler Scheduler { get; }
+    public CoroutineScheduler Scheduler
+    {
+        get;
+    }
     /// <summary>The parent flow's identity.</summary>
-    public CoroutineHandle Handle { get; }
+    public CoroutineHandle Handle
+    {
+        get;
+    }
     /// <summary>The lifetime container shared with descendants.</summary>
-    public CoroutineScope Scope { get; }
+    public CoroutineScope Scope
+    {
+        get;
+    }
     /// <summary>A lazily created token cancelled when the flow terminates unsuccessfully.</summary>
     public CancellationToken CancellationToken => Scheduler.GetContextCancellationToken(Handle);
 
@@ -40,13 +50,15 @@ public sealed class CoroutineContext
     /// <param name="ignorePause">Pause behavior, defaulting to the parent.</param>
     /// <param name="childFailurePolicy">Policy for the child's own descendants.</param>
     /// <returns>The owned child's identity.</returns>
+    [SuppressMessage("Design", "CA1068:CancellationToken parameters must come last",
+        Justification = "Preserve the published positional parameter order; reordering would break source and binary consumers.")]
     public CoroutineHandle RunChild(IEnumerator<IYieldInstruction>? coroutine, string? tag = null,
         CoroutinePriority priority = CoroutinePriority.Normal, string? group = null,
         CancellationToken cancellationToken = default, CoroutineExecutionStage? stage = null,
         bool? ignorePause = null, CoroutineFailurePolicy childFailurePolicy = CoroutineFailurePolicy.FailFast)
     {
-        return Scheduler.StartChild(Handle, coroutine, null, tag, priority, group, cancellationToken, stage,
-            ignorePause, childFailurePolicy);
+        return Scheduler.StartChild(Handle, coroutine, factory: null, tag, priority, group, stage,
+            ignorePause, childFailurePolicy, cancellationToken: cancellationToken);
     }
 
     /// <summary>Starts an owned child factory with access to its own context.</summary>
@@ -59,14 +71,28 @@ public sealed class CoroutineContext
     /// <param name="ignorePause">Pause behavior, defaulting to the parent.</param>
     /// <param name="childFailurePolicy">Policy for the child's descendants.</param>
     /// <returns>The owned child's identity.</returns>
+    [SuppressMessage("Design", "CA1068:CancellationToken parameters must come last",
+        Justification = "Preserve the published positional parameter order; reordering would break source and binary consumers.")]
     public CoroutineHandle RunChild(Func<CoroutineContext, IEnumerator<IYieldInstruction>> factory, string? tag = null,
         CoroutinePriority priority = CoroutinePriority.Normal, string? group = null,
         CancellationToken cancellationToken = default, CoroutineExecutionStage? stage = null,
         bool? ignorePause = null, CoroutineFailurePolicy childFailurePolicy = CoroutineFailurePolicy.FailFast)
     {
         ArgumentNullException.ThrowIfNull(factory);
-        return Scheduler.StartChild(Handle, null, factory, tag, priority, group, cancellationToken, stage,
-            ignorePause, childFailurePolicy);
+        return Scheduler.StartChild(Handle, coroutine: null, factory, tag, priority, group, stage,
+            ignorePause, childFailurePolicy, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>Starts an explicitly observed child, installing its result source before start-time callbacks can evict diagnostic history.</summary>
+    /// <param name="coroutine">The child iterator whose ownership is transferred to the flow.</param>
+    /// <param name="result">The retained outcome, independent of bounded diagnostic history.</param>
+    /// <returns>The child identity, using the same default options as an ordinary child start.</returns>
+    internal CoroutineHandle RunChildObserved(IEnumerator<IYieldInstruction> coroutine, out Task<CoroutineResult> result)
+    {
+        var source = new TaskCompletionSource<CoroutineResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        result = source.Task;
+        return Scheduler.StartChild(Handle, coroutine, factory: null, tag: null, CoroutinePriority.Normal, group: null,
+stage: null, ignorePause: null, CoroutineFailurePolicy.FailFast, source, cancellationToken: CancellationToken);
     }
 
     /// <summary>Runs children concurrently, joining all results and propagating any failure after cleanup.</summary>
@@ -75,6 +101,6 @@ public sealed class CoroutineContext
     public IEnumerator<IYieldInstruction> WhenAll(IEnumerable<IEnumerator<IYieldInstruction>> coroutines)
     {
         ArgumentNullException.ThrowIfNull(coroutines);
-        return new CoroutineChildrenEnumerator(this, coroutines.ToArray());
+        return new CoroutineChildrenEnumerator(this, [.. coroutines]);
     }
 }

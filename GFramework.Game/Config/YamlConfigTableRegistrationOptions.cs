@@ -51,26 +51,41 @@ public sealed class YamlConfigTableRegistrationOptions<TKey, TValue>
     /// <summary>
     ///     获取运行时配置表名称。
     /// </summary>
-    public string TableName { get; }
+    public string TableName
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取相对配置根目录的子目录。
     /// </summary>
-    public string RelativePath { get; }
+    public string RelativePath
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取相对配置根目录的 schema 文件路径。
     ///     当该值为空时，当前注册项不会启用 schema 校验。
     /// </summary>
-    public string? SchemaRelativePath { get; init; }
+    public string? SchemaRelativePath
+    {
+        get; init;
+    }
 
     /// <summary>
     ///     获取配置项主键提取器。
     /// </summary>
-    public Func<TValue, TKey> KeySelector { get; }
+    public Func<TValue, TKey> KeySelector
+    {
+        get;
+    }
 
     /// <summary>
     ///     获取可选的主键比较器。
     /// </summary>
-    public IEqualityComparer<TKey>? Comparer { get; init; }
+    public IEqualityComparer<TKey>? Comparer
+    {
+        get; init;
+    }
 }
