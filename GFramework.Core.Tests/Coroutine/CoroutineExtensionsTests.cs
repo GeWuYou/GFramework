@@ -237,18 +237,13 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    ///     验证Sequence应该处理null协程
+    ///     验证Sequence在转交所有权前拒绝包含null的输入。
     /// </summary>
     [Test]
     public void Sequence_Should_Handle_Null_Coroutine()
     {
-        var coroutine1 = CreateSimpleCoroutine();
-        var sequence = CoroutineExtensions.Sequence(coroutine1, null!);
-
-        Assert.Throws<NullReferenceException>(() =>
-        {
-            while (sequence.MoveNext()) sequence.Current.Update(0.1);
-        });
+        using var coroutine1 = CreateSimpleCoroutine();
+        Assert.Throws<ArgumentException>(() => CoroutineExtensions.Sequence(coroutine1, null!));
     }
 
     /// <summary>
@@ -262,9 +257,11 @@ public class CoroutineExtensionsTests
         var coroutine1 = CreateSimpleCoroutine();
         var coroutine2 = CreateSimpleCoroutine();
 
-        var parallel = scheduler.ParallelCoroutines(coroutine1, coroutine2);
+        IEnumerator<IYieldInstruction>? parallel = null;
+        scheduler.Run(context => parallel = context.ParallelCoroutines(coroutine1, coroutine2));
 
         Assert.That(parallel, Is.InstanceOf<IEnumerator<IYieldInstruction>>());
+        scheduler.Clear();
     }
 
     /// <summary>
@@ -281,17 +278,21 @@ public class CoroutineExtensionsTests
         var coroutine2 = CreateDelayedCoroutine(() => executionCounts[2]++, 0.5);
         var coroutine3 = CreateDelayedCoroutine(() => executionCounts[3]++, 0.5);
 
-        var parallel = scheduler.ParallelCoroutines(coroutine1, coroutine2, coroutine3);
-
-        parallel.MoveNext();
+        var handle = scheduler.Run(context => context.ParallelCoroutines(coroutine1, coroutine2, coroutine3));
 
         Assert.That(scheduler.ActiveCoroutineCount, Is.GreaterThan(0));
 
-        while (scheduler.ActiveCoroutineCount > 0) scheduler.Update();
+        for (var frame = 0; frame < 100 && scheduler.IsCoroutineAlive(handle); frame++)
+        {
+            scheduler.Update();
+        }
 
         Assert.That(executionCounts[1], Is.EqualTo(1));
         Assert.That(executionCounts[2], Is.EqualTo(1));
         Assert.That(executionCounts[3], Is.EqualTo(1));
+        Assert.That(scheduler.ActiveCoroutineCount, Is.Zero);
+        Assert.That(scheduler.TryGetCompletionStatus(handle, out var status), Is.True);
+        Assert.That(status, Is.EqualTo(CoroutineCompletionStatus.Completed));
     }
 
     /// <summary>
@@ -303,13 +304,15 @@ public class CoroutineExtensionsTests
         var timeSource = new TestTimeSource();
         var scheduler = new CoroutineScheduler(timeSource);
 
-        var parallel = scheduler.ParallelCoroutines();
+        var handle = scheduler.Run(context => context.ParallelCoroutines());
 
-        Assert.That(parallel.MoveNext(), Is.False);
+        Assert.That(scheduler.TryGetCompletionStatus(handle, out var status), Is.True);
+        Assert.That(status, Is.EqualTo(CoroutineCompletionStatus.Completed));
+        Assert.That(scheduler.ActiveCoroutineCount, Is.Zero);
     }
 
     /// <summary>
-    ///     验证ParallelCoroutines应该处理null数组
+    ///     验证ParallelCoroutines在转交输入前拒绝null数组。
     /// </summary>
     [Test]
     public void ParallelCoroutines_Should_Handle_Null_Array()
@@ -317,9 +320,15 @@ public class CoroutineExtensionsTests
         var timeSource = new TestTimeSource();
         var scheduler = new CoroutineScheduler(timeSource);
 
-        var parallel = scheduler.ParallelCoroutines(null);
+        CoroutineContext? captured = null;
+        scheduler.Run(context =>
+        {
+            captured = context;
+            return CreateDelayedCoroutine(() => { }, 10);
+        });
 
-        Assert.That(parallel.MoveNext(), Is.False);
+        Assert.Throws<ArgumentNullException>(() => captured!.ParallelCoroutines(null!));
+        scheduler.Clear();
     }
 
     /// <summary>

@@ -1,58 +1,75 @@
-﻿// Copyright (c) 2026 GeWuYou
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-// 
-//     http://www.apache.org/licenses/LICENSE-2.0
-// 
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Coroutine;
 
 namespace GFramework.Core.Coroutine.Instructions;
 
 /// <summary>
-///     带超时的事件等待指令
+///     等待事件或超时，并拥有所包装事件订阅的释放责任。
 /// </summary>
-/// <typeparam name="TEvent">事件类型</typeparam>
-/// <param name="waitForEvent">要包装的事件等待指令</param>
-/// <param name="timeout">超时时间（秒）</param>
+/// <typeparam name="TEvent">事件数据类型。</typeparam>
+/// <param name="waitForEvent">转交给该包装器管理的事件等待。</param>
+/// <param name="timeout">超时时间（秒）；非正值在首次推进时立即超时。</param>
+/// <remarks>Update 和 Dispose 应由同一调度线程调用；事件回调可以来自其他线程。</remarks>
 public sealed class WaitForEventWithTimeout<TEvent>(WaitForEvent<TEvent> waitForEvent, float timeout)
-    : IYieldInstruction
+    : IYieldInstruction, IDisposable
 {
     private readonly WaitForEvent<TEvent> _waitForEvent =
         waitForEvent ?? throw new ArgumentNullException(nameof(waitForEvent));
-
-    private float _elapsedTime;
+    private double _elapsedTime;
+    private bool _disposed;
+    private bool _timedOut;
 
     /// <summary>
-    ///     获取是否已超时
+    ///     获取事件尚未到达时是否达到超时。
     /// </summary>
-    public bool IsTimeout => _elapsedTime >= timeout;
+    public bool IsTimeout => _timedOut;
 
     /// <summary>
-    ///     获取接收到的事件数据
+    ///     获取接收到的事件数据。
     /// </summary>
     public TEvent? EventData => _waitForEvent.EventData;
 
-    /// <summary>
-    ///     获取指令是否已完成（事件已触发或超时）
-    /// </summary>
+    /// <inheritdoc />
     public bool IsDone => _waitForEvent.IsDone || IsTimeout;
 
-    /// <summary>
-    ///     更新指令状态
-    /// </summary>
-    /// <param name="deltaTime">时间增量</param>
+    /// <inheritdoc />
     public void Update(double deltaTime)
     {
-        // 只有在事件未完成时才累加经过的时间
-        if (!_waitForEvent.IsDone) _elapsedTime += (float)deltaTime;
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (!_waitForEvent.IsDone)
+        {
+            _elapsedTime += deltaTime;
+            if (_elapsedTime >= timeout)
+            {
+                // 通过内部事件等待的状态锁决定事件与超时的唯一赢家。
+                _timedOut = _waitForEvent.StopIfPending();
+            }
+        }
 
         _waitForEvent.Update(deltaTime);
+        if (IsDone)
+        {
+            Dispose();
+        }
+    }
+
+    /// <summary>
+    ///     在完成、超时、取消或外部释放时解除内部事件订阅。
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _waitForEvent.Dispose();
     }
 }

@@ -6,45 +6,49 @@ using GFramework.Core.Abstractions.Coroutine;
 namespace GFramework.Core.Coroutine.Instructions;
 
 /// <summary>
-///     等待Task完成的等待指令
+///     在调度线程上等待 Task，并传播其失败或取消。
 /// </summary>
-public sealed class WaitForTask : IYieldInstruction
+/// <remarks>
+///     仅观察传入任务，不拥有或取消它；停止协程不会取消外部 Task。
+///     直接读取完成状态无需分配延续，也不会从后台线程调用调度器。
+/// </remarks>
+public sealed class WaitForTask : IYieldInstruction, ICoroutineCompletionStatusSource
 {
     private readonly Task _task;
-    private volatile bool _done;
 
     /// <summary>
-    ///     初始化等待Task的指令
+    ///     创建一个观察已有 Task 的等待指令。
     /// </summary>
-    /// <param name="task">要等待完成的Task</param>
+    /// <param name="task">需要等待的任务。</param>
     public WaitForTask(Task task)
     {
         _task = task ?? throw new ArgumentNullException(nameof(task));
-
-        // 检查Task是否已经完成
-        if (_task.IsCompleted)
-            _done = true;
-        else
-            // 注册完成回调
-            _ = _task.ContinueWith(_ => { _done = true; }, TaskContinuationOptions.ExecuteSynchronously);
     }
 
     /// <summary>
-    ///     获取Task的异常（如果有）
+    ///     获取任务持有的异常；该属性不重新抛出异常。
     /// </summary>
     public Exception? Exception => _task.Exception;
 
-    /// <summary>
-    ///     更新方法，用于处理时间更新逻辑
-    /// </summary>
-    /// <param name="deltaTime">时间增量</param>
-    public void Update(double deltaTime)
-    {
-        // Task的完成由ContinueWith回调设置
-    }
+    /// <inheritdoc />
+    public bool IsDone => _task.IsCompleted;
 
     /// <summary>
-    ///     获取等待是否已完成
+    ///     保留底层 Task 的终结分类，避免把 Faulted Task 中的取消异常误判为正常取消。
     /// </summary>
-    public bool IsDone => _done;
+    CoroutineCompletionStatus ICoroutineCompletionStatusSource.CompletionStatus => _task.IsFaulted
+        ? CoroutineCompletionStatus.Faulted
+        : _task.IsCanceled ? CoroutineCompletionStatus.Cancelled
+        : _task.IsCompleted ? CoroutineCompletionStatus.Completed
+        : CoroutineCompletionStatus.Unknown;
+
+    /// <inheritdoc />
+    public void Update(double deltaTime)
+    {
+        // 仅在任务完成后取结果，不阻塞驱动线程；GetResult 保留原始异常和取消类型。
+        if (_task.IsCompleted)
+        {
+            _task.GetAwaiter().GetResult();
+        }
+    }
 }

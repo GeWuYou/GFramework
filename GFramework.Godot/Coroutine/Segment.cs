@@ -24,7 +24,7 @@ public enum Segment
     PhysicsProcess,
 
     /// <summary>
-    ///     延迟处理阶段，在当前帧结束后延迟执行，通常用于需要等待当前帧完成后再执行的操作
+    ///     Godot 的延迟调用阶段；表示 idle dispatch，不保证渲染已经结束。
     /// </summary>
     DeferredProcess
 }

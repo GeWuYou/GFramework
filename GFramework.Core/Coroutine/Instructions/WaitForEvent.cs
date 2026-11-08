@@ -1,15 +1,5 @@
-﻿// Copyright (c) 2026 GeWuYou
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-// 
-//     http://www.apache.org/licenses/LICENSE-2.0
-// 
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Abstractions.Events;
@@ -17,71 +7,107 @@ using GFramework.Core.Abstractions.Events;
 namespace GFramework.Core.Coroutine.Instructions;
 
 /// <summary>
-///     WaitForEvent 类用于等待特定事件的发生，并提供事件数据和完成状态。
-///     实现了 IYieldInstruction 和 IDestroyable 接口，支持协程等待和资源释放。
+///     等待首次事件，并在调度线程推进或释放时注销监听器。
 /// </summary>
-/// <typeparam name="TEvent">事件类型</typeparam>
+/// <typeparam name="TEvent">事件数据类型。</typeparam>
+/// <remarks>
+///     事件回调允许来自其他线程，仅发布数据；它不操作调度器或注销事件总线。
+///     Dispose 与事件竞争时，由先取得锁的一方决定是否接收数据。
+/// </remarks>
 public sealed class WaitForEvent<TEvent> : IYieldInstruction, IDisposable
 {
+#if NET9_0_OR_GREATER
+    private readonly System.Threading.Lock _sync = new();
+#else
+    private readonly object _sync = new();
+#endif
     private bool _disposed;
     private volatile bool _done;
+    private TEvent? _eventData;
     private IUnRegister? _unRegister;
 
     /// <summary>
-    ///     初始化 WaitForEvent 实例，注册事件监听器以等待指定事件。
+    ///     订阅事件。指令从创建起拥有订阅，调用方须交给调度器或主动释放。
     /// </summary>
-    /// <param name="eventBus">事件总线实例，用于注册和监听事件。</param>
-    /// <exception cref="ArgumentNullException">当 eventBus 为 null 时抛出异常。</exception>
+    /// <param name="eventBus">负责该订阅的事件总线。</param>
     public WaitForEvent(IEventBus eventBus)
     {
-        var eventBus1 = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
-
-        // 注册事件监听器，当事件触发时调用 OnEventTriggered 方法
-        _unRegister = eventBus1.Register<TEvent>(OnEventTriggered);
+        ArgumentNullException.ThrowIfNull(eventBus);
+        _unRegister = eventBus.Register<TEvent>(OnEventTriggered);
     }
 
     /// <summary>
-    ///     获取接收到的事件数据。仅在事件触发后可用。
+    ///     获取首次收到的事件数据；未收到事件时为默认值。
     /// </summary>
-    public TEvent? EventData { get; private set; }
+    public TEvent? EventData
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _eventData;
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public bool IsDone => _done;
+
+    /// <inheritdoc />
+    public void Update(double deltaTime)
+    {
+        if (_done)
+        {
+            Dispose();
+        }
+    }
 
     /// <summary>
-    ///     释放 WaitForEvent 实例占用的资源，包括注销事件监听器。
+    ///     释放订阅并阻止后续数据写入；多次调用只注销一次。
     /// </summary>
     public void Dispose()
     {
-        if (_disposed) return;
+        IUnRegister? registration;
+        lock (_sync)
+        {
+            if (_disposed)
+            {
+                return;
+            }
 
-        // 注销事件注册并清理资源，防止内存泄漏
-        _unRegister?.UnRegister();
-        _unRegister = null;
-        _disposed = true;
+            _disposed = true;
+            registration = _unRegister;
+            _unRegister = null;
+        }
+
+        // 不在状态锁内调用外部总线，避免注销回调重入形成死锁。
+        registration?.UnRegister();
     }
 
     /// <summary>
-    ///     获取等待是否已完成。当事件触发后，此属性将返回 true。
+    ///     关闭尚未完成的等待，供超时包装器与事件回调原子地竞争结果。
     /// </summary>
-    public bool IsDone => _done;
-
-    /// <summary>
-    ///     更新方法，用于处理时间更新逻辑。通常由协程系统调用。
-    /// </summary>
-    /// <param name="deltaTime">时间增量（秒），表示自上次更新以来经过的时间。</param>
-    public void Update(double deltaTime)
+    /// <returns>若关闭时尚未收到事件，则返回 true。</returns>
+    internal bool StopIfPending()
     {
-        // 如果事件已完成且事件监听器仍存在，则注销监听器以释放资源
-        if (!_done || _unRegister == null) return;
-        _unRegister.UnRegister();
-        _unRegister = null;
+        Dispose();
+        return !_done;
     }
 
     /// <summary>
-    ///     事件触发时的回调处理方法。设置事件数据并标记等待完成。
+    ///     只发布首次事件；volatile 完成位使读取方能观察完整的数据写入。
     /// </summary>
-    /// <param name="eventData">触发事件时传递的数据。</param>
     private void OnEventTriggered(TEvent eventData)
     {
-        EventData = eventData;
-        _done = true;
+        lock (_sync)
+        {
+            if (_disposed || _done)
+            {
+                return;
+            }
+
+            _eventData = eventData;
+            _done = true;
+        }
     }
 }

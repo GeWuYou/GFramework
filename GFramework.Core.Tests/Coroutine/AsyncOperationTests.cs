@@ -2,344 +2,171 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Coroutine;
+using GFramework.Core.Coroutine;
 using GFramework.Core.Coroutine.Instructions;
-using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Coroutine;
 
 /// <summary>
-///     AsyncOperation的单元测试类
-///     测试内容包括：
-///     - 初始化状态
-///     - 完成和状态检查
-///     - 异常处理
-///     - 延续操作
-///     - GetAwaiter
-///     - IsCompleted属性
+///     验证外部完成通知复用 Task 的竞争、延续和结果传播契约。
 /// </summary>
 [TestFixture]
-public class AsyncOperationTests
+public sealed class AsyncOperationTests
 {
+    [ThreadStatic]
+    private static bool _settingResult;
+
     /// <summary>
-    ///     验证AsyncOperation初始状态为未完成
+    ///     验证完成前的 await 与完成后的 await 都能观察同一结果。
     /// </summary>
     [Test]
-    public void AsyncOperation_Should_Not_Be_Done_Initially()
+    public async Task Completion_Should_Resume_All_Awaiters_And_Support_Repeated_Await()
     {
-        var op = new AsyncOperation();
+        var operation = new AsyncOperation();
+        var first = Observe(operation);
+        var second = Observe(operation);
+        Assert.That(first.IsCompleted, Is.False);
 
-        Assert.That(op.IsDone, Is.False);
+        operation.SetCompleted();
+        await Task.WhenAll(first, second).ConfigureAwait(false);
+        await operation;
+        Assert.That(operation.Task.IsCompletedSuccessfully, Is.True);
     }
 
     /// <summary>
-    ///     验证AsyncOperation初始状态IsCompleted为false
+    ///     验证异常通过 await 和协程等待保留相同异常对象。
     /// </summary>
     [Test]
-    public void AsyncOperation_Should_Not_Be_Completed_Initially()
+    public void Failure_Should_Reach_Await_And_Coroutine_Update()
     {
-        var op = new AsyncOperation();
+        var operation = new AsyncOperation();
+        var failure = new InvalidOperationException("operation failed");
+        operation.SetException(failure);
 
-        Assert.That(op.IsCompleted, Is.False);
+        Assert.That(operation.Task.IsFaulted, Is.True);
+        Assert.That(Assert.Throws<InvalidOperationException>(() => operation.Update(0)), Is.SameAs(failure));
+        Assert.That(Assert.Throws<InvalidOperationException>(() => operation.GetAwaiter().GetResult()),
+            Is.SameAs(failure));
     }
 
     /// <summary>
-    ///     验证SetCompleted后IsDone应该为true
+    ///     验证取消保持 Task 取消状态，并在协程等待中传播。
     /// </summary>
     [Test]
-    public void SetCompleted_Should_Set_IsDone_To_True()
+    public void Cancellation_Should_Be_Observable_By_Both_Waiting_Models()
     {
-        var op = new AsyncOperation();
+        using var source = new CancellationTokenSource();
+        source.Cancel();
+        var operation = new AsyncOperation();
+        operation.SetCanceled(source.Token);
 
-        op.SetCompleted();
-
-        Assert.That(op.IsDone, Is.True);
+        Assert.That(operation.Task.IsCanceled, Is.True);
+        Assert.Catch<OperationCanceledException>(() => operation.Update(0));
     }
 
     /// <summary>
-    ///     验证SetCompleted后IsCompleted应该为true
+    ///     验证竞争完成只有一个赢家，重复请求不抛错或覆盖结果。
     /// </summary>
     [Test]
-    public void SetCompleted_Should_Set_IsCompleted_To_True()
+    public async Task Concurrent_Termination_Should_Preserve_One_Result()
     {
-        var op = new AsyncOperation();
+        var operation = new AsyncOperation();
+        var tasks = Enumerable.Range(0, 64).Select(index => Task.Run(() =>
+        {
+            if (index % 3 == 0)
+            {
+                operation.SetCompleted();
+            }
+            else if (index % 3 == 1)
+            {
+                operation.SetException(new InvalidOperationException("competing result"));
+            }
+            else
+            {
+                operation.SetCanceled();
+            }
+        }));
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
-        op.SetCompleted();
+        Assert.That(operation.IsCompleted, Is.True);
+        if (operation.Task.IsFaulted)
+        {
+            _ = operation.Task.Exception;
+        }
 
-        Assert.That(op.IsCompleted, Is.True);
+        var status = operation.Task.Status;
+        operation.SetCompleted();
+        operation.SetException(new InvalidOperationException("late result"));
+        operation.SetCanceled();
+        Assert.That(operation.Task.Status, Is.EqualTo(status));
     }
 
     /// <summary>
-    ///     验证SetCompleted只能被调用一次
+    ///     验证请求同步延续也不能在设置结果的调用栈中执行。
     /// </summary>
     [Test]
-    public void SetCompleted_Should_Be_Idempotent()
+    public async Task Completion_Should_Not_Inline_Continuations()
     {
-        var op = new AsyncOperation();
+        var operation = new AsyncOperation();
+        var continuation = operation.Task.ContinueWith(
+            _ => _settingResult,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
 
-        op.SetCompleted();
-        op.SetCompleted();
-        op.SetCompleted();
+        _settingResult = true;
+        try
+        {
+            operation.SetCompleted();
+        }
+        finally
+        {
+            _settingResult = false;
+        }
 
-        Assert.That(op.IsDone, Is.True);
+        Assert.That(await continuation.ConfigureAwait(false), Is.False);
     }
 
     /// <summary>
-    ///     验证SetException后IsDone应该为true
+    ///     验证调度器直接等待失败操作时记录 Faulted，不执行成功路径。
     /// </summary>
     [Test]
-    public void SetException_Should_Set_IsDone_To_True()
+    public void Scheduler_Should_Observe_Operation_Failure()
     {
-        var op = new AsyncOperation();
+        var operation = new AsyncOperation();
+        var scheduler = new CoroutineScheduler(new FakeTimeSource());
+        var continued = false;
 
-        op.SetException(new InvalidOperationException("Test exception"));
+        IEnumerator<IYieldInstruction> Routine()
+        {
+            yield return operation;
+            continued = true;
+        }
 
-        Assert.That(op.IsDone, Is.True);
+        var handle = scheduler.Run(Routine());
+        operation.SetException(new InvalidOperationException("failure"));
+        scheduler.Update();
+
+        Assert.That(continued, Is.False);
+        Assert.That(scheduler.TryGetCompletionStatus(handle, out var status), Is.True);
+        Assert.That(status, Is.EqualTo(CoroutineCompletionStatus.Faulted));
     }
 
     /// <summary>
-    ///     验证SetException后Task应该包含异常
+    ///     验证传入空异常会直接失败，不影响后续正常完成。
     /// </summary>
     [Test]
-    public void SetException_Should_Set_Exception_On_Task()
+    public void Null_Failure_Should_Not_Terminate_Operation()
     {
-        var op = new AsyncOperation();
-        var expectedException = new InvalidOperationException("Test exception");
-
-        op.SetException(expectedException);
-
-        Assert.That(() => op.Task, Throws.InstanceOf<InvalidOperationException>());
+        var operation = new AsyncOperation();
+        Assert.Throws<ArgumentNullException>(() => operation.SetException(null!));
+        Assert.That(operation.IsDone, Is.False);
+        operation.SetCompleted();
+        Assert.That(operation.IsDone, Is.True);
     }
 
-    /// <summary>
-    ///     验证OnCompleted应该在已完成时立即执行延续
-    /// </summary>
-    [Test]
-    public void OnCompleted_Should_Execute_Immediately_When_Already_Completed()
+    private static async Task Observe(AsyncOperation operation)
     {
-        var op = new AsyncOperation();
-        var continuationCalled = false;
-
-        op.SetCompleted();
-        op.OnCompleted(() => continuationCalled = true);
-
-        Assert.That(continuationCalled, Is.True);
-    }
-
-    /// <summary>
-    ///     验证OnCompleted应该在未完成时不立即执行延续
-    /// </summary>
-    [Test]
-    public void OnCompleted_Should_Not_Execute_Immediately_When_Not_Completed()
-    {
-        var op = new AsyncOperation();
-        var continuationCalled = false;
-
-        op.OnCompleted(() => continuationCalled = true);
-
-        Assert.That(continuationCalled, Is.False);
-    }
-
-    /// <summary>
-    ///     验证延续应该在SetCompleted后被调用
-    /// </summary>
-    [Test]
-    public void Continuation_Should_Be_Called_After_SetCompleted()
-    {
-        var op = new AsyncOperation();
-        var continuationCalled = false;
-
-        op.OnCompleted(() => continuationCalled = true);
-        op.SetCompleted();
-
-        Assert.That(continuationCalled, Is.True);
-    }
-
-    /// <summary>
-    ///     验证多个延续应该都能被调用
-    /// </summary>
-    [Test]
-    public void Multiple_Continuations_Should_All_Be_Called()
-    {
-        var op = new AsyncOperation();
-        var callCount = 0;
-
-        op.OnCompleted(() => callCount++);
-        op.OnCompleted(() => callCount++);
-        op.OnCompleted(() => callCount++);
-        op.SetCompleted();
-
-        Assert.That(callCount, Is.EqualTo(3));
-    }
-
-    /// <summary>
-    ///     验证延续应该在SetException后被调用
-    /// </summary>
-    [Test]
-    public void Continuation_Should_Be_Called_After_SetException()
-    {
-        var op = new AsyncOperation();
-        var continuationCalled = false;
-
-        op.OnCompleted(() => continuationCalled = true);
-        op.SetException(new InvalidOperationException("Test"));
-
-        Assert.That(continuationCalled, Is.True);
-    }
-
-    /// <summary>
-    ///     验证SetCompleted后设置的延续也应该被调用
-    /// </summary>
-    [Test]
-    public void Continuation_Registered_After_Completed_Should_Be_Called()
-    {
-        var op = new AsyncOperation();
-        var firstCalled = false;
-        var secondCalled = false;
-
-        op.OnCompleted(() => firstCalled = true);
-        op.SetCompleted();
-        op.OnCompleted(() => secondCalled = true);
-
-        Assert.That(firstCalled, Is.True);
-        Assert.That(secondCalled, Is.True);
-    }
-
-    /// <summary>
-    ///     验证GetAwaiter应该返回自身
-    /// </summary>
-    [Test]
-    public void GetAwaiter_Should_Return_Self()
-    {
-        var op = new AsyncOperation();
-
-        var awaiter = op.GetAwaiter();
-
-        Assert.That(awaiter, Is.SameAs(op));
-    }
-
-    /// <summary>
-    ///     验证Update方法不应该改变状态
-    /// </summary>
-    [Test]
-    public void Update_Should_Not_Change_State()
-    {
-        var op = new AsyncOperation();
-
-        op.Update(0.1);
-
-        Assert.That(op.IsDone, Is.False);
-    }
-
-    /// <summary>
-    ///     验证AsyncOperation实现IYieldInstruction接口
-    /// </summary>
-    [Test]
-    public void AsyncOperation_Should_Implement_IYieldInstruction()
-    {
-        var op = new AsyncOperation();
-
-        Assert.That(op, Is.InstanceOf<IYieldInstruction>());
-    }
-
-    /// <summary>
-    ///     验证Task属性应该返回有效的Task
-    /// </summary>
-    [Test]
-    public void Task_Property_Should_Return_Valid_Task()
-    {
-        var op = new AsyncOperation();
-
-        Assert.That(op.Task, Is.Not.Null);
-    }
-
-    /// <summary>
-    ///     验证SetCompleted后Task应该完成
-    /// </summary>
-    [Test]
-    public async Task Task_Should_Complete_After_SetCompleted()
-    {
-        var op = new AsyncOperation();
-
-        op.SetCompleted();
-
-        await op.Task;
-
-        Assert.That(op.Task.IsCompleted, Is.True);
-    }
-
-    /// <summary>
-    ///     验证SetException后Task应该失败
-    /// </summary>
-    [Test]
-    public void Task_Should_Fault_After_SetException()
-    {
-        var op = new AsyncOperation();
-
-        op.SetException(new InvalidOperationException("Test"));
-
-        Assert.That(op.Task.IsFaulted, Is.True);
-    }
-
-    /// <summary>
-    ///     验证SetCompleted只能设置一次
-    /// </summary>
-    [Test]
-    public void SetCompleted_Should_Only_Set_Once()
-    {
-        var op = new AsyncOperation();
-        var firstCallCompleted = false;
-        var secondCallCompleted = false;
-
-        op.OnCompleted(() => firstCallCompleted = true);
-        op.SetCompleted();
-
-        op.OnCompleted(() => secondCallCompleted = true);
-        op.SetCompleted();
-
-        Assert.That(firstCallCompleted, Is.True);
-        Assert.That(secondCallCompleted, Is.True);
-    }
-
-    /// <summary>
-    ///     验证SetException只能在未完成时设置
-    /// </summary>
-    [Test]
-    public void SetException_Should_Not_Work_After_SetCompleted()
-    {
-        var op = new AsyncOperation();
-
-        op.SetCompleted();
-        op.SetException(new InvalidOperationException("Test"));
-
-        Assert.That(op.Task.IsCompletedSuccessfully, Is.True);
-        Assert.That(op.Task.IsFaulted, Is.False);
-    }
-
-    /// <summary>
-    ///     验证SetCompleted不能在SetException后设置
-    /// </summary>
-    [Test]
-    public void SetCompleted_Should_Not_Work_After_SetException()
-    {
-        var op = new AsyncOperation();
-
-        op.SetException(new InvalidOperationException("Test"));
-        op.SetCompleted();
-
-        Assert.That(op.Task.IsFaulted, Is.True);
-        Assert.That(op.Task.IsCompletedSuccessfully, Is.False);
-    }
-
-    /// <summary>
-    ///     验证延续抛出的异常应该被捕获
-    /// </summary>
-    [Test]
-    public void Continuation_Exception_Should_Be_Caught()
-    {
-        var op = new AsyncOperation();
-
-        op.OnCompleted(() => throw new InvalidOperationException("Test exception"));
-
-        Assert.DoesNotThrow(() => op.SetCompleted());
+        await operation;
     }
 }

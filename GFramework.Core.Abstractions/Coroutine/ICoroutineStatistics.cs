@@ -24,6 +24,18 @@ public interface ICoroutineStatistics
     /// </summary>
     long TotalFailed { get; }
 
+    /// <summary>取消结束的协程总数。</summary>
+    long TotalCancelled { get; }
+
+    /// <summary>完成协程的平均存活时间，包含等待和暂停，单位毫秒。</summary>
+    double AverageLifetimeMs { get; }
+
+    /// <summary>完成协程的最大存活时间，单位毫秒。</summary>
+    double MaxLifetimeMs { get; }
+
+    /// <summary>最近一次阶段推进的实际调度耗时，单位毫秒。</summary>
+    double LastUpdateElapsedMs { get; }
+
     /// <summary>
     ///     获取当前活跃协程数量
     /// </summary>

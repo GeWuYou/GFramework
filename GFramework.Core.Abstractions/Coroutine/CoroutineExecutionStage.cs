@@ -7,8 +7,8 @@ namespace GFramework.Core.Abstractions.Coroutine;
 ///     表示协程调度器当前所处的执行阶段。
 /// </summary>
 /// <remarks>
-///     某些等待指令具有阶段语义，例如 <c>WaitForFixedUpdate</c> 和 <c>WaitForEndOfFrame</c>。
-///     宿主应为这些语义提供匹配的调度器阶段，否则这类等待不会自然完成。
+///     SwitchTo 指令显式切换阶段；切换后留在目标阶段，直至再次切换。
+///     宿主须声明支持的阶段，并在对应的主线程回调中推进。
 /// </remarks>
 public enum CoroutineExecutionStage
 {
@@ -25,8 +25,7 @@ public enum CoroutineExecutionStage
     FixedUpdate,
 
     /// <summary>
-    ///     帧结束阶段。
-    ///     仅与帧尾或延迟执行相关的等待指令会在该阶段完成。
+    ///     宿主延迟调用阶段，不承诺渲染已经完成。
     /// </summary>
-    EndOfFrame
+    Deferred
 }

@@ -593,199 +593,73 @@ this.RegisterEvent&lt;DamageEvent&gt;(e =>
 
 ### 协程不执行
 
-**问题**：启动协程后没有任何效果。
+Core 宿主必须调用 `CoroutineScheduler.Run(...)`，并持续推进 `Update()` 或指定阶段的 `Update(...)`。只创建枚举器或等待对象不会启动流程。协程返回 `IEnumerator<IYieldInstruction>`，等待必须写成 `yield return`。
 
-**原因**：
-
-- 未正确启动协程调度器
-- 协程方法没有返回 `IEnumerator`
-- 忘记调用 `yield return`
-
-**解决方案**：
+Godot 节点优先使用节点归属入口，让 `Timing` 驱动和清理：
 
 ```csharp
-// ❌ 错误：未启动协程调度器
+using System.Collections.Generic;
+using GFramework.Core.Abstractions.Coroutine;
+using GFramework.Core.Coroutine.Instructions;
+using GFramework.Godot.Coroutine;
+using Godot;
+
 public partial class GameRoot : Node
 {
     public override void _Ready()
     {
-        StartCoroutine(MyCoroutine()); // 不会执行
+        this.RunCoroutine(MyCoroutine());
     }
 
-    private IEnumerator MyCoroutine()
+    private IEnumerator<IYieldInstruction> MyCoroutine()
     {
-        yield return new WaitForSeconds(1);
-    }
-}
-
-// ✅ 正确：在 Godot 中使用协程
-public partial class GameRoot : Node
-{
-    private CoroutineScheduler _scheduler;
-
-    public override void _Ready()
-    {
-        _scheduler = new CoroutineScheduler(new GodotTimeSource(this));
-        _scheduler.StartCoroutine(MyCoroutine());
-    }
-
-    public override void _Process(double delta)
-    {
-        _scheduler?.Update((float)delta);
-    }
-
-    private IEnumerator MyCoroutine()
-    {
-        yield return new WaitForSeconds(1);
+        yield return new Delay(1);
         GD.Print("Coroutine executed!");
     }
-}
-
-// ❌ 错误：方法签名错误
-private void MyCoroutine() // 应该返回 IEnumerator
-{
-    // 不会作为协程执行
-}
-
-// ✅ 正确：返回 IEnumerator
-private IEnumerator MyCoroutine()
-{
-    yield return new WaitForSeconds(1);
-}
-
-// ❌ 错误：忘记 yield return
-private IEnumerator MyCoroutine()
-{
-    new WaitForSeconds(1); // 缺少 yield return
-    GD.Print("This executes immediately!");
-}
-
-// ✅ 正确：使用 yield return
-private IEnumerator MyCoroutine()
-{
-    yield return new WaitForSeconds(1);
-    GD.Print("This executes after 1 second!");
 }
 ```
 
 ### 协程死锁
 
-**问题**：协程永远不会完成。
+先通过 `TryGetSnapshot` 查看当前阶段、等待指令和暂停状态。条件一直为假、所属节点或场景暂停、宿主没有继续推进目标阶段，都可能使协程保持等待。自等待和循环句柄依赖会明确失败；未提供的阶段也会失败，不会静默等待。
 
-**原因**：
-
-- 等待条件永远不满足
-- 循环等待
-- 等待已停止的协程
-
-**解决方案**：
+对外部条件使用有界等待，并检查结果：
 
 ```csharp
-// ❌ 错误：等待条件永远不满足
-private IEnumerator WaitForever()
+var wait = new WaitUntilOrTimeout(() => connected, timeoutSeconds: 5);
+yield return wait;
+if (wait.IsTimedOut && !wait.ConditionMet)
 {
-    yield return new WaitUntil(() => false); // 永远等待
-}
-
-// ✅ 正确：添加超时机制
-private IEnumerator WaitWithTimeout()
-{
-    float timeout = 5f;
-    float elapsed = 0f;
-
-    while (!condition && elapsed &lt; timeout)
-    {
-        elapsed += Time.DeltaTime;
-        yield return null;
-    }
-
-    if (elapsed &gt;= timeout)
-    {
-        GD.PrintErr("Timeout!");
-    }
-}
-
-// ✅ 使用 WaitForEventWithTimeout
-private IEnumerator WaitForEventSafely()
-{
-    yield return new WaitForEventWithTimeout&lt;GameEvent&gt;(
-        this.GetArchitecture(),
-        timeout: 5f
-    );
-}
-
-// ❌ 错误：循环等待
-private IEnumerator CoroutineA()
-{
-    yield return StartCoroutine(CoroutineB());
-}
-
-private IEnumerator CoroutineB()
-{
-    yield return StartCoroutine(CoroutineA()); // 循环等待
-}
-
-// ✅ 正确：避免循环依赖
-private IEnumerator CoroutineA()
-{
-    yield return new WaitForSeconds(1);
-    this.SendEvent(new EventA());
-}
-
-private IEnumerator CoroutineB()
-{
-    yield return new WaitForEvent&lt;EventA&gt;(this.GetArchitecture());
-    // 继续执行
+    // 显示超时或执行降级流程。
 }
 ```
 
+阶段切换使用 `SwitchTo`；切换后会保持目标阶段，直到再次切换。Core 宿主需要声明并实际推进支持的阶段。完整规则见[Core 协程系统](/zh-CN/core/coroutine.md)。
+
 ### 协程提前停止
 
-**问题**：协程在完成前被意外停止。
-
-**解决方案**：
+检查节点是否退树、外部令牌是否取消，以及所属流程是否发生子任务失败。FailFast 流程会在子任务失败时终止父任务及兄弟任务；Supervisor 容器隔离独立任务失败。取消不作为普通故障记录。
 
 ```csharp
-// ✅ 保存协程句柄
-private CoroutineHandle _coroutineHandle;
+var handle = scheduler.Run(LongRunningCoroutine());
+var completion = scheduler.WaitForResultAsync(handle);
+scheduler.Kill(handle);
+var result = await completion;
+Console.WriteLine(result.Status);
+Console.WriteLine(result.Exception);
+```
 
-public void StartMyCoroutine()
-{
-    _coroutineHandle = _scheduler.StartCoroutine(MyCoroutine());
-}
+需要释放的业务资源放在 `try/finally` 或 `using` 中。调度器终结协程时会释放等待指令与枚举器；自定义组合器也必须释放自己拥有的内部枚举器。
 
-public void StopMyCoroutine()
-{
-    if (_coroutineHandle != null && _coroutineHandle.IsRunning)
-    {
-        _coroutineHandle.Stop();
-    }
-}
-
-// ✅ 检查协程状态
-private IEnumerator MonitorCoroutine()
-{
-    var handle = _scheduler.StartCoroutine(LongRunningCoroutine());
-
-    while (handle.IsRunning)
-    {
-        yield return null;
-    }
-
-    GD.Print($"Coroutine completed with state: {handle.State}");
-}
-
-// ✅ 使用 try-finally 确保清理
-private IEnumerator CoroutineWithCleanup()
+```csharp
+private IEnumerator<IYieldInstruction> CoroutineWithCleanup()
 {
     try
     {
-        yield return new WaitForSeconds(1);
-        // 执行操作
+        yield return new Delay(1);
     }
     finally
     {
-        // 清理资源
         Cleanup();
     }
 }

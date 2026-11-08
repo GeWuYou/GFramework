@@ -54,6 +54,16 @@ CQRS runtime 使用标准服务解析：`services.AddCqrsRuntime()` 创建单例
 日志家族已改用 Microsoft.Extensions.Logging 契约：自有 `ILogger`/`ILoggerFactoryProvider`、`LoggerFactoryResolver` 与 `GodotLog.UseAsDefaultProvider()` 已移除，Core 输出引擎（appender/formatter/filter）经 `AppenderLoggerProvider` 继续使用。其他通用工具子系统保留已有实现。原生宿主、编辑工具、Native AOT 和性能按各自采用目标验证。
 
 
+## 协程调度与流程所有权
+
+[Core 调度器](../../GFramework.Core/Coroutine/CoroutineScheduler.cs)在单一驱动线程管理多阶段活跃队列。槽位按并发峰值复用，句柄包含调度器身份及代数；遍历快照保留句柄身份，避免回调清理或启动任务后误推进复用槽位。热推进复用存储，Task 完成源仅在调用方请求观察时创建，终结历史有固定上限。
+
+[作用域](../../GFramework.Core/Coroutine/CoroutineScope.cs)区分独立容器与父子流程：根容器及 Godot 节点默认 Supervisor，单次业务流程默认 FailFast。上下文显式启动拥有的子任务，父任务完成前等待子任务收尾；取消与暂停沿所有权向下传播。Join/Await 仅建立等待依赖，不转移目标所有权。资源清理、结果发布与观察回调统一收尾，清理错误不会跳过其余资源。
+
+[Godot Timing](../../GFramework.Godot/Coroutine/Timing.cs)使用一个调度器驱动 Process、Physics 与 Deferred；场景暂停策略不随阶段切换改变，节点退树关闭其全部作用域。Deferred 只表示引擎延迟调用阶段，不是渲染完成信号。通用层不依赖原生节点，其他引擎通过阶段推进与时间增量接入。
+
+[性能样例](../../Samples/CoroutinePerformance/README.md)提供不同活跃量与固定峰值创建销毁的可重复测量。统计中的执行耗时与存活时间分开，千级空业务调度预算不等于具体游戏、设备或渲染性能保证。
+
 ## 游戏服务与宿主边界
 
 [UiService](../../GFramework.Game/UI/UiService.cs)、[SceneRouter](../../GFramework.Game/Scene/SceneRouter.cs)、[设置模型](../../GFramework.Game/Setting/SettingsModel.cs)、[数据仓库](../../GFramework.Game/Data/DataRepository.cs)、[存档仓库](../../GFramework.Game/Data/SaveRepository.cs) 和 [暂停管理器](../../GFramework.Core/Pause/PauseStackManager.cs) 通过构造依赖独立采用。对应契约不继承 Model／System／Utility；普通服务不解析全局上下文。

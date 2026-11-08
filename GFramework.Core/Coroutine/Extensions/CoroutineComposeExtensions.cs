@@ -1,59 +1,42 @@
-﻿// Copyright (c) 2026 GeWuYou
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-// 
-//     http://www.apache.org/licenses/LICENSE-2.0
-// 
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Coroutine;
 
 namespace GFramework.Core.Coroutine.Extensions;
 
 /// <summary>
-///     提供协程组合扩展方法的静态类
+///     组合协程，并将内部枚举器的释放责任转交给组合结果。
 /// </summary>
 public static class CoroutineComposeExtensions
 {
     /// <summary>
-    ///     将一个协程枚举器与一个动作组合，先执行完第一个协程，然后执行指定的动作
+    ///     等待首个协程自然结束后执行动作；取消或失败时不执行动作。
     /// </summary>
-    /// <param name="first">第一个协程枚举器</param>
-    /// <param name="next">在第一个协程完成后要执行的动作</param>
-    /// <returns>组合后的协程枚举器</returns>
+    /// <param name="first">交由结果管理的枚举器。</param>
+    /// <param name="next">首个协程成功结束后执行的动作。</param>
+    /// <returns>拥有内部枚举器的组合结果。</returns>
     public static IEnumerator<IYieldInstruction> Then(
         this IEnumerator<IYieldInstruction> first,
         Action next)
     {
-        // 执行第一个协程的所有步骤
-        while (first.MoveNext())
-            yield return first.Current;
-
-        // 第一个协程完成后执行指定动作
-        next();
+        ArgumentNullException.ThrowIfNull(first);
+        ArgumentNullException.ThrowIfNull(next);
+        return new OwnedCoroutineEnumerator(new[] { first }, next);
     }
 
     /// <summary>
-    ///     将两个协程枚举器顺序组合，先执行完第一个协程，再执行第二个协程
+    ///     顺序执行两个协程；提前停止时也释放尚未开始的后续枚举器。
     /// </summary>
-    /// <param name="first">第一个协程枚举器</param>
-    /// <param name="second">第二个协程枚举器</param>
-    /// <returns>组合后的协程枚举器</returns>
+    /// <param name="first">首个枚举器。</param>
+    /// <param name="second">首个成功结束后才推进的枚举器。</param>
+    /// <returns>拥有两个内部枚举器的组合结果。</returns>
     public static IEnumerator<IYieldInstruction> Then(
         this IEnumerator<IYieldInstruction> first,
         IEnumerator<IYieldInstruction> second)
     {
-        // 执行第一个协程的所有步骤
-        while (first.MoveNext())
-            yield return first.Current;
-
-        // 第一个协程完成后执行第二个协程的所有步骤
-        while (second.MoveNext())
-            yield return second.Current;
+        ArgumentNullException.ThrowIfNull(first);
+        ArgumentNullException.ThrowIfNull(second);
+        return new OwnedCoroutineEnumerator(new[] { first, second });
     }
 }

@@ -26,7 +26,7 @@
 | `Architectures/` `Lifecycle/` `Registries/` | `IArchitecture`、上下文、模块、服务模块、阶段监听、注册表基类与生命周期契约 |
 | `Bases/` `Controller/` `Model/` `Systems/` `Utility/` `Rule/` | 组件角色接口、优先级 / key 值对象、上下文感知约束与扩展边界 |
 | `Events/` `Property/` `State/` `StateManagement/` | 事件总线、解绑对象、可绑定属性、状态机、Store / reducer / middleware 契约 |
-| `Coroutine/` `Time/` `Pause/` `Concurrency/` | 协程状态、时间源、暂停栈、键控异步锁和统计对象 |
+| `Coroutine/` `Time/` `Pause/` `Concurrency/` | 协程阶段、失败策略、状态、时间源、暂停栈、键控异步锁和统计对象 |
 | `Resource/` `Pool/` `Logging/` `Localization/` | 资源句柄、对象池、appender / filter / formatter 日志输出契约、本地化表与格式化契约 |
 | `Configuration/` `Environment/` | 配置管理器、环境对象与运行时环境访问契约 |
 | `Data/` `Serializer/` `Storage/` `Versioning/` | 数据装载、序列化、存储与版本化契约 |
@@ -54,6 +54,8 @@ IAsyncInitializable.InitializeAsync 接受 CancellationToken；IArchitecture 同
 IContextAware 要求显式绑定实例上下文；未绑定时不回退到全局状态。IIocContainer 的类型/工厂注册由正式 provider 拥有，实例注册保持外部所有权。generic RegisterPlurality 对可释放类型拒绝隐式 owning aliases，调用方应使用单一规范拥有绑定或外部实例。
 
 `IArchitectureContext` 只承载组件获取、事件系统与环境访问。request / notification / stream 的分发契约位于 `GFramework.Cqrs.Abstractions`（`ICqrsRuntime` 等），按需安装，不在本包的契约面内。
+
+协程宿主声明实际支持的 `Update`、`FixedUpdate`、`Deferred` 阶段；运行时通过 `SwitchTo` 切换阶段。`CoroutineFailurePolicy` 区分一个操作内的 FailFast 与独立任务容器的 Supervisor。`ICoroutineStatistics` 将调度执行耗时与包含等待的存活时间分开，具体调度器、作用域和结果类型由 Core 提供。
 
 ## 采用建议
 

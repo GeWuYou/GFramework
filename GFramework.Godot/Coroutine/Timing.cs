@@ -1,909 +1,440 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Reflection;
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Coroutine;
 using GFramework.Core.Coroutine.Instructions;
-using GFramework.Godot.Extensions;
+using GFramework.Godot.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Godot.Coroutine;
 
-/// <summary>
-///     Godot 协程管理器，负责在不同的引擎更新阶段驱动 Core 协程调度器。
-/// </summary>
+/// <summary>Drives one engine-neutral scheduler from Godot's process, physics and deferred callbacks.</summary>
 /// <remarks>
-///     该类型为 Godot 层协程功能的统一入口。
-///     它不仅提供静态运行 API，也负责把 Godot 的 Process、Physics 与 Deferred 生命周期映射为
-///     <see cref="CoroutineExecutionStage" />，以保证阶段型等待指令的语义真实有效。
+/// Control APIs belong to the Godot main thread. A node's Supervisor scope owns its entire task tree;
+/// stage changes preserve ownership and pause policy. Deferred denotes idle dispatch, not render completion.
 /// </remarks>
 public partial class Timing : Node
 {
-    private const string NotInitializedMessage = "Timing not yet initialized (_Ready not executed)";
-
-    private static readonly Timing?[] ActiveInstances = new Timing?[16];
+    private static readonly Dictionary<long, WeakReference<Timing>> ActiveInstances = new();
+    private static readonly CoroutineExecutionStage[] SupportedStages =
+        [CoroutineExecutionStage.Update, CoroutineExecutionStage.FixedUpdate, CoroutineExecutionStage.Deferred];
     private static Timing? _instance;
-    private Dictionary<CoroutineHandle, OwnedCoroutineRegistration> _ownedCoroutineRegistrations = new();
-    private Dictionary<ulong, HashSet<CoroutineHandle>> _ownedCoroutinesByNode = new();
-    private GodotTimeSource? _deferredRealtimeTimeSource;
-    private CoroutineScheduler? _deferredScheduler;
-    private GodotTimeSource? _deferredTimeSource;
-    private ushort _frameCounter;
-    private byte _instanceId = 1;
-    private GodotTimeSource? _physicsRealtimeTimeSource;
-    private CoroutineScheduler? _physicsScheduler;
-    private GodotTimeSource? _physicsTimeSource;
-    private GodotTimeSource? _processIgnorePauseRealtimeTimeSource;
-    private CoroutineScheduler? _processIgnorePauseScheduler;
-    private GodotTimeSource? _processIgnorePauseTimeSource;
-    private GodotTimeSource? _processRealtimeTimeSource;
-    private CoroutineScheduler? _processScheduler;
-    private GodotTimeSource? _processTimeSource;
+    private CoroutineScheduler? _scheduler;
+    private GodotTimeSource? _processRealtime;
+    private GodotTimeSource? _physicsRealtime;
+    private GodotTimeSource? _deferredRealtime;
+    private double _processDelta;
+    private bool _deferredPending;
+    private bool _isStopping;
 
-    /// <summary>
-    ///     获取 Process 调度器。
-    /// </summary>
-    private CoroutineScheduler ProcessScheduler =>
-        _processScheduler ?? throw new InvalidOperationException(NotInitializedMessage);
+    /// <summary>Gets managed state only while the host accepts work.</summary>
+    private CoroutineScheduler Scheduler => !_isStopping && _scheduler != null
+        ? _scheduler
+        : throw new InvalidOperationException("Timing is not initialized or has left the scene tree.");
 
-    /// <summary>
-    ///     获取忽略暂停的 Process 调度器。
-    /// </summary>
-    private CoroutineScheduler ProcessIgnorePauseScheduler =>
-        _processIgnorePauseScheduler ?? throw new InvalidOperationException(NotInitializedMessage);
-
-    /// <summary>
-    ///     获取 Physics 调度器。
-    /// </summary>
-    private CoroutineScheduler PhysicsScheduler =>
-        _physicsScheduler ?? throw new InvalidOperationException(NotInitializedMessage);
-
-    /// <summary>
-    ///     获取 Deferred 调度器。
-    /// </summary>
-    private CoroutineScheduler DeferredScheduler =>
-        _deferredScheduler ?? throw new InvalidOperationException(NotInitializedMessage);
-
-    #region 单例
-
-    /// <summary>
-    ///     获取 Timing 单例实例。
-    ///     如果实例不存在，则会自动创建并挂载到场景树根节点。
-    /// </summary>
+    /// <summary>Gets a default host initialized before deferred mounting, so its first caller can start work immediately.</summary>
     public static Timing Instance
     {
         get
         {
-            if (_instance != null)
-            {
+            if (_instance != null && IsInstanceValid(_instance) && !_instance.IsQueuedForDeletion())
                 return _instance;
+            if (Engine.GetMainLoop() is not SceneTree tree)
+                throw new InvalidOperationException("Timing requires an active Godot SceneTree.");
+            var existing = tree.Root.GetNodeOrNull<Timing>(nameof(Timing));
+            if (existing != null && !existing.IsQueuedForDeletion())
+            {
+                existing.InitializeScheduler();
+                _instance = existing;
+                return existing;
             }
 
-            var tree = (SceneTree)Engine.GetMainLoop();
-            _instance = tree.Root.GetNodeOrNull<Timing>(nameof(Timing));
-            if (_instance != null)
-            {
-                return _instance;
-            }
-
-            _instance = new Timing
-            {
-                Name = nameof(Timing)
-            };
-            tree.Root.WaitUntilReady(() => tree.Root.AddChild(_instance));
-            return _instance;
+            var timing = new Timing { Name = nameof(Timing) };
+            timing.InitializeScheduler();
+            _instance = timing;
+            // Root may currently be adding children. Mount later without exposing uninitialized managed state.
+            Callable.From(() => MountDefaultHost(tree.Root, timing)).CallDeferred();
+            return timing;
         }
     }
 
-    #endregion
+    /// <summary>Gets normal Update task count, including paused and waiting tasks.</summary>
+    public int ProcessCoroutines => CountCoroutines(CoroutineExecutionStage.Update, false);
 
-    private sealed class OwnedCoroutineRegistration
+    /// <summary>Gets Update task count for tasks that ignore scene pause.</summary>
+    public int ProcessIgnorePauseCoroutines => CountCoroutines(CoroutineExecutionStage.Update, true);
+
+    /// <summary>Gets tasks currently assigned to physics, regardless of pause policy.</summary>
+    public int PhysicsCoroutines => CountCoroutines(CoroutineExecutionStage.FixedUpdate);
+
+    /// <summary>Gets tasks currently assigned to deferred dispatch.</summary>
+    public int DeferredCoroutines => CountCoroutines(CoroutineExecutionStage.Deferred);
+
+    /// <summary>Initializes each native entry, including re-entry after an earlier tree exit.</summary>
+    public override void _EnterTree()
     {
-        /// <summary>
-        ///     创建一个节点归属协程注册记录。
-        /// </summary>
-        /// <param name="owner">归属节点。</param>
-        /// <param name="ownerId">归属节点的 Godot 实例 ID。</param>
-        /// <param name="handle">被管理的协程句柄。</param>
-        /// <param name="killCallback">节点退出场景树时触发的终止逻辑。</param>
-        public OwnedCoroutineRegistration(Node owner, ulong ownerId, CoroutineHandle handle,
-            Action<CoroutineHandle> killCallback)
-        {
-            Handle = handle;
-            Owner = new WeakReference<Node>(owner);
-            OwnerId = ownerId;
-            OnOwnerTreeExiting = () => killCallback(handle);
-        }
-
-        /// <summary>
-        ///     获取协程句柄。
-        /// </summary>
-        public CoroutineHandle Handle { get; }
-
-        /// <summary>
-        ///     获取节点弱引用。
-        /// </summary>
-        public WeakReference<Node> Owner { get; }
-
-        /// <summary>
-        ///     获取归属节点 ID。
-        /// </summary>
-        public ulong OwnerId { get; }
-
-        /// <summary>
-        ///     获取节点退出场景树时使用的清理回调。
-        /// </summary>
-        public Action OnOwnerTreeExiting { get; }
-    }
-
-    #region Debug 信息
-
-    /// <summary>
-    ///     获取 Process 段活跃协程数量。
-    /// </summary>
-    public int ProcessCoroutines => _processScheduler?.ActiveCoroutineCount ?? 0;
-
-    /// <summary>
-    ///     获取忽略暂停的 Process 段活跃协程数量。
-    /// </summary>
-    public int ProcessIgnorePauseCoroutines => _processIgnorePauseScheduler?.ActiveCoroutineCount ?? 0;
-
-    /// <summary>
-    ///     获取 Physics 段活跃协程数量。
-    /// </summary>
-    public int PhysicsCoroutines => _physicsScheduler?.ActiveCoroutineCount ?? 0;
-
-    /// <summary>
-    ///     获取 Deferred 段活跃协程数量。
-    /// </summary>
-    public int DeferredCoroutines => _deferredScheduler?.ActiveCoroutineCount ?? 0;
-
-    #endregion
-
-    #region 生命周期
-
-    /// <summary>
-    ///     节点就绪时初始化所有调度器与生命周期桥接。
-    /// </summary>
-    public override void _Ready()
-    {
+        _isStopping = false;
         ProcessPriority = -1;
+        ProcessPhysicsPriority = -1;
         ProcessMode = ProcessModeEnum.Always;
-
-        RegisterInstance();
-        TrySetPhysicsPriority(-1);
-        InitializeSchedulers();
+        InitializeScheduler();
     }
 
-    /// <summary>
-    ///     节点退出场景树时清理实例与归属关系。
-    /// </summary>
-    public override void _ExitTree()
-    {
-        DetachAllOwnedRegistrations();
-        ClearOnInstance();
+    /// <summary>Idempotently initializes manually mounted hosts.</summary>
+    public override void _Ready() => InitializeScheduler();
 
-        if (_instanceId < ActiveInstances.Length)
-        {
-            ActiveInstances[_instanceId] = null;
-        }
+    /// <summary>Cancels scopes and removes the scheduler identity on native tree exit.</summary>
+    public override void _ExitTree() => DisposeScheduler();
 
-        CleanupInstanceIfNecessary(this);
-    }
-
-    /// <summary>
-    ///     仅在当前实例仍持有共享单例引用时清理它，避免多宿主场景误清其他实例。
-    /// </summary>
-    /// <param name="instance">正在退出生命周期的实例。</param>
-    private static void CleanupInstanceIfNecessary(Timing instance)
-    {
-        if (ReferenceEquals(_instance, instance))
-        {
-            _instance = null;
-        }
-    }
-
-    /// <summary>
-    ///     Godot 每帧更新逻辑。
-    /// </summary>
-    /// <param name="delta">本帧 Process 增量。</param>
+    /// <summary>Advances Update while paused as well, allowing cancellation cleanup to run.</summary>
+    /// <param name="delta">The engine's scaled process increment.</param>
     public override void _Process(double delta)
     {
-        var paused = GetTree().Paused;
-
-        if (!paused)
+        _processDelta = delta;
+        AdvanceStage(CoroutineExecutionStage.Update, delta, _processRealtime, GetTree().Paused);
+        if (!_deferredPending)
         {
-            _processScheduler?.Update();
+            _deferredPending = true;
+            CallDeferred(nameof(ProcessDeferred));
         }
-
-        _processIgnorePauseScheduler?.Update();
-        _frameCounter++;
-        CallDeferred(nameof(ProcessDeferred));
     }
 
-    /// <summary>
-    ///     Godot 物理帧更新逻辑。
-    /// </summary>
-    /// <param name="delta">本帧 Physics 增量。</param>
-    public override void _PhysicsProcess(double delta)
-    {
-        _physicsScheduler?.Update();
-    }
+    /// <summary>Applies the same pause policy to physics as to other stages.</summary>
+    /// <param name="delta">The engine's scaled physics increment.</param>
+    public override void _PhysicsProcess(double delta) =>
+        AdvanceStage(CoroutineExecutionStage.FixedUpdate, delta, _physicsRealtime, GetTree().Paused);
 
-    /// <summary>
-    ///     当前帧尾的延迟更新逻辑。
-    /// </summary>
+    /// <summary>Advances one coalesced idle callback; rendering need not have completed.</summary>
     private void ProcessDeferred()
     {
-        if (GetTree().Paused)
-        {
-            return;
-        }
-
-        _deferredScheduler?.Update();
+        _deferredPending = false;
+        if (_scheduler != null && IsInsideTree())
+            AdvanceStage(CoroutineExecutionStage.Deferred, _processDelta, _deferredRealtime, GetTree().Paused);
     }
 
-    #endregion
+    /// <summary>Initializes the default host before its first business operation.</summary>
+    public static void Prewarm() => _ = Instance;
 
-    #region 初始化
+    /// <summary>Runs an independent game task that freezes during scene pause.</summary>
+    /// <param name="coroutine">The iterator transferred to the scheduler.</param>
+    /// <param name="tag">An optional management tag.</param>
+    /// <returns>The task handle.</returns>
+    public static CoroutineHandle RunGameCoroutine(IEnumerator<IYieldInstruction> coroutine, string? tag = null) =>
+        RunCoroutine(coroutine, Segment.Process, tag);
 
-    /// <summary>
-    ///     预热 Timing 单例，以便在业务逻辑首次使用前完成挂载。
-    /// </summary>
-    public static void Prewarm()
-    {
-        _ = Instance;
-    }
+    /// <summary>Runs an independent UI task that continues during scene pause.</summary>
+    /// <param name="coroutine">The iterator transferred to the scheduler.</param>
+    /// <param name="tag">An optional management tag.</param>
+    /// <returns>The task handle.</returns>
+    public static CoroutineHandle RunUiCoroutine(IEnumerator<IYieldInstruction> coroutine, string? tag = null) =>
+        RunCoroutine(coroutine, Segment.ProcessIgnorePause, tag);
 
-    /// <summary>
-    ///     初始化所有调度器和时间源。
-    /// </summary>
-    private void InitializeSchedulers()
-    {
-        _processTimeSource = new GodotTimeSource(GetProcessDeltaTime);
-        _processRealtimeTimeSource = GodotTimeSource.CreateRealtime();
-        _processIgnorePauseTimeSource = new GodotTimeSource(GetProcessDeltaTime);
-        _processIgnorePauseRealtimeTimeSource = GodotTimeSource.CreateRealtime();
-        _physicsTimeSource = new GodotTimeSource(GetPhysicsProcessDeltaTime);
-        _physicsRealtimeTimeSource = GodotTimeSource.CreateRealtime();
-        _deferredTimeSource = new GodotTimeSource(GetProcessDeltaTime);
-        _deferredRealtimeTimeSource = GodotTimeSource.CreateRealtime();
+    /// <summary>Runs an independent iterator on the default host.</summary>
+    /// <param name="coroutine">The iterator transferred to the scheduler.</param>
+    /// <param name="segment">Its initial stage and pause policy.</param>
+    /// <param name="tag">An optional management tag.</param>
+    /// <param name="cancellationToken">External cancellation drained on the host thread.</param>
+    /// <returns>The task handle, or default for rejected input.</returns>
+    public static CoroutineHandle RunCoroutine(IEnumerator<IYieldInstruction> coroutine,
+        Segment segment = Segment.Process, string? tag = null, CancellationToken cancellationToken = default) =>
+        Instance.RunCoroutineOnInstance(coroutine, segment, tag, cancellationToken);
 
-        _processScheduler = new CoroutineScheduler(
-            _processTimeSource,
-            _instanceId,
-            256,
-            false,
-            _processRealtimeTimeSource,
-            CoroutineExecutionStage.Update);
+    /// <summary>Runs a structured flow factory on the default host.</summary>
+    /// <param name="factory">Creates a flow with access to explicitly owned children.</param>
+    /// <param name="segment">Its initial stage and pause policy.</param>
+    /// <param name="tag">An optional management tag.</param>
+    /// <param name="cancellationToken">External cancellation.</param>
+    /// <returns>The flow handle.</returns>
+    public static CoroutineHandle RunCoroutine(Func<CoroutineContext, IEnumerator<IYieldInstruction>> factory,
+        Segment segment = Segment.Process, string? tag = null, CancellationToken cancellationToken = default) =>
+        Instance.RunCoroutineOnInstance(factory, segment, tag, cancellationToken);
 
-        _processIgnorePauseScheduler = new CoroutineScheduler(
-            _processIgnorePauseTimeSource,
-            _instanceId,
-            256,
-            false,
-            _processIgnorePauseRealtimeTimeSource,
-            CoroutineExecutionStage.Update);
+    /// <summary>Runs an iterator owned by a node's Supervisor scope, including descendants.</summary>
+    /// <param name="owner">The live node whose tree exit closes the task scope.</param>
+    /// <param name="coroutine">The iterator transferred to the scheduler.</param>
+    /// <param name="segment">Its initial stage and pause policy.</param>
+    /// <param name="tag">An optional management tag.</param>
+    /// <param name="cancellationToken">External cancellation.</param>
+    /// <returns>The task handle.</returns>
+    public static CoroutineHandle RunOwnedCoroutine(Node owner, IEnumerator<IYieldInstruction> coroutine,
+        Segment segment = Segment.Process, string? tag = null, CancellationToken cancellationToken = default) =>
+        Instance.RunOwnedCoroutineOnInstance(owner, coroutine, segment, tag, cancellationToken);
 
-        _physicsScheduler = new CoroutineScheduler(
-            _physicsTimeSource,
-            _instanceId,
-            128,
-            false,
-            _physicsRealtimeTimeSource,
-            CoroutineExecutionStage.FixedUpdate);
+    /// <summary>Runs a structured flow within a node's Supervisor scope.</summary>
+    /// <param name="owner">The live lifetime owner.</param>
+    /// <param name="factory">Creates a flow and its owned children.</param>
+    /// <param name="segment">Its initial stage and pause policy.</param>
+    /// <param name="tag">An optional management tag.</param>
+    /// <param name="cancellationToken">External cancellation.</param>
+    /// <returns>The flow handle.</returns>
+    public static CoroutineHandle RunOwnedCoroutine(Node owner, Func<CoroutineContext, IEnumerator<IYieldInstruction>> factory,
+        Segment segment = Segment.Process, string? tag = null, CancellationToken cancellationToken = default) =>
+        Instance.RunOwnedCoroutineOnInstance(owner, factory, segment, tag, cancellationToken);
 
-        _deferredScheduler = new CoroutineScheduler(
-            _deferredTimeSource,
-            _instanceId,
-            64,
-            false,
-            _deferredRealtimeTimeSource,
-            CoroutineExecutionStage.EndOfFrame);
-
-        AttachSchedulerLifecycleHandlers(ProcessScheduler);
-        AttachSchedulerLifecycleHandlers(ProcessIgnorePauseScheduler);
-        AttachSchedulerLifecycleHandlers(PhysicsScheduler);
-        AttachSchedulerLifecycleHandlers(DeferredScheduler);
-    }
-
-    /// <summary>
-    ///     把调度器的完成通知接入 Timing 的节点归属清理逻辑。
-    /// </summary>
-    /// <param name="scheduler">待桥接的调度器。</param>
-    private void AttachSchedulerLifecycleHandlers(CoroutineScheduler scheduler)
-    {
-        scheduler.OnCoroutineFinished += HandleCoroutineFinished;
-    }
-
-    /// <summary>
-    ///     注册当前 Timing 实例到实例槽位表中。
-    /// </summary>
-    private void RegisterInstance()
-    {
-        if (ActiveInstances[_instanceId] == null)
-        {
-            ActiveInstances[_instanceId] = this;
-            return;
-        }
-
-        for (byte i = 1; i < ActiveInstances.Length; i++)
-        {
-            if (ActiveInstances[i] == null)
-            {
-                _instanceId = i;
-                ActiveInstances[i] = this;
-                return;
-            }
-        }
-
-        throw new OverflowException("最多只能存在 15 个 Timing 实例");
-    }
-
-    /// <summary>
-    ///     通过反射设置 Physics 处理优先级，兼容不同 Godot 版本的 API 表面。
-    /// </summary>
-    /// <param name="priority">要设置的优先级。</param>
-    private void TrySetPhysicsPriority(int priority)
-    {
-        try
-        {
-            typeof(Node)
-                .GetProperty(
-                    "ProcessPhysicsPriority",
-                    BindingFlags.Instance | BindingFlags.Public)
-                ?.SetValue(this, priority);
-        }
-        catch
-        {
-            // ignored
-        }
-    }
-
-    #endregion
-
-    #region 协程启动 API
-
-    /// <summary>
-    ///     运行受场景暂停影响的游戏级协程。
-    /// </summary>
-    /// <param name="coroutine">要运行的协程枚举器。</param>
-    /// <param name="tag">协程标签。</param>
-    /// <returns>新创建的协程句柄。</returns>
-    public static CoroutineHandle RunGameCoroutine(IEnumerator<IYieldInstruction> coroutine, string? tag = null)
-    {
-        return RunCoroutine(coroutine, Segment.Process, tag);
-    }
-
-    /// <summary>
-    ///     运行忽略场景暂停的 UI 级协程。
-    /// </summary>
-    /// <param name="coroutine">要运行的协程枚举器。</param>
-    /// <param name="tag">协程标签。</param>
-    /// <returns>新创建的协程句柄。</returns>
-    public static CoroutineHandle RunUiCoroutine(IEnumerator<IYieldInstruction> coroutine, string? tag = null)
-    {
-        return RunCoroutine(coroutine, Segment.ProcessIgnorePause, tag);
-    }
-
-    /// <summary>
-    ///     在指定段运行协程。
-    /// </summary>
-    /// <param name="coroutine">要运行的协程枚举器。</param>
-    /// <param name="segment">协程执行段。</param>
-    /// <param name="tag">协程标签。</param>
-    /// <param name="cancellationToken">可选取消令牌。</param>
-    /// <returns>新创建的协程句柄。</returns>
-    public static CoroutineHandle RunCoroutine(
-        IEnumerator<IYieldInstruction> coroutine,
-        Segment segment = Segment.Process,
-        string? tag = null,
-        CancellationToken cancellationToken = default)
-    {
-        return Instance.RunCoroutineOnInstance(coroutine, segment, tag, cancellationToken);
-    }
-
-    /// <summary>
-    ///     运行一个显式归属于指定节点的协程。
-    /// </summary>
-    /// <param name="owner">拥有该协程生命周期的节点。</param>
-    /// <param name="coroutine">要运行的协程枚举器。</param>
-    /// <param name="segment">协程执行段。</param>
-    /// <param name="tag">协程标签。</param>
-    /// <param name="cancellationToken">可选取消令牌。</param>
-    /// <returns>新创建的协程句柄。</returns>
-    public static CoroutineHandle RunOwnedCoroutine(
-        Node owner,
-        IEnumerator<IYieldInstruction> coroutine,
-        Segment segment = Segment.Process,
-        string? tag = null,
-        CancellationToken cancellationToken = default)
-    {
-        return Instance.RunOwnedCoroutineOnInstance(owner, coroutine, segment, tag, cancellationToken);
-    }
-
-    /// <summary>
-    ///     在当前实例上运行协程。
-    /// </summary>
-    /// <param name="coroutine">要运行的协程枚举器。</param>
-    /// <param name="segment">协程执行段。</param>
-    /// <param name="tag">协程标签。</param>
-    /// <param name="cancellationToken">可选取消令牌。</param>
-    /// <returns>新创建的协程句柄。</returns>
-    public CoroutineHandle RunCoroutineOnInstance(
-        IEnumerator<IYieldInstruction>? coroutine,
-        Segment segment = Segment.Process,
-        string? tag = null,
-        CancellationToken cancellationToken = default)
+    /// <summary>Runs an independent iterator on this host, consuming any node-bound cancellation.</summary>
+    /// <param name="coroutine">The iterator, or null to reject the request.</param>
+    /// <param name="segment">Its initial stage and pause policy.</param>
+    /// <param name="tag">An optional management tag.</param>
+    /// <param name="cancellationToken">External cancellation.</param>
+    /// <returns>The task handle or default.</returns>
+    public CoroutineHandle RunCoroutineOnInstance(IEnumerator<IYieldInstruction>? coroutine,
+        Segment segment = Segment.Process, string? tag = null, CancellationToken cancellationToken = default)
     {
         if (coroutine == null)
-        {
             return default;
-        }
-
-        return GetScheduler(segment).Run(coroutine, tag, group: null, cancellationToken: cancellationToken);
+        return Scheduler.Run(coroutine, tag, cancellationToken: BindCancellation(coroutine, cancellationToken),
+            stage: GetStage(segment), ignorePause: segment == Segment.ProcessIgnorePause);
     }
 
-    /// <summary>
-    ///     在当前实例上运行归属于指定节点的协程。
-    /// </summary>
-    /// <param name="owner">拥有该协程的节点。</param>
-    /// <param name="coroutine">要运行的协程枚举器。</param>
-    /// <param name="segment">协程执行段。</param>
-    /// <param name="tag">协程标签。</param>
-    /// <param name="cancellationToken">可选取消令牌。</param>
-    /// <returns>新创建的协程句柄。</returns>
-    public CoroutineHandle RunOwnedCoroutineOnInstance(
-        Node? owner,
-        IEnumerator<IYieldInstruction>? coroutine,
-        Segment segment = Segment.Process,
-        string? tag = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (owner == null || coroutine == null || !IsNodeAlive(owner))
-        {
-            return default;
-        }
+    /// <summary>Runs a structured flow factory on this host.</summary>
+    /// <param name="factory">The flow factory.</param>
+    /// <param name="segment">Its initial stage and pause policy.</param>
+    /// <param name="tag">An optional management tag.</param>
+    /// <param name="cancellationToken">External cancellation.</param>
+    /// <returns>The task handle.</returns>
+    public CoroutineHandle RunCoroutineOnInstance(Func<CoroutineContext, IEnumerator<IYieldInstruction>> factory,
+        Segment segment = Segment.Process, string? tag = null, CancellationToken cancellationToken = default) =>
+        Scheduler.Run(BindFactory(factory), tag, cancellationToken: cancellationToken,
+            stage: GetStage(segment), ignorePause: segment == Segment.ProcessIgnorePause);
 
-        var handle = RunCoroutineOnInstance(
-            coroutine.CancelWith(owner),
-            segment,
-            tag,
-            cancellationToken);
+    /// <summary>Pauses a task and its owned descendants without mounting another host.</summary>
+    /// <param name="handle">The scheduler-qualified handle.</param>
+    /// <returns>Whether an active task accepted the request.</returns>
+    public static bool PauseCoroutine(CoroutineHandle handle) => GetInstance(handle.SchedulerId)?._scheduler?.Pause(handle) == true;
 
-        if (!handle.IsValid)
-        {
-            return handle;
-        }
+    /// <summary>Resumes a task while preserving independent child pauses.</summary>
+    /// <param name="handle">The scheduler-qualified handle.</param>
+    /// <returns>Whether a paused task accepted the request.</returns>
+    public static bool ResumeCoroutine(CoroutineHandle handle) => GetInstance(handle.SchedulerId)?._scheduler?.Resume(handle) == true;
 
-        if (!GetScheduler(segment).IsCoroutineAlive(handle))
-        {
-            return handle;
-        }
+    /// <summary>Cancels a task tree without mounting another host.</summary>
+    /// <param name="handle">The scheduler-qualified handle.</param>
+    /// <returns>Whether an active task was found.</returns>
+    public static bool KillCoroutine(CoroutineHandle handle) => GetInstance(handle.SchedulerId)?._scheduler?.Kill(handle) == true;
 
-        RegisterOwnedCoroutine(owner, handle);
-        return handle;
-    }
+    /// <summary>Cancels tagged tasks on all registered hosts.</summary>
+    /// <param name="tag">The exact management tag.</param>
+    /// <returns>The number of accepted matching root requests.</returns>
+    public static int KillCoroutines(string tag) => EnumerateActiveInstances().Sum(timing => timing.Scheduler.KillByTag(tag));
 
-    #endregion
+    /// <summary>Cancels every current host's tasks without creating a singleton as a side effect.</summary>
+    /// <returns>The number of active tasks before cancellation.</returns>
+    public static int KillAllCoroutines() => EnumerateActiveInstances().Sum(timing => timing.Scheduler.Clear());
 
-    #region 协程控制 API
-
-    /// <summary>
-    ///     暂停指定的协程。
-    /// </summary>
-    /// <param name="handle">协程句柄。</param>
-    /// <returns>如果成功暂停则返回 <see langword="true" />。</returns>
-    public static bool PauseCoroutine(CoroutineHandle handle)
-    {
-        return GetInstance(handle.Key)?.PauseOnInstance(handle) == true;
-    }
-
-    /// <summary>
-    ///     恢复指定的协程。
-    /// </summary>
-    /// <param name="handle">协程句柄。</param>
-    /// <returns>如果成功恢复则返回 <see langword="true" />。</returns>
-    public static bool ResumeCoroutine(CoroutineHandle handle)
-    {
-        return GetInstance(handle.Key)?.ResumeOnInstance(handle) == true;
-    }
-
-    /// <summary>
-    ///     终止指定的协程。
-    /// </summary>
-    /// <param name="handle">协程句柄。</param>
-    /// <returns>如果成功终止则返回 <see langword="true" />。</returns>
-    public static bool KillCoroutine(CoroutineHandle handle)
-    {
-        return GetInstance(handle.Key)?.KillOnInstance(handle) == true;
-    }
-
-    /// <summary>
-    ///     终止某个节点归属的所有协程。
-    /// </summary>
-    /// <param name="owner">协程归属节点。</param>
-    /// <returns>被终止的协程数量。</returns>
-    public static int KillCoroutines(Node owner)
-    {
-        var count = 0;
-        foreach (var timing in EnumerateActiveInstances())
-        {
-            count += timing.KillOwnedCoroutinesOnInstance(owner);
-        }
-
-        return count;
-    }
-
-    /// <summary>
-    ///     终止所有具有指定标签的协程。
-    /// </summary>
-    /// <param name="tag">协程标签。</param>
-    /// <returns>被终止的协程数量。</returns>
-    public static int KillCoroutines(string tag)
-    {
-        return Instance.KillByTagOnInstance(tag);
-    }
-
-    /// <summary>
-    ///     终止所有协程。
-    /// </summary>
-    /// <returns>被终止的协程总数。</returns>
-    public static int KillAllCoroutines()
-    {
-        return Instance.ClearOnInstance();
-    }
-
-    /// <summary>
-    ///     根据协程句柄查询其当前快照。
-    /// </summary>
-    /// <param name="handle">要查询的协程句柄。</param>
-    /// <param name="snapshot">查询成功时返回快照。</param>
-    /// <returns>如果找到活跃协程则返回 <see langword="true" />。</returns>
+    /// <summary>Queries a running task after any number of stage changes.</summary>
+    /// <param name="handle">The scheduler-qualified handle.</param>
+    /// <param name="snapshot">The current snapshot if found.</param>
+    /// <returns>Whether the task remains active.</returns>
     public static bool TryGetCoroutineSnapshot(CoroutineHandle handle, out CoroutineSnapshot snapshot)
     {
-        var instance = GetInstance(handle.Key);
-        if (instance == null)
+        var scheduler = GetInstance(handle.SchedulerId)?._scheduler;
+        if (scheduler != null)
+            return scheduler.TryGetSnapshot(handle, out snapshot);
+        snapshot = default;
+        return false;
+    }
+
+    /// <summary>Reads a retained result without requiring knowledge of the task's current or original stage.</summary>
+    /// <param name="handle">The scheduler-qualified handle.</param>
+    /// <param name="result">The outcome when still retained by its live host.</param>
+    /// <returns>Whether the host retains the terminal result.</returns>
+    public static bool TryGetCoroutineResult(CoroutineHandle handle, out CoroutineResult result)
+    {
+        var scheduler = GetInstance(handle.SchedulerId)?._scheduler;
+        if (scheduler != null)
+            return scheduler.TryGetResult(handle, out result);
+        result = default;
+        return false;
+    }
+
+    /// <summary>Observes a task's eventual result; acquire it before host exit to retain its outcome after teardown.</summary>
+    /// <param name="handle">The scheduler-qualified handle.</param>
+    /// <returns>The immutable result, or Unknown if the host or retained history is unavailable.</returns>
+    public static Task<CoroutineResult> WaitForResultAsync(CoroutineHandle handle) =>
+        GetInstance(handle.SchedulerId)?._scheduler?.WaitForResultAsync(handle) ?? Task.FromResult(default(CoroutineResult));
+
+    /// <summary>Looks up a scheduler identity, which is never reused when a node re-enters the tree.</summary>
+    /// <param name="schedulerId">The identity exposed by the task handle.</param>
+    /// <returns>The host or null after teardown.</returns>
+    public static Timing? GetInstance(long schedulerId) =>
+        ActiveInstances.TryGetValue(schedulerId, out var reference) && reference.TryGetTarget(out var timing) ? timing : null;
+
+    /// <summary>Determines whether a native node can still own new tasks.</summary>
+    /// <param name="node">The potential owner.</param>
+    /// <returns>True only for a live attached node not queued for deletion.</returns>
+    public static bool IsNodeAlive(Node? node) =>
+        node != null && IsInstanceValid(node) && !node.IsQueuedForDeletion() && node.IsInsideTree();
+
+    /// <summary>Schedules an independent delayed action.</summary>
+    /// <param name="delay">The scaled delay in seconds.</param>
+    /// <param name="action">The action; null creates no task.</param>
+    /// <param name="segment">Its initial stage and pause policy.</param>
+    /// <returns>The task handle or default.</returns>
+    public static CoroutineHandle CallDelayed(double delay, Action? action, Segment segment = Segment.Process) =>
+        action == null ? default : RunCoroutine(DelayedCallCoroutine(delay, action), segment);
+
+    /// <summary>Schedules a delayed action whose task tree cannot outlive its node.</summary>
+    /// <param name="delay">The scaled delay in seconds.</param>
+    /// <param name="action">The action; null creates no task.</param>
+    /// <param name="cancelWith">The lifetime owner.</param>
+    /// <param name="segment">Its initial stage and pause policy.</param>
+    /// <returns>The owned task handle or default.</returns>
+    public static CoroutineHandle CallDelayed(double delay, Action? action, Node cancelWith,
+        Segment segment = Segment.Process) =>
+        action == null ? default : RunOwnedCoroutine(cancelWith, DelayedCallCoroutine(delay, action), segment);
+
+    /// <summary>Initializes managed state before task prewarming or native mounting.</summary>
+    private void InitializeScheduler()
+    {
+        if (_isStopping)
+            throw new InvalidOperationException("An exiting Timing host cannot be initialized again before tree re-entry.");
+        if (_scheduler != null)
+            return;
+        _ownerScopes ??= new Dictionary<ulong, OwnedCoroutineScope>();
+        _processRealtime = GodotTimeSource.CreateRealtime();
+        _physicsRealtime = GodotTimeSource.CreateRealtime();
+        _deferredRealtime = GodotTimeSource.CreateRealtime();
+        InitializeScheduler(new GodotTimeSource(() => _processDelta),
+            new DeferredCoroutineLogger(static () => GodotLog.CreateLogger<CoroutineScheduler>()));
+    }
+
+    /// <summary>Registers a scheduler only after all instance state exists.</summary>
+    /// <param name="timeSource">The default source for Core's convenience Update method.</param>
+    /// <param name="logger">The native logger; managed test hosts omit native log rendering.</param>
+    private void InitializeScheduler(ITimeSource timeSource, ILogger? logger = null)
+    {
+        _scheduler = new CoroutineScheduler(timeSource, logger: logger, supportedStages: SupportedStages);
+        ActiveInstances.Add(_scheduler.SchedulerId, new WeakReference<Timing>(this));
+    }
+
+    /// <summary>Samples clocks continuously, including paused ticks, preventing resume-time catch-up.</summary>
+    /// <param name="stage">The engine callback's stage.</param>
+    /// <param name="delta">Its scaled increment.</param>
+    /// <param name="realtime">Its per-stage monotonic source.</param>
+    /// <param name="paused">The current scene-pause state.</param>
+    private void AdvanceStage(CoroutineExecutionStage stage, double delta, GodotTimeSource? realtime, bool paused)
+    {
+        realtime?.Update();
+        _scheduler?.Update(stage, delta, realtime?.DeltaTime ?? delta, paused);
+    }
+
+    /// <summary>Invalidates routing before callbacks can attempt replacement work on an exiting host.</summary>
+    private void DisposeScheduler()
+    {
+        if (_scheduler == null)
+            return;
+        var scheduler = _scheduler;
+        _isStopping = true;
+        _scheduler = null;
+        ActiveInstances.Remove(scheduler.SchedulerId);
+        if (ReferenceEquals(_instance, this))
+            _instance = null;
+        List<Exception>? failures = null;
+        // Close the complete runtime before user finally callbacks can publish replacement tasks through captured scopes.
+        TryCleanup(scheduler.Dispose, ref failures);
+        TryCleanup(DisposeOwnedScopes, ref failures);
+        _processRealtime = null;
+        _physicsRealtime = null;
+        _deferredRealtime = null;
+        _deferredPending = false;
+        if (failures != null)
+            throw new AggregateException("Timing shutdown cleanup failed.", failures);
+    }
+
+    /// <summary>Continues independent shutdown operations after a cleanup failure.</summary>
+    /// <param name="cleanup">The operation to attempt.</param>
+    /// <param name="failures">The accumulated cleanup failures.</param>
+    private static void TryCleanup(Action cleanup, ref List<Exception>? failures)
+    {
+        try { cleanup(); }
+        catch (Exception exception) { (failures ??= new List<Exception>()).Add(exception); }
+    }
+
+    /// <summary>Mounts only while the captured native root remains usable.</summary>
+    /// <param name="root">The root captured when initialization began.</param>
+    /// <param name="timing">The preinitialized host.</param>
+    private static void MountDefaultHost(Node root, Timing timing)
+    {
+        if (!IsInstanceValid(timing) || timing.IsQueuedForDeletion() || timing.IsInsideTree())
+            return;
+        if (IsInstanceValid(root) && root.IsInsideTree() && !root.IsQueuedForDeletion())
+            root.AddChild(timing);
+        else
         {
-            snapshot = default;
-            return false;
+            timing.DisposeScheduler();
+            timing.QueueFree();
         }
-
-        return instance.TryGetSnapshotOnInstance(handle, out snapshot);
     }
 
-    /// <summary>
-    ///     获取某个节点当前归属的活跃协程数量。
-    /// </summary>
-    /// <param name="owner">要查询的节点。</param>
-    /// <returns>该节点当前归属的活跃协程数量。</returns>
-    public static int GetOwnedCoroutineCount(Node owner)
+    /// <summary>Copies hosts before callbacks can mutate the registry.</summary>
+    /// <returns>The hosts whose managed schedulers remain active.</returns>
+    private static Timing[] EnumerateActiveInstances() => ActiveInstances.Values
+        .Select(reference => reference.TryGetTarget(out var timing) ? timing : null)
+        .Where(timing => timing?._scheduler != null).Cast<Timing>().ToArray();
+
+    /// <summary>Counts snapshots for diagnostics; it is deliberately outside the frame hot path.</summary>
+    /// <param name="stage">The current stage to count.</param>
+    /// <param name="ignorePause">An optional pause-policy filter.</param>
+    /// <returns>The matching active task count.</returns>
+    private int CountCoroutines(CoroutineExecutionStage stage, bool? ignorePause = null) =>
+        _scheduler?.GetActiveSnapshots().Count(snapshot => snapshot.ExecutionStage == stage &&
+            (!ignorePause.HasValue || snapshot.IgnorePause == ignorePause.Value)) ?? 0;
+
+    /// <summary>Maps convenience segments to one scheduler's stages.</summary>
+    /// <param name="segment">The starting segment.</param>
+    /// <returns>The corresponding Core stage.</returns>
+    private static CoroutineExecutionStage GetStage(Segment segment) => segment switch
     {
-        var count = 0;
-        foreach (var timing in EnumerateActiveInstances())
+        Segment.Process or Segment.ProcessIgnorePause => CoroutineExecutionStage.Update,
+        Segment.PhysicsProcess => CoroutineExecutionStage.FixedUpdate,
+        Segment.DeferredProcess => CoroutineExecutionStage.Deferred,
+        _ => throw new ArgumentOutOfRangeException(nameof(segment), segment, "Unsupported coroutine segment.")
+    };
+
+    /// <summary>Transfers wrapper lifetime cancellation so a long wait can still be cancelled.</summary>
+    /// <param name="coroutine">A potentially node-bound iterator.</param>
+    /// <param name="token">The caller's external token.</param>
+    /// <returns>The combined token, or the original token for ordinary iterators.</returns>
+    private static CancellationToken BindCancellation(IEnumerator<IYieldInstruction> coroutine, CancellationToken token) =>
+        coroutine is NodeBoundCoroutine bound ? bound.BindCancellation(token) : token;
+
+    /// <summary>Consumes node-bound lifetimes produced inside a structured factory without adding hidden task ownership.</summary>
+    /// <param name="factory">The user's factory.</param>
+    /// <returns>A factory with equivalent ownership and an additional node lifetime when required.</returns>
+    private static Func<CoroutineContext, IEnumerator<IYieldInstruction>> BindFactory(
+        Func<CoroutineContext, IEnumerator<IYieldInstruction>> factory)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        return context =>
         {
-            count += timing.GetOwnedCoroutineCountOnInstance(owner);
-        }
-
-        return count;
-    }
-
-    /// <summary>
-    ///     在当前实例上暂停协程。
-    /// </summary>
-    /// <param name="handle">协程句柄。</param>
-    /// <returns>如果成功暂停则返回 <see langword="true" />。</returns>
-    private bool PauseOnInstance(CoroutineHandle handle)
-    {
-        return ProcessScheduler.Pause(handle)
-               || ProcessIgnorePauseScheduler.Pause(handle)
-               || PhysicsScheduler.Pause(handle)
-               || DeferredScheduler.Pause(handle);
-    }
-
-    /// <summary>
-    ///     在当前实例上恢复协程。
-    /// </summary>
-    /// <param name="handle">协程句柄。</param>
-    /// <returns>如果成功恢复则返回 <see langword="true" />。</returns>
-    private bool ResumeOnInstance(CoroutineHandle handle)
-    {
-        return ProcessScheduler.Resume(handle)
-               || ProcessIgnorePauseScheduler.Resume(handle)
-               || PhysicsScheduler.Resume(handle)
-               || DeferredScheduler.Resume(handle);
-    }
-
-    /// <summary>
-    ///     在当前实例上终止协程。
-    /// </summary>
-    /// <param name="handle">协程句柄。</param>
-    /// <returns>如果成功终止则返回 <see langword="true" />。</returns>
-    private bool KillOnInstance(CoroutineHandle handle)
-    {
-        return ProcessScheduler.Kill(handle)
-               || ProcessIgnorePauseScheduler.Kill(handle)
-               || PhysicsScheduler.Kill(handle)
-               || DeferredScheduler.Kill(handle);
-    }
-
-    /// <summary>
-    ///     在当前实例上根据标签终止协程。
-    /// </summary>
-    /// <param name="tag">协程标签。</param>
-    /// <returns>被终止的协程数量。</returns>
-    private int KillByTagOnInstance(string tag)
-    {
-        var count = 0;
-        count += ProcessScheduler.KillByTag(tag);
-        count += ProcessIgnorePauseScheduler.KillByTag(tag);
-        count += PhysicsScheduler.KillByTag(tag);
-        count += DeferredScheduler.KillByTag(tag);
-        return count;
-    }
-
-    /// <summary>
-    ///     在当前实例上终止某个节点归属的所有协程。
-    /// </summary>
-    /// <param name="owner">协程归属节点。</param>
-    /// <returns>被终止的协程数量。</returns>
-    private int KillOwnedCoroutinesOnInstance(Node owner)
-    {
-        var ownerId = owner.GetInstanceId();
-        if (!_ownedCoroutinesByNode.TryGetValue(ownerId, out var handles))
-        {
-            return 0;
-        }
-
-        var count = 0;
-        foreach (var handle in handles.ToArray())
-        {
-            if (KillOnInstance(handle))
+            var coroutine = factory(context);
+            try
             {
-                count++;
+                if (coroutine is NodeBoundCoroutine bound)
+                    context.CancelWhen(bound.BindCancellation(context.CancellationToken));
             }
-        }
-
-        return count;
-    }
-
-    /// <summary>
-    ///     获取某个节点当前归属的活跃协程数量。
-    /// </summary>
-    /// <param name="owner">要查询的节点。</param>
-    /// <returns>活跃归属协程数量。</returns>
-    private int GetOwnedCoroutineCountOnInstance(Node owner)
-    {
-        var ownerId = owner.GetInstanceId();
-        return _ownedCoroutinesByNode.TryGetValue(ownerId, out var handles) ? handles.Count : 0;
-    }
-
-    /// <summary>
-    ///     清空当前实例上的所有协程。
-    /// </summary>
-    /// <returns>被清除的协程总数。</returns>
-    private int ClearOnInstance()
-    {
-        var count = 0;
-        count += ProcessScheduler.Clear();
-        count += ProcessIgnorePauseScheduler.Clear();
-        count += PhysicsScheduler.Clear();
-        count += DeferredScheduler.Clear();
-        return count;
-    }
-
-    #endregion
-
-    #region 工具方法
-
-    /// <summary>
-    ///     根据 ID 获取 Timing 实例。
-    /// </summary>
-    /// <param name="id">实例 ID。</param>
-    /// <returns>对应的 Timing 实例；如果不存在则返回 <see langword="null" />。</returns>
-    public static Timing? GetInstance(byte id)
-    {
-        return id < ActiveInstances.Length ? ActiveInstances[id] : null;
-    }
-
-    /// <summary>
-    ///     枚举所有当前已注册的 Timing 实例。
-    /// </summary>
-    /// <returns>活跃 Timing 实例序列。</returns>
-    private static IEnumerable<Timing> EnumerateActiveInstances()
-    {
-        return ActiveInstances.Where(static timing => timing is not null).Select(static timing => timing!);
-    }
-
-    /// <summary>
-    ///     检查节点是否处于有效状态。
-    /// </summary>
-    /// <param name="node">要检查的节点。</param>
-    /// <returns>如果节点存在、实例有效、未进入删除队列且仍在场景树中，则返回 <see langword="true" />。</returns>
-    public static bool IsNodeAlive(Node? node)
-    {
-        return node != null
-               && IsInstanceValid(node)
-               && !node.IsQueuedForDeletion()
-               && node.IsInsideTree();
-    }
-
-    /// <summary>
-    ///     根据分段选择具体调度器。
-    /// </summary>
-    /// <param name="segment">目标执行段。</param>
-    /// <returns>与分段对应的协程调度器。</returns>
-    private CoroutineScheduler GetScheduler(Segment segment)
-    {
-        return segment switch
-        {
-            Segment.Process => ProcessScheduler,
-            Segment.ProcessIgnorePause => ProcessIgnorePauseScheduler,
-            Segment.PhysicsProcess => PhysicsScheduler,
-            Segment.DeferredProcess => DeferredScheduler,
-            _ => throw new ArgumentOutOfRangeException(nameof(segment), segment, "Unsupported coroutine segment.")
+            catch (Exception bindingFailure)
+            {
+                // The factory has transferred ownership even if installing its additional lifetime is rejected.
+                try { coroutine?.Dispose(); }
+                catch (Exception cleanupFailure)
+                {
+                    throw new AggregateException("Node-bound factory lifetime setup failed.", bindingFailure, cleanupFailure);
+                }
+                throw;
+            }
+            return coroutine;
         };
     }
 
-    /// <summary>
-    ///     在当前实例上查询指定句柄的快照。
-    /// </summary>
-    /// <param name="handle">协程句柄。</param>
-    /// <param name="snapshot">查询成功时返回快照。</param>
-    /// <returns>如果找到活跃协程则返回 <see langword="true" />。</returns>
-    private bool TryGetSnapshotOnInstance(CoroutineHandle handle, out CoroutineSnapshot snapshot)
-    {
-        return ProcessScheduler.TryGetSnapshot(handle, out snapshot)
-               || ProcessIgnorePauseScheduler.TryGetSnapshot(handle, out snapshot)
-               || PhysicsScheduler.TryGetSnapshot(handle, out snapshot)
-               || DeferredScheduler.TryGetSnapshot(handle, out snapshot);
-    }
-
-    /// <summary>
-    ///     注册节点归属协程，并在节点退树时强制终止该协程。
-    /// </summary>
-    /// <param name="owner">协程归属节点。</param>
-    /// <param name="handle">要登记的协程句柄。</param>
-    private void RegisterOwnedCoroutine(Node owner, CoroutineHandle handle)
-    {
-        var ownerId = owner.GetInstanceId();
-        var registration =
-            new OwnedCoroutineRegistration(owner, ownerId, handle, ownedHandle => _ = KillOnInstance(ownedHandle));
-
-        _ownedCoroutineRegistrations[handle] = registration;
-        if (!_ownedCoroutinesByNode.TryGetValue(ownerId, out var handles))
-        {
-            handles = new HashSet<CoroutineHandle>();
-            _ownedCoroutinesByNode[ownerId] = handles;
-        }
-
-        handles.Add(handle);
-        owner.TreeExiting += registration.OnOwnerTreeExiting;
-    }
-
-    /// <summary>
-    ///     在协程结束时解除节点归属回调并清理索引。
-    /// </summary>
-    /// <param name="sender">触发事件的协程调度器。</param>
-    /// <param name="eventArgs">协程结束事件数据。</param>
-    private void HandleCoroutineFinished(
-        object? sender,
-        CoroutineFinishedEventArgs eventArgs)
-    {
-        CleanupOwnedCoroutineRegistration(eventArgs.Handle);
-    }
-
-    /// <summary>
-    ///     清理单个协程对应的节点归属注册。
-    /// </summary>
-    /// <param name="handle">要清理的协程句柄。</param>
-    private void CleanupOwnedCoroutineRegistration(CoroutineHandle handle)
-    {
-        if (!_ownedCoroutineRegistrations.TryGetValue(handle, out var registration))
-        {
-            return;
-        }
-
-        if (registration.Owner.TryGetTarget(out var owner) && IsInstanceValid(owner))
-        {
-            owner.TreeExiting -= registration.OnOwnerTreeExiting;
-        }
-
-        if (_ownedCoroutinesByNode.TryGetValue(registration.OwnerId, out var handles))
-        {
-            handles.Remove(handle);
-            if (handles.Count == 0)
-            {
-                _ownedCoroutinesByNode.Remove(registration.OwnerId);
-            }
-        }
-
-        _ownedCoroutineRegistrations.Remove(handle);
-    }
-
-    /// <summary>
-    ///     清理所有已登记的节点归属回调。
-    /// </summary>
-    private void DetachAllOwnedRegistrations()
-    {
-        foreach (var handle in _ownedCoroutineRegistrations.Keys.ToArray())
-        {
-            CleanupOwnedCoroutineRegistration(handle);
-        }
-    }
-
-    #endregion
-
-    #region 延迟调用
-
-    /// <summary>
-    ///     延迟执行指定动作。
-    /// </summary>
-    /// <param name="delay">延迟时间，单位秒。</param>
-    /// <param name="action">到期时执行的动作。</param>
-    /// <param name="segment">执行所在的协程段。</param>
-    /// <returns>新创建的协程句柄。</returns>
-    public static CoroutineHandle CallDelayed(double delay, Action? action, Segment segment = Segment.Process)
-    {
-        if (action == null)
-        {
-            return default;
-        }
-
-        return RunCoroutine(DelayedCallCoroutine(delay, action), segment);
-    }
-
-    /// <summary>
-    ///     延迟执行指定动作，并在节点失活时自动放弃执行。
-    /// </summary>
-    /// <param name="delay">延迟时间，单位秒。</param>
-    /// <param name="action">到期时执行的动作。</param>
-    /// <param name="cancelWith">用于控制生命周期的节点。</param>
-    /// <param name="segment">执行所在的协程段。</param>
-    /// <returns>新创建的协程句柄。</returns>
-    public static CoroutineHandle CallDelayed(
-        double delay,
-        Action? action,
-        Node cancelWith,
-        Segment segment = Segment.Process)
-    {
-        if (action == null)
-        {
-            return default;
-        }
-
-        return RunOwnedCoroutine(cancelWith, DelayedCallWithCancelCoroutine(delay, action, cancelWith), segment);
-    }
-
-    /// <summary>
-    ///     延迟调用协程实现。
-    /// </summary>
-    /// <param name="delay">延迟时间。</param>
-    /// <param name="action">要执行的动作。</param>
-    /// <returns>可直接交给调度器运行的协程枚举器。</returns>
+    /// <summary>Executes one action when its delay completes.</summary>
+    /// <param name="delay">The scaled delay.</param>
+    /// <param name="action">The action.</param>
+    /// <returns>The iterator transferred to the scheduler.</returns>
     private static IEnumerator<IYieldInstruction> DelayedCallCoroutine(double delay, Action action)
     {
         yield return new Delay(delay);
         action();
     }
-
-    /// <summary>
-    ///     带节点生命周期判断的延迟调用协程实现。
-    /// </summary>
-    /// <param name="delay">延迟时间。</param>
-    /// <param name="action">要执行的动作。</param>
-    /// <param name="cancelWith">生命周期检查节点。</param>
-    /// <returns>可直接交给调度器运行的协程枚举器。</returns>
-    private static IEnumerator<IYieldInstruction> DelayedCallWithCancelCoroutine(double delay, Action action,
-        Node cancelWith)
-    {
-        yield return new Delay(delay);
-
-        if (IsNodeAlive(cancelWith))
-        {
-            action();
-        }
-    }
-
-    #endregion
 }
