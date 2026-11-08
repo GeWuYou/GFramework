@@ -129,10 +129,10 @@ public partial class GameApplication : IDisposable
     internal DodgeContent Content => _content;
     /// <summary>Whether starting a board is allowed by the content session.</summary>
     internal bool CanStart => _content.IsReady;
-    /// <summary>Whether the active run still permits backup recovery.</summary>
-    internal bool HasBackup => !_session.IsRetired && _latestBackup is not null;
-    /// <summary>Whether continuation is permitted after a terminal game-over event.</summary>
-    internal bool CanRestoreSave => !_session.IsRetired;
+    /// <summary>Whether backup recovery is permitted independently of a newly started retry.</summary>
+    internal bool HasBackup => CanRestoreSave && _latestBackup is not null;
+    /// <summary>Whether the persistent checkpoint is safe to continue, including after a failed death-save deletion.</summary>
+    internal bool CanRestoreSave => !_session.IsRetired && !_session.IsCheckpointRetired;
 
     /// <summary>Initializes feature state after composition and content startup have completed.</summary>
     internal Task InitializeAsync()
@@ -157,6 +157,7 @@ public partial class GameApplication : IDisposable
             _acceptance = _gameDispatcher.InvokeAsync(() => ObserveAcceptanceAsync(RunSmokeAsync));
     }
 
+    /// <summary>Observes isolated native acceptance separately from user actions so shutdown cannot await itself.</summary>
     private async Task ObserveAcceptanceAsync(Func<Task> run)
     {
         try
@@ -171,6 +172,7 @@ public partial class GameApplication : IDisposable
         }
     }
 
+    /// <summary>Captures the ended board before queuing its retirement, preserving identity across later navigation.</summary>
     private void OnRunEnded(object? sender, EventArgs eventArgs)
     {
         var endedWorld = _world;
@@ -178,6 +180,7 @@ public partial class GameApplication : IDisposable
             RunAction(() => GameOverAsync(endedWorld));
     }
 
+    /// <summary>Loads persistent feature state on the Godot thread before publishing the first usable menu.</summary>
     private async Task StartAsync()
     {
         try
@@ -251,6 +254,8 @@ public partial class GameApplication : IDisposable
         _menus.SetStatus(() => Text.Get("run_saved"));
     }
 
+    /// <summary>Opens the settings draft on the Godot thread; shutdown cancels the UI request.</summary>
+    /// <returns>Completion of settings-view activation, before any draft is accepted or persisted.</returns>
     internal Task OpenSettingsAsync() => _ui.ShowAsync(DodgeRoutes.Settings, args: true, _lifetime.Token);
 
     // #region tutorial-confirm-exit
@@ -370,6 +375,7 @@ public partial class GameApplication : IDisposable
     /// <summary>Stops actions and native feature services once, retaining every error until all cleanup was attempted.</summary>
     internal Task StopAsync() => _stopTask ??= StopCoreAsync();
 
+    /// <summary>Cancels admission, joins accepted work and attempts every native cleanup phase before reporting failures.</summary>
     private async Task StopCoreAsync()
     {
         if (_stopping)
@@ -410,6 +416,7 @@ public partial class GameApplication : IDisposable
     private void RemoveChild(Node node) => _host.RemoveChild(node);
     private SignalAwaiter ToSignal(GodotObject source, StringName signal) => _host.ToSignal(source, signal);
 
+    /// <summary>Collects one cleanup failure without skipping subsequent owners during shutdown.</summary>
     private static async Task CaptureStopAsync(Func<Task> stop, List<Exception> errors)
     {
         try

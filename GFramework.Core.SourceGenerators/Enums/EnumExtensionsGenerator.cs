@@ -76,7 +76,7 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
             ? null
             : symbol.ContainingNamespace.ToDisplayString();
 
-        var (GenerateIsMethods, GenerateIsInMethod) = GetGenerationOptions(attr);
+        var (generateIsMethods, generateIsInMethod) = GetGenerationOptions(attr);
         var enumName = symbol.Name;
         var fullEnumName = symbol.ToDisplayString();
         var members = symbol.GetMembers()
@@ -101,7 +101,7 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
         // 两个生成开关是彼此独立的契约，需要分别控制输出，并保持空行布局稳定，便于快照精确回归。
         var hasGeneratedMembers = false;
 
-        if (GenerateIsMethods)
+        if (generateIsMethods)
         {
             hasGeneratedMembers = AppendIsMethods(
                 sb,
@@ -109,7 +109,7 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
                 fullEnumName);
         }
 
-        if (GenerateIsInMethod)
+        if (generateIsInMethod)
         {
             if (hasGeneratedMembers)
             {

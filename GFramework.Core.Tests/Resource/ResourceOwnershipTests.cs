@@ -243,6 +243,71 @@ public sealed class ResourceOwnershipTests
         Assert.That(resource.DisposeCount, Is.EqualTo(1));
     }
 
+    /// <summary>Shutdown joins cleanup that detached its cache entry before the close boundary, including failures.</summary>
+    [TestCase("single", false)]
+    [TestCase("bulk", false)]
+    [TestCase("lease", false)]
+    [TestCase("single", true)]
+    [TestCase("bulk", true)]
+    [TestCase("lease", true)]
+    public async Task ShutdownWaitsForAlreadyDetachedRelease(string releaseMode, bool failRelease)
+    {
+        using var entered = new ManualResetEventSlim();
+        using var finish = new ManualResetEventSlim();
+        var manager = new ResourceManager();
+        var loader = new OwnedLoader<OwnedResource>(() => new OwnedResource())
+        {
+            UnloadCallback = () =>
+            {
+                entered.Set();
+                if (!finish.Wait(TimeSpan.FromSeconds(5)))
+                    throw new TimeoutException("Test did not release the loader.");
+                if (failRelease)
+                    throw new InvalidOperationException("Expected release failure.");
+            },
+        };
+        manager.RegisterLoader(loader);
+        var lease = manager.Acquire<OwnedResource>("asset");
+        if (string.Equals(releaseMode, "lease", StringComparison.Ordinal))
+            manager.SetReleaseStrategy(new AutoReleaseStrategy());
+        else
+            lease.Dispose();
+        var release = Task.Run(() =>
+        {
+            if (string.Equals(releaseMode, "single", StringComparison.Ordinal))
+                manager.Unload<OwnedResource>("asset");
+            else if (string.Equals(releaseMode, "bulk", StringComparison.Ordinal))
+                manager.UnloadAll();
+            else
+                lease.Dispose();
+        });
+        Task shutdown;
+        try
+        {
+            Assert.That(entered.Wait(TimeSpan.FromSeconds(5)), Is.True);
+            Assert.That(manager.LoadedResourceCount, Is.Zero);
+            shutdown = manager.DisposeAsync().AsTask();
+            Assert.That(shutdown.IsCompleted, Is.False, "Detached loader cleanup still owns the shutdown boundary.");
+            Assert.Throws<InvalidOperationException>(manager.Dispose);
+            Assert.That(manager.DisposeAsync().AsTask(), Is.SameAs(shutdown));
+        }
+        finally
+        {
+            finish.Set();
+        }
+        if (failRelease)
+        {
+            await Assert.CatchAsync<Exception>(() => release.WaitAsync(TimeSpan.FromSeconds(5)));
+            await Assert.ThrowsAsync<AggregateException>(() => shutdown.WaitAsync(TimeSpan.FromSeconds(5)));
+        }
+        else
+        {
+            await release.WaitAsync(TimeSpan.FromSeconds(5));
+            await shutdown.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        Assert.That(loader.UnloadCount, Is.EqualTo(1));
+    }
+
     /// <summary>One-shot callback probes defensive ownership revalidation around application policies.</summary>
     private sealed class ReentrantPolicy : IResourceReleaseStrategy
     {

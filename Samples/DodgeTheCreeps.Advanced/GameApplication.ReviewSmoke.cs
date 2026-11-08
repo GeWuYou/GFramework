@@ -11,6 +11,7 @@ using Newtonsoft.Json.Linq;
 
 namespace DodgeTheCreeps.Advanced;
 
+/// <summary>Contains isolated native regression scenarios for content repair, live feedback and discard navigation.</summary>
 public partial class GameApplication
 {
     /// <summary>Exercises recoverable content removal and post-save movement through production views and actions.</summary>

@@ -115,6 +115,66 @@ public sealed class ArchitectureCompositionTests
         Assert.Throws<InvalidOperationException>(() => services.AddComponent<SyncParticipant>());
     }
 
+    /// <summary>Later modules cannot append a second key or replace a component with a scoped/transient binding.</summary>
+    [TestCase(ServiceLifetime.Singleton, false)]
+    [TestCase(ServiceLifetime.Scoped, false)]
+    [TestCase(ServiceLifetime.Transient, false)]
+    [TestCase(ServiceLifetime.Scoped, true)]
+    [TestCase(ServiceLifetime.Transient, true)]
+    public async Task FinalCompositionRejectsInvalidComponentBindings(ServiceLifetime lifetime, bool replace)
+    {
+        var original = new SyncParticipant();
+        var activations = 0;
+        var architecture = new TestArchitecture(services =>
+        {
+            services.AddComponent(original);
+            if (replace)
+            {
+                var binding = services.Single(description => description.ServiceType == typeof(SyncParticipant));
+                services.Remove(binding);
+            }
+            services.Add(new ServiceDescriptor(typeof(SyncParticipant), _ =>
+            {
+                activations++;
+                return new SyncParticipant();
+            }, lifetime));
+        });
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => architecture.InitializeAsync());
+        Assert.That(error!.Message, Does.Contain("exactly one unkeyed singleton"));
+        Assert.That(original.Starts, Is.Zero);
+        Assert.That(activations, Is.Zero, "Invalid composition must fail before activating services.");
+        Assert.That(architecture.IsReady, Is.False);
+        await architecture.DestroyAsync();
+    }
+
+    /// <summary>Removing a participant's canonical description is rejected before any activation.</summary>
+    [Test]
+    public async Task FinalCompositionRejectsMissingComponentBinding()
+    {
+        var architecture = new TestArchitecture(services =>
+        {
+            services.AddComponent<SyncParticipant>();
+            services.Remove(services.Single(description => description.ServiceType == typeof(SyncParticipant)));
+        });
+        await Assert.ThrowsAsync<InvalidOperationException>(() => architecture.InitializeAsync());
+        await architecture.DestroyAsync();
+    }
+
+    /// <summary>A keyed service is independent of the unkeyed component key and retains standard DI behavior.</summary>
+    [Test]
+    public async Task FinalCompositionAllowsIndependentKeyedService()
+    {
+        var component = new SyncParticipant();
+        await using var architecture = new TestArchitecture(services =>
+        {
+            services.AddComponent(component);
+            services.AddKeyedTransient<SyncParticipant>("other");
+        });
+        await architecture.InitializeAsync();
+        Assert.That(architecture.Services.GetRequiredService<SyncParticipant>(), Is.SameAs(component));
+        Assert.That(component.Starts, Is.EqualTo(1));
+    }
+
     /// <summary>Provider validation rejects scoped services captured by singleton participants.</summary>
     [Test]
     public async Task RootScopedCaptureFailsBeforeReady()

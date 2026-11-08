@@ -55,6 +55,50 @@ class PreCommitTests(unittest.TestCase):
             self.assertEqual(self.git("show", ":" + name), b"one\ntwo\n")
             self.assertEqual((self.root / name).read_bytes(), b"one\r\ntwo\r\n")
 
+    def test_wildcard_filenames_keep_their_own_staged_contents(self):
+        payloads = {
+            "a!.txt": b"other question match\r\n",
+            "a?.txt": b"literal question\r\n",
+            "bracketx.txt": b"other bracket match\r\n",
+            "bracket[x].txt": b"literal bracket\r\n",
+            "star-match.txt": b"other star match\r\n",
+            "star*.txt": b"literal star\r\n",
+        }
+        wildcard_names = {"a?.txt", "bracket[x].txt", "star*.txt"}
+        # Keep matching siblings out of the staged diff. A pattern-based lookup can
+        # otherwise choose their unrelated CRLF blob and write it over the new path.
+        for name, payload in payloads.items():
+            if name not in wildcard_names:
+                self.stage_raw(name, payload)
+        self.git("-c", "user.name=Hook test", "-c", "user.email=hook@example.invalid",
+                 "commit", "-q", "--no-verify", "-m", "matching sibling fixture")
+        for name in wildcard_names:
+            self.stage_raw(name, payloads[name])
+
+        self.run_hook()
+
+        for name, payload in payloads.items():
+            expected = payload.replace(b"\r\n", b"\n") if name in wildcard_names else payload
+            self.assertEqual(self.git("show", ":" + name), expected)
+            self.assertEqual((self.root / name).read_bytes(), payload)
+
+    def test_normalization_preserves_lone_cr_and_missing_final_newline_without_gnu_tools(self):
+        payload = b"first\r\nembedded\rcarriage\r\nlast\r"
+        self.stage_raw("portable.txt", payload)
+        stub = self.root / "portable-bin"
+        stub.mkdir()
+        # The real hook must not invoke GNU sed or Bash's mapfile builtin. The latter
+        # is disabled in this shell to exercise the capability missing from Bash 3.2.
+        sed = stub / "sed"
+        sed.write_text("#!/bin/sh\necho GNU-sed-unavailable >&2\nexit 17\n", encoding="utf-8")
+        sed.chmod(0o755)
+        environment = {**os.environ, "PATH": str(stub) + os.pathsep + os.environ["PATH"]}
+        subprocess.run(["bash", "-c", 'if type mapfile >/dev/null 2>&1; then enable -n mapfile; fi; source "$1"', "hook", str(HOOK)],
+                       cwd=self.root, env=environment, check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertEqual(self.git("show", ":portable.txt"), b"first\nembedded\rcarriage\nlast\r")
+        self.assertEqual((self.root / "portable.txt").read_bytes(), payload)
+
     def test_binary_attributes_and_auto_binary_content_are_untouched(self):
         self.stage_raw("declared.bin", b"binary by attribute\r\n")
         self.stage_raw("detected.txt", b"\0binary by content\r\n")

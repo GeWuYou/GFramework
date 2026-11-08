@@ -30,7 +30,7 @@ public sealed class CacheWarmup : IInitializable, IDestroyable
 }
 ```
 
-AddComponent&lt;TService, TImplementation&gt; 只使用一个拥有键。外部实例使用实例重载；架构负责其已登记业务停止，调用者仍拥有 Dispose 责任。不要用多个工厂别名重复登记同一个可释放对象。
+AddComponent&lt;TService, TImplementation&gt; 只使用一个拥有键。外部实例使用实例重载；架构负责其已登记业务停止，调用者仍拥有 Dispose 责任。不要用多个工厂别名重复登记同一个可释放对象。所有模块配置完成后，架构会在构建 provider 前检查每个组件键必须且只能有一个非 keyed 的 Singleton 描述；后续模块追加同键服务、移除绑定或改成 Scoped / Transient 都会导致启动失败，避免消费者获得未启动的实例。
 
 ## 生命周期
 
