@@ -11,7 +11,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,9 +31,9 @@ namespace GFramework.Cqrs.Benchmarks.Messaging;
 [Config(typeof(Config))]
 public class StreamInvokerBenchmarks
 {
-    private MicrosoftDiContainer _reflectionContainer = null!;
+    private BenchmarkServiceHost _reflectionContainer = null!;
     private ICqrsRuntime _reflectionRuntime = null!;
-    private MicrosoftDiContainer _generatedContainer = null!;
+    private BenchmarkServiceHost _generatedContainer = null!;
     private ICqrsRuntime _generatedRuntime = null!;
     private ServiceProvider _serviceProvider = null!;
     private IMediator _mediatr = null!;

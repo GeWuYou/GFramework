@@ -1,68 +1,65 @@
 ---
 title: Godot 架构集成
-description: 说明 Godot 架构的配置声明、异步主线程启动和确定性清理方式。
+description: 使用标准 DI 描述依赖、显式声明节点模块，并等待 Godot 宿主启动与清理。
 ---
 
 # Godot 架构集成
 
 ## 概述
 
-`AbstractArchitecture` 在 Core Architecture 之上连接 Godot SceneTree；`ArchitectureAnchor` 接收退出树回调，`IGodotModule` 为携带 Node 的模块提供附加和分离入口。普通模块仍使用 `InstallModule(...)`。
+`AbstractArchitecture` 在 Core Architecture 之上连接 Godot SceneTree；`ArchitectureAnchor` 接收退出树回调，`IGodotModule` 为携带 Node 的模块提供附加和分离入口。普通服务使用标准 DI，配置型模块通过 `services.AddModule(...)` 接入。
 
-## 什么时候该用 `AbstractArchitecture`
-
-需要随场景树结束架构生命周期、安装节点模块或通过受保护的 `ArchitectureRoot` 访问宿主锚点时，可继承该类。模块和组件的依赖由当前架构的同一个正式 provider 解析；不额外运行 Generic Host。
+需要随场景树结束架构生命周期、安装节点模块或访问受保护的 `ArchitectureRoot` 时，可以继承此类。无需这些宿主能力时，使用普通 Core Architecture 或直接组合服务即可。不会额外运行 Generic Host。
 
 ## 最小接入路径
 
-### 常规模块仍然用 `InstallModule(...)`
+### 服务与生命周期组件
 
-`InstallModules()` 在配置阶段由 `ConfigureServices(IServiceCollection)` 调用，只描述服务、组件和模块，不解析依赖、不加载资源，也不访问原生节点。
+`InstallModules(IServiceCollection)` 在配置阶段由 `ConfigureServices` 调用。此时只记录描述，不解析服务、不加载资源、不访问原生节点。
 
 ```csharp
-using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Environment;
+using GFramework.Core.Architectures;
 using GFramework.Godot.Architectures;
+using Microsoft.Extensions.DependencyInjection;
 
-public sealed class GameArchitecture(
-    IArchitectureConfiguration configuration,
-    IEnvironment environment)
-    : AbstractArchitecture(configuration, environment)
+public sealed class GameArchitecture : AbstractArchitecture
 {
-    protected override void InstallModules()
+    protected override void InstallModules(IServiceCollection services)
     {
-        InstallModule(new UtilityModule());
-        InstallModule(new ModelModule());
-        InstallModule(new GameplayModule());
+        services.AddSingleton<InventoryService>();
+        services.AddComponent<GameSessionStartup>(order: 10);
+        services.AddModule(new GameplayModule());
     }
 }
 ```
 
-这些业务模块在各自 Install 方法中声明所需组件。等待 `InitializeAsync(...)` 成功之后再使用已初始化的服务。
+普通 `AddSingleton` 不会自动触发初始化。`AddComponent` 显式加入启动/停止，按 order 升序、同值登记顺序初始化，再按实际启动顺序逆序停止。Model、System、Utility 作为业务组织概念使用，不决定容器和生命周期语义。
 
-### 只有携带 `Node` 的模块才需要 `InstallGodotModule(...)`
+### 携带节点的模块
 
-在配置阶段声明节点模块，将原生 Node 创建推迟到宿主启动阶段：
+节点模块通过 `InstallGodotModule(services, module)` 声明。把 Node 的创建延迟到主线程附加阶段：
 
 ```csharp
-using GFramework.Core.Abstractions.Architectures;
+using GFramework.Core.Architectures;
 using GFramework.Godot.Architectures;
+using Microsoft.Extensions.DependencyInjection;
 using Godot;
 
 public sealed class HudModule : AbstractGodotModule
 {
     private Control? _root;
-
     public override Node Node => _root ??= new Control { Name = "HudModule" };
 
-    public override void Install(IArchitecture architecture)
+    public override void ConfigureServices(IServiceCollection services)
     {
-        // 这里仅声明服务；Node 属性在主线程附加阶段才被读取。
+        services.AddSingleton<HudState>();
     }
 
-    public override void OnAttach(GFramework.Core.Architectures.Architecture architecture)
+    public override void OnAttach(Architecture architecture)
     {
-        // 此时节点已经加入锚点，可建立宿主事件连接。
+        // 这里只是组合根接线；视图接收实际依赖，不保留整个架构。
+        var state = architecture.Services.GetRequiredService<HudState>();
+        ((Control)Node).TooltipText = state.Description;
     }
 
     public override void OnDetach()
@@ -73,69 +70,68 @@ public sealed class HudModule : AbstractGodotModule
 
 public sealed class HudArchitecture : AbstractArchitecture
 {
-    protected override void InstallModules()
+    protected override void InstallModules(IServiceCollection services)
     {
-        InstallGodotModule(new HudModule());
+        InstallGodotModule(services, new HudModule());
     }
+}
+
+public sealed class HudState
+{
+    public string Description { get; set; } = "Ready";
 }
 ```
 
-启动调用应被真正等待：
+真正等待启动，并在停止时等待清理：
 
 ```csharp
-var architecture = new HudArchitecture();
+await using var architecture = new HudArchitecture();
 await architecture.InitializeAsync(cancellationToken);
 ```
 
-配置期的 InstallGodotModule 是声明动作，不是异步附加任务。不要在初始化结束后再调用它，也不要同步阻塞等待节点就绪。
+配置期的节点模块声明不会立即附加节点。初始化完成后不能再安装模块，也不要同步阻塞等待场景树。
 
-## 当前生命周期
+## 生命周期
 
-### 初始化阶段
+### 初始化
 
-1. 执行 ConfigureServices / InstallModules，声明当前实例的注册图。
-2. 构建一次 provider，激活组件并完成业务初始化。
+1. 执行 ConfigureServices / InstallModules，记录当前实例的依赖与组件。
+2. 构建一次 provider，解析并启动显式组件。
 3. 在 OnStartedAsync 中把锚点创建派发到 Godot 主线程，等待锚点进入树。
 4. 在主线程依次添加模块节点、执行 OnAttach。
-5. 完成以上操作后进入 Ready。
+5. 完成宿主接线后进入 Ready。
 
-Godot 架构需要使用 InitializeAsync。同步 Initialize 会明确拒绝该异步宿主启动路径，不通过阻塞桥接等待场景树。
+Godot 架构需要 InitializeAsync。同步 Initialize 会拒绝异步宿主启动路径，不通过阻塞桥接等待场景树。
 
-### `InstallGodotModule(...)` 的执行顺序
+### 主线程与异步调用
 
-配置阶段校验安装窗口、调用 module.Install 并登记模块。启动阶段等待锚点后才访问 Node、添加子节点和执行 OnAttach；该回调失败时也会执行对应的分离清理。
+节点模块的附加和分离由 Godot 适配器派发。普通组件、CQRS handler 和服务方法仍应遵守各自线程契约；架构不会把所有业务调用自动切回主线程。
 
-取消可以撤销尚未开始的主线程队列动作；已经开始的短节点操作先完成，再允许失败清理继续，避免清理与同一节点操作并发。
+业务服务通过构造函数取得所需依赖；Godot 创建的节点由父节点或组合根在入树前显式 Configure。实际访问 Node、SceneTree、UI 的异步操作通过 IGameDispatcher 调度并等待完成。CQRS runtime 同样通过构造注入取得，调用其异步 SendRequestAsync、SendAsync、PublishAsync 或 CreateStream。
 
-### Godot 主线程与异步分发
+取消可以撤销尚未开始的主线程队列动作。已经开始的节点操作要完成后再继续清理，避免同一节点被并发释放。
 
-CQRS 的上下文分发入口只提供异步版本（`SendRequestAsync` / `SendAsync` / `PublishAsync` / `CreateStream`），避免同步桥接把 handler 放到工作线程、破坏 Node、SceneTree 或 UI 的线程亲和性。
+### 销毁
 
-使用这些异步入口或协程桥接入口，并让实际访问节点的业务代码遵守 Godot 主线程约束。架构对节点模块附加/分离的派发不等于所有业务 handler 和组件回调都自动回到主线程。
+核心先关闭新工作并取消、等待正在进行的启动；OnStoppingAsync 关闭宿主接入。随后逆序停止已开始的业务组件，再通过 OnStoppedAsync 在主线程逆序 OnDetach、清空宿主引用并排队释放锚点，最后异步释放 provider。
 
-### 销毁阶段
+即使一个停止或分离回调失败，也继续其他清理并最终报告错误。并发 DestroyAsync 等待同一个结果。QueueFree 的实际删除仍需后续引擎帧；需要确认原生删除完成的宿主，应在自己的生命周期边界等待相应帧。
 
-显式等待 DestroyAsync 可观察完整清理结果。核心先取消并等待正在进行的初始化，再通过 OnStoppingAsync 在主线程逆序执行已附加模块的 OnDetach、清空宿主引用并排队释放锚点，然后继续核心组件停止与 provider 异步释放。即使某个 OnDetach 失败，也继续其他模块和核心清理，最后报告错误。
+provider 创建的普通服务由 provider 释放；外部传入实例由其创建者释放。DI 拥有的原生资源适配器应在自身 DisposeAsync 内通过 dispatcher 执行原生清理，不能假设 provider 的每次异步延续都在主线程。
 
-DestroyAsync 等待业务和 provider 清理完成；QueueFree 排队的节点释放仍由引擎帧处理。并发销毁调用等待同一个完成任务。ArchitectureAnchor 的退出树回调会启动并观察这一任务；因为 Godot 的同步退出回调不能等待异步工作，退出驱动中的错误会写入 Godot 错误输出。
+ArchitectureAnchor 的退出树回调会观察异步销毁任务。Godot 的同步退出回调无法等待完整异步工作，因此需要确定退出结果的应用应主动等待 DestroyAsync，然后退出场景树。
 
-## 当前边界
+## 使用边界
 
-### 模块只在配置阶段声明
+- 节点模块只在配置阶段声明，必须有活动的 SceneTree 才能附加。
+- IGodotModule 的扩展点是 Node、ConfigureServices、OnAttach、OnDetach；业务初始化通过显式组件登记。
+- ArchitectureRoot 只在锚点就绪后有效，销毁后不可使用。它属于当前宿主，不用于全局节点查找。
+- Architecture.Services 限于组合根接线；领域对象和应用服务不接收容器或整个架构。
 
-配置窗口之外的 InstallGodotModule 会在 module.Install 之前失败。此时锚点是否存在不再决定能否注册；节点创建和挂接属于后续异步启动阶段。安装节点模块需要正在运行的 SceneTree。
+## 相关主题
 
-### `AbstractGodotModule` 只是便捷基类，不代表自动阶段广播
-
-IGodotModule 保证的成员为 Node、Install、OnAttach 和 OnDetach。基类中保留的 OnPhase / OnArchitecturePhase 不是自动阶段订阅；需要阶段协作时显式注册相应钩子。
-
-### `ArchitectureRoot` 只在锚点就绪后可用
-
-配置阶段不能访问 ArchitectureRoot。异步 InitializeAsync 完成后，或模块 OnAttach 中，可以使用本实例已进入树的锚点。销毁后该属性不再可用；不要把它用作全局节点查找入口。
-
-## 继续阅读
-
-1. [Godot 运行时集成](./index.md)
-2. [Godot 集成教程](../tutorials/godot-integration.md)
-3. [Godot 场景系统](./scene.md)
-4. [Godot UI 系统](./ui.md)
+- [Godot 运行时集成](./index.md)
+- [Godot 集成教程](../tutorials/godot-integration.md)
+- [Godot 进阶项目](../tutorials/godot-advanced-project.md)
+- [Godot 场景系统](./scene.md)
+- [Godot UI 系统](./ui.md)

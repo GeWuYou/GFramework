@@ -255,8 +255,8 @@ public class ResultTests
         var genericResult = result.ToResult(42);
 
         // Assert
-        Assert.That(genericResult.IsFaulted, Is.True);
-        Assert.That(genericResult.Exception, Is.SameAs(exception));
+        Assert.That(genericResult.IsFailure, Is.True);
+        Assert.That(genericResult.Error, Is.SameAs(exception));
     }
 
     /// <summary>
@@ -273,8 +273,8 @@ public class ResultTests
         var genericResult = result.ToResult("value");
 
         // Assert
-        Assert.That(genericResult.Exception.Message, Is.EqualTo("Original error"));
-        Assert.That(genericResult.Exception, Is.TypeOf<InvalidOperationException>());
+        Assert.That(genericResult.Error.Message, Is.EqualTo("Original error"));
+        Assert.That(genericResult.Error, Is.TypeOf<InvalidOperationException>());
     }
 
     /// <summary>
@@ -427,7 +427,7 @@ public class ResultTests
         var str = result.ToString();
 
         // Assert
-        Assert.That(str, Is.EqualTo("Fail(Test error)"));
+        Assert.That(str, Is.EqualTo("Failure(Test error)"));
     }
 
     /// <summary>
@@ -441,8 +441,8 @@ public class ResultTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Equals(default), Is.True);
-            Assert.That(result.GetHashCode(), Is.EqualTo(0));
-            Assert.That(result.ToString(), Is.EqualTo("Fail(null)"));
+            Assert.That(result.GetHashCode(), Is.EqualTo(default(Result).GetHashCode()));
+            Assert.That(result.ToString(), Is.EqualTo("Failure(The result has not been initialized.)"));
         });
     }
 }

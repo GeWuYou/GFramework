@@ -8,7 +8,7 @@ namespace GFramework.Ecs.Arch.Abstractions;
 /// <summary>
 ///     Arch ECS 模块接口 - 定义 ECS 模块的核心契约
 /// </summary>
-public interface IArchEcsModule : IServiceModule
+public interface IArchEcsModule : IArchitectureModule
 {
     /// <summary>
     ///     更新所有 ECS 系统

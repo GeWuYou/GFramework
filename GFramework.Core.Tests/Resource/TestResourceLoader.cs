@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Resource;
 
@@ -15,6 +16,15 @@ namespace GFramework.Core.Tests.Resource;
 public class TestResourceLoader : IResourceLoader<TestResource>
 {
     private readonly Dictionary<string, string> _resourceData = new(StringComparer.Ordinal);
+
+    private int _loadCount;
+    private int _unloadCount;
+
+    /// <summary>Gets the number of underlying load operations.</summary>
+    public int LoadCount => Volatile.Read(ref _loadCount);
+
+    /// <summary>Gets the number of matching releases.</summary>
+    public int UnloadCount => Volatile.Read(ref _unloadCount);
 
     /// <summary>
     ///     同步加载指定路径的测试资源。
@@ -29,6 +39,7 @@ public class TestResourceLoader : IResourceLoader<TestResource>
     // Both contracts share one synchronous fake implementation; calling LoadAsync from itself would recurse.
     private TestResource LoadResource(string path)
     {
+        Interlocked.Increment(ref _loadCount);
         ArgumentException.ThrowIfNullOrEmpty(path);
 
         if (_resourceData.TryGetValue(path, out var content))
@@ -47,8 +58,9 @@ public class TestResourceLoader : IResourceLoader<TestResource>
     /// <exception cref="ArgumentNullException"><paramref name="path" /> 为 <see langword="null" />。</exception>
     /// <exception cref="ArgumentException"><paramref name="path" /> 为空字符串。</exception>
     /// <exception cref="FileNotFoundException">指定路径的测试资源不存在。</exception>
-    public Task<TestResource> LoadAsync(string path)
+    public Task<TestResource> LoadAsync(string path, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(LoadResource(path));
     }
 
@@ -60,6 +72,7 @@ public class TestResourceLoader : IResourceLoader<TestResource>
     public void Unload(TestResource resource)
     {
         ArgumentNullException.ThrowIfNull(resource);
+        Interlocked.Increment(ref _unloadCount);
         resource.IsDisposed = true;
     }
 

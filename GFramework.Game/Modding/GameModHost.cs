@@ -215,7 +215,7 @@ public sealed class GameModHost : IAsyncDisposable
         // facade into their own ALC, so its defining assembly is part of this public ABI, just like ILogger.
         // Falling back to the default-context copy would give get_Services a different return type identity.
         var required = new[] { typeof(IGameMod).Assembly, typeof(GameModHost).Assembly, typeof(ILogger).Assembly,
-            typeof(IServiceProvider).Assembly, typeof(GFramework.Core.Abstractions.Events.IUnRegister).Assembly, };
+            typeof(IServiceProvider).Assembly, typeof(GFramework.Core.Abstractions.Events.IEventBus).Assembly, };
         foreach (var assembly in required.Concat(assemblies).Concat(extensions.SelectMany(static extension => extension.SharedAssemblies)))
         {
             ArgumentNullException.ThrowIfNull(assembly, nameof(assemblies));

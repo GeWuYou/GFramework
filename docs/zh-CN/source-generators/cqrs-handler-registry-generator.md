@@ -64,6 +64,7 @@ using GFramework.Cqrs;
 
 protected override void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
 {
+    services.AddCqrsRuntime();
     services.AddCqrsHandlersFromAssembly(typeof(GameArchitecture).Assembly);
 }
 ```
@@ -78,7 +79,9 @@ services.AddCqrsHandlersFromAssemblies(
 ]);
 ```
 
-在 Architecture 集成路径中，也可以把同样的程序集直接交给 `architecture.UseCqrsRuntime(...)` 或 `CqrsRuntimeModule(...)`。
+Architecture 的配置阶段也可使用 `services.AddModule(new CqrsRuntimeModule(typeof(GameArchitecture).Assembly))` 一次描述 runtime 与程序集。普通 C# 宿主直接使用 IServiceCollection 即可。
+
+handler 通过构造函数取得实际依赖，生成注册器和 invoker 使用标准 IServiceProvider 解析它。分发不再注入架构上下文，处理器不需要框架角色基类。组合根取得 ICqrsRuntime 后，业务调用方通过构造注入同一个 runtime，并传递请求及取消令牌。
 
 文档示例统一用 marker 类型承载程序集引用。框架本身不要求固定目录或固定命名，但团队实践里可以把这类空 marker
 集中放在每个业务程序集自己的 `Application/Markers` 或等价目录，并采用 `InventoryCqrsMarker` 这类能直接看出来源

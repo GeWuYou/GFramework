@@ -1,6 +1,6 @@
 ---
 title: Godot 扩展方法
-description: 以当前 GFramework.Godot.Extensions 源码为准，说明路径、Node、signal 和 unregister 扩展的真实成员与边界。
+description: 以当前 GFramework.Godot.Extensions 源码为准，说明路径、Node、signal 和订阅释放 扩展的真实成员与边界。
 ---
 
 # Godot 扩展方法
@@ -10,7 +10,7 @@ description: 以当前 GFramework.Godot.Extensions 源码为准，说明路径�
 - `GodotPathExtensions`
 - `NodeExtensions`
 - `SignalFluentExtensions`
-- `UnRegisterExtension`
+- `SubscriptionExtensions`
 
 按源码看，这些扩展各自解决的问题并不相同，也需要区分哪些能力属于单一运行时辅助，而不是统一入口。
 
@@ -97,20 +97,22 @@ if ("res://config/gameplay.yaml".IsGodotPath())
 
 它把目标对象和 signal 名称包装成 `SignalBuilder`。具体连接语义请看 [Godot 信号系统](./signal.md)。
 
-### `UnRegisterExtension`
+### `SubscriptionExtensions`
 
-`UnRegisterExtension` 当前也只有一个公开方法：
-
-- `UnRegisterWhenNodeExitTree(this IUnRegister unRegister, Node node)`
-
-它做的事情很明确：把 `unRegister.UnRegister` 挂到 `node.TreeExiting` 上。这样框架侧的订阅句柄就能跟 Godot 节点生命周期对齐。
+`DisposeWhenNodeExits(this IDisposable subscription, Node node)` 把订阅绑定到节点本次在树中的生命周期。返回的新令牌同时拥有节点 TreeExiting 钩子和原订阅；提前释放返回令牌时，会一次性解除两者。
 
 ```csharp
-IUnRegister subscription = eventBus.Subscribe<SettingsChangedEvent>(OnSettingsChanged);
-subscription.UnRegisterWhenNodeExitTree(this);
+using System;
+using GFramework.Godot.Extensions;
+
+IDisposable lifetime = eventBus
+    .Subscribe<SettingsChangedEvent>(OnSettingsChanged)
+    .DisposeWhenNodeExits(this);
+
+lifetime.Dispose(); // 可以提前结束；节点退出时同样释放这个组合令牌。
 ```
 
-它不会接管普通 Godot signal 的断开逻辑，也不会帮你推断别的释放时机。
+重复释放幂等，原始订阅只释放一次。该入口不会替代原生 signal 连接的显式管理。
 
 ## 最小接入路径
 
@@ -143,17 +145,26 @@ public partial class SettingsPanel : Control
 
 ### 2. 框架订阅和节点生命周期一起收尾
 
-当订阅句柄实现了 `IUnRegister`，可以把释放时机绑到节点退出树：
+订阅返回 IDisposable；保存 DisposeWhenNodeExits 返回的组合令牌：
 
 ```csharp
+private IDisposable? _subscription;
+
 public override void _Ready()
 {
-    IUnRegister subscription = _eventBus.Subscribe<SettingsChangedEvent>(OnSettingsChanged);
-    subscription.UnRegisterWhenNodeExitTree(this);
+    _subscription = _eventBus
+        .Subscribe<SettingsChangedEvent>(OnSettingsChanged)
+        .DisposeWhenNodeExits(this);
+}
+
+public void StopListening()
+{
+    _subscription?.Dispose();
+    _subscription = null;
 }
 ```
 
-这比在多个 `_ExitTree()` / `Dispose()` 分支里手写解绑更稳定，也更符合当前扩展的职责边界。
+事件总线通过节点的显式配置入口提供。节点重新入树后，需要重新建立本次树生命周期的订阅。
 
 ### 3. 只在需要时使用 signal fluent API
 
@@ -161,7 +172,7 @@ public override void _Ready()
 
 - 节点查找、ready 等待、输入处理：`NodeExtensions`
 - 动态 signal 绑定：`Signal(...)`
-- 框架订阅释放：`UnRegisterWhenNodeExitTree(...)`
+- 框架订阅释放：`DisposeWhenNodeExits(...)`
 - 路径前缀判断：`GodotPathExtensions`
 
 ## 当前边界
@@ -170,7 +181,7 @@ public override void _Ready()
 - 它不是 router、scene factory、UI factory 或生成器的替代层
 - `GetOrCreateNode<T>()` 只会创建一个直接子节点，不会递归补整条路径
 - `SafeCallDeferred(...)` 只有在 `IsValidNode()` 为 `true` 时才会调用；节点未入树时不会执行
-- `UnRegisterWhenNodeExitTree(...)` 只针对实现了 `IUnRegister` 的框架订阅句柄，不会自动处理 Godot 原生 `Connect(...)`
+- `DisposeWhenNodeExits(...)` 接收 `IDisposable` 订阅，并返回同时管理节点钩子和订阅的新令牌，不会自动处理 Godot 原生 `Connect(...)`
 - 协程辅助扩展在 `GFramework.Godot.Coroutine` 命名空间，不属于这组 `Extensions` 页面要覆盖的核心范围
 
 ## 继续阅读

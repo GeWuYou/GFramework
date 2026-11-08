@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Architectures;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
-using GFramework.Cqrs.Extensions;
 using GFramework.Cqrs.Internal;
 using GFramework.Cqrs.Tests.Logging;
 using Microsoft.Extensions.Logging;
@@ -17,8 +15,8 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 [TestFixture]
 internal sealed class CqrsHandlerRegistrarTests
 {
-    private MicrosoftDiContainer? _container;
-    private ArchitectureContext? _context;
+    private ServiceTestHost? _container;
+    private CqrsTestHost? _context;
 
     /// <summary>
     ///     初始化测试容器并重置共享状态。
@@ -28,13 +26,13 @@ internal sealed class CqrsHandlerRegistrarTests
     {
         DeterministicNotificationHandlerState.Reset();
 
-        _container = new MicrosoftDiContainer();
+        _container = new ServiceTestHost();
         CqrsTestRuntime.RegisterHandlers(
             _container,
             typeof(CqrsHandlerRegistrarTests).Assembly);
 
         _container.Freeze();
-        _context = new ArchitectureContext(_container);
+        _context = new CqrsTestHost(_container);
         ClearRegistrarCaches();
     }
 
@@ -87,7 +85,7 @@ internal sealed class CqrsHandlerRegistrarTests
 
         try
         {
-            var container = new MicrosoftDiContainer();
+            var container = new ServiceTestHost();
             RegisterHandlersWithCapture(container, capturingProvider, partiallyLoadableAssembly.Object);
             container.Freeze();
 
@@ -132,7 +130,7 @@ internal sealed class CqrsHandlerRegistrarTests
             .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false))
             .Returns([new CqrsHandlerRegistryAttribute(typeof(GeneratedNotificationHandlerRegistry))]);
 
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
@@ -157,7 +155,7 @@ internal sealed class CqrsHandlerRegistrarTests
             .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false))
             .Returns([new CqrsHandlerRegistryAttribute(typeof(PrivateConstructorNotificationHandlerRegistry))]);
 
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
@@ -176,11 +174,11 @@ internal sealed class CqrsHandlerRegistrarTests
     {
         var capturingProvider = new CapturingLoggerFactoryProvider(LogLevel.Warning);
         var logger = capturingProvider.CreateLogger(nameof(CqrsHandlerRegistrarTests));
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         var exception = Assert.Throws<InvalidOperationException>(() =>
             CqrsHandlerRegistrar.RegisterGeneratedRegistry(
-                container.GetServicesUnsafe,
+                container.Services,
                 typeof(AbstractGeneratedNotificationHandlerRegistry),
                 logger));
 
@@ -197,7 +195,7 @@ internal sealed class CqrsHandlerRegistrarTests
                 warningLogs.Any(log =>
                     log.Message.Contains("because it is abstract", StringComparison.Ordinal)),
                 Is.True);
-            Assert.That(container.GetServicesUnsafe, Is.Empty);
+            Assert.That(container.Services, Is.Empty);
         });
     }
 
@@ -209,11 +207,11 @@ internal sealed class CqrsHandlerRegistrarTests
     {
         var capturingProvider = new CapturingLoggerFactoryProvider(LogLevel.Warning);
         var logger = capturingProvider.CreateLogger(nameof(CqrsHandlerRegistrarTests));
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         var exception = Assert.Throws<InvalidOperationException>(() =>
             CqrsHandlerRegistrar.RegisterGeneratedRegistry(
-                container.GetServicesUnsafe,
+                container.Services,
                 typeof(ConstructorArgumentNotificationHandlerRegistry),
                 logger));
 
@@ -232,7 +230,7 @@ internal sealed class CqrsHandlerRegistrarTests
                         "does not expose an accessible parameterless constructor",
                         StringComparison.Ordinal)),
                 Is.True);
-            Assert.That(container.GetServicesUnsafe, Is.Empty);
+            Assert.That(container.Services, Is.Empty);
         });
     }
 
@@ -256,7 +254,7 @@ internal sealed class CqrsHandlerRegistrarTests
 
         try
         {
-            var container = new MicrosoftDiContainer();
+            var container = new ServiceTestHost();
             RegisterHandlersWithCapture(container, capturingProvider, generatedAssembly.Object);
             container.Freeze();
 
@@ -332,10 +330,10 @@ throwOnError: false,
 ignoreCase: false))
             .Returns(ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType);
 
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
 
-        var registrations = container.GetServicesUnsafe
+        var registrations = container.Services
             .Where(static descriptor =>
                 descriptor.ServiceType == typeof(INotificationHandler<GeneratedRegistryNotification>) &&
                 descriptor.ImplementationType is not null)
@@ -381,10 +379,10 @@ ignoreCase: false),
                     ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType),
             ]);
 
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
 
-        var registrations = container.GetServicesUnsafe
+        var registrations = container.Services
             .Where(static descriptor =>
                 descriptor.ServiceType == typeof(INotificationHandler<GeneratedRegistryNotification>) &&
                 descriptor.ImplementationType is not null)
@@ -438,10 +436,10 @@ throwOnError: false,
 ignoreCase: false))
             .Returns(ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType);
 
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
 
-        var registrations = container.GetServicesUnsafe
+        var registrations = container.Services
             .Where(static descriptor =>
                 descriptor.ServiceType == typeof(INotificationHandler<GeneratedRegistryNotification>) &&
                 descriptor.ImplementationType is not null)
@@ -474,8 +472,8 @@ ignoreCase: false),
     public void RegisterHandlers_Should_Cache_Assembly_Metadata_Across_Containers()
     {
         var generatedAssembly = CreateCachedMetadataAssembly();
-        var firstContainer = new MicrosoftDiContainer();
-        var secondContainer = new MicrosoftDiContainer();
+        var firstContainer = new ServiceTestHost();
+        var secondContainer = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(firstContainer, generatedAssembly.Object);
         CqrsTestRuntime.RegisterHandlers(secondContainer, generatedAssembly.Object);
@@ -504,8 +502,8 @@ ignoreCase: false),
             .Setup(static assembly => assembly.GetTypes())
             .Throws(reflectionTypeLoadException);
 
-        var firstContainer = new MicrosoftDiContainer();
-        var secondContainer = new MicrosoftDiContainer();
+        var firstContainer = new ServiceTestHost();
+        var secondContainer = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(firstContainer, partiallyLoadableAssembly.Object);
         CqrsTestRuntime.RegisterHandlers(secondContainer, partiallyLoadableAssembly.Object);
@@ -553,8 +551,8 @@ ignoreCase: false),
             Assert.That(GetSingleKeyCacheValue(supportedHandlerInterfacesCache, secondHandlerType), Is.Null);
         });
 
-        var firstContainer = new MicrosoftDiContainer();
-        var secondContainer = new MicrosoftDiContainer();
+        var firstContainer = new ServiceTestHost();
+        var secondContainer = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(firstContainer, handlerAssembly.Object);
         var firstHandlerInterfaces =
@@ -594,10 +592,10 @@ ignoreCase: false),
             .Setup(static assembly => assembly.GetTypes())
             .Returns([handlerType, handlerType]);
 
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         CqrsTestRuntime.RegisterHandlers(container, handlerAssembly.Object);
 
-        var registrations = container.GetServicesUnsafe
+        var registrations = container.Services
             .Where(static descriptor =>
                 descriptor.ServiceType == typeof(INotificationHandler<DeterministicOrderNotification>) &&
                 descriptor.ImplementationType == typeof(AlphaDeterministicNotificationHandler))
@@ -614,11 +612,11 @@ ignoreCase: false),
     /// <param name="capturingProvider">捕获注册阶段诊断日志的标准日志工厂。</param>
     /// <param name="assemblies">要扫描注册的程序集集合。</param>
     private static void RegisterHandlersWithCapture(
-        MicrosoftDiContainer container,
+        ServiceTestHost container,
         CapturingLoggerFactoryProvider capturingProvider,
         params Assembly[] assemblies)
     {
-        var services = container.GetServicesUnsafe;
+        var services = container.Services;
         services.AddCqrsRuntime(capturingProvider);
         services.AddCqrsHandlersFromAssemblies(assemblies);
     }
@@ -667,8 +665,8 @@ ignoreCase: false))
     ///     断言两个容器都获得了相同的 generated-registry 与 reflection-fallback 处理器集合。
     /// </summary>
     private static void AssertGeneratedRegistryNotificationHandlers(
-        MicrosoftDiContainer firstContainer,
-        MicrosoftDiContainer secondContainer)
+        ServiceTestHost firstContainer,
+        ServiceTestHost secondContainer)
     {
         var firstRegistrations = GetGeneratedRegistryNotificationHandlerTypes(firstContainer);
         var secondRegistrations = GetGeneratedRegistryNotificationHandlerTypes(secondContainer);
@@ -683,7 +681,7 @@ ignoreCase: false))
     /// <summary>
     ///     读取容器中针对 generated notification 的 handler 运行时类型列表。
     /// </summary>
-    private static Type[] GetGeneratedRegistryNotificationHandlerTypes(MicrosoftDiContainer container)
+    private static Type[] GetGeneratedRegistryNotificationHandlerTypes(ServiceTestHost container)
     {
         return [.. container.GetAll<INotificationHandler<GeneratedRegistryNotification>>().Select(static handler => handler.GetType())];
     }

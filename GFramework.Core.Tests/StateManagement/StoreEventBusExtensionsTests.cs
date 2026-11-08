@@ -23,8 +23,8 @@ public class StoreEventBusExtensionsTests
         var dispatchedEvents = new List<StoreDispatchedEvent<CounterState>>();
         var stateChangedEvents = new List<StoreStateChangedEvent<CounterState>>();
 
-        eventBus.Register<StoreDispatchedEvent<CounterState>>(dispatchedEvents.Add);
-        eventBus.Register<StoreStateChangedEvent<CounterState>>(stateChangedEvents.Add);
+        eventBus.Subscribe<StoreDispatchedEvent<CounterState>>(dispatchedEvents.Add);
+        eventBus.Subscribe<StoreStateChangedEvent<CounterState>>(stateChangedEvents.Add);
 
         store.BridgeToEventBus(eventBus);
 
@@ -55,13 +55,13 @@ public class StoreEventBusExtensionsTests
         var dispatchedEvents = new List<StoreDispatchedEvent<CounterState>>();
         var stateChangedEvents = new List<StoreStateChangedEvent<CounterState>>();
 
-        eventBus.Register<StoreDispatchedEvent<CounterState>>(dispatchedEvents.Add);
-        eventBus.Register<StoreStateChangedEvent<CounterState>>(stateChangedEvents.Add);
+        eventBus.Subscribe<StoreDispatchedEvent<CounterState>>(dispatchedEvents.Add);
+        eventBus.Subscribe<StoreStateChangedEvent<CounterState>>(stateChangedEvents.Add);
 
         var bridge = store.BridgeToEventBus(eventBus);
 
         store.Dispatch(new IncrementAction(1));
-        bridge.UnRegister();
+        bridge.Dispose();
         store.Dispatch(new IncrementAction(1));
 
         Assert.That(dispatchedEvents.Count, Is.EqualTo(1));

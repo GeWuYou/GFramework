@@ -2,14 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Globalization;
-using GFramework.Core.Abstractions.Systems;
 
 namespace GFramework.Core.Abstractions.Localization;
 
 /// <summary>
 /// 本地化管理器接口
 /// </summary>
-public interface ILocalizationManager : ISystem
+public interface ILocalizationManager
 {
     /// <summary>
     /// 当前语言代码

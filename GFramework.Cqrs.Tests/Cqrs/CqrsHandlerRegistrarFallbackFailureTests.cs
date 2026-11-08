@@ -1,7 +1,6 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Tests.Logging;
 using Microsoft.Extensions.Logging;
@@ -53,7 +52,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             .Setup(static assembly => assembly.GetType(missingTypeName, throwOnError: false, ignoreCase: false))
             .Returns((Type?)null);
 
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         RegisterHandlersWithCapture(container, generatedAssembly.Object);
 
         Assert.Multiple(() =>
@@ -86,7 +85,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             .Setup(static assembly => assembly.GetType(failingTypeName, throwOnError: false, ignoreCase: false))
             .Throws(new TypeLoadException(exceptionMessage));
 
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         RegisterHandlersWithCapture(container, generatedAssembly.Object);
 
         Assert.Multiple(() =>
@@ -115,7 +114,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             "GFramework.Cqrs.Tests.Cqrs.DirectFallbackMismatchAssembly, Version=1.0.0.0",
             new CqrsReflectionFallbackAttribute(crossAssemblyFallbackType));
 
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         RegisterHandlersWithCapture(container, generatedAssembly.Object);
 
         Assert.Multiple(() =>
@@ -146,7 +145,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             .Setup(static assembly => assembly.GetTypes())
             .Returns([typeof(GeneratedRegistryNotificationHandler)]);
 
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         RegisterHandlersWithCapture(container, generatedAssembly.Object);
 
         Assert.Multiple(() =>
@@ -176,7 +175,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             .Setup(static assembly => assembly.GetTypes())
             .Returns([typeof(GeneratedRegistryNotificationHandler)]);
 
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         RegisterHandlersWithCapture(container, generatedAssembly.Object);
 
         Assert.Multiple(() =>
@@ -201,11 +200,11 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
     /// </summary>
     /// <param name="container">目标测试容器。</param>
     /// <param name="assemblies">要扫描注册的程序集集合。</param>
-    private void RegisterHandlersWithCapture(MicrosoftDiContainer container, params Assembly[] assemblies)
+    private void RegisterHandlersWithCapture(ServiceTestHost container, params Assembly[] assemblies)
     {
         Assert.That(_capturingLoggerFactoryProvider, Is.Not.Null);
 
-        var services = container.GetServicesUnsafe;
+        var services = container.Services;
         services.AddCqrsRuntime(_capturingLoggerFactoryProvider);
         services.AddCqrsHandlersFromAssemblies(assemblies);
     }
@@ -256,9 +255,9 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
     /// </summary>
     /// <param name="container">已执行注册的测试容器。</param>
     /// <returns>按注册顺序返回的处理器类型数组。</returns>
-    private static Type[] GetGeneratedRegistryNotificationHandlerTypes(MicrosoftDiContainer container)
+    private static Type[] GetGeneratedRegistryNotificationHandlerTypes(ServiceTestHost container)
     {
-        return [.. container.GetServicesUnsafe
+        return [.. container.Services
             .Where(static descriptor =>
                 descriptor.ServiceType == typeof(INotificationHandler<GeneratedRegistryNotification>) &&
                 descriptor.ImplementationType is not null)

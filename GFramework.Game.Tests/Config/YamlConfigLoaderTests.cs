@@ -3006,7 +3006,7 @@ public class YamlConfigLoaderTests
         }
         finally
         {
-            hotReload.UnRegister();
+            hotReload.Dispose();
         }
     }
 
@@ -3069,7 +3069,7 @@ public class YamlConfigLoaderTests
         }
         finally
         {
-            hotReload.UnRegister();
+            hotReload.Dispose();
         }
     }
 
@@ -3093,7 +3093,7 @@ public class YamlConfigLoaderTests
         }
         finally
         {
-            hotReload.UnRegister();
+            hotReload.Dispose();
         }
     }
 
@@ -3148,7 +3148,7 @@ public class YamlConfigLoaderTests
         }
         finally
         {
-            hotReload.UnRegister();
+            hotReload.Dispose();
         }
     }
 
@@ -3187,7 +3187,7 @@ public class YamlConfigLoaderTests
         }
         finally
         {
-            hotReload.UnRegister();
+            hotReload.Dispose();
         }
     }
 
@@ -3372,7 +3372,7 @@ public class YamlConfigLoaderTests
     /// <param name="loader">已完成首次加载的加载器。</param>
     /// <param name="registry">要复用的配置注册表。</param>
     /// <returns>失败通知任务源与取消注册句柄。</returns>
-    private static (TaskCompletionSource<(string TableName, Exception Exception)> TaskSource, IUnRegister Registration)
+    private static (TaskCompletionSource<(string TableName, Exception Exception)> TaskSource, IDisposable Registration)
         EnableHotReloadWithFailureCapture(YamlConfigLoader loader, ConfigRegistry registry)
     {
         var reloadFailureTaskSource =
@@ -3393,7 +3393,7 @@ public class YamlConfigLoaderTests
     /// <param name="registry">要复用的配置注册表。</param>
     /// <param name="useOptionsObject">是否通过选项对象启用热重载。</param>
     /// <returns>成功通知任务源与取消注册句柄。</returns>
-    private static (TaskCompletionSource<string> TaskSource, IUnRegister Registration) EnableHotReloadWithReloadCapture(
+    private static (TaskCompletionSource<string> TaskSource, IDisposable Registration) EnableHotReloadWithReloadCapture(
         YamlConfigLoader loader,
         ConfigRegistry registry,
         bool useOptionsObject = false)

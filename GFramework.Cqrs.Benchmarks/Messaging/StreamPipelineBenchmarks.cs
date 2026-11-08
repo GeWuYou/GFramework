@@ -13,7 +13,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,7 +34,7 @@ namespace GFramework.Cqrs.Benchmarks.Messaging;
 [Config(typeof(Config))]
 public class StreamPipelineBenchmarks
 {
-    private MicrosoftDiContainer _container = null!;
+    private BenchmarkServiceHost _container = null!;
     private ICqrsRuntime _runtime = null!;
     private ServiceProvider _serviceProvider = null!;
     private IMediator _mediatr = null!;
@@ -184,7 +183,7 @@ public class StreamPipelineBenchmarks
     /// <param name="container">当前 benchmark 使用的容器。</param>
     /// <param name="pipelineCount">要注册的行为数量。</param>
     /// <exception cref="ArgumentOutOfRangeException">行为数量不在支持的矩阵内时抛出。</exception>
-    private static void RegisterGFrameworkPipelineBehaviors(MicrosoftDiContainer container, int pipelineCount)
+    private static void RegisterGFrameworkPipelineBehaviors(BenchmarkServiceHost container, int pipelineCount)
     {
         ArgumentNullException.ThrowIfNull(container);
 
@@ -193,13 +192,13 @@ public class StreamPipelineBenchmarks
             case 0:
                 return;
             case 1:
-                container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior1>();
+                container.Services.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior1>();
                 return;
             case 4:
-                container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior1>();
-                container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior2>();
-                container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior3>();
-                container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior4>();
+                container.Services.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior1>();
+                container.Services.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior2>();
+                container.Services.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior3>();
+                container.Services.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior4>();
                 return;
             default:
                 throw new ArgumentOutOfRangeException(nameof(pipelineCount), pipelineCount,

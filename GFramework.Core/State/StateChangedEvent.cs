@@ -8,7 +8,7 @@ namespace GFramework.Core.State;
 /// <summary>
 ///     表示状态变更事件的数据类
 /// </summary>
-public sealed class StateChangedEvent
+public sealed class StateChangedEvent : EventArgs
 {
     /// <summary>
     ///     获取变更前的旧状态

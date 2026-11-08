@@ -10,7 +10,6 @@ using BenchmarkDotNet.Order;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,7 +32,7 @@ namespace GFramework.Cqrs.Benchmarks.Messaging;
 [Config(typeof(Config))]
 public class RequestLifetimeBenchmarks
 {
-    private MicrosoftDiContainer _container = null!;
+    private BenchmarkServiceHost _container = null!;
     private ICqrsRuntime? _runtime;
     private ScopedBenchmarkContainer? _scopedContainer;
     private ICqrsRuntime? _scopedRuntime;
@@ -206,7 +205,7 @@ public class RequestLifetimeBenchmarks
     ///     先通过 generated registry 提供静态 descriptor，再显式覆盖 handler 生命周期，
     ///     可以把比较变量收敛到 handler 解析成本，而不是 descriptor 发现路径本身。
     /// </remarks>
-    private static void RegisterGFrameworkHandler(MicrosoftDiContainer container, HandlerLifetime lifetime)
+    private static void RegisterGFrameworkHandler(BenchmarkServiceHost container, HandlerLifetime lifetime)
     {
         ArgumentNullException.ThrowIfNull(container);
 

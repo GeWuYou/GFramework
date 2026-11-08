@@ -47,8 +47,8 @@ namespace GFramework.Core.Tests.Coroutine
             var waitForMultipleEvents = new WaitForMultipleEvents<TestEvent1, TestEvent2>(EventBus);
 
             // Act
-            EventBus.Send(new TestEvent1 { Data = "first_event" });
-            EventBus.Send(new TestEvent2 { Data = "second_event" });
+            EventBus.Publish(new TestEvent1 { Data = "first_event" });
+            EventBus.Publish(new TestEvent2 { Data = "second_event" });
 
             // Assert
             Assert.That(waitForMultipleEvents.IsDone, Is.True);
@@ -64,7 +64,7 @@ namespace GFramework.Core.Tests.Coroutine
             var waitForMultipleEvents = new WaitForMultipleEvents<TestEvent1, TestEvent2>(EventBus);
 
             // Act
-            EventBus.Send(new TestEvent2 { Data = "second_event" });
+            EventBus.Publish(new TestEvent2 { Data = "second_event" });
 
             // Assert
             Assert.That(waitForMultipleEvents.IsDone, Is.True);
@@ -80,8 +80,8 @@ namespace GFramework.Core.Tests.Coroutine
             var waitForMultipleEvents = new WaitForMultipleEvents<TestEvent1, TestEvent2>(EventBus);
 
             // Act
-            EventBus.Send(new TestEvent2 { Data = "second_event" });
-            EventBus.Send(new TestEvent1 { Data = "first_event" });
+            EventBus.Publish(new TestEvent2 { Data = "second_event" });
+            EventBus.Publish(new TestEvent1 { Data = "first_event" });
 
             // Assert
             Assert.That(waitForMultipleEvents.IsDone, Is.True);
@@ -98,7 +98,7 @@ namespace GFramework.Core.Tests.Coroutine
             var waitForMultipleEvents = new WaitForMultipleEvents<TestEvent1, TestEvent2>(EventBus);
 
             // Act - Fire first event
-            EventBus.Send(new TestEvent1 { Data = "first_event" });
+            EventBus.Publish(new TestEvent1 { Data = "first_event" });
 
             // Verify first event was processed
             Assert.That(waitForMultipleEvents.IsDone, Is.True);
@@ -106,7 +106,7 @@ namespace GFramework.Core.Tests.Coroutine
             Assert.That(waitForMultipleEvents.FirstEventData?.Data, Is.EqualTo("first_event"));
 
             // Fire second event after completion
-            EventBus.Send(new TestEvent2 { Data = "second_event" });
+            EventBus.Publish(new TestEvent2 { Data = "second_event" });
 
             // Assert - The state should not change
             Assert.That(waitForMultipleEvents.IsDone, Is.True);
@@ -126,7 +126,7 @@ namespace GFramework.Core.Tests.Coroutine
             waitForMultipleEvents.Dispose();
 
             // Fire an event after disposal
-            EventBus.Send(new TestEvent1 { Data = "after_disposal" });
+            EventBus.Publish(new TestEvent1 { Data = "after_disposal" });
 
             // Assert - Event should not be processed due to disposal
             // Since we disposed, no event data should be captured

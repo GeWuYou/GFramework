@@ -19,7 +19,6 @@ global using System.Threading.Tasks;
 global using GFramework.Tests.Common;
 global using NUnit.Framework;
 global using NUnit.Compatibility;
-global using GFramework.Core.Systems;
 global using GFramework.Core.Abstractions.StateManagement;
 global using GFramework.Core.Extensions;
 global using GFramework.Core.Property;

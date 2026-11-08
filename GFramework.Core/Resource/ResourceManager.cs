@@ -1,328 +1,485 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Collections.Concurrent;
-using GFramework.Core.Abstractions.Logging;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Abstractions.Resource;
-using GFramework.Core.Logging;
 
 namespace GFramework.Core.Resource;
 
 /// <summary>
-///     资源管理器实现，提供资源加载、缓存和卸载功能
-///     句柄获取、卸载和释放策略在同一操作锁内串行化。加载器拥有它创建的资源及释放责任；
-///     管理器保留原始加载器的释放操作，不额外调用资源的 Dispose。
+///     Owns one cache entry per resource type/path and issues independent leases on that ownership.
+///     Loading and releasing resources is delegated to externally owned loaders.
 /// </summary>
 /// <remarks>
-///     创建资源管理器
-///     默认使用手动释放策略
+///     The operation lock protects cache identities, pending acquisitions and lease counts. Loader callbacks run
+///     outside that lock. One shared load is retained even when individual waiters cancel. Closing waits for loads,
+///     but does not wait for consumer-held leases: those remain valid and release their resource when disposed.
+///     Keep loader release capabilities alive until every lease is returned, including after shutdown completes.
+///     Prefer asynchronous acquisition and disposal whenever a loader can suspend.
 /// </remarks>
-public class ResourceManager(ILogger? logger = null) : IResourceManager
+public sealed class ResourceManager : IResourceManager
 {
-    /// <summary>
-    ///     Path 参数验证错误消息常量
-    /// </summary>
-    private const string PathCannotBeNullOrEmptyMessage = "Path cannot be null or whitespace.";
-
-    private readonly ResourceCache _cache = new();
-    private readonly ConcurrentDictionary<Type, object> _loaders = new();
 #if NET9_0_OR_GREATER
-    // net9.0 及以上目标使用专用 Lock，以满足分析器对专用同步原语的建议。
-    private readonly System.Threading.Lock _loadLock = new();
+    private readonly System.Threading.Lock _gate = new();
 #else
-    // net8.0 目标仍回退到 object 锁，以保持多目标编译兼容性。
-    private readonly object _loadLock = new();
+    private readonly object _gate = new();
 #endif
-    private readonly ILogger _logger = logger ?? NullLogger<ResourceManager>.Instance;
+    private readonly Dictionary<(Type Type, string Path), LoadOperation> _entries = [];
+    private readonly Dictionary<Type, object> _loaders = [];
+    private readonly List<Exception> _shutdownErrors = [];
     private IResourceReleaseStrategy _releaseStrategy = new ManualReleaseStrategy();
+    private bool _closed;
+    private Task? _shutdownTask;
 
-    /// <summary>
-    ///     获取已加载资源的数量
-    /// </summary>
-    public int LoadedResourceCount => _cache.Count;
-
-    /// <summary>
-    ///     同步加载资源
-    /// </summary>
-    public T? Load<T>(string path) where T : class
+    /// <inheritdoc />
+    public int LoadedResourceCount
     {
-        if (string.IsNullOrWhiteSpace(path))
-            throw new ArgumentException(PathCannotBeNullOrEmptyMessage, nameof(path));
-
-        lock (_loadLock)
+        get
         {
-            var cached = GetCachedResource<T>(path);
-            if (cached != null)
-            {
-                return cached;
-            }
-
-            var loader = GetLoader<T>() ?? throw new InvalidOperationException($"No loader registered for type {typeof(T).Name}");
-
-            try
-            {
-                var resource = loader.Load(path);
-                _cache.Add(path, resource, value => loader.Unload((T)value));
-                return resource;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to load resource '{ResourcePath}'", path);
-                return null;
-            }
+            lock (_gate)
+                return _entries.Values.Count(operation => operation.Entry != null);
         }
     }
 
-    /// <summary>
-    ///     异步加载指定路径的资源，并在缓存中进行并发去重。
-    /// </summary>
-    /// <typeparam name="T">资源类型</typeparam>
-    /// <param name="path">资源路径，不能为空或空白。</param>
-    /// <returns>加载成功返回资源实例；加载失败返回 <see langword="null"/>。</returns>
-    /// <exception cref="ArgumentException">当 <paramref name="path"/> 为空或空白时抛出。</exception>
-    /// <exception cref="InvalidOperationException">当未注册对应资源加载器时抛出。</exception>
-    /// <remarks>内部使用 <c>ConfigureAwait(false)</c>，后续延续不保证回到调用线程。</remarks>
-    public async Task<T?> LoadAsync<T>(string path) where T : class
+    /// <inheritdoc />
+    public IResourceHandle<T> Acquire<T>(string path) where T : class
     {
-        if (string.IsNullOrWhiteSpace(path))
-            throw new ArgumentException(PathCannotBeNullOrEmptyMessage, nameof(path));
-
-        lock (_loadLock)
-        {
-            var cached = GetCachedResource<T>(path);
-            if (cached != null)
-                return cached;
-        }
-
-        var loader = GetLoader<T>() ?? throw new InvalidOperationException($"No loader registered for type {typeof(T).Name}");
-
+        var key = CreateKey<T>(path);
+        var operation = Reserve<T>(key, allowPending: false, out var loader);
         try
         {
-            var resource = await loader.LoadAsync(path).ConfigureAwait(false);
-            lock (_loadLock)
-            {
-                // 双重检查
-                var cached = _cache.Get<T>(path);
-                if (cached != null)
-                {
-                    // 有些加载器内部也会缓存实例；同一引用仍被缓存拥有时不能把它当作失败竞争者释放。
-                    if (!ReferenceEquals(cached, resource))
-                        loader.Unload(resource);
-                    return cached;
-                }
-
-                if (_cache.Contains(path))
-                {
-                    // 另一个类型已经占用同一路径时不覆盖其所有权，也不能泄漏本次创建的实例。
-                    loader.Unload(resource);
-                    throw new InvalidOperationException($"Resource '{path}' is already loaded with a different type.");
-                }
-
-                _cache.Add(path, resource, value => loader.Unload((T)value));
-            }
-
-            return resource;
+            if (loader != null)
+                LoadShared(key, operation, loader);
+            var entry = operation.Completion.Task.GetAwaiter().GetResult();
+            return CreateLease<T>(key, operation, entry);
         }
-        catch (Exception ex)
+        finally
         {
-            _logger.LogError(ex, "Failed to load resource '{ResourcePath}'", path);
-            return null;
+            FinishReservation(key, operation);
         }
     }
 
-    /// <summary>
-    ///     获取资源句柄
-    /// </summary>
-    public IResourceHandle<T>? GetHandle<T>(string path) where T : class
+    /// <inheritdoc />
+    public async Task<IResourceHandle<T>> AcquireAsync<T>(string path, CancellationToken cancellationToken = default)
+        where T : class
     {
-        if (string.IsNullOrWhiteSpace(path))
-            throw new ArgumentException(PathCannotBeNullOrEmptyMessage, nameof(path));
-
-        lock (_loadLock)
+        cancellationToken.ThrowIfCancellationRequested();
+        var key = CreateKey<T>(path);
+        var operation = Reserve<T>(key, allowPending: true, out var loader);
+        try
         {
-            var entry = _cache.GetEntry(path);
-            if (entry?.Resource is not T resource)
-                return null;
-
-            // 检查实例和增加引用必须与卸载互斥；回调绑定条目身份，不能作用到同一路径的后续实例。
-            _cache.AddReference(path);
-            return new ResourceHandle<T>(resource, path, releasedPath => HandleDispose(releasedPath, entry));
+            if (loader != null)
+                _ = LoadSharedAsync(key, operation, loader);
+            var entry = await operation.Completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            return CreateLease<T>(key, operation, entry);
+        }
+        finally
+        {
+            FinishReservation(key, operation);
         }
     }
 
-    /// <summary>
-    ///     卸载指定路径的资源
-    /// </summary>
-    public bool Unload(string path)
+    /// <inheritdoc />
+    public async Task PreloadAsync<T>(string path, CancellationToken cancellationToken = default) where T : class
     {
-        if (string.IsNullOrWhiteSpace(path))
-            throw new ArgumentException(PathCannotBeNullOrEmptyMessage, nameof(path));
-
-        lock (_loadLock)
+        cancellationToken.ThrowIfCancellationRequested();
+        var key = CreateKey<T>(path);
+        var operation = Reserve<T>(key, allowPending: true, out var loader);
+        try
         {
-            var entry = _cache.GetEntry(path);
-            if (entry == null)
-                return false;
-
-            // 检查引用计数
-            var refCount = _cache.GetReferenceCount(path);
-            if (refCount > 0)
+            if (loader != null)
+                _ = LoadSharedAsync(key, operation, loader);
+            await operation.Completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            lock (_gate)
             {
-                _logger.LogError("Cannot unload resource '{ResourcePath}' with {ReferenceCount} active references", path, refCount);
-                return false;
+                ThrowIfClosed();
+                operation.Pinned = true;
             }
-
-            // 先移除条目，再调用拥有者，避免重入查询取得正在释放的实例。
-            _cache.Remove(path);
-            UnloadResource(entry);
-            return true;
+        }
+        finally
+        {
+            FinishReservation(key, operation);
         }
     }
 
-    /// <summary>
-    ///     卸载所有没有活跃句柄的资源。仍被句柄引用的条目保持有效，调用方释放句柄后可再次卸载。
-    /// </summary>
+    /// <inheritdoc />
+    public bool Unload<T>(string path) where T : class
+    {
+        var key = CreateKey<T>(path);
+        ResourceCacheEntry? entry;
+        lock (_gate)
+        {
+            ThrowIfClosed();
+            if (!_entries.TryGetValue(key, out var operation) || operation.Entry == null ||
+                operation.Entry.LeaseCount != 0 || operation.Reservations != 0)
+                return false;
+            entry = operation.Entry;
+            _entries.Remove(key);
+        }
+        entry.Release();
+        return true;
+    }
+
+    /// <inheritdoc />
     public void UnloadAll()
     {
-        lock (_loadLock)
+        List<ResourceCacheEntry> released;
+        lock (_gate)
         {
-            var paths = _cache.GetAllPaths().ToList();
+            ThrowIfClosed();
+            released = DetachUnleasedEntries();
+        }
+        ReleaseAll(released);
+    }
 
-            foreach (var path in paths)
-            {
-                Unload(path);
-            }
+    /// <inheritdoc />
+    public bool IsLoaded<T>(string path) where T : class
+    {
+        var key = CreateKey<T>(path);
+        lock (_gate)
+        {
+            ThrowIfClosed();
+            return _entries.TryGetValue(key, out var operation) && operation.Entry != null;
         }
     }
 
-    /// <summary>
-    ///     检查资源是否已加载
-    /// </summary>
-    public bool IsLoaded(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-            throw new ArgumentException(PathCannotBeNullOrEmptyMessage, nameof(path));
-
-        return _cache.Contains(path);
-    }
-
-    /// <summary>
-    ///     注册资源加载器
-    /// </summary>
+    /// <inheritdoc />
     public void RegisterLoader<T>(IResourceLoader<T> loader) where T : class
     {
-        _loaders[typeof(T)] = loader ?? throw new ArgumentNullException(nameof(loader));
+        ArgumentNullException.ThrowIfNull(loader);
+        lock (_gate)
+        {
+            ThrowIfClosed();
+            _loaders[typeof(T)] = loader;
+        }
     }
 
-    /// <summary>
-    ///     取消注册资源加载器
-    /// </summary>
+    /// <inheritdoc />
     public void UnregisterLoader<T>() where T : class
     {
-        _loaders.TryRemove(typeof(T), out _);
+        lock (_gate)
+        {
+            ThrowIfClosed();
+            _loaders.Remove(typeof(T));
+        }
     }
 
-    /// <summary>
-    ///     预加载资源到缓存中。
-    /// </summary>
-    /// <typeparam name="T">资源类型</typeparam>
-    /// <param name="path">资源路径，不能为空或空白。</param>
-    /// <returns>表示预加载流程完成的任务。</returns>
-    /// <exception cref="ArgumentException">当 <paramref name="path"/> 为空或空白时抛出。</exception>
-    /// <exception cref="InvalidOperationException">当未注册对应资源加载器时抛出。</exception>
-    /// <remarks>内部委托给 <see cref="LoadAsync{T}(string)"/>，同样不捕获同步上下文。</remarks>
-    public async Task PreloadAsync<T>(string path) where T : class
-    {
-        await LoadAsync<T>(path).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    ///     获取所有已加载资源的路径
-    /// </summary>
-    public IEnumerable<string> GetLoadedResourcePaths()
-    {
-        return _cache.GetAllPaths();
-    }
-
-    /// <summary>
-    ///     设置资源释放策略
-    /// </summary>
-    /// <param name="strategy">资源释放策略</param>
+    /// <inheritdoc />
     public void SetReleaseStrategy(IResourceReleaseStrategy strategy)
     {
         ArgumentNullException.ThrowIfNull(strategy);
-        lock (_loadLock)
+        lock (_gate)
         {
+            ThrowIfClosed();
             _releaseStrategy = strategy;
         }
     }
 
     /// <summary>
-    ///     获取指定类型的资源加载器
+    ///     Closes the manager synchronously when no asynchronous load is pending. Use DisposeAsync otherwise,
+    ///     so a loader awaiting a host synchronization context is never blocked by synchronous shutdown.
     /// </summary>
-    private IResourceLoader<T>? GetLoader<T>() where T : class
+    /// <exception cref="InvalidOperationException">A load or asynchronous shutdown is still pending.</exception>
+    public void Dispose()
     {
-        if (_loaders.TryGetValue(typeof(T), out var loader))
+        StartShutdown(synchronous: true).GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    ///     Rejects new acquisitions, waits for shared loads, and releases entries without leases.
+    ///     Repeated calls observe the same shutdown task; active leases remain valid until individually disposed.
+    /// </summary>
+    /// <returns>The shared shutdown operation.</returns>
+    public ValueTask DisposeAsync()
+    {
+        var shutdown = StartShutdown(synchronous: false);
+        GC.SuppressFinalize(this);
+        return shutdown;
+    }
+
+    /// <summary>Publishes the closing boundary atomically with the synchronous pending-load check.</summary>
+    private ValueTask StartShutdown(bool synchronous)
+    {
+        TaskCompletionSource? completion = null;
+        Task[] pending;
+        List<ResourceCacheEntry> released;
+        lock (_gate)
         {
-            return loader as IResourceLoader<T>;
+            if (synchronous && (_entries.Values.Any(operation => !operation.Completion.Task.IsCompleted) ||
+                                _shutdownTask is { IsCompleted: false }))
+                throw new InvalidOperationException("Resource loading is pending. Await DisposeAsync() instead.");
+            if (_shutdownTask != null)
+                return new ValueTask(_shutdownTask);
+            _closed = true;
+            completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _shutdownTask = completion.Task;
+            pending = _entries.Values.Select(operation => operation.Completion.Task).ToArray();
+            released = DetachUnleasedEntries();
+            _loaders.Clear();
         }
-
-        return null;
+        _ = CompleteShutdownAsync(completion, pending, released);
+        return new ValueTask(completion.Task);
     }
 
-    /// <summary>
-    ///     从当前条目取得类型兼容的缓存实例；调用方必须持有操作锁。
-    /// </summary>
-    /// <typeparam name="T">请求的资源类型。</typeparam>
-    /// <param name="path">缓存路径。</param>
-    /// <returns>缓存实例；路径尚未加载时返回 null。</returns>
-    /// <exception cref="InvalidOperationException">路径已经绑定到不兼容的资源类型。</exception>
-    private T? GetCachedResource<T>(string path) where T : class
+    /// <summary>Validates the path before constructing the typed ordinal cache identity.</summary>
+    private static (Type Type, string Path) CreateKey<T>(string path)
     {
-        var entry = _cache.GetEntry(path);
-        if (entry == null)
-            return null;
-        if (entry.Resource is T resource)
-            return resource;
-        throw new InvalidOperationException($"Resource '{path}' is already loaded with a different type.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        return (typeof(T), path);
     }
 
     /// <summary>
-    ///     交由创建条目的原始加载器释放资源，管理器不推断运行时类型或再次 Dispose。
+    ///     Reserves one acquisition before starting a load. Reservations prevent last-lease release from evicting
+    ///     an entry before an awaiting caller can convert its reservation into a lease.
     /// </summary>
-    /// <param name="entry">已经从缓存移除的条目。</param>
-    private void UnloadResource(ResourceCacheEntry entry)
+    private LoadOperation Reserve<T>((Type Type, string Path) key, bool allowPending, out IResourceLoader<T>? loader)
+        where T : class
+    {
+        lock (_gate)
+        {
+            ThrowIfClosed();
+            loader = null;
+            if (_entries.TryGetValue(key, out var existing))
+            {
+                if (!allowPending && !existing.Completion.Task.IsCompleted)
+                    throw new InvalidOperationException("A shared load is in flight. Use AcquireAsync().");
+                existing.Reservations++;
+                return existing;
+            }
+            if (!_loaders.TryGetValue(typeof(T), out var registered))
+                throw new InvalidOperationException($"No loader registered for type {typeof(T).Name}.");
+            loader = (IResourceLoader<T>)registered;
+            var operation = new LoadOperation { Reservations = 1 };
+            _entries.Add(key, operation);
+            return operation;
+        }
+    }
+
+    /// <summary>Loads outside the operation lock and publishes all failures through the shared completion.</summary>
+    private void LoadShared<T>((Type Type, string Path) key, LoadOperation operation, IResourceLoader<T> loader)
+        where T : class
     {
         try
         {
-            entry.Release(entry.Resource);
+            if (!loader.CanLoad(key.Path))
+                throw new InvalidOperationException($"Loader does not support '{key.Path}'.");
+            var resource = loader.Load(key.Path);
+            if (resource == null)
+                throw new InvalidOperationException($"Loader returned null for '{key.Path}'.");
+            PublishLoad(key, operation, new ResourceCacheEntry(resource, () => loader.Unload(resource)));
         }
-        catch (Exception ex)
+        catch (Exception error)
         {
-            _logger.LogError(ex, "Error unloading resource");
+            FailLoad(key, operation, error);
         }
     }
 
-    /// <summary>
-    ///     句柄释放时的回调
-    /// </summary>
-    /// <param name="path">句柄持有的路径。</param>
-    /// <param name="entry">句柄获取时所绑定的条目。</param>
-    private void HandleDispose(string path, ResourceCacheEntry entry)
+    /// <summary>Shares one load independently of caller cancellation; no thread-pool scheduling is introduced.</summary>
+    private async Task LoadSharedAsync<T>((Type Type, string Path) key, LoadOperation operation, IResourceLoader<T> loader)
+        where T : class
     {
-        lock (_loadLock)
+        try
         {
-            if (!ReferenceEquals(_cache.GetEntry(path), entry))
-                return;
+            if (!loader.CanLoad(key.Path))
+                throw new InvalidOperationException($"Loader does not support '{key.Path}'.");
+            var resource = await loader.LoadAsync(key.Path, CancellationToken.None).ConfigureAwait(false);
+            if (resource == null)
+                throw new InvalidOperationException($"Loader returned null for '{key.Path}'.");
+            PublishLoad(key, operation, new ResourceCacheEntry(resource, () => loader.Unload(resource)));
+        }
+        catch (Exception error)
+        {
+            FailLoad(key, operation, error);
+        }
+    }
 
-            var refCount = _cache.RemoveReference(path);
-            if (refCount > 0 || !_releaseStrategy.ShouldRelease(path, refCount))
-                return;
+    /// <summary>Publishes ownership before waking waiters; a manager closed during loading releases it immediately.</summary>
+    private void PublishLoad((Type Type, string Path) key, LoadOperation operation, ResourceCacheEntry entry)
+    {
+        ResourceCacheEntry? released;
+        lock (_gate)
+        {
+            operation.Entry = entry;
+            released = DetachIfEligible(key, operation);
+        }
+        ReleaseAfterClose(released);
+        operation.Completion.TrySetResult(entry);
+    }
 
-            _cache.Remove(path);
-            UnloadResource(entry);
+    /// <summary>Removes a failed flight so a later acquisition can retry, while all current waiters see the failure.</summary>
+    private void FailLoad((Type Type, string Path) key, LoadOperation operation, Exception error)
+    {
+        lock (_gate)
+        {
+            if (_entries.TryGetValue(key, out var current) && ReferenceEquals(current, operation))
+                _entries.Remove(key);
+        }
+        operation.Completion.TrySetException(error);
+    }
+
+    /// <summary>Converts an acquisition reservation into an independently owned lease under the same lock.</summary>
+    private IResourceHandle<T> CreateLease<T>((Type Type, string Path) key, LoadOperation operation, ResourceCacheEntry entry)
+        where T : class
+    {
+        lock (_gate)
+        {
+            ThrowIfClosed();
+            entry.LeaseCount++;
+            return new ResourceHandle<T>((T)entry.Resource, key.Path,
+                () => CreateLease<T>(key, operation, entry), () => ReleaseLease(key, operation, entry));
+        }
+    }
+
+    /// <summary>Ends an acquisition even after cancellation; orphaned auto-release loads can then be released.</summary>
+    private void FinishReservation((Type Type, string Path) key, LoadOperation operation)
+    {
+        ResourceCacheEntry? released;
+        lock (_gate)
+        {
+            operation.Reservations--;
+            released = DetachIfEligible(key, operation);
+        }
+        ReleaseAfterClose(released);
+    }
+
+    /// <summary>Releases exactly one lease and, when eligible, detaches before calling external code.</summary>
+    private void ReleaseLease((Type Type, string Path) key, LoadOperation operation, ResourceCacheEntry entry)
+    {
+        ResourceCacheEntry? released;
+        lock (_gate)
+        {
+            entry.LeaseCount--;
+            released = DetachIfEligible(key, operation);
+        }
+        released?.Release();
+    }
+
+    /// <summary>Detaches only the current identity; stale release callbacks cannot affect a later load of the same key.</summary>
+    private ResourceCacheEntry? DetachIfEligible((Type Type, string Path) key, LoadOperation operation)
+    {
+        if (operation.Entry == null || operation.Entry.LeaseCount != 0 ||
+            !_entries.TryGetValue(key, out var current) || !ReferenceEquals(current, operation))
+            return null;
+        if (!_closed && (operation.Reservations != 0 || operation.Pinned ||
+                         !_releaseStrategy.ShouldRelease(key.Path, 0)))
+            return null;
+        // A custom policy is application code. Recheck after it runs so even a reentrant policy cannot
+        // release an entry which acquired a new lease or was replaced while the policy was deciding.
+        if (operation.Entry.LeaseCount != 0 ||
+            !_entries.TryGetValue(key, out current) || !ReferenceEquals(current, operation) ||
+            (!_closed && (operation.Reservations != 0 || operation.Pinned)))
+            return null;
+        _entries.Remove(key);
+        return operation.Entry;
+    }
+
+    /// <summary>Collects releasable ownership before invoking loaders, so one failure cannot skip other resources.</summary>
+    private List<ResourceCacheEntry> DetachUnleasedEntries()
+    {
+        var released = new List<ResourceCacheEntry>();
+        foreach (var (key, operation) in _entries.ToArray())
+        {
+            if (operation.Entry == null || operation.Entry.LeaseCount != 0 || (!_closed && operation.Reservations != 0))
+                continue;
+            _entries.Remove(key);
+            released.Add(operation.Entry);
+        }
+        return released;
+    }
+
+    /// <summary>Records shutdown releases for the shutdown caller while preserving ordinary release exceptions.</summary>
+    private void ReleaseAfterClose(ResourceCacheEntry? entry)
+    {
+        if (entry == null)
+            return;
+        try
+        {
+            entry.Release();
+        }
+        catch (Exception error)
+        {
+            lock (_gate)
+            {
+                if (!_closed)
+                    throw;
+                _shutdownErrors.Add(error);
+            }
+        }
+    }
+
+    /// <summary>Attempts every release and reports failures together.</summary>
+    private static void ReleaseAll(IEnumerable<ResourceCacheEntry> entries)
+    {
+        var errors = new List<Exception>();
+        foreach (var entry in entries)
+        {
+            try
+            {
+                entry.Release();
+            }
+            catch (Exception error) { errors.Add(error); }
+        }
+        if (errors.Count != 0)
+            throw new AggregateException("One or more resource releases failed.", errors);
+    }
+
+    /// <summary>Completes only after loads and their closing releases settle; load failures remain acquisition failures.</summary>
+    private async Task CompleteShutdownAsync(TaskCompletionSource completion, Task[] pending, List<ResourceCacheEntry> released)
+    {
+        try
+        {
+            foreach (var entry in released)
+                ReleaseAfterClose(entry);
+            try
+            {
+                await Task.WhenAll(pending).ConfigureAwait(false);
+            }
+            catch (Exception) { /* Each shared failure is already delivered to its acquiring callers. */ }
+            lock (_gate)
+            {
+                if (_shutdownErrors.Count != 0)
+                    completion.TrySetException(new AggregateException("Resource shutdown failed.", _shutdownErrors));
+                else
+                    completion.TrySetResult();
+            }
+        }
+        catch (Exception error)
+        {
+            completion.TrySetException(error);
+        }
+    }
+
+    /// <summary>Rejects new work after the closing boundary is published.</summary>
+    private void ThrowIfClosed() => ObjectDisposedException.ThrowIf(_closed, this);
+
+    /// <summary>Shares a load and reserves entry ownership until each pending consumer obtains or abandons its lease.</summary>
+    private sealed class LoadOperation
+    {
+        /// <summary>Gets the single load completion observed by all waiters.</summary>
+        public TaskCompletionSource<ResourceCacheEntry> Completion
+        {
+            get;
+        } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>Gets or sets the loaded ownership, if loading succeeded.</summary>
+        public ResourceCacheEntry? Entry
+        {
+            get; set;
+        }
+
+        /// <summary>Gets or sets pending callers that have not yet converted or abandoned their lease reservation.</summary>
+        public int Reservations
+        {
+            get; set;
+        }
+
+        /// <summary>Gets or sets whether a successful explicit preload pins the entry.</summary>
+        public bool Pinned
+        {
+            get; set;
         }
     }
 }

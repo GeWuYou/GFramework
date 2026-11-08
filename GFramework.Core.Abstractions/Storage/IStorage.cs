@@ -1,14 +1,13 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Utility;
 
 namespace GFramework.Core.Abstractions.Storage;
 
 /// <summary>
 ///     存储接口，提供同步和异步的数据存储操作功能
 /// </summary>
-public interface IStorage : IUtility
+public interface IStorage
 {
     /// <summary>
     ///     检查指定键的存储项是否存在

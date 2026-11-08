@@ -91,10 +91,10 @@ internal sealed class GameModContext : IGameModContext, IAsyncDisposable, IServi
         Track(resource.DisposeAsync);
     }
     /// <inheritdoc />
-    public void OwnRegistration(IUnRegister registration)
+    public void OwnRegistration(IDisposable registration)
     {
         ArgumentNullException.ThrowIfNull(registration);
-        Track(() => { registration.UnRegister(); return ValueTask.CompletedTask; });
+        Track(() => { registration.Dispose(); return ValueTask.CompletedTask; });
     }
     /// <summary>Serializes registration against shutdown so no accepted resource escapes cleanup.</summary>
     private void Track(Func<ValueTask> cleanup)

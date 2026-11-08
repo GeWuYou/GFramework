@@ -3,86 +3,63 @@
 
 namespace GFramework.Core.Abstractions.State;
 
-/// <summary>
-///     状态机接口，用于管理状态的注册、切换和验证
-///     支持同步和异步状态操作
-/// </summary>
-public interface IStateMachine
+/// <summary>Serializes state transitions and terminal cleanup. Registration freezes at the first transition.</summary>
+/// <remarks>Registered states are borrowed: the machine invokes business cleanup but never disposes their resources.
+/// Callbacks retain the caller synchronization context; hosts must dispatch operations onto their owning thread.</remarks>
+public interface IStateMachine : IAsyncDisposable
 {
-    /// <summary>
-    ///     获取当前激活的状态
-    /// </summary>
+    /// <summary>The active state, or null before entry and after stopping.</summary>
     IState? Current
     {
         get;
     }
-
-    /// <summary>
-    ///     注册一个状态到状态机中
-    /// </summary>
-    /// <param name="state">要注册的状态实例</param>
+    /// <summary>The first callback failure; a faulted machine only permits cleanup.</summary>
+    Exception? Fault
+    {
+        get;
+    }
+    /// <summary>Register a unique concrete state type before the first transition.</summary>
+    /// <param name="state">Borrowed state.</param>
+    /// <returns>This machine.</returns>
     IStateMachine Register(IState state);
-
-    /// <summary>
-    ///     异步从状态机中注销指定类型的状态
-    /// </summary>
-    /// <typeparam name="T">要注销的状态类型，必须实现IState接口</typeparam>
-    Task<IStateMachine> UnregisterAsync<T>() where T : IState;
-
-    /// <summary>
-    ///     异步检查是否可以切换到指定类型的状态
-    /// </summary>
-    /// <typeparam name="T">目标状态类型，必须实现IState接口</typeparam>
-    /// <returns>如果可以切换则返回true，否则返回false</returns>
-    Task<bool> CanChangeToAsync<T>() where T : IState;
-
-    /// <summary>
-    ///     异步切换到指定类型的状态
-    /// </summary>
-    /// <typeparam name="T">要切换到的状态类型，必须实现IState接口</typeparam>
-    /// <returns>如果成功切换则返回true，否则返回false</returns>
-    Task<bool> ChangeToAsync<T>() where T : IState;
-
-    /// <summary>
-    ///     检查指定类型的状态是否已注册
-    /// </summary>
-    /// <typeparam name="T">要检查的状态类型</typeparam>
-    /// <returns>如果状态已注册则返回true，否则返回false</returns>
+    /// <summary>Remove a state during configuration.</summary>
+    /// <typeparam name="T">Concrete type.</typeparam>
+    /// <returns>Whether a registration was removed.</returns>
+    bool Unregister<T>() where T : IState;
+    /// <summary>Check a transition without entering or exiting states.</summary>
+    /// <typeparam name="T">Target type.</typeparam>
+    /// <param name="cancellationToken">Cancels waiting and asynchronous guards.</param>
+    /// <returns>Whether the current state permits the registered target.</returns>
+    Task<bool> CanChangeToAsync<T>(CancellationToken cancellationToken = default) where T : IState;
+    /// <summary>Enter a registered target after its outgoing guard accepts.</summary>
+    /// <typeparam name="T">Target type.</typeparam>
+    /// <param name="cancellationToken">Cancels waiting and asynchronous callbacks.</param>
+    /// <returns>False for a rejected or same-state transition.</returns>
+    Task<bool> ChangeToAsync<T>(CancellationToken cancellationToken = default) where T : IState;
+    /// <summary>Check whether a state type is registered.</summary>
+    /// <typeparam name="T">Concrete type.</typeparam>
+    /// <returns>Whether registered.</returns>
     bool IsRegistered<T>() where T : IState;
-
-    /// <summary>
-    ///     获取指定类型的已注册状态实例
-    /// </summary>
-    /// <typeparam name="T">要获取的状态类型</typeparam>
-    /// <returns>如果状态存在则返回对应实例，否则返回null</returns>
+    /// <summary>Read a borrowed state registration.</summary>
+    /// <typeparam name="T">Concrete type.</typeparam>
+    /// <returns>The state or null.</returns>
     T? GetState<T>() where T : class, IState;
-
-    /// <summary>
-    ///     获取所有已注册状态的类型集合
-    /// </summary>
-    /// <returns>包含所有已注册状态类型的枚举器</returns>
+    /// <summary>Snapshot registered types.</summary>
+    /// <returns>An immutable membership snapshot.</returns>
     IEnumerable<Type> GetRegisteredStateTypes();
-
-    /// <summary>
-    ///     获取上一个状态
-    /// </summary>
-    /// <returns>如果历史记录存在则返回上一个状态，否则返回null</returns>
+    /// <summary>Read the latest successful previous state.</summary>
+    /// <returns>Previous state or null.</returns>
     IState? GetPreviousState();
-
-    /// <summary>
-    ///     获取状态历史记录
-    /// </summary>
-    /// <returns>状态历史记录的只读副本</returns>
+    /// <summary>Snapshot history, most recent first.</summary>
+    /// <returns>Borrowed state references.</returns>
     IReadOnlyList<IState> GetStateHistory();
-
-    /// <summary>
-    ///     异步回退到上一个状态
-    /// </summary>
-    /// <returns>如果成功回退则返回true，否则返回false</returns>
-    Task<bool> GoBackAsync();
-
-    /// <summary>
-    ///     清空状态历史记录
-    /// </summary>
+    /// <summary>Return to the latest previous state using the same guards and notifications.</summary>
+    /// <param name="cancellationToken">Cancels waiting and callbacks.</param>
+    /// <returns>Whether a transition succeeded.</returns>
+    Task<bool> GoBackAsync(CancellationToken cancellationToken = default);
+    /// <summary>Clear history without changing registrations or the active state.</summary>
     void ClearHistory();
+    /// <summary>Stop once, waiting for the active transition and attempting every started state's cleanup.</summary>
+    /// <returns>The shared terminal cleanup result.</returns>
+    ValueTask StopAsync();
 }

@@ -11,14 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Core.Abstractions.Utility;
 
 namespace GFramework.Core.Abstractions.Concurrency;
 
 /// <summary>
 ///     异步键锁管理器接口，提供基于键的细粒度锁机制
 /// </summary>
-public interface IAsyncKeyLockManager : IUtility, IDisposable
+public interface IAsyncKeyLockManager : IDisposable
 {
     /// <summary>
     ///     异步获取指定键的锁（推荐使用）

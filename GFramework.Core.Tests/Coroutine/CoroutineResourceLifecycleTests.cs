@@ -477,8 +477,8 @@ public sealed class CoroutineResourceLifecycleTests
     {
         var scheduler = new CoroutineScheduler(new FakeTimeSource());
         var bus = new Mock<IEventBus>();
-        var registration = new Mock<IUnRegister>();
-        bus.Setup(value => value.Register<int>(It.IsAny<Action<int>>())).Returns(registration.Object);
+        var registration = new Mock<IDisposable>();
+        bus.Setup(value => value.Subscribe<int>(It.IsAny<Action<int>>(), 0)).Returns(registration.Object);
         var wait = new WaitForEventWithTimeout<int>(new WaitForEvent<int>(bus.Object), 1);
 
         IEnumerator<IYieldInstruction> Routine()
@@ -498,7 +498,7 @@ public sealed class CoroutineResourceLifecycleTests
         }
 
         wait.Dispose();
-        registration.Verify(value => value.UnRegister(), Times.Once);
+        registration.Verify(value => value.Dispose(), Times.Once);
     }
 
     /// <summary>
@@ -508,10 +508,10 @@ public sealed class CoroutineResourceLifecycleTests
     public async Task Event_Callback_Should_Publish_First_Result_Without_Unregistering_On_Worker()
     {
         var bus = new Mock<IEventBus>();
-        var registration = new Mock<IUnRegister>();
+        var registration = new Mock<IDisposable>();
         Action<int>? callback = null;
-        bus.Setup(value => value.Register<int>(It.IsAny<Action<int>>()))
-            .Callback<Action<int>>(value => callback = value)
+        bus.Setup(value => value.Subscribe<int>(It.IsAny<Action<int>>(), 0))
+            .Callback<Action<int>, int>((value, _) => callback = value)
             .Returns(registration.Object);
         using var wait = new WaitForEvent<int>(bus.Object);
 
@@ -519,12 +519,12 @@ public sealed class CoroutineResourceLifecycleTests
 
         Assert.That(wait.IsDone, Is.True);
         Assert.That(wait.EventData, Is.AnyOf(1, 2));
-        registration.Verify(value => value.UnRegister(), Times.Never);
+        registration.Verify(value => value.Dispose(), Times.Never);
         var winner = wait.EventData;
         callback!(3);
         Assert.That(wait.EventData, Is.EqualTo(winner));
         wait.Update(0);
-        registration.Verify(value => value.UnRegister(), Times.Once);
+        registration.Verify(value => value.Dispose(), Times.Once);
     }
 
     /// <summary>
@@ -534,18 +534,18 @@ public sealed class CoroutineResourceLifecycleTests
     public void Multiple_Event_Dispose_Should_Attempt_All_Registrations()
     {
         var bus = new Mock<IEventBus>();
-        var first = new Mock<IUnRegister>();
-        var second = new Mock<IUnRegister>();
-        first.Setup(value => value.UnRegister()).Throws(new InvalidOperationException("unsubscribe failed"));
-        bus.Setup(value => value.Register<int>(It.IsAny<Action<int>>())).Returns(first.Object);
-        bus.Setup(value => value.Register<string>(It.IsAny<Action<string>>())).Returns(second.Object);
+        var first = new Mock<IDisposable>();
+        var second = new Mock<IDisposable>();
+        first.Setup(value => value.Dispose()).Throws(new InvalidOperationException("unsubscribe failed"));
+        bus.Setup(value => value.Subscribe<int>(It.IsAny<Action<int>>(), 0)).Returns(first.Object);
+        bus.Setup(value => value.Subscribe<string>(It.IsAny<Action<string>>(), 0)).Returns(second.Object);
         var wait = new WaitForMultipleEvents<int, string>(bus.Object);
 
         Assert.Throws<InvalidOperationException>(() => wait.Dispose());
         wait.Dispose();
 
-        first.Verify(value => value.UnRegister(), Times.Once);
-        second.Verify(value => value.UnRegister(), Times.Once);
+        first.Verify(value => value.Dispose(), Times.Once);
+        second.Verify(value => value.Dispose(), Times.Once);
     }
 
     /// <summary>
@@ -555,14 +555,14 @@ public sealed class CoroutineResourceLifecycleTests
     public void Multiple_Event_Registration_Failure_Should_Release_First_Subscription()
     {
         var bus = new Mock<IEventBus>();
-        var first = new Mock<IUnRegister>();
-        bus.Setup(value => value.Register<int>(It.IsAny<Action<int>>())).Returns(first.Object);
-        bus.Setup(value => value.Register<string>(It.IsAny<Action<string>>()))
+        var first = new Mock<IDisposable>();
+        bus.Setup(value => value.Subscribe<int>(It.IsAny<Action<int>>(), 0)).Returns(first.Object);
+        bus.Setup(value => value.Subscribe<string>(It.IsAny<Action<string>>(), 0))
             .Throws(new InvalidOperationException("register failed"));
 
         Assert.Throws<InvalidOperationException>(() => new WaitForMultipleEvents<int, string>(bus.Object));
 
-        first.Verify(value => value.UnRegister(), Times.Once);
+        first.Verify(value => value.Dispose(), Times.Once);
     }
 
     /// <summary>

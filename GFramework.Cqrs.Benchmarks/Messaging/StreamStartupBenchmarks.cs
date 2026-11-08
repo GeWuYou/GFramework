@@ -13,7 +13,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,9 +39,9 @@ public class StreamStartupBenchmarks
     private static readonly ILogger GeneratedRuntimeLogger = CreateLogger(nameof(StreamStartupBenchmarks) + ".Generated");
     private static readonly BenchmarkStreamRequest Request = new(Guid.NewGuid(), 3);
 
-    private MicrosoftDiContainer _reflectionContainer = null!;
+    private BenchmarkServiceHost _reflectionContainer = null!;
     private ICqrsRuntime _reflectionRuntime = null!;
-    private MicrosoftDiContainer _generatedContainer = null!;
+    private BenchmarkServiceHost _generatedContainer = null!;
     private ICqrsRuntime _generatedRuntime = null!;
     private ServiceProvider _serviceProvider = null!;
     private ServiceProvider _mediatorServiceProvider = null!;
@@ -223,7 +222,7 @@ public class StreamStartupBenchmarks
     /// <summary>
     ///     构建只承载当前 benchmark handler 的最小 reflection GFramework.CQRS 容器。
     /// </summary>
-    private static MicrosoftDiContainer CreateReflectionContainer()
+    private static BenchmarkServiceHost CreateReflectionContainer()
     {
         return BenchmarkHostFactory.CreateFrozenGFrameworkContainer(static container =>
         {
@@ -236,7 +235,7 @@ public class StreamStartupBenchmarks
     /// <summary>
     ///     构建只承载当前 benchmark generated registry 的最小 generated GFramework.CQRS 容器。
     /// </summary>
-    private static MicrosoftDiContainer CreateGeneratedContainer()
+    private static BenchmarkServiceHost CreateGeneratedContainer()
     {
         return BenchmarkHostFactory.CreateFrozenGFrameworkContainer(static container =>
         {
@@ -249,7 +248,7 @@ public class StreamStartupBenchmarks
     /// </summary>
     /// <param name="container">当前 benchmark 拥有并负责释放的容器。</param>
     /// <param name="logger">当前 runtime 使用的 benchmark logger。</param>
-    private static ICqrsRuntime CreateRuntime(MicrosoftDiContainer container, ILogger logger)
+    private static ICqrsRuntime CreateRuntime(BenchmarkServiceHost container, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(container);
         ArgumentNullException.ThrowIfNull(logger);

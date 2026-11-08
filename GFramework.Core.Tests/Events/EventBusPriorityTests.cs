@@ -25,12 +25,12 @@ public class EventBusPriorityTests
         var eventBus = new EventBus();
         var executionOrder = new List<int>();
 
-        eventBus.Register<TestEvent>(_ => executionOrder.Add(1), priority: 1);
-        eventBus.Register<TestEvent>(_ => executionOrder.Add(3), priority: 3);
-        eventBus.Register<TestEvent>(_ => executionOrder.Add(2), priority: 2);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add(1), priority: 1);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add(3), priority: 3);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add(2), priority: 2);
 
         // Act
-        eventBus.Send(new TestEvent(), EventPropagation.All);
+        eventBus.Publish(new TestEvent(), EventPropagation.All);
 
         // Assert
         Assert.That(executionOrder, Is.EqualTo([3, 2, 1]));
@@ -43,11 +43,11 @@ public class EventBusPriorityTests
         var eventBus = new EventBus();
         var executionOrder = new List<string>();
 
-        eventBus.Register<TestEvent>(_ => executionOrder.Add("default"), priority: 0);
-        eventBus.Register<TestEvent>(_ => executionOrder.Add("high"), priority: 10);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add("default"), priority: 0);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add("high"), priority: 10);
 
         // Act
-        eventBus.Send(new TestEvent(), EventPropagation.All);
+        eventBus.Publish(new TestEvent(), EventPropagation.All);
 
         // Assert
         Assert.That(executionOrder[0], Is.EqualTo("high"));
@@ -61,12 +61,12 @@ public class EventBusPriorityTests
         var eventBus = new EventBus();
         var executionCount = 0;
 
-        eventBus.Register<TestEvent>(_ => executionCount++, priority: 1);
-        eventBus.Register<TestEvent>(_ => executionCount++, priority: 2);
-        eventBus.Register<TestEvent>(_ => executionCount++, priority: 3);
+        eventBus.Subscribe<TestEvent>(_ => executionCount++, priority: 1);
+        eventBus.Subscribe<TestEvent>(_ => executionCount++, priority: 2);
+        eventBus.Subscribe<TestEvent>(_ => executionCount++, priority: 3);
 
         // Act
-        eventBus.Send(new TestEvent(), EventPropagation.All);
+        eventBus.Publish(new TestEvent(), EventPropagation.All);
 
         // Assert
         Assert.That(executionCount, Is.EqualTo(3));
@@ -79,12 +79,12 @@ public class EventBusPriorityTests
         var eventBus = new EventBus();
         var executionOrder = new List<int>();
 
-        eventBus.Register<TestEvent>(_ => executionOrder.Add(1), priority: 1);
-        eventBus.Register<TestEvent>(_ => executionOrder.Add(3), priority: 3);
-        eventBus.Register<TestEvent>(_ => executionOrder.Add(2), priority: 2);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add(1), priority: 1);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add(3), priority: 3);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add(2), priority: 2);
 
         // Act
-        eventBus.Send(new TestEvent(), EventPropagation.Highest);
+        eventBus.Publish(new TestEvent(), EventPropagation.Highest);
 
         // Assert
         Assert.That(executionOrder.Count, Is.EqualTo(1));
@@ -98,12 +98,12 @@ public class EventBusPriorityTests
         var eventBus = new EventBus();
         var executionOrder = new List<string>();
 
-        eventBus.Register<TestEvent>(_ => executionOrder.Add("high1"), priority: 10);
-        eventBus.Register<TestEvent>(_ => executionOrder.Add("high2"), priority: 10);
-        eventBus.Register<TestEvent>(_ => executionOrder.Add("low"), priority: 1);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add("high1"), priority: 10);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add("high2"), priority: 10);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add("low"), priority: 1);
 
         // Act
-        eventBus.Send(new TestEvent(), EventPropagation.Highest);
+        eventBus.Publish(new TestEvent(), EventPropagation.Highest);
 
         // Assert
         Assert.That(executionOrder.Count, Is.EqualTo(2));
@@ -119,12 +119,12 @@ public class EventBusPriorityTests
         var eventBus = new EventBus();
         var executionOrder = new List<int>();
 
-        eventBus.Register<TestEvent>(_ => executionOrder.Add(-1), priority: -1);
-        eventBus.Register<TestEvent>(_ => executionOrder.Add(0), priority: 0);
-        eventBus.Register<TestEvent>(_ => executionOrder.Add(1), priority: 1);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add(-1), priority: -1);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add(0), priority: 0);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add(1), priority: 1);
 
         // Act
-        eventBus.Send(new TestEvent(), EventPropagation.All);
+        eventBus.Publish(new TestEvent(), EventPropagation.All);
 
         // Assert
         Assert.That(executionOrder, Is.EqualTo([1, 0, -1]));
@@ -138,15 +138,15 @@ public class EventBusPriorityTests
         var event1Order = new List<int>();
         var event2Order = new List<int>();
 
-        eventBus.Register<TestEvent>(_ => event1Order.Add(1), priority: 1);
-        eventBus.Register<TestEvent>(_ => event1Order.Add(2), priority: 2);
+        eventBus.Subscribe<TestEvent>(_ => event1Order.Add(1), priority: 1);
+        eventBus.Subscribe<TestEvent>(_ => event1Order.Add(2), priority: 2);
 
-        eventBus.Register<string>(_ => event2Order.Add(10), priority: 10);
-        eventBus.Register<string>(_ => event2Order.Add(20), priority: 20);
+        eventBus.Subscribe<string>(_ => event2Order.Add(10), priority: 10);
+        eventBus.Subscribe<string>(_ => event2Order.Add(20), priority: 20);
 
         // Act
-        eventBus.Send(new TestEvent(), EventPropagation.All);
-        eventBus.Send("test", EventPropagation.All);
+        eventBus.Publish(new TestEvent(), EventPropagation.All);
+        eventBus.Publish("test", EventPropagation.All);
 
         // Assert
         Assert.That(event1Order, Is.EqualTo([2, 1]));
@@ -161,12 +161,12 @@ public class EventBusPriorityTests
         var executionCount = 0;
         void handler(TestEvent _) => executionCount++;
 
-        var unregister = eventBus.Register((Action<TestEvent>)handler, priority: 5);
+        var unregister = eventBus.Subscribe((Action<TestEvent>)handler, priority: 5);
 
         // Act
-        eventBus.Send(new TestEvent(), EventPropagation.All);
-        unregister.UnRegister();
-        eventBus.Send(new TestEvent(), EventPropagation.All);
+        eventBus.Publish(new TestEvent(), EventPropagation.All);
+        unregister.Dispose();
+        eventBus.Publish(new TestEvent(), EventPropagation.All);
 
         // Assert
         Assert.That(executionCount, Is.EqualTo(1));
@@ -180,33 +180,33 @@ public class EventBusPriorityTests
         var executionCount = 0;
 
         // 使用默认注册（无优先级）
-        eventBus.Register<TestEvent>(_ => executionCount++);
+        eventBus.Subscribe<TestEvent>(_ => executionCount++);
 
         // Act
-        eventBus.Send(new TestEvent()); // 不指定传播模式
+        eventBus.Publish(new TestEvent()); // 不指定传播模式
 
         // Assert
         Assert.That(executionCount, Is.EqualTo(1));
     }
 
     [Test]
-    public void Priority_Event_And_Normal_Event_Should_Be_Independent()
+    public void Priority_And_Ordinary_Registrations_Share_One_Channel()
     {
         // Arrange
         var eventBus = new EventBus();
         var normalCount = 0;
         var priorityCount = 0;
 
-        eventBus.Register<TestEvent>(_ => normalCount++);
-        eventBus.Register<TestEvent>(_ => priorityCount++, priority: 1);
+        eventBus.Subscribe<TestEvent>(_ => normalCount++);
+        eventBus.Subscribe<TestEvent>(_ => priorityCount++, priority: 1);
 
         // Act
-        eventBus.Send(new TestEvent()); // 触发普通事件
-        eventBus.Send(new TestEvent(), EventPropagation.All); // 触发优先级事件
+        eventBus.Publish(new TestEvent()); // 触发普通事件
+        eventBus.Publish(new TestEvent(), EventPropagation.All); // 触发优先级事件
 
         // Assert
-        Assert.That(normalCount, Is.EqualTo(1));
-        Assert.That(priorityCount, Is.EqualTo(1));
+        Assert.That(normalCount, Is.EqualTo(2));
+        Assert.That(priorityCount, Is.EqualTo(2));
     }
 
     [Test]
@@ -216,8 +216,8 @@ public class EventBusPriorityTests
         var eventBus = new EventBus();
 
         // Act & Assert
-        Assert.DoesNotThrow(() => eventBus.Send(new TestEvent(), EventPropagation.All));
-        Assert.DoesNotThrow(() => eventBus.Send(new TestEvent(), EventPropagation.Highest));
+        Assert.DoesNotThrow(() => eventBus.Publish(new TestEvent(), EventPropagation.All));
+        Assert.DoesNotThrow(() => eventBus.Publish(new TestEvent(), EventPropagation.Highest));
     }
 
     [Test]
@@ -227,12 +227,12 @@ public class EventBusPriorityTests
         var eventBus = new EventBus();
         var executionOrder = new List<string>();
 
-        eventBus.Register<TestEvent>(_ => executionOrder.Add("first"), priority: 5);
-        eventBus.Register<TestEvent>(_ => executionOrder.Add("second"), priority: 5);
-        eventBus.Register<TestEvent>(_ => executionOrder.Add("third"), priority: 5);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add("first"), priority: 5);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add("second"), priority: 5);
+        eventBus.Subscribe<TestEvent>(_ => executionOrder.Add("third"), priority: 5);
 
         // Act
-        eventBus.Send(new TestEvent(), EventPropagation.All);
+        eventBus.Publish(new TestEvent(), EventPropagation.All);
 
         // Assert
         Assert.That(executionOrder, Is.EqualTo(["first", "second", "third"]));
@@ -245,19 +245,19 @@ public class EventBusPriorityTests
         var eventBus = new EventBus();
         var executionOrder = new List<int>();
 
-        eventBus.RegisterWithContext<TestEvent>(ctx =>
+        eventBus.SubscribeWithContext<TestEvent>(ctx =>
         {
             executionOrder.Add(1);
             ctx.MarkAsHandled();
         }, priority: 10);
 
-        eventBus.RegisterWithContext<TestEvent>(ctx =>
+        eventBus.SubscribeWithContext<TestEvent>(ctx =>
         {
             executionOrder.Add(2); // 不应该执行
         }, priority: 5);
 
         // Act
-        eventBus.Send(new TestEvent(), EventPropagation.UntilHandled);
+        eventBus.Publish(new TestEvent(), EventPropagation.UntilHandled);
 
         // Assert
         Assert.That(executionOrder, Is.EqualTo([1]));
@@ -270,11 +270,11 @@ public class EventBusPriorityTests
         var eventBus = new EventBus();
         var executionOrder = new List<int>();
 
-        eventBus.RegisterWithContext<TestEvent>(ctx => executionOrder.Add(1), priority: 10);
-        eventBus.RegisterWithContext<TestEvent>(ctx => executionOrder.Add(2), priority: 5);
+        eventBus.SubscribeWithContext<TestEvent>(ctx => executionOrder.Add(1), priority: 10);
+        eventBus.SubscribeWithContext<TestEvent>(ctx => executionOrder.Add(2), priority: 5);
 
         // Act
-        eventBus.Send(new TestEvent(), EventPropagation.UntilHandled);
+        eventBus.Publish(new TestEvent(), EventPropagation.UntilHandled);
 
         // Assert
         Assert.That(executionOrder, Is.EqualTo([1, 2]));
@@ -287,10 +287,10 @@ public class EventBusPriorityTests
         var eventBus = new EventBus();
         string? receivedMessage = null;
 
-        eventBus.RegisterWithContext<TestEvent>(ctx => { receivedMessage = ctx.Data.Message; });
+        eventBus.SubscribeWithContext<TestEvent>(ctx => { receivedMessage = ctx.Data.Message; });
 
         // Act
-        eventBus.Send(new TestEvent { Message = "Hello" }, EventPropagation.All);
+        eventBus.Publish(new TestEvent { Message = "Hello" }, EventPropagation.All);
 
         // Assert
         Assert.That(receivedMessage, Is.EqualTo("Hello"));
@@ -303,16 +303,16 @@ public class EventBusPriorityTests
         var eventBus = new EventBus();
         var executionOrder = new List<int>();
 
-        eventBus.RegisterWithContext<TestEvent>(ctx => executionOrder.Add(1), priority: 1);
-        eventBus.RegisterWithContext<TestEvent>(ctx =>
+        eventBus.SubscribeWithContext<TestEvent>(ctx => executionOrder.Add(1), priority: 1);
+        eventBus.SubscribeWithContext<TestEvent>(ctx =>
         {
             executionOrder.Add(3);
             ctx.MarkAsHandled();
         }, priority: 3);
-        eventBus.RegisterWithContext<TestEvent>(ctx => executionOrder.Add(2), priority: 2);
+        eventBus.SubscribeWithContext<TestEvent>(ctx => executionOrder.Add(2), priority: 2);
 
         // Act
-        eventBus.Send(new TestEvent(), EventPropagation.UntilHandled);
+        eventBus.Publish(new TestEvent(), EventPropagation.UntilHandled);
 
         // Assert
         Assert.That(executionOrder, Is.EqualTo([3]));
@@ -324,20 +324,20 @@ public class EventBusPriorityTests
         // Arrange
         var eventBus = new EventBus();
         var executionCount = 0;
-        IUnRegister? unregister = null;
+        IDisposable? unregister = null;
 
-        unregister = eventBus.Register<TestEvent>(_ =>
+        unregister = eventBus.Subscribe<TestEvent>(_ =>
         {
             executionCount++;
-            unregister?.UnRegister();
+            unregister?.Dispose();
         }, priority: 1);
 
         // Act & Assert
-        Assert.DoesNotThrow(() => eventBus.Send(new TestEvent(), EventPropagation.All));
+        Assert.DoesNotThrow(() => eventBus.Publish(new TestEvent(), EventPropagation.All));
         Assert.That(executionCount, Is.EqualTo(1));
 
         // 第二次触发不应执行
-        eventBus.Send(new TestEvent(), EventPropagation.All);
+        eventBus.Publish(new TestEvent(), EventPropagation.All);
         Assert.That(executionCount, Is.EqualTo(1));
     }
 
@@ -347,13 +347,13 @@ public class EventBusPriorityTests
         // Arrange
         var eventBus = new EventBus();
         var counter = 0;
-        eventBus.Register<TestEvent>(_ => Interlocked.Increment(ref counter), priority: 1);
+        eventBus.Subscribe<TestEvent>(_ => Interlocked.Increment(ref counter), priority: 1);
 
         // Act
         var tasks = Enumerable.Range(0, 100).Select(_ => Task.Run(() =>
         {
-            eventBus.Send(new TestEvent(), EventPropagation.All);
-            eventBus.Register<TestEvent>(_ => { }, priority: 1);
+            eventBus.Publish(new TestEvent(), EventPropagation.All);
+            eventBus.Subscribe<TestEvent>(_ => { }, priority: 1);
         })).ToArray();
 
         // Assert

@@ -4,7 +4,6 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs;
 
 namespace GFramework.Tests.Common;
@@ -29,12 +28,12 @@ public static class CqrsTestRuntime
     ///     冻结后通过容器公开的 <see cref="IServiceProvider.GetService" /> 解析
     ///     <see cref="GFramework.Cqrs.Abstractions.Cqrs.ICqrsRuntime" /> 单例。
     /// </remarks>
-    public static void RegisterInfrastructure(MicrosoftDiContainer container)
+    public static void RegisterInfrastructure(ServiceTestHost container)
     {
         ArgumentNullException.ThrowIfNull(container);
 
         // 幂等包装：测试 SetUp 与 RegisterHandlers 可能各自触发一次安装。
-        var services = container.GetServicesUnsafe;
+        var services = container.Services;
         if (services.Any(static descriptor => descriptor.ServiceType == typeof(GFramework.Cqrs.Abstractions.Cqrs.ICqrsRuntime)))
         {
             return;
@@ -56,12 +55,12 @@ public static class CqrsTestRuntime
     ///     该入口会自动调用 <see cref="RegisterInfrastructure" />，测试通常无需预先手动接线。
     ///     程序集去重与空元素过滤由生产注册入口统一处理。
     /// </remarks>
-    public static void RegisterHandlers(MicrosoftDiContainer container, params Assembly[] assemblies)
+    public static void RegisterHandlers(ServiceTestHost container, params Assembly[] assemblies)
     {
         ArgumentNullException.ThrowIfNull(container);
         ArgumentNullException.ThrowIfNull(assemblies);
 
         RegisterInfrastructure(container);
-        container.GetServicesUnsafe.AddCqrsHandlersFromAssemblies(assemblies);
+        container.Services.AddCqrsHandlersFromAssemblies(assemblies);
     }
 }

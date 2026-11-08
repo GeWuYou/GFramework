@@ -47,20 +47,14 @@ public static class FunctionExtensions
     #region Try → Result
 
     /// <summary>
-    ///     Try：安全执行并返回 language-ext 的 Result
+    ///     Executes a value transformation and captures ordinary exceptions in a Result; cancellation propagates.
     /// </summary>
     public static Result<TResult> Try<TSource, TResult>(
         this TSource value,
         Func<TSource, TResult> func)
     {
-        try
-        {
-            return new Result<TResult>(func(value));
-        }
-        catch (Exception ex)
-        {
-            return new Result<TResult>(ex);
-        }
+        ArgumentNullException.ThrowIfNull(func);
+        return Result<TResult>.Try(() => func(value));
     }
 
     #endregion

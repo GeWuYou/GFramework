@@ -136,7 +136,7 @@ public sealed class YamlConfigLoader : IConfigLoader
     /// <exception cref="ArgumentOutOfRangeException">
     ///     当显式提供的 <paramref name="debounceDelay" /> 小于 <see cref="TimeSpan.Zero" /> 时抛出。
     /// </exception>
-    public IUnRegister EnableHotReload(
+    public IDisposable EnableHotReload(
         IConfigRegistry registry,
         Action<string>? onTableReloaded = null,
         Action<string, Exception>? onTableReloadFailed = null,
@@ -165,7 +165,7 @@ public sealed class YamlConfigLoader : IConfigLoader
     ///     当 <paramref name="options" /> 的 <see cref="YamlConfigHotReloadOptions.DebounceDelay" /> 小于
     ///     <see cref="TimeSpan.Zero" /> 时抛出。
     /// </exception>
-    public IUnRegister EnableHotReload(
+    public IDisposable EnableHotReload(
         IConfigRegistry registry,
         YamlConfigHotReloadOptions? options)
     {
@@ -928,7 +928,7 @@ public sealed class YamlConfigLoader : IConfigLoader
     ///     封装开发期热重载所需的文件监听与按表重载逻辑。
     ///     该会话只影响通过当前加载器注册的表，不尝试接管注册表中的其他来源数据。
     /// </summary>
-    private sealed class HotReloadSession : IUnRegister, IDisposable
+    private sealed class HotReloadSession : IDisposable
     {
         private readonly TimeSpan _debounceDelay;
 
@@ -1041,13 +1041,6 @@ public sealed class YamlConfigLoader : IConfigLoader
             }
         }
 
-        /// <summary>
-        ///     停止热重载监听。
-        /// </summary>
-        public void UnRegister()
-        {
-            Dispose();
-        }
 
         private void CreateWatchersForRegistration(IYamlTableRegistration registration)
         {

@@ -12,7 +12,6 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,11 +33,11 @@ namespace GFramework.Cqrs.Benchmarks.Messaging;
 [Config(typeof(Config))]
 public class StreamLifetimeBenchmarks
 {
-    private MicrosoftDiContainer _reflectionContainer = null!;
+    private BenchmarkServiceHost _reflectionContainer = null!;
     private ICqrsRuntime _reflectionRuntime = null!;
     private ScopedBenchmarkContainer? _scopedReflectionContainer;
     private ICqrsRuntime? _scopedReflectionRuntime;
-    private MicrosoftDiContainer _generatedContainer = null!;
+    private BenchmarkServiceHost _generatedContainer = null!;
     private ICqrsRuntime _generatedRuntime = null!;
     private ScopedBenchmarkContainer? _scopedGeneratedContainer;
     private ICqrsRuntime? _scopedGeneratedRuntime;
@@ -235,7 +234,7 @@ public class StreamLifetimeBenchmarks
     /// </summary>
     /// <param name="container">当前 benchmark 拥有并负责释放的容器。</param>
     /// <param name="lifetime">待比较的 handler 生命周期。</param>
-    private static void RegisterReflectionHandler(MicrosoftDiContainer container, HandlerLifetime lifetime)
+    private static void RegisterReflectionHandler(BenchmarkServiceHost container, HandlerLifetime lifetime)
     {
         ArgumentNullException.ThrowIfNull(container);
 
@@ -273,7 +272,7 @@ public class StreamLifetimeBenchmarks
     ///     generated registry 只负责暴露静态 descriptor；
     ///     生命周期矩阵仍由 benchmark 主体显式覆盖 handler 注册，避免把 descriptor 发现与实例解析混在一起。
     /// </remarks>
-    private static void RegisterGeneratedHandler(MicrosoftDiContainer container, HandlerLifetime lifetime)
+    private static void RegisterGeneratedHandler(BenchmarkServiceHost container, HandlerLifetime lifetime)
     {
         ArgumentNullException.ThrowIfNull(container);
 

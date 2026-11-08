@@ -51,7 +51,7 @@ Godot 接入见 [Godot 暂停](../godot/pause.md)。UI 可在路由定义中声�
 
 ## 迁移
 
-将 `RegisterUtility<IPauseStackManager>` 与上下文查找改为构造注入或标准服务登记。实例创建后即可使用，无需 `Initialize`。宿主在自己的停止顺序中等待 `DisposeAsync`。
+暂停能力采用构造注入或标准服务登记。实例创建后即可使用，无需 `Initialize`。宿主在自己的停止顺序中等待 `DisposeAsync`。
 
 ## 相关主题
 

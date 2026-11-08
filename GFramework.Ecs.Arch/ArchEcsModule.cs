@@ -1,113 +1,91 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Linq;
 using Arch.Core;
-using GFramework.Core.Abstractions.Ioc;
-using GFramework.Core.Abstractions.Rule;
+using GFramework.Core.Abstractions.Bases;
+using GFramework.Core.Abstractions.Lifecycle;
+using GFramework.Core.Architectures;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Ecs.Arch;
 
-/// <summary>
-///     把 Arch 的 World 和系统接入当前架构。配置只声明服务，正式 provider 创建并拥有 World；
-///     模块负责系统开始、更新与停止，provider 在模块停止后释放资源。
-/// </summary>
-/// <remarks>
-///     创建属于单个架构实例的 ECS 服务模块。
-/// </remarks>
-/// <param name="options">World 容量和模块优先级。</param>
-/// <param name="enabled">是否参与本架构生命周期。</param>
+/// <summary>Describes one DI-owned world and an explicit ordered system participant.</summary>
+/// <param name="options">World capacity and startup order.</param>
+/// <param name="enabled">Whether this composition includes ECS.</param>
 public sealed class ArchEcsModule(ArchOptions? options = null, bool enabled = true) : IArchEcsModule
 {
     private readonly ArchOptions _options = options ?? new ArchOptions();
-    private IIocContainer? _container;
-    private bool _isInitialized;
-    private readonly List<ArchSystemAdapter<float>> _startedSystems = [];
+    private EcsLifetime? _runtime;
+    private bool _configured;
 
     /// <inheritdoc />
-    public string ModuleName => nameof(ArchEcsModule);
-
-    /// <inheritdoc />
-    public int Priority => _options.Priority;
-
-    /// <inheritdoc />
-    public bool IsEnabled { get; } = enabled;
-
-    /// <summary>
-    ///     声明单一 owning World 工厂；注册阶段不创建原生资源。
-    /// </summary>
-    /// <param name="container">当前架构的注册容器。</param>
-    public void Register(IIocContainer container)
+    public void ConfigureServices(IServiceCollection services)
     {
-        ArgumentNullException.ThrowIfNull(container);
-        if (!IsEnabled)
+        ArgumentNullException.ThrowIfNull(services);
+        if (_configured)
+            throw new InvalidOperationException("An ECS module can only describe one architecture.");
+        _configured = true;
+        if (!enabled)
             return;
-
-        _container = container;
-        container.RegisterPlurality(this);
-        container.RegisterFactory<World>(_ => World.Create(_options.WorldCapacity));
+        services.AddSingleton<IArchEcsModule>(this);
+        services.AddSingleton(_ => World.Create(_options.WorldCapacity));
+        services.AddComponent(provider =>
+        {
+            _runtime = new EcsLifetime(provider.GetServices<ArchSystemAdapter<float>>()
+                .OrderBy(system => system is IPrioritized prioritized ? prioritized.Priority : 0).ToArray());
+            return _runtime;
+        }, order: _options.Priority);
     }
 
-    /// <summary>
-    ///     在 provider 建立之后解析同一 World 和显式注册的 ArchSystemAdapter 服务，并初始化系统。
-    /// </summary>
-    public void Initialize()
+    /// <inheritdoc />
+    public void Update(float deltaTime) => _runtime?.Update(deltaTime);
+
+    /// <summary>Starts and stops systems, leaving world/system final disposal to their single DI owner.</summary>
+    /// <param name="systems">The explicitly registered systems in stable priority order.</param>
+    private sealed class EcsLifetime(IReadOnlyList<ArchSystemAdapter<float>> systems) : ILifecycle
     {
-        if (!IsEnabled || _isInitialized)
-            return;
+        private readonly List<ArchSystemAdapter<float>> _started = [];
+        private bool _ready;
 
-        var container = _container ??
-            throw new InvalidOperationException("Register the ECS module before initializing it.");
-
-        // 必须先解析 World，保证系统构造和运行时查询复用同一 owning 单例。
-        _ = container.GetRequired<World>();
-        foreach (var system in container.GetAllByPriority<ArchSystemAdapter<float>>())
+        /// <inheritdoc />
+        public void Initialize()
         {
-            ((IContextAware)system).SetContext(container.GetContext());
-            system.Initialize();
-            _startedSystems.Add(system);
+            foreach (var system in systems)
+            {
+                // Partial initialization still owes the system its business-stop callback.
+                _started.Add(system);
+                system.Initialize();
+            }
+            _ready = true;
         }
 
-        _isInitialized = true;
-    }
-
-    /// <summary>
-    ///     逆序停止已经成功启动的系统。即使初始化中途失败也执行已启动部分的停止；
-    ///     World 及 DI 拥有的系统资源由 provider 释放，避免重复销毁。
-    /// </summary>
-    /// <returns>系统停止完成的值任务。</returns>
-    public ValueTask DestroyAsync()
-    {
-        List<Exception>? errors = null;
-        for (var i = _startedSystems.Count - 1; i >= 0; i--)
+        /// <inheritdoc />
+        public void Destroy()
         {
-            try
+            _ready = false;
+            var errors = new List<Exception>();
+            for (var index = _started.Count - 1; index >= 0; index--)
             {
-                _startedSystems[i].Destroy();
+                try
+                {
+                    _started[index].Destroy();
+                }
+                catch (Exception error) { errors.Add(error); }
             }
-            catch (Exception exception)
-            {
-                (errors ??= []).Add(exception);
-            }
+            _started.Clear();
+            if (errors.Count > 0)
+                throw new AggregateException("ECS system stop failed.", errors);
         }
 
-        _startedSystems.Clear();
-        _isInitialized = false;
-        if (errors is not null)
-            throw new AggregateException("One or more ECS systems failed to stop.", errors);
-
-        return ValueTask.CompletedTask;
-    }
-
-    /// <summary>
-    ///     更新本模块已经启动的系统；未初始化或停止后不触发更新。
-    /// </summary>
-    /// <param name="deltaTime">当前宿主帧间隔。</param>
-    public void Update(float deltaTime)
-    {
-        if (!_isInitialized)
-            return;
-
-        foreach (var system in _startedSystems)
-            system.Update(deltaTime);
+        /// <summary>Only initialized systems participate in frame updates.</summary>
+        /// <param name="deltaTime">The owning host's time step.</param>
+        public void Update(float deltaTime)
+        {
+            if (!_ready)
+                return;
+            foreach (var system in _started)
+                system.Update(in deltaTime);
+        }
     }
 }

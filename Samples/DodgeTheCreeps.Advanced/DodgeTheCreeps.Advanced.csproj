@@ -1,0 +1,22 @@
+<!--
+  Copyright (c) 2025-2026 GeWuYou
+  SPDX-License-Identifier: Apache-2.0
+-->
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin/**;obj/**;exports/**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../GFramework.Godot/GFramework.Godot.csproj"/>
+    <ProjectReference Include="../../GFramework.Game.Abstractions/GFramework.Game.Abstractions.csproj"/>
+    <ProjectReference Include="../../GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj"/>
+    <ProjectReference Include="../../GFramework.Game.Harmony/GFramework.Game.Harmony.csproj"/>
+    <ProjectReference Include="../DodgeTheCreeps.ModApi/DodgeTheCreeps.ModApi.csproj"/>
+    <ProjectReference Include="../DodgeTheCreeps.Advanced.Core/DodgeTheCreeps.Advanced.Core.csproj"/>
+  </ItemGroup>
+</Project>

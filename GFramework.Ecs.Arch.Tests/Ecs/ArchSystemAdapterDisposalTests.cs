@@ -35,7 +35,8 @@ public sealed class ArchSystemAdapterDisposalTests
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static WeakReference CreateAdapter(Action onFinalized, bool dispose)
     {
-        var adapter = new FinalizableAdapter(onFinalized);
+        using var world = global::Arch.Core.World.Create();
+        var adapter = new FinalizableAdapter(world, onFinalized);
         if (dispose)
         {
             ((IDisposable)adapter).Dispose();
@@ -45,7 +46,7 @@ public sealed class ArchSystemAdapterDisposalTests
 
     /// <summary>Records only finalizer execution; it does not allocate an ECS World or bind an architecture.</summary>
     /// <param name="onFinalized">The observation retained by the test independently of this adapter.</param>
-    private sealed class FinalizableAdapter(Action onFinalized) : ArchSystemAdapter<float>
+    private sealed class FinalizableAdapter(global::Arch.Core.World world, Action onFinalized) : ArchSystemAdapter<float>(world)
     {
 #pragma warning disable MA0055 // A real derived finalizer is required to verify the GC.SuppressFinalize contract.
         /// <summary>Records the positive control; successfully disposed adapters must never reach this callback.</summary>

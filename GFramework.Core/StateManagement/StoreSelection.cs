@@ -67,7 +67,7 @@ public sealed class StoreSelection<TState, TSelected>(
     ///     连接到底层 Store 的订阅句柄。
     ///     仅当当前存在至少一个监听器时才会建立该订阅，以减少长期闲置对象造成的引用链。
     /// </summary>
-    private IUnRegister? _storeSubscription;
+    private IDisposable? _storeSubscription;
 
     /// <summary>
     ///     获取当前选择结果。
@@ -79,7 +79,7 @@ public sealed class StoreSelection<TState, TSelected>(
     /// </summary>
     /// <param name="onEvent">无参事件监听器。</param>
     /// <returns>用于取消订阅的句柄。</returns>
-    IUnRegister IEvent.Register(Action onEvent)
+    IDisposable IEvent.Register(Action onEvent)
     {
         ArgumentNullException.ThrowIfNull(onEvent);
 
@@ -92,7 +92,7 @@ public sealed class StoreSelection<TState, TSelected>(
     /// <param name="onValueChanged">选择结果变化时的回调。</param>
     /// <returns>用于取消订阅的句柄。</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="onValueChanged"/> 为 <see langword="null"/> 时抛出。</exception>
-    public IUnRegister Register(Action<TSelected> onValueChanged)
+    public IDisposable Register(Action<TSelected> onValueChanged)
     {
         ArgumentNullException.ThrowIfNull(onValueChanged);
 
@@ -115,7 +115,7 @@ public sealed class StoreSelection<TState, TSelected>(
             AttachToStore();
         }
 
-        return new DefaultUnRegister(() => UnRegister(subscription));
+        return new Subscription(() => UnRegister(subscription));
     }
 
     /// <summary>
@@ -124,7 +124,7 @@ public sealed class StoreSelection<TState, TSelected>(
     /// <param name="action">选择结果变化时的回调。</param>
     /// <returns>用于取消订阅的句柄。</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="action"/> 为 <see langword="null"/> 时抛出。</exception>
-    public IUnRegister RegisterWithInitValue(Action<TSelected> action)
+    public IDisposable RegisterWithInitValue(Action<TSelected> action)
     {
         ArgumentNullException.ThrowIfNull(action);
 
@@ -161,7 +161,7 @@ public sealed class StoreSelection<TState, TSelected>(
         {
             if (!subscription.IsSubscribed)
             {
-                return new DefaultUnRegister(() => { });
+                return new Subscription(() => { });
             }
 
             subscription.IsActive = true;
@@ -179,7 +179,7 @@ public sealed class StoreSelection<TState, TSelected>(
             action(pendingValue!);
         }
 
-        return new DefaultUnRegister(() => UnRegister(subscription));
+        return new Subscription(() => UnRegister(subscription));
     }
 
     /// <summary>
@@ -234,7 +234,7 @@ public sealed class StoreSelection<TState, TSelected>(
     /// <param name="subscriptionToRemove">需要移除的订阅对象。</param>
     private void UnRegister(SelectionListenerSubscription subscriptionToRemove)
     {
-        IUnRegister? storeSubscription = null;
+        IDisposable? storeSubscription = null;
 
         lock (_lock)
         {
@@ -247,7 +247,7 @@ public sealed class StoreSelection<TState, TSelected>(
             }
         }
 
-        storeSubscription?.UnRegister();
+        storeSubscription?.Dispose();
     }
 
     /// <summary>
@@ -266,13 +266,13 @@ public sealed class StoreSelection<TState, TSelected>(
             // 避免选择视图在无人监听时继续被 Store 保持引用。
             if (_listeners.Count == 0)
             {
-                subscription.UnRegister();
+                subscription.Dispose();
                 return;
             }
 
             if (_storeSubscription != null)
             {
-                subscription.UnRegister();
+                subscription.Dispose();
                 return;
             }
 

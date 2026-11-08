@@ -1,360 +1,314 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using GFramework.Core.Abstractions.Resource;
 using GFramework.Core.Resource;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Resource;
 
-/// <summary>
-///     ResourceManager 功能测试类
-/// </summary>
+/// <summary>Verifies observable acquisition, cancellation and cache contracts without native resource dependencies.</summary>
 [TestFixture]
-public class ResourceManagerTests
+public sealed class ResourceManagerTests
 {
-    [SetUp]
-    public void SetUp()
-    {
-        _resourceManager = new ResourceManager();
-        _testLoader = new TestResourceLoader();
-        _testLoader.AddTestData("test/resource1.txt", "Content 1");
-        _testLoader.AddTestData("test/resource2.txt", "Content 2");
-        _resourceManager.RegisterLoader(_testLoader);
-    }
-
-    [TearDown]
-    public void TearDown()
-    {
-        _resourceManager.UnloadAll();
-    }
-
-    private ResourceManager _resourceManager = null!;
-    private TestResourceLoader _testLoader = null!;
-
+    /// <summary>Each acquisition gets an independent lease while the cache loads one resource ownership.</summary>
     [Test]
-    public void Load_Should_Load_Resource()
+    public async Task Acquire_SharesCacheAcrossSyncAndAsyncLeases()
     {
-        var resource = _resourceManager.Load<TestResource>("test/resource1.txt");
-
-        Assert.That(resource, Is.Not.Null);
-        Assert.That(resource!.Content, Is.EqualTo("Content 1"));
-    }
-
-    [Test]
-    public void Load_Should_Return_Cached_Resource()
-    {
-        var resource1 = _resourceManager.Load<TestResource>("test/resource1.txt");
-        var resource2 = _resourceManager.Load<TestResource>("test/resource1.txt");
-
-        Assert.That(resource1, Is.SameAs(resource2));
-    }
-
-    [Test]
-    public async Task LoadAsync_Should_Load_Resource()
-    {
-        var resource = await _resourceManager.LoadAsync<TestResource>("test/resource1.txt").ConfigureAwait(false);
-
-        Assert.That(resource, Is.Not.Null);
-        Assert.That(resource!.Content, Is.EqualTo("Content 1"));
-    }
-
-    [Test]
-    public void Load_Should_Throw_When_No_Loader_Registered()
-    {
-        _resourceManager.UnregisterLoader<TestResource>();
-
-        Assert.Throws<InvalidOperationException>(() => { _resourceManager.Load<TestResource>("test/resource1.txt"); });
-    }
-
-    [Test]
-    public void IsLoaded_Should_Return_True_When_Resource_Loaded()
-    {
-        _resourceManager.Load<TestResource>("test/resource1.txt");
-
-        Assert.That(_resourceManager.IsLoaded("test/resource1.txt"), Is.True);
-    }
-
-    [Test]
-    public void IsLoaded_Should_Return_False_When_Resource_Not_Loaded()
-    {
-        Assert.That(_resourceManager.IsLoaded("test/nonexistent.txt"), Is.False);
-    }
-
-    [Test]
-    public void Unload_Should_Remove_Resource()
-    {
-        _resourceManager.Load<TestResource>("test/resource1.txt");
-
-        var unloaded = _resourceManager.Unload("test/resource1.txt");
-
-        Assert.That(unloaded, Is.True);
-        Assert.That(_resourceManager.IsLoaded("test/resource1.txt"), Is.False);
-    }
-
-    [Test]
-    public void UnloadAll_Should_Remove_All_Resources()
-    {
-        _resourceManager.Load<TestResource>("test/resource1.txt");
-        _resourceManager.Load<TestResource>("test/resource2.txt");
-
-        _resourceManager.UnloadAll();
-
-        Assert.That(_resourceManager.LoadedResourceCount, Is.EqualTo(0));
-    }
-
-    [Test]
-    public void LoadedResourceCount_Should_Return_Correct_Count()
-    {
-        _resourceManager.Load<TestResource>("test/resource1.txt");
-        _resourceManager.Load<TestResource>("test/resource2.txt");
-
-        Assert.That(_resourceManager.LoadedResourceCount, Is.EqualTo(2));
-    }
-
-    [Test]
-    public void GetLoadedResourcePaths_Should_Return_All_Paths()
-    {
-        _resourceManager.Load<TestResource>("test/resource1.txt");
-        _resourceManager.Load<TestResource>("test/resource2.txt");
-
-        var paths = _resourceManager.GetLoadedResourcePaths().ToList();
-
-        Assert.That(paths, Has.Count.EqualTo(2));
-        Assert.That(paths, Contains.Item("test/resource1.txt"));
-        Assert.That(paths, Contains.Item("test/resource2.txt"));
-    }
-
-    [Test]
-    public void GetHandle_Should_Return_Valid_Handle()
-    {
-        _resourceManager.Load<TestResource>("test/resource1.txt");
-
-        var handle = _resourceManager.GetHandle<TestResource>("test/resource1.txt");
-
-        Assert.That(handle, Is.Not.Null);
-        Assert.That(handle!.IsValid, Is.True);
-        Assert.That(handle.Resource, Is.Not.Null);
-        Assert.That(handle.Path, Is.EqualTo("test/resource1.txt"));
-    }
-
-    [Test]
-    public void GetHandle_Should_Return_Null_When_Resource_Not_Loaded()
-    {
-        var handle = _resourceManager.GetHandle<TestResource>("test/nonexistent.txt");
-
-        Assert.That(handle, Is.Null);
-    }
-
-    [Test]
-    public void Handle_Dispose_Should_Decrease_Reference_Count()
-    {
-        _resourceManager.Load<TestResource>("test/resource1.txt");
-
-        var handle = _resourceManager.GetHandle<TestResource>("test/resource1.txt");
-        handle!.Dispose();
-
-        // 引用计数降为 0，但手动释放策略不会自动卸载
-        Assert.That(_resourceManager.IsLoaded("test/resource1.txt"), Is.True);
-    }
-
-    [Test]
-    public async Task PreloadAsync_Should_Load_Resource()
-    {
-        await _resourceManager.PreloadAsync<TestResource>("test/resource1.txt");
-
-        Assert.That(_resourceManager.IsLoaded("test/resource1.txt"), Is.True);
-    }
-
-    [Test]
-    public void Load_Should_Throw_When_Path_Is_Null_Or_Empty()
-    {
-        Assert.Throws<ArgumentException>(() => _resourceManager.Load<TestResource>(null!));
-        Assert.Throws<ArgumentException>(() => _resourceManager.Load<TestResource>(""));
-        Assert.Throws<ArgumentException>(() => _resourceManager.Load<TestResource>("   "));
-    }
-
-    [Test]
-    public void RegisterLoader_Should_Throw_When_Loader_Is_Null()
-    {
-        Assert.Throws<ArgumentNullException>(() => { _resourceManager.RegisterLoader<TestResource>(null!); });
-    }
-
-    [Test]
-    public void Concurrent_Load_Should_Be_Thread_Safe()
-    {
-        const int threadCount = 10;
-        var tasks = new Task[threadCount];
-        var exceptions = new List<Exception>();
-        var resources = new TestResource?[threadCount];
-
-        for (var i = 0; i < threadCount; i++)
+        await using var manager = new ResourceManager();
+        var loader = CreateLoader();
+        manager.RegisterLoader(loader);
+        using var first = manager.Acquire<TestResource>("asset");
+        using var second = await manager.AcquireAsync<TestResource>("asset");
+        Assert.Multiple(() =>
         {
-            var index = i;
-            tasks[i] = Task.Run(async () =>
-            {
-                try
-                {
-                    resources[index] = await _resourceManager.LoadAsync<TestResource>("test/resource1.txt").ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    lock (exceptions)
-                    {
-                        exceptions.Add(ex);
-                    }
-                }
-            });
-        }
-
-        Task.WaitAll(tasks);
-
-        Assert.That(exceptions, Is.Empty);
-        Assert.That(resources.All(r => r != null), Is.True);
-        Assert.That(resources.All(r => r == resources[0]), Is.True, "所有线程应该获得同一个资源实例");
-    }
-
-    [Test]
-    public async Task Concurrent_LoadAsync_Should_Be_Thread_Safe()
-    {
-        const int threadCount = 10;
-        var tasks = new Task<TestResource?>[threadCount];
-
-        for (var i = 0; i < threadCount; i++)
-        {
-            tasks[i] = _resourceManager.LoadAsync<TestResource>("test/resource1.txt");
-        }
-
-        var resources = await Task.WhenAll(tasks);
-
-        Assert.That(resources.All(r => r != null), Is.True);
-        Assert.That(resources.All(r => r == resources[0]), Is.True, "所有任务应该获得同一个资源实例");
-    }
-
-    [Test]
-    public void Concurrent_Load_Different_Resources_Should_Work()
-    {
-        const int threadCount = 2;
-        var tasks = new Task[threadCount];
-        var exceptions = new List<Exception>();
-
-        tasks[0] = Task.Run(async () =>
-        {
-            try
-            {
-                for (var i = 0; i < 100; i++)
-                {
-                    await _resourceManager.LoadAsync<TestResource>("test/resource1.txt").ConfigureAwait(false);
-                }
-            }
-            catch (Exception ex)
-            {
-                lock (exceptions)
-                {
-                    exceptions.Add(ex);
-                }
-            }
+            Assert.That(first.Resource, Is.SameAs(second.Resource));
+            Assert.That(first, Is.Not.SameAs(second));
+            Assert.That(loader.LoadCount, Is.EqualTo(1));
+            Assert.That(manager.LoadedResourceCount, Is.EqualTo(1));
+            Assert.That(manager.IsLoaded<TestResource>("asset"), Is.True);
+            Assert.That(first.Path, Is.EqualTo("asset"));
+            Assert.That(manager.Unload<TestResource>("asset"), Is.False);
         });
-
-        tasks[1] = Task.Run(async () =>
-        {
-            try
-            {
-                for (var i = 0; i < 100; i++)
-                {
-                    await _resourceManager.LoadAsync<TestResource>("test/resource2.txt").ConfigureAwait(false);
-                }
-            }
-            catch (Exception ex)
-            {
-                lock (exceptions)
-                {
-                    exceptions.Add(ex);
-                }
-            }
-        });
-
-        Task.WaitAll(tasks);
-
-        Assert.That(exceptions, Is.Empty);
-        Assert.That(_resourceManager.LoadedResourceCount, Is.EqualTo(2));
     }
 
+    /// <summary>Independent retained leases outlive disposal of their source lease; repeated disposal does nothing.</summary>
     [Test]
-    public void ManualReleaseStrategy_Should_Not_Auto_Unload()
+    public void Retain_CreatesIndependentIdempotentLease()
     {
-        _resourceManager.SetReleaseStrategy(new ManualReleaseStrategy());
-        _resourceManager.Load<TestResource>("test/resource1.txt");
-
-        using (var handle = _resourceManager.GetHandle<TestResource>("test/resource1.txt"))
+        using var manager = new ResourceManager();
+        var loader = CreateLoader();
+        manager.RegisterLoader(loader);
+        manager.SetReleaseStrategy(new AutoReleaseStrategy());
+        var first = manager.Acquire<TestResource>("asset");
+        var resource = first.Resource;
+        var second = first.Retain();
+        first.Dispose();
+        first.Dispose();
+        Assert.Multiple(() =>
         {
-            handle?.Dispose();
+            Assert.That(first.IsValid, Is.False);
+            Assert.That(second.IsValid, Is.True);
+            Assert.That(second.Resource, Is.SameAs(resource));
+            Assert.That(resource.IsDisposed, Is.False);
+            Assert.That(loader.UnloadCount, Is.Zero);
+        });
+        Assert.Throws<ObjectDisposedException>(() => _ = first.Resource);
+        Assert.Throws<ObjectDisposedException>(() => first.Retain());
+        second.Dispose();
+        second.Dispose();
+        Assert.That(loader.UnloadCount, Is.EqualTo(1));
+        Assert.That(manager.LoadedResourceCount, Is.Zero);
+    }
+
+    /// <summary>Manual release retains an unleased entry until explicit eviction.</summary>
+    [Test]
+    public void ManualPolicy_RetainsUntilExplicitUnload()
+    {
+        using var manager = new ResourceManager();
+        var loader = CreateLoader();
+        manager.RegisterLoader(loader);
+        var lease = manager.Acquire<TestResource>("asset");
+        lease.Dispose();
+        Assert.That(loader.UnloadCount, Is.Zero);
+        Assert.That(manager.Unload<TestResource>("asset"), Is.True);
+        Assert.That(manager.Unload<TestResource>("asset"), Is.False);
+        Assert.That(loader.UnloadCount, Is.EqualTo(1));
+    }
+
+    /// <summary>A preload intentionally pins a cache entry even under automatic release.</summary>
+    [Test]
+    public async Task Preload_PinsUntilExplicitUnload()
+    {
+        await using var manager = new ResourceManager();
+        var loader = CreateLoader();
+        manager.RegisterLoader(loader);
+        manager.SetReleaseStrategy(new AutoReleaseStrategy());
+        await manager.PreloadAsync<TestResource>("asset");
+        var lease = manager.Acquire<TestResource>("asset");
+        lease.Dispose();
+        Assert.That(loader.LoadCount, Is.EqualTo(1));
+        Assert.That(loader.UnloadCount, Is.Zero);
+        Assert.That(manager.Unload<TestResource>("asset"), Is.True);
+        Assert.That(loader.UnloadCount, Is.EqualTo(1));
+    }
+
+    /// <summary>Every same-key waiter shares one underlying load and receives its own lease.</summary>
+    [Test]
+    public async Task ConcurrentAcquireAsync_PerformsOneLoad()
+    {
+        await using var manager = new ResourceManager();
+        var loader = new ControlledLoader();
+        manager.RegisterLoader(loader);
+        var requests = Enumerable.Range(0, 32).Select(_ => manager.AcquireAsync<TestResource>("asset")).ToArray();
+        Assert.That(loader.LoadCount, Is.EqualTo(1));
+        loader.Completion.SetResult(new TestResource());
+        var leases = await Task.WhenAll(requests);
+        Assert.That(leases.Select(lease => lease.Resource).Distinct().Count(), Is.EqualTo(1));
+        Assert.That(leases.Distinct().Count(), Is.EqualTo(32));
+        foreach (var lease in leases)
+            lease.Dispose();
+        manager.UnloadAll();
+        Assert.That(loader.UnloadCount, Is.EqualTo(1));
+    }
+
+    /// <summary>Canceling one wait cannot cancel the shared loader or another acquisition.</summary>
+    [Test]
+    public async Task Cancellation_IsIsolatedPerWaiter()
+    {
+        await using var manager = new ResourceManager();
+        using var cancellation = new CancellationTokenSource();
+        var loader = new ControlledLoader();
+        manager.RegisterLoader(loader);
+        var canceled = manager.AcquireAsync<TestResource>("asset", cancellation.Token);
+        var successful = manager.AcquireAsync<TestResource>("asset");
+        cancellation.Cancel();
+        await Assert.ThrowsAsync<TaskCanceledException>(() => canceled);
+        Assert.That(successful.IsCompleted, Is.False);
+        Assert.That(loader.Token.CanBeCanceled, Is.False);
+        loader.Completion.SetResult(new TestResource());
+        using var lease = await successful;
+        Assert.That(lease.IsValid, Is.True);
+        Assert.That(loader.LoadCount, Is.EqualTo(1));
+    }
+
+    /// <summary>Canceled waiters leave no lease reservation preventing automatic release after loading finishes.</summary>
+    [Test]
+    public async Task Cancellation_AllWaitersCanceled_AllowsRelease()
+    {
+        var manager = new ResourceManager();
+        manager.SetReleaseStrategy(new AutoReleaseStrategy());
+        var loader = new ControlledLoader();
+        manager.RegisterLoader(loader);
+        using var cancellation = new CancellationTokenSource();
+        var request = manager.AcquireAsync<TestResource>("asset", cancellation.Token);
+        cancellation.Cancel();
+        await Assert.ThrowsAsync<TaskCanceledException>(() => request);
+        var shutdown = manager.DisposeAsync();
+        loader.Completion.SetResult(new TestResource());
+        await shutdown;
+        Assert.That(loader.UnloadCount, Is.EqualTo(1));
+        Assert.That(manager.LoadedResourceCount, Is.Zero);
+    }
+
+    /// <summary>Closing waits for loading, invalidates pending acquisitions, and releases an arriving unleased result.</summary>
+    [Test]
+    public async Task DisposeAsync_WaitsForPendingLoadAndRejectsItsAcquisition()
+    {
+        var manager = new ResourceManager();
+        var loader = new ControlledLoader();
+        manager.RegisterLoader(loader);
+        var request = manager.AcquireAsync<TestResource>("asset");
+        var first = manager.DisposeAsync().AsTask();
+        var second = manager.DisposeAsync().AsTask();
+        Assert.That(first, Is.SameAs(second));
+        Assert.That(first.IsCompleted, Is.False);
+        loader.Completion.SetResult(new TestResource());
+        await first;
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => request);
+        Assert.That(loader.UnloadCount, Is.EqualTo(1));
+        Assert.That(manager.LoadedResourceCount, Is.Zero);
+    }
+
+    /// <summary>Synchronous APIs refuse to block an in-flight asynchronous loader's host context.</summary>
+    [Test]
+    public async Task SynchronousCalls_DoNotBlockAsynchronousLoad()
+    {
+        var manager = new ResourceManager();
+        var loader = new ControlledLoader();
+        manager.RegisterLoader(loader);
+        var pending = manager.AcquireAsync<TestResource>("asset");
+        Assert.Throws<InvalidOperationException>(() => manager.Acquire<TestResource>("asset"));
+        Assert.Throws<InvalidOperationException>(() => manager.Dispose());
+        loader.Completion.SetResult(new TestResource());
+        using var lease = await pending;
+        await manager.DisposeAsync();
+        Assert.That(lease.IsValid, Is.True);
+    }
+
+    /// <summary>Successful pre-cancellation never starts a loader or inserts an entry.</summary>
+    [Test]
+    public async Task PreCanceledCall_DoesNotStartWork()
+    {
+        await using var manager = new ResourceManager();
+        var loader = CreateLoader();
+        manager.RegisterLoader(loader);
+        await Assert.CatchAsync<OperationCanceledException>(() => manager.AcquireAsync<TestResource>("asset", new CancellationToken(canceled: true)));
+        await Assert.CatchAsync<OperationCanceledException>(() => manager.PreloadAsync<TestResource>("asset", new CancellationToken(canceled: true)));
+        Assert.That(loader.LoadCount, Is.Zero);
+    }
+
+    /// <summary>Invalid paths fail before any cache or loader mutation.</summary>
+    [TestCase(null)]
+    [TestCase("")]
+    [TestCase(" ")]
+    public void InvalidPaths_AreRejected(string? path)
+    {
+        using var manager = new ResourceManager();
+        Assert.Catch<ArgumentException>(() => manager.Acquire<TestResource>(path!));
+        Assert.Catch<ArgumentException>(() => manager.Unload<TestResource>(path!));
+        Assert.Catch<ArgumentException>(() => manager.IsLoaded<TestResource>(path!));
+    }
+
+    /// <summary>Missing loaders and unsupported paths fail explicitly rather than returning a null resource.</summary>
+    [Test]
+    public void InvalidLoaderConfiguration_IsVisible()
+    {
+        using var manager = new ResourceManager();
+        Assert.Throws<InvalidOperationException>(() => manager.Acquire<TestResource>("asset"));
+        Assert.Throws<ArgumentNullException>(() => manager.RegisterLoader<TestResource>(null!));
+        Assert.Throws<ArgumentNullException>(() => manager.SetReleaseStrategy(null!));
+        manager.RegisterLoader(CreateLoader());
+        Assert.Throws<InvalidOperationException>(() => manager.Acquire<TestResource>("unsupported"));
+        manager.UnregisterLoader<TestResource>();
+        Assert.Throws<InvalidOperationException>(() => manager.Acquire<TestResource>("asset"));
+    }
+
+    /// <summary>Closure rejects every operation that could begin new resource work.</summary>
+    [Test]
+    public async Task ClosedManager_RejectsNewOperations()
+    {
+        var manager = new ResourceManager();
+        manager.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => manager.Acquire<TestResource>("asset"));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => manager.AcquireAsync<TestResource>("asset"));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => manager.PreloadAsync<TestResource>("asset"));
+        Assert.Throws<ObjectDisposedException>(() => manager.RegisterLoader(CreateLoader()));
+        Assert.Throws<ObjectDisposedException>(() => manager.UnregisterLoader<TestResource>());
+        Assert.Throws<ObjectDisposedException>(() => manager.Unload<TestResource>("asset"));
+        Assert.Throws<ObjectDisposedException>(() => manager.UnloadAll());
+        Assert.Throws<ObjectDisposedException>(() => manager.IsLoaded<TestResource>("asset"));
+        Assert.Throws<ObjectDisposedException>(() => manager.SetReleaseStrategy(new AutoReleaseStrategy()));
+    }
+
+    /// <summary>Switching release policy changes the decision when a lease is subsequently released.</summary>
+    [Test]
+    public void ReleasePolicy_CanBeChangedBeforeLastLeaseEnds()
+    {
+        using var manager = new ResourceManager();
+        var loader = CreateLoader();
+        manager.RegisterLoader(loader);
+        var lease = manager.Acquire<TestResource>("asset");
+        manager.SetReleaseStrategy(new AutoReleaseStrategy());
+        lease.Dispose();
+        Assert.That(loader.UnloadCount, Is.EqualTo(1));
+    }
+
+    /// <summary>Creates a deterministic in-memory loader.</summary>
+    private static TestResourceLoader CreateLoader()
+    {
+        var loader = new TestResourceLoader();
+        loader.AddTestData("asset", "content");
+        return loader;
+    }
+
+    /// <summary>Exposes loading completion so concurrency assertions do not rely on sleeps.</summary>
+    private sealed class ControlledLoader : IResourceLoader<TestResource>
+    {
+        /// <summary>Gets the shared native-load stand-in.</summary>
+        public TaskCompletionSource<TestResource> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>Gets the number of load invocations.</summary>
+        public int LoadCount
+        {
+            get; private set;
         }
 
-        // 验证资源仍然在缓存中
-        Assert.That(_resourceManager.LoadedResourceCount, Is.EqualTo(1));
-        Assert.That(_resourceManager.IsLoaded("test/resource1.txt"), Is.True);
+        /// <summary>Gets the number of releases.</summary>
+        public int UnloadCount
+        {
+            get; private set;
+        }
 
-        // 手动获取资源验证其未被卸载
-        var cachedResource = _resourceManager.GetHandle<TestResource>("test/resource1.txt");
-        Assert.That(cachedResource, Is.Not.Null);
-        Assert.That(cachedResource!.Resource, Is.Not.Null);
-    }
+        /// <summary>Gets the token supplied to the shared loader.</summary>
+        public CancellationToken Token
+        {
+            get; private set;
+        }
 
-    [Test]
-    public void AutoReleaseStrategy_Should_Auto_Unload_When_RefCount_Zero()
-    {
-        _resourceManager.SetReleaseStrategy(new AutoReleaseStrategy());
-        _resourceManager.Load<TestResource>("test/resource1.txt");
-        var handle = _resourceManager.GetHandle<TestResource>("test/resource1.txt");
+        /// <inheritdoc />
+        public TestResource Load(string path) => throw new InvalidOperationException("Use async loading in this probe.");
 
-        // 释放句柄
-        handle!.Dispose();
+        /// <inheritdoc />
+        public Task<TestResource> LoadAsync(string path, CancellationToken cancellationToken = default)
+        {
+            LoadCount++;
+            Token = cancellationToken;
+            return Completion.Task;
+        }
 
-        // 自动释放策略：资源应该被自动卸载
-        Assert.That(_resourceManager.IsLoaded("test/resource1.txt"), Is.False);
-    }
+        /// <inheritdoc />
+        public void Unload(TestResource resource)
+        {
+            UnloadCount++;
+            resource.IsDisposed = true;
+        }
 
-    [Test]
-    public void AutoReleaseStrategy_Should_Not_Unload_With_Active_References()
-    {
-        _resourceManager.SetReleaseStrategy(new AutoReleaseStrategy());
-        _resourceManager.Load<TestResource>("test/resource1.txt");
-        var handle1 = _resourceManager.GetHandle<TestResource>("test/resource1.txt");
-        var handle2 = _resourceManager.GetHandle<TestResource>("test/resource1.txt");
-
-        // 释放一个句柄
-        handle1!.Dispose();
-
-        // 还有一个活跃引用，资源不应该被卸载
-        Assert.That(_resourceManager.IsLoaded("test/resource1.txt"), Is.True);
-
-        // 释放第二个句柄
-        handle2!.Dispose();
-
-        // 现在资源应该被自动卸载
-        Assert.That(_resourceManager.IsLoaded("test/resource1.txt"), Is.False);
-    }
-
-    [Test]
-    public void SetReleaseStrategy_Should_Throw_When_Strategy_Is_Null()
-    {
-        Assert.Throws<ArgumentNullException>(() => { _resourceManager.SetReleaseStrategy(null!); });
-    }
-
-    [Test]
-    public void Can_Switch_Between_Release_Strategies()
-    {
-        // 开始使用手动释放策略
-        _resourceManager.Load<TestResource>("test/resource1.txt");
-        var handle1 = _resourceManager.GetHandle<TestResource>("test/resource1.txt");
-        handle1!.Dispose();
-        Assert.That(_resourceManager.IsLoaded("test/resource1.txt"), Is.True);
-
-        // 切换到自动释放策略
-        _resourceManager.SetReleaseStrategy(new AutoReleaseStrategy());
-        _resourceManager.Load<TestResource>("test/resource2.txt");
-        var handle2 = _resourceManager.GetHandle<TestResource>("test/resource2.txt");
-        handle2!.Dispose();
-        Assert.That(_resourceManager.IsLoaded("test/resource2.txt"), Is.False);
+        /// <inheritdoc />
+        public bool CanLoad(string path) => true;
     }
 }

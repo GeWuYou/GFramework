@@ -25,7 +25,7 @@ public class TransitiveGlobalUsingsPackagingTests
     /// <summary>
     ///     使用真实类型派生扩展命名空间，避免对字面量命名空间字符串的重复维护。
     /// </summary>
-    private static readonly string ExtensionsNamespace = typeof(ContextAwareEnvironmentExtensions).Namespace
+    private static readonly string ExtensionsNamespace = typeof(ObjectExtensions).Namespace
                                                          ?? throw new InvalidOperationException(
                                                              "Extensions namespace should not be null.");
 

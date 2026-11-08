@@ -58,7 +58,7 @@ public static class AsyncFunctionalExtensions
             {
                 return await taskFactory().ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // 若还有重试机会且允许重试，则等待后继续；否则统一包装为 AggregateException 抛出
                 if (attempt < maxRetries && shouldRetry(ex))
@@ -95,18 +95,10 @@ public static class AsyncFunctionalExtensions
     /// );
     /// </code>
     /// </example>
-    public static async Task<Result<T>> TryAsync<T>(this Func<Task<T>> func)
+    public static Task<Result<T>> TryAsync<T>(this Func<Task<T>> func)
     {
         ArgumentNullException.ThrowIfNull(func);
 
-        try
-        {
-            var result = await func().ConfigureAwait(false);
-            return new Result<T>(result);
-        }
-        catch (Exception ex)
-        {
-            return new Result<T>(ex);
-        }
+        return Result<T>.TryAsync(func);
     }
 }

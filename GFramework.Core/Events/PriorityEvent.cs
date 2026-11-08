@@ -5,337 +5,101 @@ using GFramework.Core.Abstractions.Events;
 
 namespace GFramework.Core.Events;
 
-/// <summary>
-///     支持优先级的泛型事件类
-/// </summary>
-/// <typeparam name="T">事件回调函数的参数类型</typeparam>
-public class PriorityEvent<T> : IEvent
+/// <summary>A local priority notification using the same snapshot and propagation rules as EventBus.</summary>
+/// <typeparam name="T">Notification value type.</typeparam>
+/// <remarks>Subscriptions own their registrations; callbacks run synchronously on the triggering thread.</remarks>
+public sealed class PriorityEvent<T> : IEvent
 {
-    /// <summary>
-    ///     存储已注册的上下文事件处理器列表
-    /// </summary>
-    private readonly List<ContextEventHandler> _contextHandlers = [];
-
-    /// <summary>
-    ///     存储已注册的事件处理器列表
-    /// </summary>
-    private readonly List<EventHandler> _handlers = [];
-
-    /// <summary>
-    ///     保护处理器集合的并发访问
-    /// </summary>
+    private readonly EventBus _bus = new();
 #if NET9_0_OR_GREATER
-    // net9.0 及以上目标使用专用 Lock，以满足分析器对专用同步原语的建议。
-    private readonly System.Threading.Lock _syncRoot = new();
+    private readonly System.Threading.Lock _gate = new();
 #else
-    // net8.0 目标仍回退到 object 锁，以保持多目标编译兼容性。
-    private readonly object _syncRoot = new();
+    private readonly object _gate = new();
 #endif
+    private readonly List<Registration> _registrations = [];
 
-    /// <summary>
-    ///     标记事件是否已被处理（用于 UntilHandled 传播模式）
-    /// </summary>
-    private bool _handled;
-
-    /// <summary>
-    ///     显式实现 IEvent 接口中的 Register 方法
-    /// </summary>
-    /// <param name="onEvent">无参事件处理方法</param>
-    /// <returns>IUnRegister 对象，用于稍后注销该事件监听器</returns>
-    IUnRegister IEvent.Register(Action onEvent)
+    /// <inheritdoc />
+    IDisposable IEvent.Register(Action onEvent)
     {
-        return Register(_ => onEvent(), 0);
+        ArgumentNullException.ThrowIfNull(onEvent);
+        return Register(_ => onEvent());
     }
 
-    /// <summary>
-    ///     注册一个事件监听器，默认优先级为 0
-    /// </summary>
-    /// <param name="onEvent">要注册的事件处理方法</param>
-    /// <returns>IUnRegister 对象，用于稍后注销该事件监听器</returns>
-    public IUnRegister Register(Action<T> onEvent)
+    /// <summary>Subscribe at the given priority; equal priorities retain insertion order across callback kinds.</summary>
+    /// <param name="onEvent">Notification callback.</param>
+    /// <param name="priority">Larger values execute first.</param>
+    /// <returns>An idempotent token for this registration.</returns>
+    public IDisposable Register(Action<T> onEvent, int priority = 0)
     {
-        return Register(onEvent, 0);
+        ArgumentNullException.ThrowIfNull(onEvent);
+        return Track(onEvent, () => _bus.Subscribe(onEvent, priority));
     }
 
-    /// <summary>
-    ///     注册一个事件监听器，并指定优先级
-    /// </summary>
-    /// <param name="onEvent">要注册的事件处理方法</param>
-    /// <param name="priority">优先级，数值越大优先级越高</param>
-    /// <returns>IUnRegister 对象，用于稍后注销该事件监听器</returns>
-    public IUnRegister Register(Action<T> onEvent, int priority)
+    /// <summary>Subscribe with a publication-local handled context.</summary>
+    /// <param name="onEvent">Context callback.</param>
+    /// <param name="priority">Larger values execute first.</param>
+    /// <returns>An idempotent token for this registration.</returns>
+    public IDisposable RegisterWithContext(Action<EventContext<T>> onEvent, int priority = 0)
     {
-        var handler = new EventHandler(onEvent, priority);
-        lock (_syncRoot)
-        {
-            _handlers.Add(handler);
-
-            // 按优先级降序排序（高优先级在前）
-            _handlers.Sort((a, b) => b.Priority.CompareTo(a.Priority));
-        }
-
-        return new DefaultUnRegister(() => UnRegister(onEvent));
+        ArgumentNullException.ThrowIfNull(onEvent);
+        return Track(onEvent, () => _bus.SubscribeWithContext(onEvent, priority));
     }
 
-    /// <summary>
-    ///     取消指定的事件监听器
-    /// </summary>
-    /// <param name="onEvent">需要被注销的事件处理方法</param>
-    public void UnRegister(Action<T> onEvent)
-    {
-        lock (_syncRoot)
-        {
-            _handlers.RemoveAll(h => h.Handler == onEvent);
-        }
-    }
+    /// <summary>Detach ordinary callback registrations matching the supplied delegate.</summary>
+    /// <param name="onEvent">Callback to detach.</param>
+    public void UnRegister(Action<T> onEvent) => RemoveMatching(onEvent);
 
-    /// <summary>
-    ///     注册一个上下文事件监听器，并指定优先级
-    /// </summary>
-    /// <param name="onEvent">要注册的事件处理方法，接收 EventContext 参数</param>
-    /// <param name="priority">优先级，数值越大优先级越高</param>
-    /// <returns>IUnRegister 对象，用于稍后注销该事件监听器</returns>
-    public IUnRegister RegisterWithContext(Action<EventContext<T>> onEvent, int priority = 0)
-    {
-        var handler = new ContextEventHandler(onEvent, priority);
-        lock (_syncRoot)
-        {
-            _contextHandlers.Add(handler);
+    /// <summary>Detach context callback registrations matching the supplied delegate.</summary>
+    /// <param name="onEvent">Callback to detach.</param>
+    public void UnRegisterContext(Action<EventContext<T>> onEvent) => RemoveMatching(onEvent);
 
-            // 按优先级降序排序（高优先级在前）
-            _contextHandlers.Sort((a, b) => b.Priority.CompareTo(a.Priority));
-        }
+    /// <summary>Publish synchronously with an independent snapshot and handled flag.</summary>
+    /// <param name="value">Notification value.</param>
+    /// <param name="propagation">Delivery selection.</param>
+    public void Trigger(T value, EventPropagation propagation = EventPropagation.All) => _bus.Publish(value, propagation);
 
-        return new DefaultUnRegister(() => UnRegisterContext(onEvent));
-    }
-
-    /// <summary>
-    ///     取消指定的上下文事件监听器
-    /// </summary>
-    /// <param name="onEvent">需要被注销的事件处理方法</param>
-    public void UnRegisterContext(Action<EventContext<T>> onEvent)
-    {
-        lock (_syncRoot)
-        {
-            _contextHandlers.RemoveAll(h => h.Handler == onEvent);
-        }
-    }
-
-    /// <summary>
-    ///     触发事件处理程序，并指定传播模式
-    /// </summary>
-    /// <param name="t">传递给事件处理程序的参数</param>
-    /// <param name="propagation">事件传播模式</param>
-    public void Trigger(T t, EventPropagation propagation = EventPropagation.All)
-    {
-        _handled = false;
-
-        switch (propagation)
-        {
-            case EventPropagation.All:
-                TriggerAll(t);
-                break;
-
-            case EventPropagation.UntilHandled:
-                TriggerUntilHandled(t);
-                break;
-
-            case EventPropagation.Highest:
-                TriggerHighest(t);
-                break;
-        }
-    }
-
-    /// <summary>
-    ///     触发所有事件处理器（按优先级顺序）
-    /// </summary>
-    /// <param name="t">事件参数</param>
-    private void TriggerAll(T t)
-    {
-        var allHandlers = MergeAndSortHandlers(t);
-        var context = new EventContext<T>(t);
-
-        foreach (var (Priority, Handler, ContextHandler, IsContext) in allHandlers)
-        {
-            if (IsContext)
-            {
-                ContextHandler?.Invoke(context);
-            }
-            else
-            {
-                Handler?.Invoke();
-            }
-        }
-    }
-
-    /// <summary>
-    ///     触发事件处理器直到被处理
-    /// </summary>
-    /// <param name="t">事件参数</param>
-    private void TriggerUntilHandled(T t)
-    {
-        var allHandlers = MergeAndSortHandlers(t);
-        var context = new EventContext<T>(t);
-
-        foreach (var (Priority, Handler, ContextHandler, IsContext) in allHandlers)
-        {
-            if (IsContext)
-            {
-                ContextHandler?.Invoke(context);
-                if (context.IsHandled)
-                    break;
-            }
-            else
-            {
-                Handler?.Invoke();
-                if (_handled)
-                    break; // 保持向后兼容
-            }
-        }
-    }
-
-    /// <summary>
-    ///     仅触发最高优先级的事件处理器
-    /// </summary>
-    /// <param name="t">事件参数</param>
-    private void TriggerHighest(T t)
-    {
-        var (normalSnapshot, contextSnapshot) = CreateSnapshots();
-        var highestPriority = GetHighestPriority(normalSnapshot, contextSnapshot);
-
-        if (highestPriority != int.MinValue)
-        {
-            ExecuteHighPriorityNormalHandlers(normalSnapshot, t, highestPriority);
-            ExecuteHighPriorityContextHandlers(contextSnapshot, t, highestPriority);
-        }
-    }
-
-    /// <summary>
-    ///     合并并排序所有事件处理器
-    /// </summary>
-    /// <param name="t">事件参数</param>
-    /// <returns>合并排序后的处理器列表</returns>
-    private List<(int Priority, Action? Handler, Action<EventContext<T>>? ContextHandler, bool IsContext)>
-        MergeAndSortHandlers(T t)
-    {
-        var (normalSnapshot, contextSnapshot) = CreateSnapshots();
-        // 使用统一的投影方法显式固定元组的可空标注，避免 LINQ 在 Concat 时推断出不兼容的签名。
-        return [.. normalSnapshot
-            .Select(h => CreateNormalHandlerInvocation(h, t))
-            .Concat(contextSnapshot.Select(CreateContextHandlerInvocation))
-            .OrderByDescending(h => h.Priority)];
-    }
-
-    /// <summary>
-    ///     获取最高优先级
-    /// </summary>
-    /// <param name="normalHandlers">普通事件处理器数组</param>
-    /// <param name="contextHandlers">上下文事件处理器数组</param>
-    /// <returns>最高优先级值</returns>
-    private static int GetHighestPriority(EventHandler[] normalHandlers, ContextEventHandler[] contextHandlers)
-    {
-        var highestPriority = int.MinValue;
-
-        if (normalHandlers.Length > 0)
-            highestPriority = Math.Max(highestPriority, normalHandlers[0].Priority);
-
-        if (contextHandlers.Length > 0)
-            highestPriority = Math.Max(highestPriority, contextHandlers[0].Priority);
-
-        return highestPriority;
-    }
-
-    /// <summary>
-    ///     执行高优先级的普通事件处理器
-    /// </summary>
-    /// <param name="handlers">处理器数组</param>
-    /// <param name="t">事件参数</param>
-    /// <param name="highestPriority">最高优先级</param>
-    private static void ExecuteHighPriorityNormalHandlers(EventHandler[] handlers, T t, int highestPriority)
-    {
-        foreach (var handler in handlers)
-        {
-            if (handler.Priority < highestPriority)
-                break;
-            handler.Handler.Invoke(t);
-        }
-    }
-
-    /// <summary>
-    ///     执行高优先级的上下文事件处理器
-    /// </summary>
-    /// <param name="handlers">处理器数组</param>
-    /// <param name="t">事件参数</param>
-    /// <param name="highestPriority">最高优先级</param>
-    private static void ExecuteHighPriorityContextHandlers(ContextEventHandler[] handlers, T t, int highestPriority)
-    {
-        var context = new EventContext<T>(t);
-        foreach (var handler in handlers)
-        {
-            if (handler.Priority < highestPriority)
-                break;
-            handler.Handler.Invoke(context);
-        }
-    }
-
-    /// <summary>
-    ///     获取当前已注册的监听器总数量（包括普通监听器和上下文监听器）
-    /// </summary>
-    /// <returns>监听器总数量</returns>
+    /// <summary>Count currently attached local registrations.</summary>
+    /// <returns>The listener count.</returns>
     public int GetListenerCount()
     {
-        lock (_syncRoot)
+        lock (_gate)
+            return _registrations.Count;
+    }
+
+    /// <summary>Give the wrapper its own identity without changing the underlying delivery registration.</summary>
+    private IDisposable Track(Delegate handler, Func<IDisposable> subscribe)
+    {
+        IDisposable subscription;
+        Registration registration;
+        lock (_gate)
         {
-            return _handlers.Count + _contextHandlers.Count;
+            // Publication may already observe the callback; removal waits for its metadata to be committed.
+            subscription = subscribe();
+            registration = new Registration(handler, subscription);
+            _registrations.Add(registration);
         }
-    }
-
-    private (EventHandler[] NormalHandlers, ContextEventHandler[] ContextHandlers) CreateSnapshots()
-    {
-        lock (_syncRoot)
+        return new Subscription(() =>
         {
-            return (_handlers.ToArray(), _contextHandlers.ToArray());
+            lock (_gate)
+                _registrations.Remove(registration);
+            subscription.Dispose();
+        });
+    }
+
+    /// <summary>Remove metadata under the lock and detach subscriptions outside it.</summary>
+    private void RemoveMatching(Delegate handler)
+    {
+        Registration[] removed;
+        lock (_gate)
+        {
+            removed = _registrations.Where(item => item.Handler.Equals(handler)).ToArray();
+            foreach (var registration in removed)
+                _registrations.Remove(registration);
         }
+        foreach (var registration in removed)
+            registration.Subscription.Dispose();
     }
 
-    /// <summary>
-    ///     将普通事件处理器转换为统一的调用描述。
-    /// </summary>
-    /// <param name="handler">要包装的普通处理器。</param>
-    /// <param name="t">当前触发的事件数据。</param>
-    /// <returns>可与上下文处理器合并排序的统一调用描述。</returns>
-    private static (int Priority, Action? Handler, Action<EventContext<T>>? ContextHandler, bool IsContext)
-        CreateNormalHandlerInvocation(EventHandler handler, T t)
-    {
-        return (handler.Priority, () => handler.Handler.Invoke(t), null, false);
-    }
-
-    /// <summary>
-    ///     将上下文事件处理器转换为统一的调用描述。
-    /// </summary>
-    /// <param name="handler">要包装的上下文处理器。</param>
-    /// <returns>可与普通处理器合并排序的统一调用描述。</returns>
-    private static (int Priority, Action? Handler, Action<EventContext<T>>? ContextHandler, bool IsContext)
-        CreateContextHandlerInvocation(ContextEventHandler handler)
-    {
-        return (handler.Priority, null, handler.Handler, true);
-    }
-
-    /// <summary>
-    ///     事件处理器包装类，包含处理器和优先级
-    /// </summary>
-    private sealed class EventHandler(Action<T> handler, int priority)
-    {
-        public Action<T> Handler { get; } = handler;
-        public int Priority { get; } = priority;
-    }
-
-    /// <summary>
-    ///     上下文事件处理器包装类，包含处理器和优先级
-    /// </summary>
-    private sealed class ContextEventHandler(Action<EventContext<T>> handler, int priority)
-    {
-        public Action<EventContext<T>> Handler { get; } = handler;
-        public int Priority { get; } = priority;
-    }
+    /// <summary>Metadata for manually detaching a local callback.</summary>
+    private sealed record Registration(Delegate Handler, IDisposable Subscription);
 }

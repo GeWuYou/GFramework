@@ -12,7 +12,7 @@ GFramework 当前仓库内已经交付并持续维护的 ECS 模块族是 `Ecs.A
 
 | 包 | 适用场景 | 你会得到什么 | 继续阅读 |
 | --- | --- | --- | --- |
-| `GFramework.Ecs.Arch` | 需要默认运行时、`UseArch(...)` 装配入口、`World` 注册和系统适配基类 | `ArchEcsModule`、`ArchSystemAdapter<T>`、`ArchExtensions.UseArch(...)`、示例组件与系统 | [Arch ECS 集成](./arch.md) |
+| `GFramework.Ecs.Arch` | 需要默认运行时、`AddArch(...)` 装配入口、`World` 注册和系统适配基类 | `ArchEcsModule`、`ArchSystemAdapter<T>`、`ArchExtensions.AddArch(...)`、示例组件与系统 | [Arch ECS 集成](./arch.md) |
 | `GFramework.Ecs.Arch.Abstractions` | 只想让共享宿主循环、测试替身或扩展模块依赖最小契约，而不引入默认运行时 | `IArchEcsModule`、`IArchSystemAdapter<T>`、`ArchOptions` 契约对象 | [ECS 抽象层说明](../abstractions/ecs-arch-abstractions.md) |
 
 ## 最小采用路径
@@ -24,9 +24,9 @@ GFramework 当前仓库内已经交付并持续维护的 ECS 模块族是 `Ecs.A
 
 ### 2. 在配置阶段声明 ECS 模块与系统
 
-在 `ConfigureServices(IServiceCollection)` 中调用 `UseArch(...)`。该入口只登记到当前架构实例；配置结束后会拒绝新增模块，不再写入全局注册表。
+在 `ConfigureServices(IServiceCollection)` 中调用 `AddArch(...)`。该入口在当前 IServiceCollection 描述 World 与生命周期组件，不写全局注册表。
 
-将 ECS 驱动的系统显式注册为 `ArchSystemAdapter<float>` 服务。模块负责注入当前实例上下文及系统的初始化、更新和停止；provider 负责 World 与自己创建的系统资源。
+将 ECS 驱动的系统显式注册为 `ArchSystemAdapter<float>` 服务。系统通过构造函数接收 World 和其他依赖；模块负责系统初始化、更新和停止，provider 负责 World 与自己创建的系统资源。
 
 ```csharp
 using Arch.Core;
@@ -40,14 +40,14 @@ using Microsoft.Extensions.DependencyInjection;
 await using var architecture = new GameArchitecture();
 await architecture.InitializeAsync();
 
-var world = architecture.Context.GetService<World>();
-var ecsModule = architecture.Context.GetService<IArchEcsModule>();
+var world = architecture.Services.GetRequiredService<World>();
+var ecsModule = architecture.Services.GetRequiredService<IArchEcsModule>();
 
 public sealed class GameArchitecture : Architecture
 {
     protected override void ConfigureServices(IServiceCollection services)
     {
-        this.UseArch(options =>
+        services.AddArch(options =>
         {
             options.WorldCapacity = 2048;
             options.Priority = 50;
@@ -57,7 +57,7 @@ public sealed class GameArchitecture : Architecture
 }
 ```
 
-不要把同一系统同时声明为 Architecture 的独立 System 和 ECS 模块的拥有系统，也不要通过多个 owning 工厂为可释放对象建立 alias。纯契约的共享宿主循环仍可只引用抽象包。
+不要把同一适配器同时 AddComponent 登记并交给 ECS 模块管理，也不要通过多个 owning 工厂为可释放对象建立 alias。纯契约的共享宿主循环仍可只引用抽象包。
 
 ### 3. 让 ECS 系统继承 `ArchSystemAdapter<float>`
 
@@ -66,7 +66,7 @@ using Arch.Core;
 using GFramework.Ecs.Arch;
 using GFramework.Ecs.Arch.Components;
 
-public sealed class MovementSystem : ArchSystemAdapter<float>
+public sealed class MovementSystem(World world) : ArchSystemAdapter<float>(world)
 {
     private QueryDescription _query;
 
@@ -91,7 +91,7 @@ public sealed class MovementSystem : ArchSystemAdapter<float>
 
 ### 4. 由宿主循环驱动更新
 
-`IArchEcsModule` 继承自 `IServiceModule`，负责初始化和销毁；真正的帧更新通过 `Update(float deltaTime)` 显式触发。
+IArchEcsModule 是配置型模块与 Update 入口。AddArch 登记一个显式生命周期组件，由它启动和停止各系统；宿主通过构造注入 IArchEcsModule，显式调用 Update(float deltaTime)。
 
 ```csharp
 using GFramework.Ecs.Arch.Abstractions;
@@ -129,8 +129,8 @@ World 在配置阶段尚未创建。初始化解析同一个 Singleton World；�
 
 | 包 | 类型族 | 代表类型 | 建议先确认什么 |
 | --- | --- | --- | --- |
-| `GFramework.Ecs.Arch` | 运行时装配与模块生命周期 | `ArchExtensions`、`ArchEcsModule` | `UseArch(...)` 的接入时机、`World` 注册、模块优先级 |
-| `GFramework.Ecs.Arch` | 系统桥接层 | `ArchSystemAdapter<T>` | GFramework `ISystem` 生命周期如何桥接到 Arch `ISystem<T>` |
+| `GFramework.Ecs.Arch` | 运行时装配与模块生命周期 | `ArchExtensions`、`ArchEcsModule` | `AddArch(...)` 的接入时机、`World` 注册、模块优先级 |
+| `GFramework.Ecs.Arch` | 系统桥接层 | `ArchSystemAdapter<T>` | 显式生命周期如何桥接到 Arch `ISystem<T>`，以及 World 构造依赖 |
 | `GFramework.Ecs.Arch` | 示例组件与系统 | `Position`、`Velocity`、`MovementSystem` | 查询写法、组件布局和最小可运行示例 |
 | `GFramework.Ecs.Arch.Abstractions` | 契约与配置对象 | `IArchEcsModule`、`IArchSystemAdapter<T>`、`ArchOptions` | 共享宿主循环、测试替身和跨程序集配置边界 |
 

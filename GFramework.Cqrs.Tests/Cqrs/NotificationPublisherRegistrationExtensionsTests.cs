@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Architectures;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
-using GFramework.Cqrs.Extensions;
 using GFramework.Cqrs.Notification;
+
+using GFramework.Cqrs.Extensions;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -24,8 +24,8 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
     public async Task UseTaskWhenAllNotificationPublisher_Should_Be_Used_By_Default_Runtime_Infrastructure()
     {
         var trailingHandler = new RecordingNotificationHandler();
-        var container = new MicrosoftDiContainer();
-        container.GetServicesUnsafe.UseTaskWhenAllNotificationPublisher();
+        var container = new ServiceTestHost();
+        container.Services.UseTaskWhenAllNotificationPublisher();
         container.ExecuteServicesHook(services =>
         {
             services.AddSingleton<INotificationHandler<TestNotification>>(new ThrowingNotificationHandler());
@@ -36,7 +36,7 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
         Assert.That(container.GetAll<INotificationHandler<TestNotification>>(), Has.Count.EqualTo(2));
         Assert.That(container.GetAll<INotificationPublisher>(), Has.Count.EqualTo(1));
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var publishTask = context.PublishAsync(new TestNotification()).AsTask();
 
         try
@@ -60,8 +60,8 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
     public void UseSequentialNotificationPublisher_Should_Preserve_Stop_On_First_Failure_Semantics()
     {
         var trailingHandler = new RecordingNotificationHandler();
-        var container = new MicrosoftDiContainer();
-        container.GetServicesUnsafe.UseSequentialNotificationPublisher();
+        var container = new ServiceTestHost();
+        container.Services.UseSequentialNotificationPublisher();
         container.ExecuteServicesHook(services =>
         {
             services.AddSingleton<INotificationHandler<TestNotification>>(new ThrowingNotificationHandler());
@@ -72,7 +72,7 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
         Assert.That(container.GetAll<INotificationHandler<TestNotification>>(), Has.Count.EqualTo(2));
         Assert.That(container.GetAll<INotificationPublisher>(), Has.Count.EqualTo(1));
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
 
         Assert.That(
             async () => await context.PublishAsync(new TestNotification()).ConfigureAwait(false),
@@ -87,14 +87,15 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
     [Test]
     public void UseNotificationPublisher_Instance_Overload_Should_Register_Same_Instance()
     {
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         var publisher = new TrackingNotificationPublisher();
 
-        var returnedServices = container.GetServicesUnsafe.UseNotificationPublisher(publisher);
+        var returnedServices = container.Services.UseNotificationPublisher(publisher);
+        container.Freeze();
 
         Assert.Multiple(() =>
         {
-            Assert.That(returnedServices, Is.SameAs(container.GetServicesUnsafe));
+            Assert.That(returnedServices, Is.SameAs(container.Services));
             Assert.That(container.Get<INotificationPublisher>(), Is.SameAs(publisher));
         });
     }
@@ -105,14 +106,14 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
     [Test]
     public void UseNotificationPublisher_Generic_Overload_Should_Register_Configured_Type()
     {
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
-        var returnedServices = container.GetServicesUnsafe.UseNotificationPublisher<TrackingNotificationPublisher>();
+        var returnedServices = container.Services.UseNotificationPublisher<TrackingNotificationPublisher>();
         container.Freeze();
 
         Assert.Multiple(() =>
         {
-            Assert.That(returnedServices, Is.SameAs(container.GetServicesUnsafe));
+            Assert.That(returnedServices, Is.SameAs(container.Services));
             Assert.That(container.HasRegistration(typeof(INotificationPublisher)), Is.True);
             Assert.That(container.GetAll<INotificationPublisher>(), Has.Count.EqualTo(1));
             Assert.That(container.GetRequired<INotificationPublisher>(), Is.TypeOf<TrackingNotificationPublisher>());
@@ -128,16 +129,16 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
     {
         var probe = new NotificationPublisherProbe();
         var handler = new RecordingNotificationHandler();
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         container.Register(probe);
-        container.GetServicesUnsafe.UseNotificationPublisher<DependencyAwareNotificationPublisher>();
+        container.Services.UseNotificationPublisher<DependencyAwareNotificationPublisher>();
         container.Register<INotificationHandler<TestNotification>>(handler);
         CqrsTestRuntime.RegisterInfrastructure(container);
         container.Freeze();
         Assert.That(container.GetAll<INotificationHandler<TestNotification>>(), Has.Count.EqualTo(1));
         Assert.That(container.GetAll<INotificationPublisher>(), Has.Count.EqualTo(1));
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
 
         await context.PublishAsync(new TestNotification()).ConfigureAwait(false);
 
@@ -155,11 +156,11 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
     [Test]
     public void UseNotificationPublisher_Should_Throw_When_NotificationPublisher_Already_Registered()
     {
-        var container = new MicrosoftDiContainer();
-        container.GetServicesUnsafe.UseTaskWhenAllNotificationPublisher();
+        var container = new ServiceTestHost();
+        container.Services.UseTaskWhenAllNotificationPublisher();
 
         Assert.That(
-            () => container.GetServicesUnsafe.UseNotificationPublisher(new TrackingNotificationPublisher()),
+            () => container.Services.UseNotificationPublisher(new TrackingNotificationPublisher()),
             Throws.InvalidOperationException.With.Message.Contains(nameof(INotificationPublisher)));
     }
 
@@ -169,11 +170,11 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
     [Test]
     public void UseNotificationPublisher_Generic_Overload_Should_Throw_When_NotificationPublisher_Already_Registered()
     {
-        var container = new MicrosoftDiContainer();
-        container.GetServicesUnsafe.UseSequentialNotificationPublisher();
+        var container = new ServiceTestHost();
+        container.Services.UseSequentialNotificationPublisher();
 
         Assert.That(
-            () => container.GetServicesUnsafe.UseNotificationPublisher<TrackingNotificationPublisher>(),
+            () => container.Services.UseNotificationPublisher<TrackingNotificationPublisher>(),
             Throws.InvalidOperationException.With.Message.Contains(nameof(INotificationPublisher)));
     }
 

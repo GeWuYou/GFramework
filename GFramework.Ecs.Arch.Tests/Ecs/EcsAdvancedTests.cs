@@ -6,11 +6,11 @@ using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Logging;
-using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
-using GFramework.Core.Ioc;
 using GFramework.Ecs.Arch.Components;
 using GFramework.Ecs.Arch.Systems;
+
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Ecs.Arch.Tests.Ecs;
 
@@ -21,57 +21,49 @@ namespace GFramework.Ecs.Arch.Tests.Ecs;
 [Experimental("GFrameworkECS")]
 public class EcsAdvancedTests
 {
-    [SetUp]
-    public void Setup()
-    {
-        _container = new MicrosoftDiContainer();
-        _container.Register<ILoggerFactory>(NullLoggerFactory.Instance);
-        _context = new ArchitectureContext(_container);
-        ((IContextAware)_container).SetContext(_context);
-    }
-
-    [TearDown]
-    public async Task TearDown()
-    {
-        if (_ecsModule != null)
-        {
-            await _ecsModule.DestroyAsync().ConfigureAwait(false);
-        }
-        if (_container != null)
-        {
-            await _container.DisposeAsync().ConfigureAwait(false);
-        }
-        _world = null;
-        _context = null;
-        _ecsModule = null;
-    }
-
-    private MicrosoftDiContainer? _container;
-    private ArchitectureContext? _context;
+    private TestArchitecture? _architecture;
     private World? _world;
     private ArchEcsModule? _ecsModule;
 
-    private void InitializeEcsModule()
+    /// <summary>Stops the real participant and releases its provider-owned World.</summary>
+    [TearDown]
+    public async Task TearDown()
     {
-        var movementSystem = new MovementSystem();
-        ((IContextAware)movementSystem).SetContext(_context!);
-        _container!.Register<ArchSystemAdapter<float>>(movementSystem);
+        if (_architecture is not null)
+            await _architecture.DestroyAsync().ConfigureAwait(false);
+        _architecture = null;
+        _world = null;
+        _ecsModule = null;
+    }
 
-        _ecsModule = new ArchEcsModule(enabled: true);
-        _ecsModule.Register(_container);
-        _container.Freeze();
-        _ecsModule.Initialize();
+    /// <summary>Uses standard DI constructor injection and the production lifecycle adapter.</summary>
+    private void InitializeEcsModule(bool withSystem = true)
+    {
+        _ecsModule = new ArchEcsModule();
+        _architecture = new TestArchitecture(_ecsModule, withSystem);
+        _architecture.Initialize();
+        _world = _architecture.Services.GetRequiredService<World>();
+    }
 
-        _world = _container.Get<World>();
+    /// <summary>Minimal ECS composition root for behavioral tests.</summary>
+    private sealed class TestArchitecture(ArchEcsModule module, bool withSystem) : Architecture
+    {
+        /// <inheritdoc />
+        protected override void ConfigureServices(IServiceCollection services)
+        {
+            services.AddModule(module);
+            if (withSystem)
+                services.AddSingleton<ArchSystemAdapter<float>, MovementSystem>();
+        }
     }
 
     [Test]
-    public void World_Destroy_Should_Be_Safe()
+    public async Task World_Destroy_Should_Be_Safe()
     {
         InitializeEcsModule();
         _world!.Create(new Position(0, 0));
 
-        Assert.DoesNotThrow(() => _container!.Dispose());
+        await _architecture!.DestroyAsync();
         _world = null;
     }
 
@@ -125,15 +117,9 @@ public class EcsAdvancedTests
     [Test]
     public void ArchEcsModule_WithNoSystems_Should_NotThrow()
     {
-        // 不注册任何系统
-        _ecsModule = new ArchEcsModule(enabled: true);
-        _ecsModule.Register(_container!);
-        _container!.Freeze();
-        _ecsModule.Initialize();
+        InitializeEcsModule(withSystem: false);
 
-        _world = _container!.Get<World>();
-
-        _ecsModule.Update(1.0f);
+        _ecsModule!.Update(1.0f);
     }
 
     [Test]
@@ -144,7 +130,7 @@ public class EcsAdvancedTests
         var entity = _world!.Create(new Position(0, 0), new Velocity(10, 0));
 
         _ecsModule!.Update(1.0f);
-        _ecsModule.Update(1.0f);
+        _ecsModule!.Update(1.0f);
 
         ref var pos = ref _world.Get<Position>(entity);
         Assert.That(pos.X, Is.EqualTo(20).Within(0.001f), "Position should accumulate over multiple updates");
@@ -197,7 +183,7 @@ public class EcsAdvancedTests
         _world!.Create(new Position(0, 0));
         Assert.That(_world.Size, Is.EqualTo(1));
 
-        await _ecsModule!.DestroyAsync();
+        await _architecture!.DestroyAsync().ConfigureAwait(false);
 
         // World 应该已经被销毁
         _world = null;

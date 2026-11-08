@@ -31,7 +31,7 @@ public partial class DodgeApp
             "Gameplay audio is not routed through independent music/effects buses.");
         await SaveGameAsync().ConfigureAwait(true);
         var progressPath = ProjectSettings.GlobalizePath(_dataRoot + "/saves/slot_1/save.json");
-        var progress = await File.ReadAllBytesAsync(progressPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+        var progress = await File.ReadAllBytesAsync(progressPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
         await SaveBestScoreAsync(83).ConfigureAwait(true);
         Click("Pause");
         await UntilAsync(() => HasView("pause") && GetTree().Paused).ConfigureAwait(true);
@@ -40,7 +40,7 @@ public partial class DodgeApp
         await CheckSettingsFailuresAsync().ConfigureAwait(true);
         await Task.WhenAll(SaveBestScoreAsync(91), SetLanguageAsync("zh-CN")).ConfigureAwait(true);
         CheckStoredSettings();
-        Require((await File.ReadAllBytesAsync(progressPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false)).SequenceEqual(progress), "Settings or reset changed saved gameplay progress.");
+        Require((await File.ReadAllBytesAsync(progressPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true)).SequenceEqual(progress), "Settings or reset changed saved gameplay progress.");
         GD.Print("DODGE_SETTINGS_NEXT " + _smokeId);
         GD.Print("DODGE_SETTINGS_RESULT PASS seed");
         FinishSmoke(passed: true);
@@ -143,7 +143,7 @@ public partial class DodgeApp
     private async Task CheckSettingsFailuresAsync()
     {
         var preferencesPath = ProjectSettings.GlobalizePath(_dataRoot + "/preferences.json");
-        var original = await File.ReadAllBytesAsync(preferencesPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+        var original = await File.ReadAllBytesAsync(preferencesPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
         var invalid = Preferences.Copy();
         invalid.Volume = float.NaN;
         var rejected = false;
@@ -152,7 +152,7 @@ public partial class DodgeApp
             await SaveSettingsAsync(invalid).ConfigureAwait(true);
         }
         catch (InvalidOperationException) { rejected = true; }
-        Require(rejected && (await File.ReadAllBytesAsync(preferencesPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false)).SequenceEqual(original), "Invalid settings overwrote the previous preferences.");
+        Require(rejected && (await File.ReadAllBytesAsync(preferencesPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true)).SequenceEqual(original), "Invalid settings overwrote the previous preferences.");
         var dataRoot = _dataRoot;
         try
         {
@@ -170,7 +170,7 @@ public partial class DodgeApp
             Require(rejected, "The deliberate read-only destination did not reject a settings write.");
         }
         finally { _dataRoot = dataRoot; }
-        Require((await File.ReadAllBytesAsync(preferencesPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(false)).SequenceEqual(original) && Math.Abs(Preferences.Volume - 0.4f) < 0.001,
+        Require((await File.ReadAllBytesAsync(preferencesPath, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true)).SequenceEqual(original) && Math.Abs(Preferences.Volume - 0.4f) < 0.001,
             "Failed settings persistence changed the old file or published preferences.");
         CheckPreferenceAudio(0.4f, 0.3f, 0.2f);
     }

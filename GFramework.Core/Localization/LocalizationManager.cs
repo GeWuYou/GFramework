@@ -6,14 +6,14 @@ using System.IO;
 using System.Text.Json;
 using GFramework.Core.Abstractions.Localization;
 using GFramework.Core.Localization.Formatters;
-using GFramework.Core.Systems;
+using GFramework.Core.Abstractions.Lifecycle;
 
 namespace GFramework.Core.Localization;
 
 /// <summary>
 /// 本地化管理器实现
 /// </summary>
-public class LocalizationManager : AbstractSystem, ILocalizationManager
+public class LocalizationManager : ILocalizationManager, ILifecycle
 {
     private readonly List<string> _availableLanguages;
     private readonly LocalizationConfig _config;
@@ -160,7 +160,7 @@ public class LocalizationManager : AbstractSystem, ILocalizationManager
     }
 
     /// <inheritdoc/>
-    protected override void OnInit()
+    public void Initialize()
     {
         // 扫描可用语言
         ScanAvailableLanguages();
@@ -170,7 +170,7 @@ public class LocalizationManager : AbstractSystem, ILocalizationManager
     }
 
     /// <inheritdoc/>
-    protected override void OnDestroy()
+    public void Destroy()
     {
         _tables.Clear();
         _formatters.Clear();

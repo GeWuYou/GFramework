@@ -3,7 +3,6 @@
 
 using System;
 using System.Threading.Tasks;
-using GFramework.Core.Ioc;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Cqrs.Benchmarks.Messaging;
@@ -20,7 +19,7 @@ namespace GFramework.Cqrs.Benchmarks.Messaging;
 /// </remarks>
 internal sealed class ScopedBenchmarkContainer : IServiceProvider, IServiceProviderIsService, IDisposable, IAsyncDisposable
 {
-    private readonly MicrosoftDiContainer _rootContainer;
+    private readonly BenchmarkServiceHost _rootContainer;
     private IServiceScope? _activeScope;
     private IServiceProvider? _scopedProvider;
 
@@ -28,7 +27,7 @@ internal sealed class ScopedBenchmarkContainer : IServiceProvider, IServiceProvi
     ///     初始化一个绑定到单个 request 作用域的 benchmark provider 适配器。
     /// </summary>
     /// <param name="rootContainer">已冻结的 benchmark 根容器。</param>
-    internal ScopedBenchmarkContainer(MicrosoftDiContainer rootContainer)
+    internal ScopedBenchmarkContainer(BenchmarkServiceHost rootContainer)
     {
         _rootContainer = rootContainer ?? throw new ArgumentNullException(nameof(rootContainer));
     }

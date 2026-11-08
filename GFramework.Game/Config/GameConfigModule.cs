@@ -4,243 +4,77 @@
 using System;
 using System.Threading;
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Enums;
-using GFramework.Core.Abstractions.Ioc;
+using GFramework.Core.Abstractions.Lifecycle;
 using GFramework.Core.Architectures;
 using GFramework.Game.Abstractions.Config;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Game.Config;
 
-/// <summary>
-///     提供基于 <see cref="Architecture" /> 的官方配置模块接入入口。
-///     该模块负责把 <see cref="GameConfigBootstrap" /> 挂接到架构生命周期中，统一完成注册表暴露、
-///     首次加载以及架构销毁时的资源回收。
-/// </summary>
-/// <remarks>
-///     使用该模块时，推荐在 <c>Architecture.ConfigureServices(IServiceCollection)</c> 的较早位置调用 <see cref="IArchitecture.InstallModule" />，
-///     以便其他 utility、model 和 system 在各自初始化阶段都能读取到已经完成首次加载的配置表。
-///     如果消费项目不基于 <see cref="Architecture" />，则继续直接使用 <see cref="GameConfigBootstrap" /> 更合适。
-/// </remarks>
+/// <summary>Describes a game configuration registry and one asynchronous initial-load participant.</summary>
+/// <remarks>The module is instance-bound. Initial load precedes normal components through explicit order -100.</remarks>
 public sealed class GameConfigModule : IArchitectureModule
 {
-    private const int InstallStateNotInstalled = 0;
-    private const int InstallStateInstalling = 1;
-    private const int InstallStateConsumed = 2;
-
     private readonly GameConfigBootstrap _bootstrap;
-    private static long _nextLifetimeId;
-    private int _installState;
+    private int _installed;
 
-    /// <summary>
-    ///     使用指定的启动选项创建配置模块。
-    /// </summary>
-    /// <param name="options">配置启动帮助器选项。</param>
-    /// <exception cref="ArgumentNullException">当 <paramref name="options" /> 为空时抛出。</exception>
-    /// <exception cref="ArgumentException">
-    ///     当 <paramref name="options" /> 不满足 <see cref="GameConfigBootstrap" /> 的构造约束时抛出。
-    /// </exception>
-    public GameConfigModule(GameConfigBootstrapOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(options);
+    /// <summary>Creates descriptions without reading files.</summary>
+    /// <param name="options">The game-owned loader and table configuration.</param>
+    public GameConfigModule(GameConfigBootstrapOptions options) => _bootstrap = new GameConfigBootstrap(options);
 
-        _bootstrap = new GameConfigBootstrap(options);
-    }
-
-    /// <summary>
-    ///     获取当前模块复用的配置注册表。
-    ///     该实例会在模块安装时注册为架构 utility，供其他组件通过上下文直接读取。
-    /// </summary>
+    /// <summary>The configured registry, populated before dependent participants start.</summary>
     public IConfigRegistry Registry => _bootstrap.Registry;
-
-    /// <summary>
-    ///     获取一个值，指示模块绑定的配置启动器是否已经完成首次加载。
-    /// </summary>
+    /// <summary>Whether initial loading completed.</summary>
     public bool IsInitialized => _bootstrap.IsInitialized;
-
-    /// <summary>
-    ///     获取一个值，指示模块绑定的开发期热重载是否已启用。
-    /// </summary>
+    /// <summary>Whether a development watcher is active.</summary>
     public bool IsHotReloadEnabled => _bootstrap.IsHotReloadEnabled;
-
-    /// <summary>
-    ///     获取当前生效的 YAML 配置加载器。
-    ///     只有在模块完成首次加载后该属性才可访问。
-    /// </summary>
-    /// <exception cref="ObjectDisposedException">当模块所属架构已销毁时抛出。</exception>
-    /// <exception cref="InvalidOperationException">当首次加载尚未成功完成时抛出。</exception>
+    /// <summary>The initialized YAML loader.</summary>
     public YamlConfigLoader Loader => _bootstrap.Loader;
 
-    /// <summary>
-    ///     将配置模块安装到指定架构中。
-    ///     安装后会立即暴露 <see cref="Registry" />，并注册一个生命周期钩子，
-    ///     以便在 utility 初始化之前完成一次确定性的配置加载。
-    /// </summary>
-    /// <param name="architecture">目标架构实例。</param>
-    /// <exception cref="ArgumentNullException">当 <paramref name="architecture" /> 为空时抛出。</exception>
-    /// <exception cref="InvalidOperationException">当同一个模块实例被重复安装时抛出。</exception>
-    /// <remarks>
-    ///     生命周期阶段校验会在任何注册动作前执行，因此错过安装窗口的调用不会消耗当前模块实例。
-    ///     一旦开始向架构注册 utility 或生命周期钩子，就不存在回滚 API；因此后续任何失败都会把该模块实例视为已消耗，
-    ///     调用方必须创建新的 <see cref="GameConfigModule" /> 再重试。
-    /// </remarks>
-    public void Install(IArchitecture architecture)
+    /// <inheritdoc />
+    public void ConfigureServices(IServiceCollection services)
     {
-        ArgumentNullException.ThrowIfNull(architecture);
-
-        ValidateInstallationPhase(architecture);
-
-        if (Interlocked.CompareExchange(
-                ref _installState,
-                InstallStateInstalling,
-                InstallStateNotInstalled) != InstallStateNotInstalled)
-        {
-            throw new InvalidOperationException(
-                "The same GameConfigModule instance cannot be installed more than once.");
-        }
-
-        try
-        {
-            // 阶段窗口已经在前面做过无副作用校验，因此这里优先注册 utility，
-            // 让常见的容器/上下文接线失败在不可回滚的 hook 注册之前暴露出来。
-            architecture.RegisterUtility(Registry);
-            architecture.RegisterServiceModule(new BootstrapLifetimeModule(_bootstrap));
-            architecture.RegisterLifecycleHook(new BootstrapInitializationHook(_bootstrap));
-            Volatile.Write(ref _installState, InstallStateConsumed);
-        }
-        catch
-        {
-            // 架构对 utility / hook 注册都不提供回滚入口，因此一旦进入注册阶段，
-            // 即使安装失败也必须禁止复用同一个模块实例，避免重复暴露共享注册表或挂上第二个 hook。
-            Volatile.Write(ref _installState, InstallStateConsumed);
-            throw;
-        }
+        ArgumentNullException.ThrowIfNull(services);
+        if (Interlocked.Exchange(ref _installed, 1) != 0)
+            throw new InvalidOperationException("A GameConfigModule instance can only configure one architecture.");
+        services.AddSingleton(Registry);
+        services.AddSingleton(new BootstrapEntry(_bootstrap));
+        if (!services.Any(descriptor => descriptor.ServiceType == typeof(ConfigLifetime)))
+            services.AddComponent<ConfigLifetime>(order: -100);
     }
 
-    /// <summary>
-    ///     在首次加载成功后显式启用开发期热重载。
-    ///     该入口与 <see cref="GameConfigBootstrap.StartHotReload" /> 的语义保持一致，
-    ///     供已经保留模块实例引用的架构启动层按环境决定是否追加监听。
-    /// </summary>
-    /// <param name="options">热重载选项；为空时使用默认行为。</param>
-    public void StartHotReload(YamlConfigHotReloadOptions? options = null)
-    {
-        _bootstrap.StartHotReload(options);
-    }
+    /// <summary>Starts explicit development hot reload after initial load.</summary>
+    /// <param name="options">Watcher and dispatch policy.</param>
+    public void StartHotReload(YamlConfigHotReloadOptions? options = null) => _bootstrap.StartHotReload(options);
+    /// <summary>Stops the current watcher without disposing the registry owner.</summary>
+    public void StopHotReload() => _bootstrap.StopHotReload();
 
-    /// <summary>
-    ///     停止开发期热重载并释放监听资源。
-    ///     该方法是幂等的，允许架构外部的开发期开关无条件调用。
-    /// </summary>
-    public void StopHotReload()
-    {
-        _bootstrap.StopHotReload();
-    }
+    /// <summary>One module-owned bootstrap selected during the description phase.</summary>
+    /// <param name="Bootstrap">The resource that the lifetime group owns.</param>
+    private sealed record BootstrapEntry(GameConfigBootstrap Bootstrap);
 
-    /// <summary>
-    ///     在 utility 初始化之前完成首次配置加载的生命周期钩子。
-    ///     这样后续 utility、model 和 system 在各自初始化阶段就能直接依赖已加载的注册表。
-    /// </summary>
-    private sealed class BootstrapInitializationHook(GameConfigBootstrap bootstrap) : IAsyncArchitectureLifecycleHook
+    /// <summary>Starts multiple selected roots before ordinary components and owns their final release once.</summary>
+    /// <param name="entries">All explicit configuration roots in module registration order.</param>
+    private sealed class ConfigLifetime(IEnumerable<BootstrapEntry> entries) : IAsyncInitializable, IDestroyable, IDisposable
     {
-        /// <summary>
-        ///     在目标阶段触发配置加载。
-        /// </summary>
-        /// <param name="phase">当前架构阶段。</param>
-        /// <param name="architecture">相关架构实例；当前实现不直接使用，但保留用于接口契约一致性。</param>
-        public void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
+        private readonly GameConfigBootstrap[] _bootstraps = entries.Select(entry => entry.Bootstrap).ToArray();
+        /// <inheritdoc />
+        public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
-            if (phase == ArchitecturePhase.BeforeUtilityInit)
-            {
-                throw new InvalidOperationException(
-                    "GameConfigModule requires Architecture.InitializeAsync(...); synchronous config loading is not supported.");
-            }
-        }
-
-        /// <summary>
-        ///     在配置阶段钩子中真正等待首载，取消和异常均返回到架构的失败清理路径。
-        /// </summary>
-        /// <param name="phase">当前架构阶段。</param>
-        /// <param name="architecture">当前架构实例。</param>
-        /// <param name="cancellationToken">架构初始化取消令牌。</param>
-        /// <returns>表示当前阶段处理完成的值任务。</returns>
-        public async ValueTask OnPhaseAsync(
-            ArchitecturePhase phase,
-            IArchitecture architecture,
-            CancellationToken cancellationToken = default)
-        {
-            if (phase == ArchitecturePhase.BeforeUtilityInit)
-            {
+            foreach (var bootstrap in _bootstraps)
                 await bootstrap.InitializeAsync(cancellationToken).ConfigureAwait(false);
-            }
         }
-    }
-
-    /// <summary>
-    ///     验证模块仍处于允许接入的生命周期窗口。
-    ///     该模块依赖 <see cref="ArchitecturePhase.BeforeUtilityInit" /> 钩子完成首次加载，
-    ///     因此一旦架构已经离开 <see cref="ArchitecturePhase.None" />，继续安装只会错过首载时机。
-    /// </summary>
-    /// <param name="architecture">目标架构实例。</param>
-    /// <exception cref="InvalidOperationException">
-    ///     当目标架构已经开始组件初始化阶段时抛出。
-    /// </exception>
-    private static void ValidateInstallationPhase(IArchitecture architecture)
-    {
-        if (architecture is not Architecture concreteArchitecture)
+        /// <inheritdoc />
+        public void Destroy()
         {
-            return;
+            foreach (var bootstrap in _bootstraps.Reverse())
+                bootstrap.StopHotReload();
         }
-
-        if (concreteArchitecture.CurrentPhase != ArchitecturePhase.None)
+        /// <inheritdoc />
+        public void Dispose()
         {
-            throw new InvalidOperationException(
-                "GameConfigModule must be installed before the architecture enters BeforeUtilityInit.");
+            foreach (var bootstrap in _bootstraps.Reverse())
+                bootstrap.Dispose();
         }
-    }
-
-    /// <summary>
-    ///     每个配置模块声明独立的 provider-owned 工厂，避免将相同 helper 类型误用为唯一组件键。
-    /// </summary>
-    private sealed class BootstrapLifetimeModule(GameConfigBootstrap bootstrap) : IServiceModule
-    {
-        private IIocContainer? _container;
-
-        /// <inheritdoc />
-        public string ModuleName { get; } = string.Create(CultureInfo.InvariantCulture, $"GameConfigLifetime:{Interlocked.Increment(ref _nextLifetimeId)}");
-
-        /// <inheritdoc />
-        public int Priority => 0;
-
-        /// <inheritdoc />
-        public bool IsEnabled => true;
-
-        /// <inheritdoc />
-        public void Register(IIocContainer container)
-        {
-            _container = container;
-            container.RegisterFactory(_ => new BootstrapLifetime(bootstrap));
-        }
-
-        /// <inheritdoc />
-        public void Initialize()
-        {
-            // Activating the complete helper set gives the one formal provider ownership before config hooks can fail.
-            _ = (_container ?? throw new InvalidOperationException("Configuration lifetime was not registered."))
-                .GetAll<BootstrapLifetime>();
-        }
-
-        /// <inheritdoc />
-        public ValueTask DestroyAsync()
-        {
-            bootstrap.StopHotReload();
-            return ValueTask.CompletedTask;
-        }
-    }
-
-    /// <summary>Releases exactly one module bootstrap when its formal DI provider is disposed.</summary>
-    private sealed class BootstrapLifetime(GameConfigBootstrap bootstrap) : IDisposable
-    {
-        /// <inheritdoc />
-        public void Dispose() => bootstrap.Dispose();
     }
 }

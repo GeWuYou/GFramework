@@ -1,102 +1,45 @@
 ---
-title: 属性（Property）
-description: 说明 GFramework.Core.Property 的可绑定属性模型、订阅方式与常见用法。
+title: 可绑定属性
+description: 用字段级响应值连接状态与展示，并管理订阅生命周期。
 ---
 
-# 属性（Property）
+# 可绑定属性
 
-`GFramework.Core.Property` 负责字段级响应式值。它最适合“一个字段变化就足以驱动视图或局部业务逻辑”的场景；
-如果你的状态已经是聚合状态树、需要 reducer / middleware / history，再切到
-[state-management](./state-management.md)。
+`BindableProperty<T>` 表达单个可观察字段。对外暴露 `IReadonlyBindableProperty<T>` 可以限制视图写入，但不自动约束整个业务对象的可变性。复杂聚合状态需要 reducer、选择器或历史时，参见[状态管理](./state-management.md)。
 
-## 安装方式
-
-```bash
-dotnet add package GeWuYou.GFramework.Core
-dotnet add package GeWuYou.GFramework.Core.Abstractions
-```
-
-## 最常用类型
-
-当前最常见的公开类型是：
-
-- `IReadonlyBindableProperty<T>`
-- `IBindableProperty<T>`
-- `BindableProperty<T>`
-
-一般做法是：内部持有 `BindableProperty<T>`，对外只暴露 `IReadonlyBindableProperty<T>`。
-
-## 最小示例
+## 最小使用
 
 ```csharp
+using System;
 using GFramework.Core.Property;
+
+var score = new BindableProperty<int>(0);
+using var subscription = score.RegisterWithInitValue(value => Console.WriteLine(value));
+score.Value = 10;
+```
+
+Register 只观察后续变化，RegisterWithInitValue 先通知当前值。二者返回 IDisposable，视图或绑定拥有者退出时 Dispose；相同字段更新不会默认产生变化通知。SetValueWithoutEvent 更新字段而不通知订阅者。
+
+## 展示状态与业务规则
+
+```csharp
 using GFramework.Core.Abstractions.Property;
-using GFramework.Core.Model;
+using GFramework.Core.Property;
 
-public sealed class PlayerModel : AbstractModel
+public sealed class ScoreViewState
 {
-    public BindableProperty<int> Health { get; } = new(100);
-
-    public IReadonlyBindableProperty<int> ReadonlyHealth => Health;
-
-    public void Damage(int amount)
-    {
-        Health.Value = Math.Max(0, Health.Value - amount);
-    }
+    private readonly BindableProperty<int> _score = new(0);
+    public IReadonlyBindableProperty<int> Score => _score;
+    public void Present(int score) => _score.Value = score;
 }
 ```
 
-监听方式：
+展示层读取字段并管理订阅；用例调用领域方法修改权威状态，再更新展示快照。不要让视图绕过领域规则直接修改所有公共属性。
 
-```csharp
-var unRegister = playerModel.ReadonlyHealth.RegisterWithInitValue(health =>
-{
-    Console.WriteLine($"Current HP: {health}");
-});
-```
+## 线程与比较
 
-## 当前公开语义
+字段存取与监听器列表有内部同步，回调在赋值线程执行，不自动回到 Godot 主线程。调用者应串行化初值订阅与跨线程更新，不能把 RegisterWithInitValue 视为跨线程事务。
 
-- `Value`
-  - 读写当前值；只有值被判定为“真的变化”时才会触发回调
-- `Register(...)`
-  - 订阅后续变化，不会立即回放当前值
-- `RegisterWithInitValue(...)`
-  - 先回放当前值，再继续订阅
-- `SetValueWithoutEvent(...)`
-  - 更新值但不触发通知
-- `UnRegister(...)`
-  - 显式移除某个处理器
-- `WithComparer(...)`
-  - 改写值变化判定逻辑
+WithComparer 设置的是同一个闭合 T 类型共享的比较策略，会影响该 T 的其他 BindableProperty 实例。只需要局部比较规则时，可使用有独立 comparer 的 Store 选择器。
 
-## 一个需要注意的兼容点
-
-`BindableProperty<T>.Comparer` 是按闭合泛型 `T` 共享的静态比较器，`WithComparer(...)` 本质上会改写这一共享
-比较器。也就是说，多个 `BindableProperty<int>` 实例会观察到同一比较规则；只有当你确定整个 `T` 族都要共享同一
-判等语义时，再去改它。
-
-## 什么时候继续用 Property
-
-下面这些场景仍然优先使用 `BindableProperty<T>`：
-
-- 单个字段变化就能驱动 UI
-- 状态范围局限在单个 Model 或单个页面
-- 不需要统一的 action / reducer 写入口
-- 不需要撤销/重做、历史快照或中间件
-
-## 什么时候该切到 Store
-
-如果状态已经演化为下面这些形态，更适合用 `Store<TState>`：
-
-- 多个字段必须作为一个原子状态一起演进
-- 多个模块共享同一聚合状态
-- 需要 reducer / middleware / 历史回放
-- 需要从整棵状态树中复用局部选择逻辑
-
-迁移时不必一次性抛弃旧绑定风格。当前已经提供：
-
-- `store.Select(...)`
-- `store.ToBindableProperty(...)`
-
-这意味着你可以先把写路径统一到 `Store<TState>`，再渐进迁移现有 UI 或 Controller 的读取方式。
+参见[事件订阅](./events.md)和[架构组织](../best-practices/architecture-patterns.md)。

@@ -285,19 +285,7 @@ git push origin your-branch
 
 所有公共 API 必须包含 XML 文档注释：
 
-```csharp
-/// &lt;summary&gt;
-///     架构基类，提供系统、模型、工具等组件的注册与管理功能。
-/// &lt;/summary&gt;
-/// &lt;typeparam name="TModel"&gt;模型类型&lt;/typeparam&gt;
-/// &lt;param name="configuration"&gt;架构配置&lt;/param&gt;
-/// &lt;returns&gt;注册的模型实例&lt;/returns&gt;
-/// &lt;exception cref="ArgumentNullException"&gt;当 model 为 null 时抛出&lt;/exception&gt;
-public TModel RegisterModel&lt;TModel&gt;(TModel model) where TModel : IModel
-{
-    // 实现代码
-}
-```
+服务采用构造注入，注册在组合根完成。采用方式见 [架构生命周期](./core/architecture.md)。
 
 #### 代码注释
 
@@ -579,7 +567,7 @@ public interface IEventBus
     /// unregister.Dispose();
     /// &lt;/code&gt;
     /// &lt;/example&gt;
-    IUnRegister Subscribe&lt;TEvent&gt;(Action&lt;TEvent&gt; handler) where TEvent : IEvent;
+    IDisposable Subscribe&lt;TEvent&gt;(Action&lt;TEvent&gt; handler) where TEvent : IEvent;
 }
 ```
 
@@ -629,22 +617,7 @@ FAQ 列表。
 - **注释**：关键步骤添加注释说明
 - **格式化**：使用正确的语法高亮
 
-```csharp
-// 创建架构实例
-var architecture = new GameArchitecture();
-
-// 初始化架构
-await architecture.InitializeAsync();
-
-// 访问模型
-var playerModel = architecture.Context.GetModel&lt;PlayerModel&gt;();
-
-// 发送事件
-architecture.Context.SendEvent(new AttackEvent
-{
-    TargetId = enemyId
-});
-```
+服务采用构造注入，注册在组合根完成。采用方式见 [架构生命周期](./core/architecture.md)。
 
 #### 图表
 

@@ -31,9 +31,9 @@ public class EventBusTests
     public void Register_Should_Add_Handler()
     {
         var called = false;
-        _eventBus.Register<EventBusTestsEvent>(@event => { called = true; });
+        _eventBus.Subscribe<EventBusTestsEvent>(@event => { called = true; });
 
-        _eventBus.Send<EventBusTestsEvent>();
+        _eventBus.Publish(new EventBusTestsEvent());
 
         Assert.That(called, Is.True);
     }
@@ -51,13 +51,13 @@ public class EventBusTests
         {
             count++;
         }
-        _eventBus.Register((Action<EventBusTestsEvent>)handler);
-        _eventBus.Send<EventBusTestsEvent>();
+        var subscription = _eventBus.Subscribe((Action<EventBusTestsEvent>)handler);
+        _eventBus.Publish(new EventBusTestsEvent());
         // 验证处理器被调用一次
         Assert.That(count, Is.EqualTo(1));
 
-        _eventBus.UnRegister((Action<EventBusTestsEvent>)handler);
-        _eventBus.Send<EventBusTestsEvent>();
+        subscription.Dispose();
+        _eventBus.Publish(new EventBusTestsEvent());
         // 验证处理器在注销后不再被调用
         Assert.That(count, Is.EqualTo(1));
     }
@@ -72,10 +72,10 @@ public class EventBusTests
         var count1 = 0;
         var count2 = 0;
 
-        _eventBus.Register<EventBusTestsEvent>(@event => { count1++; });
-        _eventBus.Register<EventBusTestsEvent>(@event => { count2++; });
+        _eventBus.Subscribe<EventBusTestsEvent>(@event => { count1++; });
+        _eventBus.Subscribe<EventBusTestsEvent>(@event => { count2++; });
 
-        _eventBus.Send<EventBusTestsEvent>();
+        _eventBus.Publish(new EventBusTestsEvent());
 
         // 验证所有处理器都被调用一次
         Assert.That(count1, Is.EqualTo(1));

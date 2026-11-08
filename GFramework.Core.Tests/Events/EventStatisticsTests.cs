@@ -15,7 +15,7 @@ public sealed class EventStatisticsTests
     public void Statistics_WhenDisabled_ShouldBeNull()
     {
         // Arrange
-        var eventBus = new EnhancedEventBus(enableStatistics: false);
+        var eventBus = new EventBus(enableStatistics: false);
 
         // Act & Assert
         Assert.That(eventBus.Statistics, Is.Null);
@@ -25,7 +25,7 @@ public sealed class EventStatisticsTests
     public void Statistics_WhenEnabled_ShouldNotBeNull()
     {
         // Arrange
-        var eventBus = new EnhancedEventBus(enableStatistics: true);
+        var eventBus = new EventBus(enableStatistics: true);
 
         // Act & Assert
         Assert.That(eventBus.Statistics, Is.Not.Null);
@@ -35,12 +35,12 @@ public sealed class EventStatisticsTests
     public void TotalPublished_ShouldTrackPublishedEvents()
     {
         // Arrange
-        var eventBus = new EnhancedEventBus(enableStatistics: true);
+        var eventBus = new EventBus(enableStatistics: true);
 
         // Act
-        eventBus.SendFilterable(new TestEvent { Message = "Test1" });
-        eventBus.SendFilterable(new TestEvent { Message = "Test2" });
-        eventBus.SendFilterable(new TestEvent { Message = "Test3" });
+        eventBus.Publish(new TestEvent { Message = "Test1" });
+        eventBus.Publish(new TestEvent { Message = "Test2" });
+        eventBus.Publish(new TestEvent { Message = "Test3" });
 
         // Assert
         Assert.That(eventBus.Statistics!.TotalPublished, Is.EqualTo(3));
@@ -50,14 +50,14 @@ public sealed class EventStatisticsTests
     public void TotalHandled_ShouldTrackHandledEvents()
     {
         // Arrange
-        var eventBus = new EnhancedEventBus(enableStatistics: true);
+        var eventBus = new EventBus(enableStatistics: true);
         var handledCount = 0;
 
-        eventBus.RegisterFilterable<TestEvent>(_ => handledCount++);
-        eventBus.RegisterFilterable<TestEvent>(_ => handledCount++);
+        eventBus.Subscribe<TestEvent>(_ => handledCount++);
+        eventBus.Subscribe<TestEvent>(_ => handledCount++);
 
         // Act
-        eventBus.SendFilterable(new TestEvent { Message = "Test" });
+        eventBus.Publish(new TestEvent { Message = "Test" });
 
         // Assert
         Assert.That(eventBus.Statistics!.TotalHandled, Is.EqualTo(2));
@@ -68,13 +68,13 @@ public sealed class EventStatisticsTests
     public void TotalFailed_ShouldTrackFailedEvents()
     {
         // Arrange
-        var eventBus = new EnhancedEventBus(enableStatistics: true);
+        var eventBus = new EventBus(enableStatistics: true);
 
-        eventBus.RegisterFilterable<TestEvent>(_ => throw new InvalidOperationException("Test exception"));
+        eventBus.Subscribe<TestEvent>(_ => throw new InvalidOperationException("Test exception"));
 
         // Act & Assert
         Assert.Throws<InvalidOperationException>(() =>
-            eventBus.SendFilterable(new TestEvent { Message = "Test" }));
+            eventBus.Publish(new TestEvent { Message = "Test" }));
 
         Assert.That(eventBus.Statistics!.TotalFailed, Is.EqualTo(1));
     }
@@ -83,38 +83,38 @@ public sealed class EventStatisticsTests
     public void GetPublishCount_ShouldReturnCorrectCount()
     {
         // Arrange
-        var eventBus = new EnhancedEventBus(enableStatistics: true);
+        var eventBus = new EventBus(enableStatistics: true);
 
         // Act
-        eventBus.SendFilterable(new TestEvent { Message = "Test1" });
-        eventBus.SendFilterable(new TestEvent { Message = "Test2" });
+        eventBus.Publish(new TestEvent { Message = "Test1" });
+        eventBus.Publish(new TestEvent { Message = "Test2" });
 
         // Assert
-        Assert.That(eventBus.Statistics!.GetPublishCount(nameof(TestEvent)), Is.EqualTo(2));
+        Assert.That(eventBus.Statistics!.GetPublishCount(typeof(TestEvent).FullName!), Is.EqualTo(2));
     }
 
     [Test]
     public void GetListenerCount_ShouldReturnCorrectCount()
     {
         // Arrange
-        var eventBus = new EnhancedEventBus(enableStatistics: true);
+        var eventBus = new EventBus(enableStatistics: true);
 
         // Act
-        eventBus.RegisterFilterable<TestEvent>(_ => { });
-        eventBus.RegisterFilterable<TestEvent>(_ => { });
+        eventBus.Subscribe<TestEvent>(_ => { });
+        eventBus.Subscribe<TestEvent>(_ => { });
 
         // Assert
-        Assert.That(eventBus.Statistics!.GetListenerCount(nameof(TestEvent)), Is.EqualTo(2));
+        Assert.That(eventBus.Statistics!.GetListenerCount(typeof(TestEvent).FullName!), Is.EqualTo(2));
     }
 
     [Test]
     public void Reset_ShouldClearAllStatistics()
     {
         // Arrange
-        var eventBus = new EnhancedEventBus(enableStatistics: true);
+        var eventBus = new EventBus(enableStatistics: true);
 
-        eventBus.RegisterFilterable<TestEvent>(_ => { });
-        eventBus.SendFilterable(new TestEvent { Message = "Test" });
+        eventBus.Subscribe<TestEvent>(_ => { });
+        eventBus.Publish(new TestEvent { Message = "Test" });
 
         // Act
         eventBus.Statistics!.Reset();
@@ -123,17 +123,17 @@ public sealed class EventStatisticsTests
         Assert.That(eventBus.Statistics.TotalPublished, Is.EqualTo(0));
         Assert.That(eventBus.Statistics.TotalHandled, Is.EqualTo(0));
         Assert.That(eventBus.Statistics.TotalFailed, Is.EqualTo(0));
-        Assert.That(eventBus.Statistics.GetPublishCount(nameof(TestEvent)), Is.EqualTo(0));
+        Assert.That(eventBus.Statistics.GetPublishCount(typeof(TestEvent).FullName!), Is.EqualTo(0));
     }
 
     [Test]
     public void GenerateReport_ShouldReturnFormattedString()
     {
         // Arrange
-        var eventBus = new EnhancedEventBus(enableStatistics: true);
+        var eventBus = new EventBus(enableStatistics: true);
 
-        eventBus.RegisterFilterable<TestEvent>(_ => { });
-        eventBus.SendFilterable(new TestEvent { Message = "Test" });
+        eventBus.Subscribe<TestEvent>(_ => { });
+        eventBus.Publish(new TestEvent { Message = "Test" });
 
         // Act
         var report = eventBus.Statistics!.GenerateReport();
@@ -149,9 +149,9 @@ public sealed class EventStatisticsTests
     public void Statistics_ShouldBeThreadSafe()
     {
         // Arrange
-        var eventBus = new EnhancedEventBus(enableStatistics: true);
+        var eventBus = new EventBus(enableStatistics: true);
 
-        eventBus.RegisterFilterable<TestEvent>(_ => { });
+        eventBus.Subscribe<TestEvent>(_ => { });
 
         // Act - 并发发送事件
         var tasks = new List<Task>();
@@ -161,7 +161,7 @@ public sealed class EventStatisticsTests
             {
                 for (var j = 0; j < 100; j++)
                 {
-                    eventBus.SendFilterable(new TestEvent { Message = string.Create(CultureInfo.InvariantCulture, $"Test-{j}") });
+                    eventBus.Publish(new TestEvent { Message = string.Create(CultureInfo.InvariantCulture, $"Test-{j}") });
                 }
             }));
         }

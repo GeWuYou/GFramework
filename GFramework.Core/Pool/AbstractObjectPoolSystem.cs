@@ -3,7 +3,7 @@
 
 using System.Diagnostics;
 using GFramework.Core.Abstractions.Pool;
-using GFramework.Core.Systems;
+using GFramework.Core.Abstractions.Lifecycle;
 
 namespace GFramework.Core.Pool;
 
@@ -13,8 +13,16 @@ namespace GFramework.Core.Pool;
 /// <typeparam name="TKey">对象池的键类型，必须不为null</typeparam>
 /// <typeparam name="TObject">池化对象类型，必须实现IPoolableObject接口</typeparam>
 public abstract class AbstractObjectPoolSystem<TKey, TObject>
-    : AbstractSystem, IObjectPoolSystem<TKey, TObject> where TObject : IPoolableObject where TKey : notnull
+    : ILifecycle, IObjectPoolSystem<TKey, TObject> where TObject : IPoolableObject where TKey : notnull
 {
+    /// <summary>Starts the optional object-pool participant.</summary>
+    public void Initialize() => OnInit();
+
+    /// <summary>Allows a pool to prepare game-specific state without requiring a framework role.</summary>
+    protected virtual void OnInit()
+    {
+    }
+
     /// <summary>
     ///     存储对象池的字典，键为池标识，值为池信息
     /// </summary>
@@ -210,7 +218,7 @@ public abstract class AbstractObjectPoolSystem<TKey, TObject>
     /// <summary>
     ///     系统销毁时的清理操作，清空所有对象池
     /// </summary>
-    protected override void OnDestroy()
+    public void Destroy()
     {
         Clear();
     }

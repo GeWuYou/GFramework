@@ -9,6 +9,8 @@ using GFramework.Godot.Architectures;
 using GFramework.Godot.UI;
 using Godot;
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace GodotIntegration;
 
 public partial class DemoRoot
@@ -65,7 +67,7 @@ public partial class DemoRoot
             get; private set;
         }
         /// <inheritdoc />
-        protected override void InstallModules() => InstallGodotModule(_module);
+        protected override void InstallModules(IServiceCollection services) => InstallGodotModule(services, _module);
         /// <inheritdoc />
         protected override void OnStarted()
         {
@@ -86,7 +88,7 @@ public partial class DemoRoot
             get; private set;
         }
         /// <inheritdoc />
-        public void Install(IArchitecture architecture)
+        public void ConfigureServices(IServiceCollection services)
         {
         }
         /// <inheritdoc />

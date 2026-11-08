@@ -18,7 +18,7 @@
 ## 与相邻包的关系
 
 - `GFramework.Core.Abstractions`
-  - 本包直接依赖它，并复用 `IServiceModule`、`ISystem` 等基础契约。
+  - 本包直接依赖它，并复用配置型模块和显式生命周期等基础契约。
 - `GFramework.Ecs.Arch.Abstractions`
   - 只定义 Arch ECS 集成相关的最小契约和配置对象。
 - `GFramework.Ecs.Arch`

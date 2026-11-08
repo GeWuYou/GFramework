@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Internal;
 using MediatR;
@@ -32,11 +31,11 @@ internal static class BenchmarkHostFactory
     /// </summary>
     /// <param name="configure">向容器写入 benchmark 所需 handler / pipeline 的注册动作。</param>
     /// <returns>已冻结、可立即以标准 <see cref="IServiceProvider" /> 语义用于 runtime 分发的容器。</returns>
-    internal static MicrosoftDiContainer CreateFrozenGFrameworkContainer(Action<MicrosoftDiContainer> configure)
+    internal static BenchmarkServiceHost CreateFrozenGFrameworkContainer(Action<BenchmarkServiceHost> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
 
-        var container = new MicrosoftDiContainer();
+        var container = new BenchmarkServiceHost();
         configure(container);
         container.Freeze();
         return container;
@@ -52,13 +51,13 @@ internal static class BenchmarkHostFactory
     ///     generated registry 注册发生在标准 <see cref="IServiceCollection" /> 上，
     ///     因此这里直接复用 runtime 内部的单 registry 激活入口，而不触发整程序集扫描。
     /// </remarks>
-    internal static void RegisterGeneratedBenchmarkRegistry<TRegistry>(MicrosoftDiContainer container)
+    internal static void RegisterGeneratedBenchmarkRegistry<TRegistry>(BenchmarkServiceHost container)
         where TRegistry : class, GFramework.Cqrs.ICqrsHandlerRegistry
     {
         ArgumentNullException.ThrowIfNull(container);
 
         var registrarLogger = BenchmarkLogging.CreateLogger("DefaultCqrsHandlerRegistrar");
-        CqrsHandlerRegistrar.RegisterGeneratedRegistry(container.GetServicesUnsafe, typeof(TRegistry), registrarLogger);
+        CqrsHandlerRegistrar.RegisterGeneratedRegistry(container.Services, typeof(TRegistry), registrarLogger);
     }
 
     /// <summary>

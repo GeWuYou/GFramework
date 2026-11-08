@@ -1,14 +1,13 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Utility;
 
 namespace GFramework.Core.Abstractions.Serializer;
 
 /// <summary>
 ///     定义序列化器接口，提供对象序列化和反序列化的通用方法
 /// </summary>
-public interface ISerializer : IUtility
+public interface ISerializer
 {
     /// <summary>
     ///     将指定的对象序列化为字符串

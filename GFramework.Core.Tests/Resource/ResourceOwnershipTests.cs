@@ -1,251 +1,322 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Resource;
 using GFramework.Core.Resource;
+using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Resource;
 
-/// <summary>
-///     验证资源实例与原始加载器、活跃句柄之间的所有权边界。
-/// </summary>
+/// <summary>Verifies original loader ownership, closing leases and release failure behavior.</summary>
 [TestFixture]
-public class ResourceOwnershipTests
+public sealed class ResourceOwnershipTests
 {
-    /// <summary>
-    ///     基类加载器创建的派生对象仍交回原始加载器，不再次调用 Dispose。
-    /// </summary>
+    /// <summary>A base-type load of a derived object returns to the original loader without a second Dispose.</summary>
     [Test]
-    public void Unload_DerivedResource_UsesOriginalLoaderAndDisposesOnce()
+    public void DerivedResource_UsesOriginalLoaderExactlyOnce()
     {
+        using var manager = new ResourceManager();
         var resource = new DerivedResource();
         var loader = new OwnedLoader<OwnedResource>(() => resource);
-        var manager = new ResourceManager();
         manager.RegisterLoader(loader);
-        manager.Load<OwnedResource>("derived");
-
-        var unloaded = manager.Unload("derived");
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(unloaded, Is.True);
-            Assert.That(loader.UnloadCount, Is.EqualTo(1));
-            Assert.That(resource.DisposeCount, Is.EqualTo(1));
-        });
+        var lease = manager.Acquire<OwnedResource>("derived");
+        lease.Dispose();
+        Assert.That(manager.Unload<OwnedResource>("derived"), Is.True);
+        Assert.That(loader.UnloadCount, Is.EqualTo(1));
+        Assert.That(resource.DisposeCount, Is.EqualTo(1));
     }
 
-    /// <summary>
-    ///     替换和注销注册项都不能把既有资源转交给另一个加载器。
-    /// </summary>
+    /// <summary>Replacement or removal changes future loads without transferring ownership of an existing entry.</summary>
     [TestCase(false)]
     [TestCase(true)]
-    public void Unload_AfterLoaderRegistrationChanges_RetainsOriginalOwner(bool unregister)
+    public void LoaderRegistrationChanges_PreserveOriginalOwner(bool unregister)
     {
+        using var manager = new ResourceManager();
         var original = new OwnedLoader<OwnedResource>(() => new OwnedResource());
         var replacement = new OwnedLoader<OwnedResource>(() => new OwnedResource());
-        var manager = new ResourceManager();
         manager.RegisterLoader(original);
-        var resource = manager.Load<OwnedResource>("owned");
+        var lease = manager.Acquire<OwnedResource>("asset");
+        var resource = lease.Resource;
         manager.RegisterLoader(replacement);
         if (unregister)
             manager.UnregisterLoader<OwnedResource>();
-
-        manager.Unload("owned");
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(original.UnloadCount, Is.EqualTo(1));
-            Assert.That(replacement.UnloadCount, Is.Zero);
-            Assert.That(resource!.DisposeCount, Is.EqualTo(1));
-        });
+        lease.Dispose();
+        manager.UnloadAll();
+        Assert.That(original.UnloadCount, Is.EqualTo(1));
+        Assert.That(replacement.UnloadCount, Is.Zero);
+        Assert.That(resource.DisposeCount, Is.EqualTo(1));
     }
 
-    /// <summary>
-    ///     批量卸载仅移除无句柄资源，句柄释放后可在下一次批量卸载中清理。
-    /// </summary>
+    /// <summary>Bulk eviction preserves leased ownership and releases only unused entries.</summary>
     [Test]
-    public void UnloadAll_WithActiveHandle_PreservesResourceUntilHandleReleased()
+    public void UnloadAll_PreservesActiveLeases()
     {
+        using var manager = new ResourceManager();
         var loader = new OwnedLoader<OwnedResource>(() => new OwnedResource());
-        var manager = new ResourceManager();
         manager.RegisterLoader(loader);
-        var retained = manager.Load<OwnedResource>("retained");
-        var unused = manager.Load<OwnedResource>("unused");
-        var handle = manager.GetHandle<OwnedResource>("retained")!;
-
+        var retained = manager.Acquire<OwnedResource>("retained");
+        var unused = manager.Acquire<OwnedResource>("unused");
+        var unusedResource = unused.Resource;
+        unused.Dispose();
         manager.UnloadAll();
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(manager.GetLoadedResourcePaths(), Is.EquivalentTo(["retained"]));
-            Assert.That(handle.IsValid, Is.True);
-            Assert.That(retained!.DisposeCount, Is.Zero);
-            Assert.That(unused!.DisposeCount, Is.EqualTo(1));
-        });
-
-        handle.Dispose();
+        Assert.That(manager.LoadedResourceCount, Is.EqualTo(1));
+        Assert.That(retained.Resource.DisposeCount, Is.Zero);
+        Assert.That(unusedResource.DisposeCount, Is.EqualTo(1));
+        var retainedResource = retained.Resource;
+        retained.Dispose();
         manager.UnloadAll();
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(manager.LoadedResourceCount, Is.Zero);
-            Assert.That(retained!.DisposeCount, Is.EqualTo(1));
-        });
+        Assert.That(manager.LoadedResourceCount, Is.Zero);
+        Assert.That(retainedResource.DisposeCount, Is.EqualTo(1));
     }
 
-    /// <summary>
-    ///     异步加载器返回同一内部缓存对象时，失败竞争者不能释放获胜条目仍在使用的对象。
-    /// </summary>
+    /// <summary>Shutdown never invalidates active leases, but prevents them from creating new leases.</summary>
     [Test]
-    public async Task ConcurrentLoadAsync_SharedLoaderInstance_DoesNotUnloadCachedResource()
+    public async Task DisposeAsync_DefersLeasedReleaseUntilLeaseDisposal()
+    {
+        var manager = new ResourceManager();
+        var loader = new OwnedLoader<OwnedResource>(() => new OwnedResource());
+        manager.RegisterLoader(loader);
+        var lease = manager.Acquire<OwnedResource>("asset");
+        var resource = lease.Resource;
+        await manager.DisposeAsync();
+        Assert.That(lease.Resource, Is.SameAs(resource));
+        Assert.That(lease.IsValid, Is.True);
+        Assert.That(resource.DisposeCount, Is.Zero);
+        Assert.Throws<ObjectDisposedException>(() => lease.Retain());
+        lease.Dispose();
+        lease.Dispose();
+        await manager.DisposeAsync();
+        Assert.That(resource.DisposeCount, Is.EqualTo(1));
+        Assert.That(manager.LoadedResourceCount, Is.Zero);
+    }
+
+    /// <summary>Type is part of identity, so equal paths for two loader types do not overwrite one another.</summary>
+    [Test]
+    public void SamePath_DifferentTypesKeepSeparateOwnership()
+    {
+        using var manager = new ResourceManager();
+        var baseLoader = new OwnedLoader<OwnedResource>(() => new OwnedResource());
+        var derivedLoader = new OwnedLoader<DerivedResource>(() => new DerivedResource());
+        manager.RegisterLoader(baseLoader);
+        manager.RegisterLoader(derivedLoader);
+        using var first = manager.Acquire<OwnedResource>("same");
+        using var second = manager.Acquire<DerivedResource>("same");
+        Assert.That(first.Resource, Is.Not.SameAs(second.Resource));
+        Assert.That(manager.LoadedResourceCount, Is.EqualTo(2));
+    }
+
+    /// <summary>The single-flight design prevents duplicate backend loads instead of releasing race losers afterward.</summary>
+    [Test]
+    public async Task ConcurrentAcquireAsync_DoesNotCreateLosingResource()
     {
         var pending = new TaskCompletionSource<OwnedResource>(TaskCreationOptions.RunContinuationsAsynchronously);
         var loader = new OwnedLoader<OwnedResource>(() => throw new InvalidOperationException())
         {
             LoadAsyncCallback = () => pending.Task,
         };
-        var manager = new ResourceManager();
+        await using var manager = new ResourceManager();
         manager.RegisterLoader(loader);
-        var first = manager.LoadAsync<OwnedResource>("shared");
-        var second = manager.LoadAsync<OwnedResource>("shared");
-        var resource = new OwnedResource();
-
-        pending.SetResult(resource);
-        var loaded = await Task.WhenAll(first, second);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(loaded[0], Is.SameAs(resource));
-            Assert.That(loaded[1], Is.SameAs(resource));
-            Assert.That(loader.UnloadCount, Is.Zero);
-            Assert.That(resource.DisposeCount, Is.Zero);
-        });
-
+        var first = manager.AcquireAsync<OwnedResource>("shared");
+        var second = manager.AcquireAsync<OwnedResource>("shared");
+        pending.SetResult(new OwnedResource());
+        var leases = await Task.WhenAll(first, second);
+        Assert.That(loader.LoadCount, Is.EqualTo(1));
+        Assert.That(leases[0].Resource, Is.SameAs(leases[1].Resource));
+        var resource = leases[0].Resource;
+        foreach (var lease in leases)
+            lease.Dispose();
         manager.UnloadAll();
         Assert.That(resource.DisposeCount, Is.EqualTo(1));
     }
 
-    /// <summary>
-    ///     独立的异步加载结果发生竞争时，仅释放未进入缓存的实例。
-    /// </summary>
+    /// <summary>All current waiters observe the original failure, and a later acquisition starts a fresh attempt.</summary>
     [Test]
-    public async Task ConcurrentLoadAsync_DistinctInstances_UnloadsOnlyLosingResource()
+    public async Task LoadFailure_PropagatesAndAllowsRetry()
     {
-        var pending = new Queue<TaskCompletionSource<OwnedResource>>();
-        var firstSource = new TaskCompletionSource<OwnedResource>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var secondSource = new TaskCompletionSource<OwnedResource>(TaskCreationOptions.RunContinuationsAsynchronously);
-        pending.Enqueue(firstSource);
-        pending.Enqueue(secondSource);
-        var loader = new OwnedLoader<OwnedResource>(() => throw new InvalidOperationException())
+        var failure = new InvalidOperationException("backend failed");
+        var pending = new TaskCompletionSource<OwnedResource>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var loader = new OwnedLoader<OwnedResource>(() => new OwnedResource())
         {
-            LoadAsyncCallback = () => pending.Dequeue().Task,
+            LoadAsyncCallback = () => pending.Task,
         };
-        var manager = new ResourceManager();
+        await using var manager = new ResourceManager();
         manager.RegisterLoader(loader);
-        var first = manager.LoadAsync<OwnedResource>("distinct");
-        var second = manager.LoadAsync<OwnedResource>("distinct");
-        var winner = new OwnedResource();
-        var loser = new OwnedResource();
-        firstSource.SetResult(winner);
-        await first;
-        secondSource.SetResult(loser);
-        var secondResult = await second;
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(secondResult, Is.SameAs(winner));
-            Assert.That(winner.DisposeCount, Is.Zero);
-            Assert.That(loser.DisposeCount, Is.EqualTo(1));
-        });
-
-        manager.UnloadAll();
-        Assert.That(winner.DisposeCount, Is.EqualTo(1));
+        var first = manager.AcquireAsync<OwnedResource>("asset");
+        var second = manager.AcquireAsync<OwnedResource>("asset");
+        pending.SetException(failure);
+        var firstError = await Assert.ThrowsAsync<InvalidOperationException>(() => first);
+        var secondError = await Assert.ThrowsAsync<InvalidOperationException>(() => second);
+        Assert.That(firstError, Is.SameAs(failure));
+        Assert.That(secondError, Is.SameAs(failure));
+        Assert.That(manager.LoadedResourceCount, Is.Zero);
+        using var retried = manager.Acquire<OwnedResource>("asset");
+        Assert.That(retried.IsValid, Is.True);
+        Assert.That(loader.LoadCount, Is.EqualTo(2));
     }
 
-    /// <summary>
-    ///     卸载期间加载器重入不能取得正在释放的旧实例，旧句柄的重复释放不影响新条目。
-    /// </summary>
+    /// <summary>Detaching before release lets a loader reenter acquisition without exposing the old ownership.</summary>
     [Test]
-    public void HandleRelease_WithReentrantReload_DoesNotExposeOldEntryOrReleaseReplacement()
+    public void Release_ReentrantReloadAndOldLeaseDisposalAreIndependent()
     {
-        var manager = new ResourceManager();
+        using var manager = new ResourceManager();
         manager.SetReleaseStrategy(new AutoReleaseStrategy());
         var loader = new OwnedLoader<OwnedResource>(() => new OwnedResource());
         manager.RegisterLoader(loader);
-        var original = manager.Load<OwnedResource>("reloaded")!;
-        var handle = manager.GetHandle<OwnedResource>("reloaded")!;
-        IResourceHandle<OwnedResource>? reentrantHandle = null;
-        OwnedResource? replacement = null;
-        loader.UnloadCallback = () =>
-        {
-            reentrantHandle = manager.GetHandle<OwnedResource>("reloaded");
-            replacement = manager.Load<OwnedResource>("reloaded");
-        };
-
-        handle.Dispose();
-        handle.Dispose();
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(reentrantHandle, Is.Null);
-            Assert.That(original.DisposeCount, Is.EqualTo(1));
-            Assert.That(replacement, Is.Not.Null.And.Not.SameAs(original));
-            Assert.That(replacement!.DisposeCount, Is.Zero);
-            Assert.That(manager.LoadedResourceCount, Is.EqualTo(1));
-        });
-
+        var first = manager.Acquire<OwnedResource>("asset");
+        var original = first.Resource;
+        IResourceHandle<OwnedResource>? replacement = null;
+        loader.UnloadCallback = () => replacement = manager.Acquire<OwnedResource>("asset");
+        first.Dispose();
+        first.Dispose();
+        Assert.That(original.DisposeCount, Is.EqualTo(1));
+        Assert.That(replacement, Is.Not.Null);
+        Assert.That(replacement!.Resource, Is.Not.SameAs(original));
+        Assert.That(replacement.Resource.DisposeCount, Is.Zero);
         loader.UnloadCallback = null;
-        manager.UnloadAll();
+        replacement.Dispose();
+        Assert.That(loader.UnloadCount, Is.EqualTo(2));
     }
 
-    /// <summary>
-    ///     提供可计数释放的资源，加载器必须对其 Dispose 负责。
-    /// </summary>
+    /// <summary>A failing release does not prevent attempts to release other cache entries or cause a retry on disposal.</summary>
+    [Test]
+    public void UnloadAll_AttemptsEveryReleaseAndAggregatesFailures()
+    {
+        using var manager = new ResourceManager();
+        var loader = new OwnedLoader<OwnedResource>(() => new OwnedResource())
+        {
+            UnloadCallback = () => throw new InvalidOperationException("release failed"),
+        };
+        manager.RegisterLoader(loader);
+        manager.Acquire<OwnedResource>("a").Dispose();
+        manager.Acquire<OwnedResource>("b").Dispose();
+        var error = Assert.Throws<AggregateException>(() => manager.UnloadAll());
+        Assert.That(error!.InnerExceptions, Has.Count.EqualTo(2));
+        Assert.That(loader.UnloadCount, Is.EqualTo(2));
+        Assert.That(manager.LoadedResourceCount, Is.Zero);
+    }
+
+    /// <summary>Manager shutdown reports release failures while still attempting every resource exactly once.</summary>
+    [Test]
+    public async Task DisposeAsync_ReportsCleanupFailuresAndSharesItsResult()
+    {
+        var manager = new ResourceManager();
+        var loader = new OwnedLoader<OwnedResource>(() => new OwnedResource())
+        {
+            UnloadCallback = () => throw new InvalidOperationException("release failed"),
+        };
+        manager.RegisterLoader(loader);
+        manager.Acquire<OwnedResource>("a").Dispose();
+        manager.Acquire<OwnedResource>("b").Dispose();
+        var first = manager.DisposeAsync().AsTask();
+        var second = manager.DisposeAsync().AsTask();
+        Assert.That(first, Is.SameAs(second));
+        var error = await Assert.ThrowsAsync<AggregateException>(() => first);
+        Assert.That(error!.InnerExceptions, Has.Count.EqualTo(2));
+        Assert.That(loader.UnloadCount, Is.EqualTo(2));
+    }
+
+    /// <summary>Policy callbacks cannot invalidate a lease acquired while the policy is deciding.</summary>
+    [Test]
+    public void ReentrantReleasePolicy_DoesNotEvictNewLease()
+    {
+        using var manager = new ResourceManager();
+        var loader = new OwnedLoader<OwnedResource>(() => new OwnedResource());
+        manager.RegisterLoader(loader);
+        var first = manager.Acquire<OwnedResource>("asset");
+        var resource = first.Resource;
+        IResourceHandle<OwnedResource>? replacement = null;
+        var policy = new ReentrantPolicy();
+        policy.Callback = () =>
+        {
+            policy.Callback = null;
+            replacement = manager.Acquire<OwnedResource>("asset");
+        };
+        manager.SetReleaseStrategy(policy);
+        first.Dispose();
+        Assert.That(resource.DisposeCount, Is.Zero);
+        var retained = replacement ?? throw new InvalidOperationException("Policy did not acquire its lease.");
+        Assert.That(retained.Resource, Is.SameAs(resource));
+        retained.Dispose();
+        Assert.That(resource.DisposeCount, Is.EqualTo(1));
+    }
+
+    /// <summary>One-shot callback probes defensive ownership revalidation around application policies.</summary>
+    private sealed class ReentrantPolicy : IResourceReleaseStrategy
+    {
+        /// <summary>Gets or sets the callback executed during the next decision.</summary>
+        public Action? Callback
+        {
+            get; set;
+        }
+
+        /// <inheritdoc />
+        public bool ShouldRelease(string path, int refCount)
+        {
+            Callback?.Invoke();
+            return true;
+        }
+    }
+
+    /// <summary>Exposes disposal counting to prove that the manager does not add its own Dispose call.</summary>
     private class OwnedResource : IDisposable
     {
-        /// <summary>获取 Dispose 调用次数。</summary>
+        /// <summary>Gets the number of release attempts.</summary>
         public int DisposeCount
         {
             get; private set;
         }
 
-        /// <summary>记录资源释放次数。</summary>
+        /// <inheritdoc />
         public void Dispose() => DisposeCount++;
     }
 
-    /// <summary>用于验证加载类型与资源实际类型不同的合法场景。</summary>
+    /// <summary>Allows declared load type to differ from runtime resource type.</summary>
     private sealed class DerivedResource : OwnedResource;
 
-    /// <summary>
-    ///     持有资源释放责任的测试加载器，支持可控异步结果和重入清理。
-    /// </summary>
-    /// <typeparam name="T">资源类型。</typeparam>
-    /// <param name="create">同步创建操作。</param>
+    /// <summary>Implements externally owned loader behavior with deterministic failure and reentrancy hooks.</summary>
+    /// <typeparam name="T">The resource type.</typeparam>
     private sealed class OwnedLoader<T>(Func<T> create) : IResourceLoader<T> where T : OwnedResource
     {
-        /// <summary>获取卸载次数。</summary>
+        /// <summary>Gets the number of backend loads.</summary>
+        public int LoadCount
+        {
+            get; private set;
+        }
+
+        /// <summary>Gets the number of matching release attempts.</summary>
         public int UnloadCount
         {
             get; private set;
         }
 
-        /// <summary>获取或设置可控异步加载操作。</summary>
+        /// <summary>Gets the optional asynchronous backend behavior.</summary>
         public Func<Task<T>>? LoadAsyncCallback
         {
             get; init;
         }
 
-        /// <summary>获取或设置卸载过程中的回调。</summary>
+        /// <summary>Gets or sets a callback executed after each resource is disposed.</summary>
         public Action? UnloadCallback
         {
             get; set;
         }
 
         /// <inheritdoc />
-        public T Load(string path) => create();
+        public T Load(string path)
+        {
+            LoadCount++;
+            return create();
+        }
 
         /// <inheritdoc />
-        public Task<T> LoadAsync(string path) => LoadAsyncCallback?.Invoke() ?? Task.FromResult(create());
+        public Task<T> LoadAsync(string path, CancellationToken cancellationToken = default)
+        {
+            LoadCount++;
+            return LoadAsyncCallback?.Invoke() ?? Task.FromResult(create());
+        }
 
         /// <inheritdoc />
         public void Unload(T resource)

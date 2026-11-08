@@ -1,39 +1,24 @@
-// Copyright (c) 2026 GeWuYou
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-// 
-//     http://www.apache.org/licenses/LICENSE-2.0
-// 
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Core.Abstractions.State;
 
-/// <summary>
-///     异步状态机状态接口，定义了状态的异步行为和转换规则
-/// </summary>
+/// <summary>Asynchronous state callbacks selected in preference to synchronous callbacks.</summary>
 public interface IAsyncState : IState
 {
-    /// <summary>
-    ///     当状态被激活进入时异步调用
-    /// </summary>
-    /// <param name="from">从哪个状态转换而来，可能为null表示初始状态</param>
-    Task OnEnterAsync(IState? from);
-
-    /// <summary>
-    ///     当状态退出时异步调用
-    /// </summary>
-    /// <param name="to">将要转换到的目标状态，可能为null表示结束状态</param>
-    Task OnExitAsync(IState? to);
-
-    /// <summary>
-    ///     异步判断当前状态是否可以转换到目标状态
-    /// </summary>
-    /// <param name="target">目标状态</param>
-    /// <returns>如果可以转换则返回true，否则返回false</returns>
-    Task<bool> CanTransitionToAsync(IState target);
+    /// <summary>Enter from the previous state; honor cancellation while acquiring resources.</summary>
+    /// <param name="from">Previous state.</param>
+    /// <param name="cancellationToken">Transition cancellation.</param>
+    /// <returns>Entry completion.</returns>
+    Task OnEnterAsync(IState? from, CancellationToken cancellationToken = default);
+    /// <summary>Exit to the next state; null indicates terminal cleanup.</summary>
+    /// <param name="to">Next state.</param>
+    /// <param name="cancellationToken">Transition cancellation; terminal cleanup is not canceled.</param>
+    /// <returns>Exit completion.</returns>
+    Task OnExitAsync(IState? to, CancellationToken cancellationToken = default);
+    /// <summary>Check whether leaving for the target is allowed.</summary>
+    /// <param name="target">Target state.</param>
+    /// <param name="cancellationToken">Transition cancellation.</param>
+    /// <returns>Whether the transition is allowed.</returns>
+    Task<bool> CanTransitionToAsync(IState target, CancellationToken cancellationToken = default);
 }

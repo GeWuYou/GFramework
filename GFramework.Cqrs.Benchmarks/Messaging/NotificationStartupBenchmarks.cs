@@ -10,7 +10,6 @@ using BenchmarkDotNet.Order;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,7 +31,7 @@ public class NotificationStartupBenchmarks
     private static readonly ILogger RuntimeLogger = CreateLogger(nameof(NotificationStartupBenchmarks));
     private static readonly BenchmarkNotification Notification = new(Guid.NewGuid());
 
-    private MicrosoftDiContainer _container = null!;
+    private BenchmarkServiceHost _container = null!;
     private ICqrsRuntime _runtime = null!;
     private ServiceProvider _serviceProvider = null!;
     private IPublisher _publisher = null!;
@@ -182,7 +181,7 @@ public class NotificationStartupBenchmarks
     ///     startup benchmark 只需要验证单 handler publish 的首击路径，
     ///     因此这里继续使用单点手工注册，避免把更广泛的注册协调逻辑混入结果。
     /// </remarks>
-    private static MicrosoftDiContainer CreateGFrameworkContainer()
+    private static BenchmarkServiceHost CreateGFrameworkContainer()
     {
         return BenchmarkHostFactory.CreateFrozenGFrameworkContainer(static container =>
         {
@@ -195,7 +194,7 @@ public class NotificationStartupBenchmarks
     /// </summary>
     /// <param name="container">当前 benchmark 拥有并负责释放的容器。</param>
     /// <returns>可直接发布 notification 的 runtime。</returns>
-    private static ICqrsRuntime CreateGFrameworkRuntime(MicrosoftDiContainer container)
+    private static ICqrsRuntime CreateGFrameworkRuntime(BenchmarkServiceHost container)
     {
         ArgumentNullException.ThrowIfNull(container);
         return GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(container, RuntimeLogger);

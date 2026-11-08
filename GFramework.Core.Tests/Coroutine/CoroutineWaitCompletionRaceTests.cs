@@ -25,8 +25,8 @@ public sealed class CoroutineWaitCompletionRaceTests
     {
         using var scheduler = new CoroutineScheduler(new FakeTimeSource());
         var bus = new Mock<IEventBus>();
-        var registration = new Mock<IUnRegister>();
-        bus.Setup(value => value.Register<int>(It.IsAny<Action<int>>())).Returns(registration.Object);
+        var registration = new Mock<IDisposable>();
+        bus.Setup(value => value.Subscribe<int>(It.IsAny<Action<int>>(), 0)).Returns(registration.Object);
 
         IEnumerator<IYieldInstruction> Routine(CoroutineContext context)
         {
@@ -44,8 +44,8 @@ public sealed class CoroutineWaitCompletionRaceTests
 
         Assert.That(scheduler.TryGetResult(handle, out var result), Is.True);
         Assert.That(result.Status, Is.EqualTo(CoroutineCompletionStatus.Cancelled));
-        bus.Verify(value => value.Register<int>(It.IsAny<Action<int>>()), Times.Once);
-        registration.Verify(value => value.UnRegister(), Times.Once);
+        bus.Verify(value => value.Subscribe<int>(It.IsAny<Action<int>>(), 0), Times.Once);
+        registration.Verify(value => value.Dispose(), Times.Once);
         Assert.That(scheduler.ActiveCoroutineCount, Is.Zero);
     }
 

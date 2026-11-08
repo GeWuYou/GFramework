@@ -2,59 +2,33 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Events;
-using GFramework.Core.Extensions;
 
 namespace GFramework.Core.Events;
 
-/// <summary>
-///     OrEvent类用于实现事件的或逻辑组合，当任意一个注册的事件触发时，都会触发OrEvent本身
-/// </summary>
-public class OrEvent : IUnRegisterList
+/// <summary>Forwards several source events into a locally owned notification.</summary>
+/// <remarks>Dispose the composition to detach its sources; disposing one listener does not detach other listeners.</remarks>
+public sealed class OrEvent : IEvent, IDisposable
 {
-    private Action? _mOnEvent = () => { };
+    private readonly SubscriptionScope _sources = new();
+    private readonly EasyEvent _event = new();
 
-    /// <summary>
-    ///     获取取消注册列表
-    /// </summary>
-    public IList<IUnRegister> UnregisterList { get; } = [];
-
-    /// <summary>
-    ///     将指定的事件与当前OrEvent进行或逻辑组合
-    /// </summary>
-    /// <param name="event">要组合的事件对象</param>
-    /// <returns>返回当前OrEvent实例，支持链式调用</returns>
-    public OrEvent Or(IEvent @event)
+    /// <summary>Attach another source, whose subscription is owned by this composition.</summary>
+    /// <param name="source">Source event.</param>
+    /// <returns>This composition.</returns>
+    public OrEvent Or(IEvent source)
     {
-        @event.Register(Trigger).AddToUnregisterList(this);
+        ArgumentNullException.ThrowIfNull(source);
+        _sources.Add(source.Register(_event.Trigger));
         return this;
     }
 
-    /// <summary>
-    ///     注册事件处理函数
-    /// </summary>
-    /// <param name="onEvent">要注册的事件处理函数</param>
-    /// <returns>返回一个可取消注册的对象</returns>
-    public IUnRegister Register(Action onEvent)
-    {
-        _mOnEvent += onEvent;
-        return new DefaultUnRegister(() => UnRegister(onEvent));
-    }
+    /// <inheritdoc />
+    public IDisposable Register(Action onEvent) => _event.Register(onEvent);
 
-    /// <summary>
-    ///     取消注册指定的事件处理函数
-    /// </summary>
-    /// <param name="onEvent">要取消注册的事件处理函数</param>
-    public void UnRegister(Action onEvent)
-    {
-        _mOnEvent -= onEvent;
-        this.UnRegisterAll();
-    }
+    /// <summary>Detach a local listener without changing upstream ownership.</summary>
+    /// <param name="onEvent">Registered callback.</param>
+    public void UnRegister(Action onEvent) => _event.UnRegister(onEvent);
 
-    /// <summary>
-    ///     触发所有已注册的事件处理函数
-    /// </summary>
-    private void Trigger()
-    {
-        _mOnEvent?.Invoke();
-    }
+    /// <summary>Detach source subscriptions once.</summary>
+    public void Dispose() => _sources.Dispose();
 }

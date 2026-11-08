@@ -17,12 +17,12 @@ namespace GFramework.Cqrs.Cqrs.Request;
 
 /// <summary>
 /// 抽象流式请求处理器基类
-/// 继承自轻量 CQRS 上下文基类并实现IStreamRequestHandler接口，为具体的流式请求处理器提供基础功能
+/// 通过显式构造依赖并实现IStreamRequestHandler接口，为具体的流式请求处理器提供基础功能
 /// 支持流式处理请求并产生异步可枚举的响应序列，适用于需要逐步返回结果的请求处理场景
 /// </summary>
 /// <typeparam name="TRequest">流式请求类型，必须实现IStreamRequest接口</typeparam>
 /// <typeparam name="TResponse">流式请求响应元素类型</typeparam>
-public abstract class AbstractStreamRequestHandler<TRequest, TResponse> : CqrsContextAwareHandlerBase,
+public abstract class AbstractStreamRequestHandler<TRequest, TResponse> :
     IStreamRequestHandler<TRequest, TResponse>
     where TRequest : IStreamRequest<TResponse>
 {

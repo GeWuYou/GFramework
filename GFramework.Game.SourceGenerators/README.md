@@ -23,8 +23,7 @@ Runtime 对齐的共享 schema 子集，而不是任意 `JSON Schema` 的全量�
 - 生成器：`GFramework.Game.SourceGenerators`
 - 公共生成器支撑：`GFramework.SourceGenerators.Common`
 
-如果你的项目还会使用 `[Log]`、`[ContextAware]` 或 Core 侧上下文注入特性，还需要同时安装
-`GFramework.Core.SourceGenerators`。
+需要枚举或 Priority 编译期辅助时，另行安装 Core.SourceGenerators；普通服务与日志采用显式构造注入。
 
 ## 目录与输入约定
 

@@ -1,99 +1,22 @@
 # GFramework.Core.SourceGenerators
 
-`GFramework.Core.SourceGenerators` 承载 Core 侧的通用源码生成器与分析器，用来减少样板代码并把部分约束前移到编译期。
+此包为编译期工具，提供枚举扩展、Priority 实现及相关分析器。它不参与运行期依赖解析。最低编译器版本以项目 Roslyn 依赖和打包配置为准。
 
-## 模块定位
+## 包与目录
 
-这个包属于编译期工具链，不是运行时库。
+- Core.SourceGenerators.Abstractions：消费端使用的特性契约。
+- SourceGenerators.Common：公共生成器支撑。
+- Enums：枚举扩展生成。
+- Bases / Analyzers / Diagnostics：优先级生成及编译诊断。
 
-生成器在消费项目的编译器进程中运行，最低支持 Roslyn 4.14。`netstandard2.0` 是生成器程序集的目标，并不降低编译器版本要求；运行时项目的目标框架与编译器要求分别选择。
+## 采用
 
-当前仓库中的主要目录：
+消费项目显式安装生成器包并使用其随附的特性源码，无需单独安装内部的 Abstractions 项目。普通业务依赖通过构造函数声明，日志显式注入 ILogger&lt;T&gt;，模块在组合根调用 AddModule。
 
-- `Architectures/`
-- `Analyzers/`
-- `Bases/`
-- `Enums/`
-- `Logging/`
-- `Rule/`
-- `Diagnostics/`
+运行时和契约项目不引用生成器，也不使用生成器特性。Game schema、CQRS handler registry 和 Godot 节点接线属于各自包。
 
-对应的生成器家族主要包括：
+## 文档
 
-- 日志相关生成器
-- `ContextAware` 及上下文注入辅助
-- 枚举扩展生成器
-- 优先级相关生成器
-- 模块自动注册
-- 注册可见性分析器
-
-## 包关系
-
-- 运行时：`GFramework.Core`
-- 契约与特性：`GFramework.Core.SourceGenerators.Abstractions`
-- 公共生成器支撑：`GFramework.SourceGenerators.Common`
-
-如果你还需要游戏配置 schema 生成或 Godot 专用生成器，应分别安装：
-
-- `GFramework.Game.SourceGenerators`
-- `GFramework.Godot.SourceGenerators`
-
-## 主要能力
-
-### 上下文注入与 `ContextAware`
-
-该包支持围绕上下文感知类型生成辅助代码，例如：
-
-- `[ContextAware]`
-- `[GetModel]`
-- `[GetModels]`
-- `[GetSystem]`
-- `[GetSystems]`
-- `[GetUtility]`
-- `[GetUtilities]`
-- `[GetService]`
-- `[GetServices]`
-- `[GetAll]`
-
-这类生成器适合用于 View、Controller、Godot 节点包装或其他需要频繁访问架构上下文的类型。
-
-### 日志辅助
-
-支持通过生成器减少 `ILogger` 相关样板代码。
-
-标注类型只需满足 `IContextAware` 契约，也可显式实现 `SetContext` 和 `GetContext()`；无需额外提供 `Context` 属性。生成日志器通过接口读取已绑定的上下文。
-
-### 注册分析器
-
-包内还包含分析器，用来检查 `Model`、`System`、`Utility` 的使用点是否能在所属架构中找到静态可见注册，帮助尽早发现“代码可以编译、运行时却缺注册”的问题。
-
-## 最小接入路径
-
-```xml
-<ItemGroup>
-  <PackageReference Include="GeWuYou.GFramework.Core.SourceGenerators"
-                    Version="x.y.z"
-                    PrivateAssets="all"
-                    ExcludeAssets="runtime" />
-</ItemGroup>
-```
-
-如果你想查看生成代码，可在消费者项目里启用：
-
-```xml
-<PropertyGroup>
-  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-  <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
-</PropertyGroup>
-```
-
-## 适用场景
-
-- 你希望减少上下文绑定与日志相关样板代码
-- 你需要在编译期发现部分注册可见性问题
-- 你在做模块化架构，希望固定某些重复注册模式
-
-## 对应文档
-
-- 源码生成器总览：[源码生成器文档首页](../docs/zh-CN/source-generators/index.md)
-- Core 栏目：[Core 文档首页](../docs/zh-CN/core/index.md)
+- [生成器指南](../docs/zh-CN/source-generators/index.md)
+- [枚举扩展](../docs/zh-CN/source-generators/enum-generator.md)
+- [优先级](../docs/zh-CN/source-generators/priority-generator.md)

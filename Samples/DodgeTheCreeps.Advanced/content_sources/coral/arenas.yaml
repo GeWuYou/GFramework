@@ -1,0 +1,14 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
+- op: add
+  table: arenas
+  id: coral:reef
+  value:
+    id: coral:reef
+    name: Coral Garden
+    enemies: [coral:drifter, base:swimmer]
+    spawnInterval: 0.9
+    background: "123838"
+    officialScene: ""
+    music: coral:audio/reef.ogg

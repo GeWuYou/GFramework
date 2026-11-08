@@ -1,107 +1,122 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Collections.Concurrent;
 using GFramework.Core.Abstractions.Events;
 
 namespace GFramework.Core.Events;
 
-/// <summary>
-///     类型事件系统，提供基于类型的事件发送、注册和注销功能
-/// </summary>
-public class EventBus : IEventBus
+/// <summary>An instance-local bus with one priority-ordered channel per notification type.</summary>
+/// <remarks>Registry locking does not serialize callbacks or marshal them to a host thread.
+/// Each publication owns its snapshot and handled flag, including nested publications.</remarks>
+/// <param name="enableStatistics">Whether to collect per-instance delivery statistics.</param>
+public sealed class EventBus(bool enableStatistics = false) : IEventBus
 {
-    private readonly EasyEvents _mEvents = new();
-    private readonly EasyEvents _mPriorityEvents = new();
+    private readonly ConcurrentDictionary<Type, object> _channels = new();
+    private readonly EventStatistics? _statistics = enableStatistics ? new EventStatistics() : null;
 
-    /// <summary>
-    ///     发送事件，自动创建事件实例
-    /// </summary>
-    /// <typeparam name="T">事件类型，必须具有无参构造函数</typeparam>
-    public void Send<T>() where T : new()
+    /// <summary>Optional per-instance notification statistics.</summary>
+    public IEventStatistics? Statistics => _statistics;
+
+    /// <inheritdoc />
+    public void Publish<T>(T value, EventPropagation propagation = EventPropagation.All)
     {
-        _mEvents
-            .GetOrAddEvent<Event<T>>()
-            .Trigger(new T());
+        if (!Enum.IsDefined(propagation))
+            throw new ArgumentOutOfRangeException(nameof(propagation));
+        _statistics?.RecordPublish(typeof(T).FullName ?? typeof(T).Name);
+        if (!_channels.TryGetValue(typeof(T), out var channel))
+            return;
+        var snapshot = ((Channel<T>)channel).Snapshot();
+        var context = new EventContext<T>(value);
+        foreach (var registration in snapshot)
+        {
+            if (propagation == EventPropagation.Highest && registration.Priority != snapshot[0].Priority)
+                break;
+            try
+            {
+                registration.Handler(context);
+                _statistics?.RecordHandle();
+            }
+            catch
+            {
+                _statistics?.RecordFailure();
+                throw;
+            }
+            if (propagation == EventPropagation.UntilHandled && context.IsHandled)
+                break;
+        }
     }
 
-    /// <summary>
-    ///     发送指定的事件实例
-    /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
-    /// <param name="e">事件实例</param>
-    public void Send<T>(T e)
+    /// <inheritdoc />
+    public IDisposable Subscribe<T>(Action<T> handler, int priority = 0)
     {
-        _mEvents
-            .GetOrAddEvent<Event<T>>()
-            .Trigger(e);
+        ArgumentNullException.ThrowIfNull(handler);
+        return SubscribeWithContext<T>(context => handler(context.Data), priority);
     }
 
-    /// <summary>
-    ///     发送指定的事件实例，并指定传播模式
-    /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
-    /// <param name="e">事件实例</param>
-    /// <param name="propagation">事件传播模式</param>
-    public void Send<T>(T e, EventPropagation propagation)
+    /// <inheritdoc />
+    public IDisposable SubscribeWithContext<T>(Action<EventContext<T>> handler, int priority = 0)
     {
-        _mPriorityEvents
-            .GetOrAddEvent<PriorityEvent<T>>()
-            .Trigger(e, propagation);
+        ArgumentNullException.ThrowIfNull(handler);
+        var channel = (Channel<T>)_channels.GetOrAdd(typeof(T), _ => new Channel<T>(count => _statistics?.UpdateListenerCount(typeof(T).FullName ?? typeof(T).Name, count)));
+        var registration = new Registration<T>(handler, priority);
+        channel.Add(registration);
+        return new Subscription(() =>
+        {
+            channel.Remove(registration);
+        });
     }
 
-    /// <summary>
-    ///     注册事件监听器
-    /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
-    /// <param name="onEvent">事件处理回调函数</param>
-    /// <returns>反注册接口，用于注销事件监听</returns>
-    public IUnRegister Register<T>(Action<T> onEvent)
-    {
-        return _mEvents.GetOrAddEvent<Event<T>>().Register(onEvent);
-    }
+    /// <summary>Identity allows independently detaching duplicate delegates.</summary>
+    private sealed record Registration<T>(Action<EventContext<T>> Handler, int Priority);
 
-    /// <summary>
-    ///     注册事件监听器，并指定优先级
-    /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
-    /// <param name="onEvent">事件处理回调函数</param>
-    /// <param name="priority">优先级，数值越大优先级越高</param>
-    /// <returns>反注册接口，用于注销事件监听</returns>
-    public IUnRegister Register<T>(Action<T> onEvent, int priority)
+    /// <summary>Locks protect snapshots only; callbacks execute outside the lock.</summary>
+    private sealed class Channel<T>(Action<int> countChanged)
     {
-        return _mPriorityEvents.GetOrAddEvent<PriorityEvent<T>>().Register(onEvent, priority);
-    }
+#if NET9_0_OR_GREATER
+        private readonly System.Threading.Lock _gate = new();
+#else
+        private readonly object _gate = new();
+#endif
+        private readonly List<Registration<T>> _registrations = [];
 
-    /// <summary>
-    ///     注销事件监听器
-    /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
-    /// <param name="onEvent">要注销的事件处理回调函数</param>
-    public void UnRegister<T>(Action<T> onEvent)
-    {
-        _mEvents.GetEvent<Event<T>>().UnRegister(onEvent);
-    }
+        /// <summary>Number of active registrations.</summary>
+        public int Count
+        {
+            get
+            {
+                lock (_gate)
+                    return _registrations.Count;
+            }
+        }
 
-    /// <summary>
-    ///     注册上下文事件监听器，默认优先级为 0
-    /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
-    /// <param name="onEvent">事件处理回调函数，接收 EventContext 参数</param>
-    /// <returns>反注册接口，用于注销事件监听</returns>
-    public IUnRegister RegisterWithContext<T>(Action<EventContext<T>> onEvent)
-    {
-        return _mPriorityEvents.GetOrAddEvent<PriorityEvent<T>>().RegisterWithContext(onEvent);
-    }
+        /// <summary>Append a registration.</summary>
+        public void Add(Registration<T> registration)
+        {
+            lock (_gate)
+            {
+                _registrations.Add(registration);
+                countChanged(_registrations.Count);
+            }
+        }
 
-    /// <summary>
-    ///     注册上下文事件监听器，并指定优先级
-    /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
-    /// <param name="onEvent">事件处理回调函数，接收 EventContext 参数</param>
-    /// <param name="priority">优先级，数值越大优先级越高</param>
-    /// <returns>反注册接口，用于注销事件监听</returns>
-    public IUnRegister RegisterWithContext<T>(Action<EventContext<T>> onEvent, int priority)
-    {
-        return _mPriorityEvents.GetOrAddEvent<PriorityEvent<T>>().RegisterWithContext(onEvent, priority);
+        /// <summary>Detach this exact registration.</summary>
+        public void Remove(Registration<T> registration)
+        {
+            lock (_gate)
+            {
+                var index = _registrations.FindIndex(item => ReferenceEquals(item, registration));
+                if (index >= 0)
+                    _registrations.RemoveAt(index);
+                countChanged(_registrations.Count);
+            }
+        }
+
+        /// <summary>Capture immutable membership in stable priority order.</summary>
+        public Registration<T>[] Snapshot()
+        {
+            lock (_gate)
+                return _registrations.OrderByDescending(item => item.Priority).ToArray();
+        }
     }
 }

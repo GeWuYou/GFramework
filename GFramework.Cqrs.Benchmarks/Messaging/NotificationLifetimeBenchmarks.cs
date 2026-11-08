@@ -10,7 +10,6 @@ using BenchmarkDotNet.Order;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,7 +28,7 @@ namespace GFramework.Cqrs.Benchmarks.Messaging;
 [Config(typeof(Config))]
 public class NotificationLifetimeBenchmarks
 {
-    private MicrosoftDiContainer _container = null!;
+    private BenchmarkServiceHost _container = null!;
     private ICqrsRuntime? _runtime;
     private ScopedBenchmarkContainer? _scopedContainer;
     private ICqrsRuntime? _scopedRuntime;
@@ -188,7 +187,7 @@ public class NotificationLifetimeBenchmarks
     /// </summary>
     /// <param name="container">当前 benchmark 拥有并负责释放的容器。</param>
     /// <param name="lifetime">待比较的 handler 生命周期。</param>
-    private static void RegisterGFrameworkHandler(MicrosoftDiContainer container, HandlerLifetime lifetime)
+    private static void RegisterGFrameworkHandler(BenchmarkServiceHost container, HandlerLifetime lifetime)
     {
         ArgumentNullException.ThrowIfNull(container);
 

@@ -5,7 +5,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using GFramework.Core.Configuration;
 using GFramework.Core.Abstractions.Resource;
 using GFramework.Core.Logging;
 using GFramework.Core.Pause;
@@ -46,39 +45,16 @@ public sealed class LoggingDefaultsAndDiTests
 
     /// <summary>Explicit DI factories select manager categories while preserving their published untyped logger constructors.</summary>
     [Test]
-    public async Task DiActivatedManagers_UseHostLoggingProvider()
+    public async Task DiActivatedPauseManager_UsesHostLoggingProvider()
     {
         var capture = new TestLoggerProvider();
         var services = new ServiceCollection();
         services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(capture));
-        services.AddSingleton(provider => new ResourceManager(provider.GetService<ILogger<ResourceManager>>()));
-        services.AddSingleton(provider => new ConfigurationManager(provider.GetService<ILogger<ConfigurationManager>>()));
         services.AddSingleton(provider => new PauseStackManager(provider.GetService<ILogger<PauseStackManager>>()));
         await using var provider = services.BuildServiceProvider();
-        var resources = provider.GetRequiredService<ResourceManager>();
-        var loader = new Mock<IResourceLoader<object>>();
-        loader.Setup(value => value.Load(It.IsAny<string>())).Throws(new InvalidOperationException("loader failure"));
-        resources.RegisterLoader(loader.Object);
-        ExerciseSynchronousLoaderFailure(resources);
-        var configuration = provider.GetRequiredService<ConfigurationManager>();
-        using var watcher = new WatcherLease(configuration.WatchConfig<int>("observed", _ => throw new InvalidOperationException("watcher")));
-        configuration.SetConfig("observed", 1);
         provider.GetRequiredService<PauseStackManager>().Push("test logging");
         var categories = capture.Logs.Select(entry => entry.LoggerName).ToArray();
-        Assert.That(categories, Does.Contain(typeof(ResourceManager).FullName));
-        Assert.That(categories, Does.Contain(typeof(ConfigurationManager).FullName));
         Assert.That(categories, Does.Contain(typeof(PauseStackManager).FullName));
     }
 
-    /// <summary>Exercises the configured synchronous loader failure; LoadAsync has a separate mock contract.</summary>
-    private static void ExerciseSynchronousLoaderFailure(ResourceManager resources)
-    {
-        resources.Load<object>("failed-resource");
-    }
-
-    private sealed class WatcherLease(GFramework.Core.Abstractions.Events.IUnRegister registration) : IDisposable
-    {
-        /// <inheritdoc />
-        public void Dispose() => registration.UnRegister();
-    }
 }

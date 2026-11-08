@@ -24,6 +24,8 @@ using GFramework.Godot.UI;
 using Godot;
 using JsonSerializer = GFramework.Game.Serializer.JsonSerializer;
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace GodotIntegration;
 
 /// <summary>
@@ -66,10 +68,10 @@ public partial class DemoRoot : Node, ISceneRoot
     internal GameplayConfig Gameplay { get; private set; } = null!;
 
     /// <summary>Gets the initialized scene router belonging to this host.</summary>
-    private ISceneRouter Scenes => _architecture!.Context.GetService<ISceneRouter>();
+    private ISceneRouter Scenes => _architecture!.Services.GetRequiredService<ISceneRouter>();
 
     /// <summary>Gets the ordinary UI service belonging to this host.</summary>
-    private IUiService Ui => _architecture!.Context.GetService<IUiService>();
+    private IUiService Ui => _architecture!.Services.GetRequiredService<IUiService>();
 
     /// <summary>Builds native roots, loads data, then makes the menu available after Architecture is ready.</summary>
     public override void _Ready()
@@ -130,7 +132,7 @@ public partial class DemoRoot : Node, ISceneRoot
             _architecture = new DemoArchitecture(this, CreateUiRegistry(), _uiRoot,
                 new SynchronizationContextGameDispatcher(context));
             await _architecture.InitializeAsync(_startupCancellation.Token).ConfigureAwait(true);
-            _architecture.Context.GetService<IPauseStackManager>().RegisterHandler(new GodotPauseHandler(GetTree()));
+            _architecture.Services.GetRequiredService<IPauseStackManager>().RegisterHandler(new GodotPauseHandler(GetTree()));
             await Ui.ReplaceAsync(DemoUiRoutes.Menu, "GFramework runtime sample", _startupCancellation.Token)
                 .ConfigureAwait(true);
             InstallUiInputBridge();

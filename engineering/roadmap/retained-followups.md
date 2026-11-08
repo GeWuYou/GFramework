@@ -45,7 +45,7 @@
 
 生成器隔离、可卸载程序集的弱缓存、Godot appender 复用、Conventional Commits 版本语义与安全示例仍按现有实现/规则维护。依据：[弱缓存](../../GFramework.Cqrs/Internal/WeakKeyCache.cs)、[Godot appender](../../GFramework.Godot/Logging/GodotLogAppender.cs)、[版本规则](../../.releaserc.json)、[贡献规则](../../AGENTS.md)。
 
-旧文档覆盖、技能治理、PR review 和版本发布修复不再作为默认活跃任务。相关代码或说明已在当前基线，旧 PR 编号和 pending review 不能自动转成新待办；未来出现具体缺陷再按当前证据处理。历史默认单全局上下文与独占自有日志的决定由[新 ADR](../architecture/adr-001-standard-dotnet-foundation.md)替代。
+旧文档覆盖、技能治理、PR review 和版本发布修复不再作为默认活跃任务。相关代码或说明已在当前基线，旧 PR 编号和 pending review 不能自动转成新待办；未来出现具体缺陷再按当前证据处理。当前组合根、生命周期和日志边界见[当前架构](../architecture/current-architecture.md)。
 
 
 ## 游戏运行可靠性与采用闭环

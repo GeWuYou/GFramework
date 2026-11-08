@@ -89,7 +89,7 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
     /// </summary>
     /// <param name="onEvent">无参事件回调</param>
     /// <returns>可用于取消注册的接口</returns>
-    IUnRegister IEvent.Register(Action onEvent)
+    IDisposable IEvent.Register(Action onEvent)
     {
         return Register(Action);
 
@@ -104,7 +104,7 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
     /// </summary>
     /// <param name="onValueChanged">属性值变化时的回调函数</param>
     /// <returns>可用于取消注册的接口</returns>
-    public IUnRegister Register(Action<T> onValueChanged)
+    public IDisposable Register(Action<T> onValueChanged)
     {
         lock (_lock)
         {
@@ -119,7 +119,7 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
     /// </summary>
     /// <param name="action">属性值变化时的回调函数</param>
     /// <returns>可用于取消注册的接口</returns>
-    public IUnRegister RegisterWithInitValue(Action<T> action)
+    public IDisposable RegisterWithInitValue(Action<T> action)
     {
         T currentValue;
         lock (_lock)

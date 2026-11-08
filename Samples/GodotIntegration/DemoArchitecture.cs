@@ -7,6 +7,10 @@ using GFramework.Game.UI;
 using GFramework.Godot.Architectures;
 using GFramework.Godot.UI;
 
+using Microsoft.Extensions.DependencyInjection;
+
+using GFramework.Core.Architectures;
+
 namespace GodotIntegration;
 
 /// <summary>
@@ -17,9 +21,9 @@ internal sealed class DemoArchitecture(
     DemoRoot root, UiRegistry routes, GodotUiRoot uiRoot, IGameDispatcher dispatcher) : AbstractArchitecture
 {
     /// <summary>Describes registrations without creating or attaching native nodes.</summary>
-    protected override void InstallModules()
+    protected override void InstallModules(IServiceCollection services)
     {
-        RegisterServiceModule(new GameRuntimeModule(dispatcher, services =>
+        services.AddModule(new GameRuntimeModule(dispatcher, services =>
         {
             services.AddGamePause();
             services.AddGameUi(routes, uiRoot, dispatcher);

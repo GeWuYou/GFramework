@@ -24,7 +24,7 @@ public interface IReadonlyBindableProperty<out T> : IEvent
     /// </summary>
     /// <param name="action">属性值变更时执行的回调函数，参数为新的属性值</param>
     /// <returns>用于取消注册的句柄对象</returns>
-    IUnRegister RegisterWithInitValue(Action<T> action);
+    IDisposable RegisterWithInitValue(Action<T> action);
 
     /// <summary>
     ///     取消注册属性值变更回调
@@ -37,5 +37,5 @@ public interface IReadonlyBindableProperty<out T> : IEvent
     /// </summary>
     /// <param name="onValueChanged">属性值变更时执行的回调函数，参数为新的属性值</param>
     /// <returns>用于取消注册的句柄对象</returns>
-    IUnRegister Register(Action<T> onValueChanged);
+    IDisposable Register(Action<T> onValueChanged);
 }

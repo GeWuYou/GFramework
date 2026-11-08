@@ -1,108 +1,21 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Reflection;
 using GFramework.Core.Abstractions.Lifecycle;
-using GFramework.Core.Abstractions.Model;
-using GFramework.Core.Abstractions.Systems;
-using GFramework.Core.Abstractions.Utility;
 
 namespace GFramework.Core.Abstractions.Architectures;
 
-/// <summary>
-///     架构接口，专注于生命周期管理，包括系统、模型、工具的注册和获取
-///     业务操作通过 ArchitectureRuntime 提供
-/// </summary>
-public interface IArchitecture : IAsyncInitializable, IAsyncDestroyable, IInitializable, IDestroyable, IAsyncDisposable
+/// <summary>Optional owner of one service provider and an explicitly ordered startup/stop operation.</summary>
+/// <remarks>Business objects receive their dependencies directly; only composition roots should resolve through Services.</remarks>
+public interface IArchitecture : IInitializable, IAsyncInitializable, IAsyncDestroyable, IAsyncDisposable
 {
-    /// <summary>
-    ///     获取架构上下文
-    /// </summary>
-    IArchitectureContext Context
+    /// <summary>Standard service access, available during initialization and Ready; rejected before build and during stop.</summary>
+    IServiceProvider Services
     {
         get;
     }
 
-    /// <summary>
-    ///     获取或设置用于配置服务集合的委托
-    /// </summary>
-    /// <value>
-    ///     一个可为空的委托，用于配置IServiceCollection实例
-    /// </value>
-    Action<IServiceCollection>? Configurator
-    {
-        get;
-    }
-
-    /// <summary>
-    ///     注册系统实例到架构中
-    /// </summary>
-    /// <typeparam name="T">系统类型，必须实现ISystem接口</typeparam>
-    /// <param name="system">要注册的系统实例</param>
-    /// <returns>注册的系统实例</returns>
-    T RegisterSystem<T>(T system) where T : ISystem;
-
-    /// <summary>
-    ///     注册系统实例到架构中
-    /// </summary>
-    /// <typeparam name="T">系统类型，必须实现ISystem接口</typeparam>
-    /// <param name="onCreated">系统实例创建后的回调函数，可为null</param>
-    void RegisterSystem<T>(Action<T>? onCreated = null) where T : class, ISystem;
-
-    /// <summary>
-    ///     注册模型实例到架构中
-    /// </summary>
-    /// <typeparam name="T">模型类型，必须实现IModel接口</typeparam>
-    /// <param name="model">要注册的模型实例</param>
-    /// <returns>注册的模型实例</returns>
-    T RegisterModel<T>(T model) where T : IModel;
-
-    /// <summary>
-    ///     注册模型实例到架构中
-    /// </summary>
-    /// <typeparam name="T">模型类型，必须实现IModel接口</typeparam>
-    /// <param name="onCreated">模型实例创建后的回调函数，可为null</param>
-    void RegisterModel<T>(Action<T>? onCreated = null) where T : class, IModel;
-
-    /// <summary>
-    ///     注册工具实例到架构中
-    /// </summary>
-    /// <typeparam name="T">工具类型，必须实现IUtility接口</typeparam>
-    /// <param name="utility">要注册的工具实例</param>
-    /// <returns>注册的工具实例</returns>
-    T RegisterUtility<T>(T utility) where T : IUtility;
-
-
-    /// <summary>
-    ///     注册工具类型并可选地指定创建回调
-    ///     当工具实例被创建时会调用指定的回调函数
-    /// </summary>
-    /// <typeparam name="T">工具类型，必须是引用类型且实现IUtility接口</typeparam>
-    /// <param name="onCreated">工具实例创建后的回调函数，可为null</param>
-    void RegisterUtility<T>(Action<T>? onCreated = null) where T : class, IUtility;
-
-    /// <summary>
-    ///     安装架构模块
-    /// </summary>
-    /// <param name="module">要安装的模块</param>
-    /// <returns>安装的模块实例</returns>
-    IArchitectureModule InstallModule(IArchitectureModule module);
-
-    /// <summary>
-    ///     注册生命周期钩子
-    /// </summary>
-    /// <param name="hook">生命周期钩子实例</param>
-    /// <returns>注册的钩子实例</returns>
-    IArchitectureLifecycleHook RegisterLifecycleHook(IArchitectureLifecycleHook hook);
-
-    /// <summary>在配置阶段注册仅属于当前架构的服务模块。</summary>
-    /// <param name="module">配置时声明服务、构建后初始化的模块。</param>
-    /// <returns>传入模块。</returns>
-    IServiceModule RegisterServiceModule(IServiceModule module);
-
-    /// <summary>
-    ///     等待直到架构准备就绪的异步操作
-    /// </summary>
-    /// <returns>表示异步等待操作的任务</returns>
+    /// <summary>Waits for startup, including failure cleanup; cancellation and failure remain observable.</summary>
+    /// <returns>The unique readiness result.</returns>
     Task WaitUntilReadyAsync();
 }

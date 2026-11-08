@@ -1,249 +1,122 @@
 # GFramework.Cqrs
 
-`GFramework.Cqrs` 是 GFramework 的默认 CQRS runtime 包。它在 `GFramework.Cqrs.Abstractions` 之上提供请求分发、通知发布、流式请求处理、处理器注册、上下文扩展方法，以及请求/通知基类，面向直接使用 GFramework CQRS 的业务模块。
+`GFramework.Cqrs` 提供基于标准 Microsoft DI 的请求、通知和异步流分发。处理器与管道行为通过构造函数声明依赖，可脱离 Architecture 独立运行。
 
-runtime 运行在标准 `Microsoft.Extensions.DependencyInjection` 容器上，不要求使用 `GFramework.Core` 的 Architecture。
+## 包关系与能力
 
-## 模块定位
+- `GeWuYou.GFramework.Cqrs.Abstractions`：消息、处理器、runtime 和管道契约。
+- `GeWuYou.GFramework.Cqrs`：dispatcher、注册扩展、通知发布策略及可选消息/处理器基类。
+- `GeWuYou.GFramework.Cqrs.SourceGenerators`：可选的消费端注册表及 request/stream 调用元数据生成。
+- Core 不传递引用 CQRS；需要消息分发时显式安装本包。
 
-- 这是 CQRS 的“默认实现层”。
-- 包内同时承载运行时基础设施和面向业务代码的便捷基类。
-- 它依赖 `GFramework.Cqrs.Abstractions` 与 `GFramework.Core.Abstractions`。
-- `GFramework.Core` 不再传递依赖本包；需要消息模型的项目显式安装，并通过 `CqrsRuntimeModule` 或组合根扩展安装 runtime。
+主要目录包括 `Cqrs/Request` 与 `Cqrs/Notification` 的处理器基类、`Cqrs/Behaviors` 的日志和耗时行为、`Notification` 的发布策略，以及 `Internal` 的注册与分发实现。处理器可直接实现接口，基类不提供容器访问或可变的分发上下文。
 
-如果你只需要声明跨模块共享的消息契约，而不想依赖默认 runtime，请改为引用 `GeWuYou.GFramework.Cqrs.Abstractions`。
-
-## 包关系
-
-推荐的依赖关系如下：
-
-- `GeWuYou.GFramework.Cqrs.Abstractions`
-  - 最小 CQRS 契约层。
-- `GeWuYou.GFramework.Cqrs`
-  - 默认 runtime 与业务侧常用基类。
-- `GeWuYou.GFramework.Cqrs.SourceGenerators`
-  - 可选。为消费端程序集生成 `ICqrsHandlerRegistry`，并在可用时补充 generated request / stream invoker provider 元数据；运行时会优先消费这些编译期元数据，只有缺失、不适用，或 fallback 仍需补齐剩余 handler 时，才继续进入反射路径。
-
-## 子系统地图
-
-本包当前主要由以下子系统组成：
-
-- 消息基类
-  - `Request/RequestBase.cs`
-  - `Notification/NotificationBase.cs`
-- 处理器基类
-  - `Cqrs/CqrsContextAwareHandlerBase.cs`
-  - `Cqrs/Request/AbstractRequestHandler.cs`
-  - `Cqrs/Request/AbstractStreamRequestHandler.cs`
-  - `Cqrs/Notification/AbstractNotificationHandler.cs`
-- 请求管道
-  - `Cqrs/Behaviors/LoggingBehavior.cs`
-  - `Cqrs/Behaviors/PerformanceBehavior.cs`
-  - 管道契约定义在 `GFramework.Cqrs.Abstractions` 的 `IPipelineBehavior<,>`
-- 默认 runtime 与注册入口
-  - `CqrsRuntimeModule.cs`
-  - `CqrsServiceCollectionExtensions.cs`
-  - `CqrsRuntimeFactory.cs`
-  - `Internal/CqrsDispatcher.cs`
-  - `Notification/INotificationPublisher.cs`
-  - `Notification/SequentialNotificationPublisher.cs`
-  - `Notification/TaskWhenAllNotificationPublisher.cs`
-  - `Internal/CqrsHandlerRegistrar.cs`
-  - `Internal/DefaultCqrsHandlerRegistrar.cs`
-  - `Internal/DefaultCqrsRegistrationService.cs`
-- 生成注册表协作接口
-  - `ICqrsHandlerRegistry.cs`
-  - `CqrsHandlerRegistryAttribute.cs`
-  - `CqrsReflectionFallbackAttribute.cs`
-- 架构集成与业务侧扩展入口
-  - `Extensions/ArchitectureCqrsExtensions.cs`
-  - `Extensions/ArchitectureContextCqrsExtensions.cs`
-  - `Extensions/ContextAwareCqrsExtensions.cs`
-  - `Extensions/NotificationPublisherRegistrationExtensions.cs`
-  - `ArchitectureCqrsDispatchContext.cs`
-
-## 最小接入路径
-
-标准 DI 上的最小接入是“安装包 + 注册 runtime + 定义消息 + 定义处理器 + 分发”：
+## 最小接入
 
 ```bash
 dotnet add package GeWuYou.GFramework.Cqrs
-dotnet add package GeWuYou.GFramework.Cqrs.Abstractions
 ```
 
-如果你希望把可静态表达的 handler 注册与 request / stream invoker 元数据前移到编译期，再额外安装：
-
-```bash
-dotnet add package GeWuYou.GFramework.Cqrs.SourceGenerators
-```
-
-示例：
+下面的组合根使用标准注册并发送请求：
 
 ```csharp
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
-using GFramework.Cqrs.Cqrs.Request;
+using Microsoft.Extensions.DependencyInjection;
 
-public sealed record CreatePlayerRequest(string Name) : IRequest<int>;
+var services = new ServiceCollection();
+services.AddCqrsRuntime();
+services.AddCqrsHandlersFromAssembly(typeof(GetLengthHandler).Assembly);
 
-public sealed class CreatePlayerHandler(PlayerModel playerModel)
-    : IRequestHandler<CreatePlayerRequest, int>
+await using var provider = services.BuildServiceProvider(
+    new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+var runtime = provider.GetRequiredService<ICqrsRuntime>();
+Console.WriteLine(await runtime.SendAsync(new GetLength("Alice")));
+
+public sealed record GetLength(string Value) : IRequest<int>;
+
+public sealed class GetLengthHandler : IRequestHandler<GetLength, int>
 {
-    public ValueTask<int> Handle(
-        CreatePlayerRequest request,
-        CancellationToken cancellationToken)
+    public ValueTask<int> Handle(GetLength request, CancellationToken cancellationToken)
     {
-        var playerId = playerModel.Create(request.Name);
-        return ValueTask.FromResult(playerId);
+        cancellationToken.ThrowIfCancellationRequested();
+        return ValueTask.FromResult(request.Value.Length);
     }
 }
-
 ```
 
-然后在应用组合根登记业务模型与处理器，再分发请求：
+业务处理器需要仓库、规则服务或日志时，将对应类型加入构造函数并在组合根注册。手动调用处理器时遵守同一依赖和取消契约。
+
+## 可选 Architecture 模块
+
+配置型模块只组织同一份 `IServiceCollection`，不引入另一套生命周期：
 
 ```csharp
-var services = new ServiceCollection();
-services.AddSingleton<PlayerModel>();
-services.AddCqrsRuntime();
-services.AddCqrsHandlersFromAssembly(typeof(CreatePlayerHandler).Assembly);
+using GFramework.Core.Architectures;
+using GFramework.Cqrs;
+using Microsoft.Extensions.DependencyInjection;
 
-await using var provider = services.BuildServiceProvider();
-var runtime = provider.GetRequiredService<ICqrsRuntime>();
-var playerId = await runtime.SendAsync(new CreatePlayerRequest("Alice"));
-```
-
-## 在 Architecture 中集成
-
-示例中的 `PlayerModel` 是应用提供的业务模型，包含 `Create(string)` 操作；处理器通过构造注入取得它，不要求 Architecture 上下文。
-
-走标准 `GFramework.Core` 架构启动路径时，在 `ConfigureServices` 配置窗口中安装 runtime 模块：
-
-```csharp
-using GFramework.Cqrs.Extensions;
-
-public sealed class GameArchitecture : Architecture
+public sealed class ApplicationArchitecture : Architecture
 {
     protected override void ConfigureServices(IServiceCollection services)
     {
-        this.UseCqrsRuntime(); // 自动包含架构所在程序集的 handler
-        services.AddSingleton<PlayerModel>();
+        services.AddModule(new CqrsRuntimeModule(typeof(GetLengthHandler).Assembly));
     }
 }
 ```
 
-或在同一配置窗口中显式登记服务模块：
+宿主启动完成后可在组合根通过 `architecture.Services.GetRequiredService<ICqrsRuntime>()` 取得 runtime；业务对象直接注入 `ICqrsRuntime`。模块显式接收处理器程序集，不自动扫描架构所在程序集。
+
+## 管道与通知
+
+- `AddCqrsPipelineBehavior<TBehavior>()` 注册 request 管道；`AddCqrsStreamPipelineBehavior<TBehavior>()` 注册 stream 管道。
+- 注册的管道按登记顺序包裹处理器。内置 `LoggingBehavior`、`PerformanceBehavior` 服务 request；stream 行为由应用实现。
+- 通知分发解析全部 `INotificationHandler<T>`。没有处理器时成功完成。
+- 默认 `SequentialNotificationPublisher` 按解析顺序逐个调用，首个异常停止后续调用。
+- `TaskWhenAllNotificationPublisher` 启动全部处理器并等待完成，不保证完成顺序。失败和取消通过异步结果传播；它使用 `Task.WhenAll`，不能将一次 `await` 抛出的异常视为所有失败的完整清单。
+- 自定义策略实现 `INotificationPublisher`；处理器之间需要并发安全，容器线程安全不代表共享依赖可以并发修改。
+
+在构建 provider 前选择一个通知策略：
 
 ```csharp
-protected override void ConfigureServices(IServiceCollection services)
-{
-    RegisterServiceModule(new CqrsRuntimeModule(typeof(InventoryModule).Assembly));
-}
+using GFramework.Cqrs.Extensions;
+
+services.UseTaskWhenAllNotificationPublisher();
 ```
 
-pipeline 行为、通知发布策略与额外 handler 程序集通过 `ConfigureServices(...)` 里的 `IServiceCollection` 扩展登记（`AddCqrsPipelineBehavior`、`UseNotificationPublisher*`、`AddCqrsHandlersFromAssembly`）。`CqrsRuntimeModule` 不再内置到 Core 的默认模块列表，未安装它的架构没有 CQRS 分发能力。
+也可选择 `UseSequentialNotificationPublisher()`、`UseNotificationPublisher(instance)` 或 `UseNotificationPublisher<TPublisher>()`。这些入口互斥，重复策略注册明确失败。实例重载保留调用者的资源所有权。
 
-## 请求作用域
+## 请求作用域与流
 
-`AddCqrsRuntime` 保持根单例语义，只能使用可从根 provider 解析的依赖。需要 Scoped handler 或依赖时，显式选择 `AddScopedCqrsRuntime` 并从请求作用域解析 runtime；注册入口不会自动改变 handler 自身的生命周期：
+`AddCqrsRuntime()` 注册根单例 runtime。Scoped 处理器或依赖应使用 `AddScopedCqrsRuntime()`，并在业务操作作用域中解析 runtime：
 
 ```csharp
+var services = new ServiceCollection();
 services.AddScopedCqrsRuntime();
-services.AddScoped<PlayerModel>();
-services.AddScoped<IRequestHandler<CreatePlayerRequest, int>, CreatePlayerHandler>();
+services.AddScoped<IRequestHandler<GetLength, int>, GetLengthHandler>();
 
-await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+await using var provider = services.BuildServiceProvider(
+    new ServiceProviderOptions { ValidateScopes = true });
 await using var scope = provider.CreateAsyncScope();
 var runtime = scope.ServiceProvider.GetRequiredService<ICqrsRuntime>();
-var playerId = await runtime.SendAsync(new CreatePlayerRequest("Alice"));
+var length = await runtime.SendAsync(new GetLength("Alice"));
 ```
 
-同一作用域复用 runtime，不同作用域隔离依赖；request、notification 与 stream 都通过该作用域解析。枚举流结束后再释放作用域。单例与作用域 runtime 注册不能在同一容器混用。需要自行组合 provider 时，也可调用 `CqrsRuntimeFactory.CreateRuntime(scope.ServiceProvider)`。
+同一作用域复用 runtime，不同作用域隔离 scoped 依赖。两种 runtime 注册模式不能混用；注册 runtime 不会自动改变处理器生命周期。需要自行组合 provider 时可使用 `CqrsRuntimeFactory.CreateRuntime(provider)`。
 
-在 `IContextAware` 对象内发送请求：
+`CreateStream` 接收 `IStreamRequest<T>` 并返回 `IAsyncEnumerable<T>`，通过 `IStreamRequestHandler<,>` 处理。runtime 在建流时解析处理器，stream 管道包裹单次建流；调用方必须让作用域覆盖完整枚举和清理过程，并将取消令牌传入分发与枚举。
 
-```csharp
-using GFramework.Cqrs.Extensions;
+## 生成注册与反射回退
 
-var playerId = await this.SendAsync<int>(new CreatePlayerRequest("Alice"));
-```
+`AddCqrsHandlersFromAssembly` / `AddCqrsHandlersFromAssemblies` 优先使用消费程序集提供的 `ICqrsHandlerRegistry`，没有可用注册表时执行反射回退；处理器默认注册为 transient。同一程序集按稳定键去重。
 
-在 `ArchitectureContext` 上也可以直接使用统一 CQRS 入口，例如 `SendRequestAsync`、`SendAsync`、`PublishAsync` 和 `CreateStream`。
+request/stream 的生成调用元数据可用于缓存分发绑定；通知继续使用实际解析的处理器集合和通知发布策略。`CqrsReflectionFallbackAttribute` 的类型与名称清单用于补齐未覆盖处理器，不改变其依赖或生命周期。生成器只安装到消费项目。
 
-## 运行时行为
+## 相关文档
 
-- 请求分发
-  - `CqrsDispatcher` 按请求实际类型解析 `IRequestHandler<,>`，若当前程序集提供 generated request invoker provider，则会先复用对应 descriptor 中的处理器服务类型与 invoker 元数据；未命中时仍回退到既有反射 request binding 创建路径。
-  - 未找到处理器会抛出异常。
-  - 分发入口只有异步版本（`SendAsync` / `PublishAsync` / `CreateStream`）。
-- 通知分发
-  - 通知会分发给所有已注册 `INotificationHandler<>`；零处理器时默认静默完成。
-  - 若容器在 runtime 创建前已显式注册 `INotificationPublisher`，默认 runtime 会复用该策略；未注册时回退到内置 `SequentialNotificationPublisher`。
-  - notification publish 不存在 generated invoker 通道；它始终基于当前已注册的 `INotificationHandler<>` 集合和选定的 `INotificationPublisher` 策略执行。
-  - 默认 runtime 只消费一个 `INotificationPublisher`；如果容器里已经存在该注册，再调用 `UseNotificationPublisher(...)`、`UseNotificationPublisher<TPublisher>()`、`UseSequentialNotificationPublisher()` 或 `UseTaskWhenAllNotificationPublisher()` 会直接报错，而不是按“后注册覆盖前注册”处理。
-  - 内置 notification publisher 的推荐选择如下：
-
-  | 策略 | 推荐场景 | 执行顺序 | 失败语义 | 备注 |
-  | --- | --- | --- | --- | --- |
-  | `SequentialNotificationPublisher` | 需要保持容器顺序，且希望首个失败立即停止后续分发 | 保证按容器解析顺序逐个执行 | 首个处理器抛出异常时立即停止 | 也是默认回退策略 |
-  | `TaskWhenAllNotificationPublisher` | 需要让全部处理器并行完成，并在结束后统一观察失败或取消 | 不保证顺序 | 不会在首个失败时停止其余处理器；会聚合最终异常或取消结果 | 更适合语义补齐，不是性能开关 |
-  | `UseNotificationPublisher(...)` / `UseNotificationPublisher<TPublisher>()` | 需要接入仓库外的自定义策略或第三方策略 | 取决于具体实现 | 取决于具体实现 | 前者复用现成实例，后者让容器负责单例生命周期 |
-
-  - 若只是为了降低 fixed fan-out publish 的 steady-state 成本，当前 benchmark 并不表明 `TaskWhenAllNotificationPublisher` 会优于默认顺序发布器；它更适合你需要“等待全部处理器完成并统一观察失败”的场景。
-
-这些 publisher 策略都作用于 `IServiceCollection`：
-
-```csharp
-using GFramework.Cqrs.Extensions;
-
-services.UseSequentialNotificationPublisher();
-// 或
-services.UseTaskWhenAllNotificationPublisher();
-// 或
-services.UseNotificationPublisher(new TaskWhenAllNotificationPublisher());
-services.UseNotificationPublisher<MyCustomNotificationPublisher>();
-```
-
-如果直接调用 `CqrsRuntimeFactory.CreateRuntime(...)`，也可以显式传入 publisher 实例。
-
-- 流式请求
-  - 通过 `IStreamRequest<TResponse>` 和 `IStreamRequestHandler<,>` 返回 `IAsyncEnumerable<TResponse>`。
-  - 当消费端程序集提供 generated stream invoker provider / descriptor 后，runtime 会优先消费这组 stream invoker 元数据；未命中时仍回退到既有反射 stream binding 创建路径。
-  - 所有已注册 `IStreamPipelineBehavior<TRequest, TResponse>` 会在建流阶段包裹对应 stream handler；默认实现不拦截每个元素，而是围绕单次 `CreateStream(...)` 调用编排行为链。
-- 上下文注入
-  - 处理器基类继承 `CqrsContextAwareHandlerBase`，runtime 会在分发前注入当前 `IArchitectureContext`。
-  - 如果处理器或行为需要上下文注入，而当前 `ICqrsContext` 不是 `IArchitectureContext`，默认实现会抛出异常。
-  - 独立采用（无 Architecture）时，处理器通过构造函数注入获取依赖，不要依赖上下文注入。
-- 管道行为
-  - 所有已注册 `IPipelineBehavior<TRequest, TResponse>` 会包裹请求处理器执行。
-  - 所有已注册 `IStreamPipelineBehavior<TRequest, TResponse>` 会包裹流式请求处理器执行。
-  - 注册入口分别为 `services.AddCqrsPipelineBehavior<TBehavior>()` 与 `services.AddCqrsStreamPipelineBehavior<TBehavior>()`。
-  - 当前包内提供了 `LoggingBehavior` 和 `PerformanceBehavior` 两个可复用 request 行为；stream 行为需要按业务需求自行实现。
-
-## 处理器注册与程序集接入
-
-默认注册流程由 `ICqrsRegistrationService.RegisterHandlers(IEnumerable<Assembly>)` 协调，语义是：
-
-- 同一程序集按稳定键去重，避免重复注册。
-- 优先尝试消费端程序集上的 `ICqrsHandlerRegistry` 生成注册器。
-- 当生成注册器同时暴露 generated request invoker provider 或 generated stream invoker provider 时，registrar 会把对应 descriptor 元数据接线到 runtime 缓存。
-- 生成注册器不可用或元数据损坏时，记录告警并回退到反射扫描。
-- generated invoker 只覆盖 request 与 stream 两类单次分发元数据；`INotificationHandler<>` 仍然只参与 registry / fallback 注册，通知分发本身继续由 runtime 解析出的 handler 集合和 `INotificationPublisher` 策略决定。
-- 当程序集声明了 `CqrsReflectionFallbackAttribute` 时，运行时会先执行生成注册器，再只补它未覆盖的 handler。
-- `CqrsReflectionFallbackAttribute` 可以多次声明，并同时承载 `Type[]` 与 `string[]` 两类 fallback 清单。
-- 运行时会优先复用 fallback 特性里直接提供的 `Type` 条目，只对字符串条目执行定向 `Assembly.GetType(...)` 查找；只有旧版空 marker、空 fallback 元数据，或生成注册器整体不可用时，才会退回整程序集扫描。
-- 处理器以 transient 方式注册，避免上下文感知处理器在并发请求间共享可变上下文。
-
-程序集通过 `services.AddCqrsHandlersFromAssembly(...)` / `AddCqrsHandlersFromAssemblies(...)` 登记；Architecture 集成路径中把程序集交给 `UseCqrsRuntime(...)` 或 `CqrsRuntimeModule(...)` 即可。
-
-## 适用边界
-
-- 这个包是默认实现，不是“纯契约包”；如果你只需要共享请求/处理器契约，请停在 `GeWuYou.GFramework.Cqrs.Abstractions`。
-- 处理器基类依赖 runtime 在分发前注入上下文，不适合脱离 dispatcher 直接手动实例化后调用。
-- README 中的消息基类和 handler 基类位于 `GFramework.Cqrs`，接口契约位于 `GFramework.Cqrs.Abstractions`；最小示例通常需要同时引入这两个命名空间层级。
-- 不使用 Architecture 时，处理器通过构造函数注入获取依赖；只有把架构上下文绑定为分发上下文（上下文扩展或 `ArchitectureCqrsDispatchContext`）时，上下文感知处理器才能工作。
-
-## 文档入口
-
-- 总体文档：[CQRS 运行时](../docs/zh-CN/core/cqrs.md)
-- 契约层说明：[CQRS 抽象层说明](../GFramework.Cqrs.Abstractions/README.md)
+- [CQRS 采用指南](../docs/zh-CN/core/cqrs.md)
+- [CQRS 契约包](../GFramework.Cqrs.Abstractions/README.md)
+- [生成处理器注册表](../docs/zh-CN/source-generators/cqrs-handler-registry-generator.md)

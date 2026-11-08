@@ -35,8 +35,8 @@ public class EventListenerScopeTests
     public void EventListenerScope_Should_Not_Be_Triggered_Initially()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         using var scope = new EventListenerScope<TestEvent>(eventBusMock.Object);
@@ -51,8 +51,8 @@ public class EventListenerScopeTests
     public void EventListenerScope_EventData_Should_Be_Null_Initially()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         using var scope = new EventListenerScope<TestEvent>(eventBusMock.Object);
@@ -68,11 +68,11 @@ public class EventListenerScopeTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         using var scope = new EventListenerScope<TestEvent>(eventBusMock.Object);
 
@@ -93,11 +93,11 @@ public class EventListenerScopeTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         using var scope = new EventListenerScope<TestEvent>(eventBusMock.Object);
 
@@ -115,15 +115,15 @@ public class EventListenerScopeTests
     public void EventListenerScope_Should_UnRegister_On_Dispose()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var scope = new EventListenerScope<TestEvent>(eventBusMock.Object);
 
         scope.Dispose();
 
-        unRegisterMock.Verify(x => x.UnRegister(), Times.Once);
+        unRegisterMock.Verify(x => x.Dispose(), Times.Once);
     }
 
     /// <summary>
@@ -133,14 +133,14 @@ public class EventListenerScopeTests
     public void EventListenerScope_Should_UnRegister_When_Using_Block_Ends()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         ExecuteUsingBlockTest(eventBusMock);
 
         // 验证using块结束后调用了UnRegister
-        unRegisterMock.Verify(x => x.UnRegister(), Times.Once);
+        unRegisterMock.Verify(x => x.Dispose(), Times.Once);
     }
 
     /// <summary>
@@ -151,11 +151,11 @@ public class EventListenerScopeTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         using var scope = new EventListenerScope<TestEvent>(eventBusMock.Object);
 
@@ -178,11 +178,11 @@ public class EventListenerScopeTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         using var scope = new EventListenerScope<TestEvent>(eventBusMock.Object);
 
@@ -202,13 +202,13 @@ public class EventListenerScopeTests
     public void EventListenerScope_Should_Register_Event_Listener_On_Init()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         using var scope = new EventListenerScope<TestEvent>(eventBusMock.Object);
 
-        eventBusMock.Verify(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()), Times.Once);
+        eventBusMock.Verify(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0), Times.Once);
     }
 
     /// <summary>
@@ -219,11 +219,11 @@ public class EventListenerScopeTests
     {
         Action<int>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register(It.IsAny<Action<int>>()))
+        eventBusMock.Setup(x => x.Subscribe(It.IsAny<Action<int>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<int>>(action => registeredAction = action);
+            .Callback<Action<int>, int>((action, _) => registeredAction = action);
 
         using var scope = new EventListenerScope<int>(eventBusMock.Object);
 
@@ -244,11 +244,11 @@ public class EventListenerScopeTests
     {
         Action<StructEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register(It.IsAny<Action<StructEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe(It.IsAny<Action<StructEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<StructEvent>>(action => registeredAction = action);
+            .Callback<Action<StructEvent>, int>((action, _) => registeredAction = action);
 
         using var scope = new EventListenerScope<StructEvent>(eventBusMock.Object);
 
@@ -270,11 +270,11 @@ public class EventListenerScopeTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         using var scope = new EventListenerScope<TestEvent>(eventBusMock.Object);
 
@@ -293,8 +293,8 @@ public class EventListenerScopeTests
     public void EventListenerScope_Should_Handle_Multiple_Dispose_Calls()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var scope = new EventListenerScope<TestEvent>(eventBusMock.Object);
