@@ -136,6 +136,7 @@ public partial class DemoRoot : Node, ISceneRoot
             await Ui.ReplaceAsync(DemoUiRoutes.Menu, "GFramework runtime sample", _startupCancellation.Token)
                 .ConfigureAwait(true);
             InstallUiInputBridge();
+            BindEcs();
             _ready = true;
             _status.Text = "Ready. New game replaces slot 1 only when you explicitly save.";
         }
@@ -378,7 +379,10 @@ string.Create(CultureInfo.InvariantCulture, $"key:{(int)physicalKey}"), physical
             await _startupTask.ConfigureAwait(true);
             await _actionTask.ConfigureAwait(true);
             if (_architecture is not null)
+            {
                 await _architecture.DestroyAsync().ConfigureAwait(true);
+                VerifyEcsShutdown();
+            }
         }
         catch (Exception error)
         {

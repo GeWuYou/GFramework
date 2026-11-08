@@ -1,6 +1,9 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System;
+using System.Threading;
+using GFramework.Ecs.Arch.Extensions;
 using GFramework.Game.Abstractions.Runtime;
 using GFramework.Game.Runtime;
 using GFramework.Game.UI;
@@ -23,6 +26,9 @@ internal sealed class DemoArchitecture(
     /// <summary>Describes registrations without creating or attaching native nodes.</summary>
     protected override void InstallModules(IServiceCollection services)
     {
+        services.AddArch(options => options.EnableStatistics = true,
+            hostContext: SynchronizationContext.Current ?? throw new InvalidOperationException("Godot requires its owning context."));
+        services.AddSingleton<global::Arch.System.ISystem<float>, DemoEcsSystem>();
         services.AddModule(new GameRuntimeModule(dispatcher, services =>
         {
             services.AddGamePause();

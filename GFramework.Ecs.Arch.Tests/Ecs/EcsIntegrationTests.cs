@@ -4,6 +4,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Arch.Core;
+using GFramework.Ecs.Arch.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Logging;
@@ -24,7 +25,7 @@ public class EcsIntegrationTests
 {
     private TestArchitecture? _architecture;
     private World? _world;
-    private ArchEcsModule? _ecsModule;
+    private IArchRuntime? _ecsModule;
 
     /// <summary>Stops the real participant and releases its provider-owned World.</summary>
     [TearDown]
@@ -40,9 +41,9 @@ public class EcsIntegrationTests
     /// <summary>Uses standard DI constructor injection and the production lifecycle adapter.</summary>
     private void InitializeEcsModule(bool withSystem = true)
     {
-        _ecsModule = new ArchEcsModule();
-        _architecture = new TestArchitecture(_ecsModule, withSystem);
+        _architecture = new TestArchitecture(new ArchEcsModule(), withSystem);
         _architecture.Initialize();
+        _ecsModule = _architecture.Services.GetRequiredService<IArchRuntime>();
         _world = _architecture.Services.GetRequiredService<World>();
     }
 
@@ -54,7 +55,7 @@ public class EcsIntegrationTests
         {
             services.AddModule(module);
             if (withSystem)
-                services.AddSingleton<ArchSystemAdapter<float>, MovementSystem>();
+                services.AddSingleton<global::Arch.System.ISystem<float>, MovementSystem>();
         }
     }
 
@@ -123,7 +124,7 @@ public class EcsIntegrationTests
     {
         InitializeEcsModule();
 
-        var adapters = _architecture!.Services.GetServices<ArchSystemAdapter<float>>().ToArray();
+        var adapters = _architecture!.Services.GetServices<global::Arch.System.ISystem<float>>().ToArray();
         Assert.That(adapters, Is.Not.Null);
         Assert.That(adapters.Length, Is.EqualTo(1));
         Assert.That(adapters[0], Is.InstanceOf<MovementSystem>());

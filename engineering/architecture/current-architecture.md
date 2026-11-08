@@ -39,3 +39,13 @@ MinimalApp 展示普通 DI 和可选编排。GodotIntegration 展示宿主接线
 新增功能优先放在所属功能内，以实际依赖决定接口与程序集边界。行为测试验证规则、生命周期和错误语义；原生测试验证场景树、输入、资源、导出与跨进程数据。构建、托管测试和原生运行分别提供各自范围的证据。
 
 历史评估与阶段执行报告通过 Git 历史查阅，不作为当前架构或待办依据。
+
+## 可选消息与原生 ECS 边界
+
+Godot 不引用 CQRS，消息分发由消费工程显式选择。CQRS 管道登记使用标准 ServiceLifetime，默认 Transient，开放泛型映射在登记时校验；Scoped runtime 和行为共享调用方作用域，流的作用域覆盖完整枚举。
+
+ArchEcsModule 只配置服务，ArchRuntime 管理借用 World／系统的业务生命周期。宿主驱动原生 ISystem 的三阶段更新；稳定优先级排序，失败后封闭更新，逆序停止已尝试启动的 IDestroyable 系统。provider 或直接创建者分别负责最终释放。Group 是一个顶层拥有对象，不重复登记内部子系统。
+
+ECS 的统计策略在构造时固定，默认关闭。启用后复用帧测量存储，读取时生成不可变快照；未执行阶段与失败阶段明确区分。runtime 限定宿主拥有线程，快照可跨线程分享。采用和关闭的可执行路径见[Arch ECS 接入](../../docs/zh-CN/ecs/arch.md)。
+
+Godot 等具有线程约束的宿主应显式提供 `AddArch(..., hostContext: SynchronizationContext.Current)`，并用异步 Architecture 启动／停止。该路径把 World、系统和 runtime 的激活、初始化及业务停止派发回拥有上下文，避免前置异步组件导致线程切换；普通同步宿主省略此参数。最终资源释放仍由对象拥有者负责，持有原生对象的系统应在自己的释放边界进行宿主调度。

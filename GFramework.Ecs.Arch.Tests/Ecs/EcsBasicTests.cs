@@ -3,6 +3,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 using Arch.Core;
+using GFramework.Ecs.Arch.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Logging;
@@ -23,7 +24,7 @@ public class EcsBasicTests
 {
     private TestArchitecture? _architecture;
     private World? _world;
-    private ArchEcsModule? _ecsModule;
+    private IArchRuntime? _ecsModule;
 
     /// <summary>Stops the real participant and releases its provider-owned World.</summary>
     [TearDown]
@@ -39,9 +40,9 @@ public class EcsBasicTests
     /// <summary>Uses standard DI constructor injection and the production lifecycle adapter.</summary>
     private void InitializeEcsModule(bool withSystem = true)
     {
-        _ecsModule = new ArchEcsModule();
-        _architecture = new TestArchitecture(_ecsModule, withSystem);
+        _architecture = new TestArchitecture(new ArchEcsModule(), withSystem);
         _architecture.Initialize();
+        _ecsModule = _architecture.Services.GetRequiredService<IArchRuntime>();
         _world = _architecture.Services.GetRequiredService<World>();
     }
 
@@ -53,7 +54,7 @@ public class EcsBasicTests
         {
             services.AddModule(module);
             if (withSystem)
-                services.AddSingleton<ArchSystemAdapter<float>, MovementSystem>();
+                services.AddSingleton<global::Arch.System.ISystem<float>, MovementSystem>();
         }
     }
 

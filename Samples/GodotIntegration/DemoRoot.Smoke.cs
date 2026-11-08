@@ -32,6 +32,7 @@ public partial class DemoRoot
             Require(Ui.Snapshot.Views.Any(view => string.Equals(view.RouteKey, DemoUiRoutes.Menu.Key, StringComparison.Ordinal) && view.Visible), "initial menu missing");
             Require(_dataRootPath.StartsWith("user://runtime_smoke/", StringComparison.Ordinal), "smoke data is not isolated");
 
+            await VerifyEcsFramesAsync().ConfigureAwait(true);
             await VerifySceneProcessingFlagsAsync().ConfigureAwait(true);
             await VerifyHistoricalHostContractsAsync().ConfigureAwait(true);
             await VerifyCoroutineRuntimeAsync().ConfigureAwait(true);

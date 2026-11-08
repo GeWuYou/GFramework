@@ -17,7 +17,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj"
-                          PrivateAssets="all"/>
+                          />
         <ProjectReference Include="..\GFramework.Ecs.Arch.Abstractions\GFramework.Ecs.Arch.Abstractions.csproj"/>
     </ItemGroup>
 

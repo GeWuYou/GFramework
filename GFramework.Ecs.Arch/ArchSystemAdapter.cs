@@ -18,7 +18,7 @@ public abstract class ArchSystemAdapter<T> : ILifecycle, IArchSystemAdapter<T>, 
     private bool _isInitialized;
 
     /// <summary>
-    ///     获取或设置 Arch ECS 世界的实例
+    ///     获取调用方拥有的 Arch ECS 世界实例
     /// </summary>
     public World World
     {
@@ -47,7 +47,7 @@ public abstract class ArchSystemAdapter<T> : ILifecycle, IArchSystemAdapter<T>, 
     /// </summary>
     void ArchSys.ISystem<T>.Initialize()
     {
-        OnArchInitialize();
+        Initialize();
     }
 
     /// <summary>
@@ -97,8 +97,8 @@ public abstract class ArchSystemAdapter<T> : ILifecycle, IArchSystemAdapter<T>, 
             return;
 
 
-        // 调用 Arch 初始化
-        ((ArchSys.ISystem<T>)this).Initialize();
+        // 原生接口和框架接口共享这一入口，避免混合调用时重复初始化。
+        OnArchInitialize();
         _isInitialized = true;
     }
 

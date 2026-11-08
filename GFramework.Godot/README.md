@@ -2,6 +2,8 @@
 
 将 GFramework 通用运行时接入 Godot 的节点、场景树、InputMap、资源、暂停和文件路径。引擎继续拥有原生主循环，框架服务使用显式宿主调度。
 
+Godot 不传递引用 CQRS。需要消息分发时，在消费工程显式安装 `GFramework.Cqrs`；协程与普通宿主接入无需该依赖。
+
 ## 相邻模块
 
 - `Game` 提供 `UiService`、`SceneRouter`、设置、存档和配置运行时。

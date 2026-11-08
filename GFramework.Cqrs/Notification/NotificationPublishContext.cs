@@ -11,7 +11,7 @@ namespace GFramework.Cqrs.Notification;
 /// <typeparam name="TNotification">通知类型。</typeparam>
 /// <remarks>
 ///     该上下文把“当前通知”“已解析处理器集合”和“执行单个处理器”的入口收敛到同一对象中，
-///     使发布策略只需决定遍历、排序或并发方式，而无需了解 dispatcher 的上下文注入细节。
+///     使发布策略只需决定遍历、排序或并发方式，而无需了解 dispatcher 的解析和调用细节。
 /// </remarks>
 public abstract class NotificationPublishContext<TNotification>
     where TNotification : INotification

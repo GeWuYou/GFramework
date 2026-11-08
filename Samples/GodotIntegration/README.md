@@ -109,3 +109,9 @@ Samples/GodotIntegration/exports/GFrameworkSample.x86_64 --headless -- --smoke
 ```
 
 导出程序的 --smoke 也使用独立的测试数据目录，验证打包配置资源和运行时持久化；它不验证可视布局。
+
+## 原生 Arch 帧循环
+
+工程显式引用 ECS 包，在组合根登记原生系统。Godot 的物理帧调用 `IArchRuntime.Update`，暂停时不推进；统计通过不可变快照读取。关闭先停止运行时，provider 随后释放系统和 World。原生自检输出 `GFRAMEWORK_ECS_FRAMES_PASS` 和 `GFRAMEWORK_ECS_SHUTDOWN_PASS`。
+
+直接构造与统计开关测量见 [原生 Arch 示例](../ArchRuntimeDemo/README.md)。
