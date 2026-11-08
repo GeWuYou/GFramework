@@ -168,9 +168,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 20
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.4
+      - name: Install Bun
+        run: npm install --global bun@1.4.4 --no-audit --no-fund
       - name: Install and test config tool
         working-directory: tools/gframework-config-tool
         run: |
