@@ -181,7 +181,7 @@ public sealed class GodotYamlConfigLoader : IConfigLoader
     ///     当 <see cref="SourceRootPath" /> 只能通过缓存同步访问时，拒绝启用热重载是为了避免监听缓存副本后误导调用方，
     ///     让其误以为源目录改动会被自动反映到运行时。
     /// </remarks>
-    public IUnRegister EnableHotReload(
+    public IDisposable EnableHotReload(
         IConfigRegistry registry,
         YamlConfigHotReloadOptions? options = null)
     {

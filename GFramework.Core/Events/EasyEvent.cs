@@ -17,10 +17,10 @@ public class EasyEvent
     /// </summary>
     /// <param name="onEvent">要注册的事件回调函数</param>
     /// <returns>用于注销事件的 unregister 对象</returns>
-    public IUnRegister Register(Action onEvent)
+    public IDisposable Register(Action onEvent)
     {
         _mOnEvent += onEvent;
-        return new DefaultUnRegister(() => UnRegister(onEvent));
+        return new Subscription(() => UnRegister(onEvent));
     }
 
     /// <summary>

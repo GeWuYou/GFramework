@@ -35,8 +35,8 @@ public class WaitForEventTests
     public void WaitForEvent_Should_Not_Be_Done_Initially()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var wait = new WaitForEvent<TestEvent>(eventBusMock.Object);
@@ -52,11 +52,11 @@ public class WaitForEventTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         var wait = new WaitForEvent<TestEvent>(eventBusMock.Object);
 
@@ -77,11 +77,11 @@ public class WaitForEventTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         var wait = new WaitForEvent<TestEvent>(eventBusMock.Object);
 
@@ -100,11 +100,11 @@ public class WaitForEventTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         var wait = new WaitForEvent<TestEvent>(eventBusMock.Object);
 
@@ -126,16 +126,16 @@ public class WaitForEventTests
     public void WaitForEvent_Should_Release_Resources_On_Dispose()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var wait = new WaitForEvent<TestEvent>(eventBusMock.Object);
 
         wait.Dispose();
 
-        unRegisterMock.Verify(x => x.UnRegister(), Times.Once);
+        unRegisterMock.Verify(x => x.Dispose(), Times.Once);
     }
 
     /// <summary>
@@ -145,9 +145,9 @@ public class WaitForEventTests
     public void WaitForEvent_Should_Handle_Multiple_Dispose_Calls()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var wait = new WaitForEvent<TestEvent>(eventBusMock.Object);
@@ -174,11 +174,11 @@ public class WaitForEventTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         var wait = new WaitForEvent<TestEvent>(eventBusMock.Object);
 
@@ -199,8 +199,8 @@ public class WaitForEventTests
     public void WaitForEvent_Should_Implement_IYieldInstruction()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var wait = new WaitForEvent<TestEvent>(eventBusMock.Object);
@@ -216,11 +216,11 @@ public class WaitForEventTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         var wait = new WaitForEvent<TestEvent>(eventBusMock.Object);
 
@@ -230,7 +230,7 @@ public class WaitForEventTests
         // 事件触发后，Update方法应该注销监听器
         wait.Update(0.1);
 
-        unRegisterMock.Verify(x => x.UnRegister(), Times.AtLeastOnce);
+        unRegisterMock.Verify(x => x.Dispose(), Times.AtLeastOnce);
     }
 
     /// <summary>
@@ -240,8 +240,8 @@ public class WaitForEventTests
     public void WaitForEvent_EventData_Should_Be_Null_When_No_Event_Triggered()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var wait = new WaitForEvent<TestEvent>(eventBusMock.Object);
@@ -257,11 +257,11 @@ public class WaitForEventTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         var wait = new WaitForEvent<TestEvent>(eventBusMock.Object);
 

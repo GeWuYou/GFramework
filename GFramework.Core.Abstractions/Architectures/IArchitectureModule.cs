@@ -3,15 +3,11 @@
 
 namespace GFramework.Core.Abstractions.Architectures;
 
-/// <summary>
-///     架构模块接口，继承自架构生命周期接口。
-///     定义了模块安装到架构中的标准方法。
-/// </summary>
+/// <summary>Groups service descriptions without performing activation, IO, or process-wide registration.</summary>
+/// <remarks>Runtime work belongs to explicitly registered components, not to a second module lifecycle.</remarks>
 public interface IArchitectureModule
 {
-    /// <summary>
-    ///     将当前模块安装到指定的架构中。
-    /// </summary>
-    /// <param name="architecture">要安装模块的目标架构实例。</param>
-    void Install(IArchitecture architecture);
+    /// <summary>Adds this module's descriptions to the current composition root.</summary>
+    /// <param name="services">The collection that the owning architecture will build once.</param>
+    void ConfigureServices(IServiceCollection services);
 }

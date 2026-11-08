@@ -32,7 +32,7 @@ public sealed class FilterableEvent<T>(EventStatistics? statistics = null)
     /// </summary>
     /// <param name="onEvent">事件处理回调</param>
     /// <returns>反注册接口</returns>
-    public IUnRegister Register(Action<T> onEvent)
+    public IDisposable Register(Action<T> onEvent)
     {
         lock (_lock)
         {
@@ -40,7 +40,7 @@ public sealed class FilterableEvent<T>(EventStatistics? statistics = null)
             UpdateListenerCount();
         }
 
-        return new DefaultUnRegister(() => UnRegister(onEvent));
+        return new Subscription(() => UnRegister(onEvent));
     }
 
     /// <summary>

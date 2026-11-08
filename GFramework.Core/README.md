@@ -1,129 +1,33 @@
 # GFramework.Core
 
-`GFramework.Core` 是框架的基础运行时，负责架构生命周期、组件注册、上下文访问，以及不依赖具体引擎的通用能力。
+Core 是引擎无关的 C# 基础能力库。普通服务采用标准 Microsoft DI 和 ILogger&lt;T&gt;；Architecture 按需提供组件启动、停止、失败清理及宿主接线。
 
-如果你需要使用 Architecture，可从这个模块开始。Core 不传递依赖 CQRS；需要 request / notification / stream 消息模型的项目显式安装 `GFramework.Cqrs` 并安装 runtime 模块。
+## 包与能力
 
-## 模块定位
+Core 依赖 Core.Abstractions 及标准 DI/日志包，不传递依赖 CQRS、Godot 或源码生成器。契约可独立引用。
 
-这一层提供：
-
-- `Architecture` 与 `ArchitectureContext`
-- `Model` / `System` / `Utility` 运行时
-- 事件、属性、状态机、状态管理、规则与上下文扩展
-- 资源、对象池、日志、协程、并发、环境、配置与本地化
-- 服务模块管理、时间提供器与默认的 IoC 容器适配
-
-`IArchitectureContext` 只承载组件获取、事件系统与环境访问；消息分发不在上下文接口上，由显式安装的 CQRS runtime 及其上下文扩展提供。
-
-它不负责：
-
-- 游戏内容配置、Scene / UI / Storage 等游戏层能力
-- Godot 节点与场景集成
-- CQRS 消息契约与 runtime
-
-## 包关系
-
-- 直接依赖：
-  - `GFramework.Core.Abstractions`
-- 常见上层模块（按需安装）：
-  - `GFramework.Cqrs`
-  - `GFramework.Game`
-  - `GFramework.Godot`
-
-如果你只需要契约，不需要实现层，改为依赖 [Core 抽象层说明](../GFramework.Core.Abstractions/README.md)。
-
-## 子系统地图
-
-| 目录 | 作用 |
+| 目录 | 能力 |
 | --- | --- |
-| `Architectures/` | 架构入口、上下文、生命周期、模块安装与组件注册 |
-| `Services/` | 服务模块注册、生命周期协调与模块管理 |
-| `Events/` | 事件总线、事件作用域、统计与过滤 |
-| `Property/` | `BindableProperty<T>` 与相关解绑对象 |
-| `State/` | 状态机与状态切换事件 |
-| `StateManagement/` | Store、selector、middleware 与状态诊断 |
-| `Coroutine/` | 多阶段协程调度、父子流程、FailFast / Supervisor 作用域、结果与统计 |
-| `Time/` | 默认时间提供器与协程时间源 |
-| `Resource/` | 资源缓存、句柄和释放策略 |
-| `Pool/` | 对象池系统与常用池化辅助实现 |
-| `Logging/` | 标准 ILoggerFactory 接线、appender 输出引擎与配置加载 |
-| `Ioc/` | 基于 `Microsoft.Extensions.DependencyInjection` 的容器适配 |
-| `Concurrency/` | 键控异步锁与统计 |
-| `Configuration/` | 配置管理器与配置监听解绑对象 |
-| `Environment/` | 运行环境对象与上下文环境扩展 |
-| `Pause/` | 暂停栈和暂停范围 |
-| `Localization/` | 本地化表与格式化入口 |
-| `Rule/` | `ContextAwareBase` 等上下文感知基类 |
-| `Functional/` | `Option`、`Result` 等轻量函数式工具 |
-| `Extensions/` | 上下文与集合等扩展方法 |
+| Architectures | 唯一 provider、显式组件与配置型模块、实例生命周期 |
+| Events / Property | 同步通知、标准订阅令牌与可绑定属性 |
+| State / StateManagement | 独立状态机与单向状态 Store |
+| Coroutine / Time / Pause / Concurrency | 协程、时钟、暂停与异步键锁 |
+| Resource / Pool | 资源租约、缓存与对象池 |
+| Logging / Localization | 标准日志输出适配与本地化 |
+| Functional / Utility / Extensions | Option、Result、数值显示与通用辅助 |
 
-## XML 阅读入口
+## 最小采用
 
-下面这份目录视图可以帮助你快速定位 `GFramework.Core` 的类型级 XML 文档入口。更细的参数、返回值和生命周期语义，适合在阅读对应类型与成员时继续结合源码确认。
+安装 GeWuYou.GFramework.Core 后，可直接构造独立能力或通过 IServiceCollection 注册。普通对象不要求框架角色标记。需要生命周期时使用 Architecture.ConfigureServices、services.AddComponent 和 InitializeAsync；完成后等待 DisposeAsync。
 
-| 类型族 | 代表类型 | 阅读重点 |
-| --- | --- | --- |
-| `Architectures/` `Services/` | `Architecture`、`ArchitectureContext`、`ArchitectureLifecycle`、`ServiceModuleManager` | 先看架构入口、上下文对象与模块生命周期如何协同 |
-| `Events/` `Property/` `State/` `StateManagement/` | `EventBus`、`BindableProperty<T>`、`StateMachine`、`Store<TState>` | 看事件分发、状态绑定、状态机与 Store 的职责划分 |
-| `Coroutine/` `Time/` `Pause/` `Concurrency/` | `CoroutineScheduler`、`CoroutineHandle`、`PauseStackManager`、`AsyncKeyLockManager` | 看调度、暂停、时间推进与并发控制的生命周期语义 |
-| `Resource/` `Pool/` | `ResourceManager`、`AutoReleaseStrategy`、`AbstractObjectPoolSystem<TKey, TObject>` | 看资源释放策略、池化抽象与可复用对象边界 |
-| `Logging/` `Localization/` `Configuration/` `Environment/` `Ioc/` | `AppenderLoggerProvider`、`LoggingConfigurationLoader`、`LocalizationManager`、`ConfigurationManager`、`DefaultEnvironment`、`MicrosoftDiContainer` | 看基础设施入口与默认实现的组合方式 |
-| `Model/` `Systems/` `Utility/` `Rule/` `Extensions/` `Functional/` | `AbstractModel`、`AbstractSystem`、`NumericDisplayFormatter`、`ContextAwareBase`、`Result<T>` | 看业务模型、系统基类、上下文辅助类型与函数式工具如何配合 |
+业务状态由领域对象维护，用例由应用服务组织，构造函数显式声明依赖；容器解析集中在组合根。模块只配置 IServiceCollection，运行工作登记为组件。外部实例由调用者拥有，DI 创建的资源由 provider 释放。
 
-完整的模块化接入说明和阅读顺序见 [Core 栏目](../docs/zh-CN/core/index.md)。
+## 文档与示例
 
-协程从 `CoroutineScheduler.Run` 或 `CoroutineScope.Run` 启动，由宿主在驱动线程推进。独立任务的根容器使用 Supervisor，单个流程的子任务默认 FailFast；`SwitchTo` 显式切换并保持阶段。采用方式见[协程系统](../docs/zh-CN/core/coroutine.md)，可重复测量见[协程性能样例](../Samples/CoroutinePerformance/README.md)。
-
-## 当前使用边界
-
-Architecture 的配置阶段只登记描述，随后构建一次正式 provider，再激活和初始化组件。服务、上下文和日志按实例隔离；框架不再绑定全局 GameContext，也不替换全局日志工厂。
-
-DestroyAsync/DisposeAsync 会停止业务组件并异步释放 provider 拥有的资源。传入的外部实例由调用者负责最终释放。角色组件的类型注册使用同一 provider；可释放实现采用单一拥有服务键，避免工厂别名重复捕获资源。
-
-Core-only 的消费方没有 CQRS 传递依赖。需要消息模型时，安装 `GeWuYou.GFramework.Cqrs` 并通过 `architecture.UseCqrsRuntime(...)` 或 `RegisterServiceModule(new CqrsRuntimeModule(...))` 显式安装 runtime，见[架构生命周期](../docs/zh-CN/core/architecture.md)与 [CQRS 运行时](../docs/zh-CN/core/cqrs.md)。
-
-## 最小接入路径
-
-```bash
-dotnet add package GeWuYou.GFramework.Core
-dotnet add package GeWuYou.GFramework.Core.Abstractions
-```
-
-最小入口：
-
-1. 继承 `Architecture`
-2. 在 `ConfigureServices(IServiceCollection services)` 中登记服务、组件与模块，在 OnStarted/OnStartedAsync 中执行已构建后的宿主操作
-3. 等待 InitializeAsync 后，通过 architecture.Context 或已绑定的 ContextAwareBase 访问服务；使用完成后等待 DisposeAsync
-
-最小示例见：
-
-- [快速开始示例](../docs/zh-CN/getting-started/quick-start.md)
-
-## 可选采用包
-
-- 需要 request / notification / stream 消息模型：显式引用 `GFramework.Cqrs` 并安装 runtime 模块
-- 需要游戏层路由、设置、配置和存储：加 `GFramework.Game`
-- 需要 Godot 节点与场景适配：加 `GFramework.Godot`
-- 需要编译期生成日志、上下文注入或模块注册：加 `GFramework.Core.SourceGenerators`
-
-## 对应文档
-
-- Core 栏目：[Core 文档首页](../docs/zh-CN/core/index.md)
-- Core 抽象层：[Core Abstractions 文档](../docs/zh-CN/abstractions/core-abstractions.md)
-- API 参考入口：[API 参考首页](../docs/zh-CN/api-reference/index.md)
-- CQRS：[CQRS 运行时](../docs/zh-CN/core/cqrs.md)
-- 入门指南：[入门指南首页](../docs/zh-CN/getting-started/index.md)
-
-## 资源释放责任
-
-资源缓存保留创建条目时的 loader 释放操作；loader 的 Unload 负责完整释放，管理器不再额外 Dispose。同一路径仍被句柄持有时，Unload 与 UnloadAll 都保留该资源。采用方式见[资源管理](../docs/zh-CN/core/resource.md)。
-
-
-## 宿主停止顺序
-
-OnStoppingAsync 先关闭宿主接入，随后停止组件和服务模块；OnStoppedAsync 在它们停止后分离宿主根节点，最后释放 provider。需要异步退出回调的宿主应把节点分离放在 OnStoppedAsync，确保回调执行期间节点和依赖仍然存活。
-
-## 独立暂停服务
-
-`PauseStackManager` 通过可选标准日志构造，可直接使用或作为普通单例服务登记。它不要求组件角色或上下文绑定，宿主通过 `IPauseHandler` 应用实际暂停，并在停止顺序中等待 `DisposeAsync`。采用说明见 [暂停系统](../docs/zh-CN/core/pause.md)。
+- [Core 使用指南](../docs/zh-CN/core/index.md)
+- [装配与生命周期](../docs/zh-CN/core/architecture.md)
+- [依赖注入](../docs/zh-CN/core/ioc.md)
+- [最小 C# 应用](../Samples/MinimalApp/README.md)
+- [Godot 接入](../Samples/GodotIntegration/README.md)
+- [完整游戏](../Samples/DodgeTheCreeps/README.md)
+- [进阶游戏](../Samples/DodgeTheCreeps.Advanced/README.md)

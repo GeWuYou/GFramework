@@ -504,12 +504,12 @@ public class CoroutineSchedulerTests
 
         // 创建模拟事件总线
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
         Action<TestEvent>? eventCallback = null;
-        eventBusMock.Setup(bus => bus.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(bus => bus.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(cb => eventCallback = cb);
+            .Callback<Action<TestEvent>, int>((cb, _) => eventCallback = cb);
 
         TestEvent? receivedEvent = null;
         var coroutine = CreateWaitForEventCoroutine<TestEvent>(eventBusMock.Object, ev => receivedEvent = ev);

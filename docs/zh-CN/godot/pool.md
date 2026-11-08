@@ -74,6 +74,15 @@ using GFramework.Godot.Pool;
 
 public partial class Bullet : Node2D, IPoolableNode
 {
+    private BulletPoolSystem _poolSystem = null!;
+    private string _poolKey = string.Empty;
+
+    public void ConfigurePool(BulletPoolSystem pool, string key)
+    {
+        _poolSystem = pool;
+        _poolKey = key;
+    }
+
     private Vector2 _velocity;
     private float _lifetime;
 
@@ -90,6 +99,7 @@ public partial class Bullet : Node2D, IPoolableNode
         // 归还到池中时清理状态
         Hide();
         SetProcess(false);
+        GetParent()?.RemoveChild(this);
         _velocity = Vector2.Zero;
     }
 
@@ -124,9 +134,8 @@ public partial class Bullet : Node2D, IPoolableNode
 
     private void ReturnToPool()
     {
-        // 通过池系统归还
-        var poolSystem = this.GetSystem<BulletPoolSystem>();
-        poolSystem.Release("Bullet", this);
+        // 创建节点时已由池提供拥有者和实际键。
+        _poolSystem.Release(_poolKey, this);
     }
 }
 ```
@@ -139,6 +148,13 @@ using GFramework.Godot.Pool;
 
 public class BulletPoolSystem : AbstractNodePoolSystem<string, Bullet>
 {
+    protected override Bullet Create(string key)
+    {
+        var bullet = base.Create(key);
+        bullet.ConfigurePool(this, key);
+        return bullet;
+    }
+
     protected override PackedScene LoadScene(string key)
     {
         // 根据键加载对应的场景
@@ -166,15 +182,16 @@ public class BulletPoolSystem : AbstractNodePoolSystem<string, Bullet>
 ### 注册节点池系统
 
 ```csharp
-using GFramework.Godot.Architecture;
+using GFramework.Godot.Architectures;
+using GFramework.Core.Architectures;
+using Microsoft.Extensions.DependencyInjection;
 
 public class GameArchitecture : AbstractArchitecture
 {
-    protected override void InstallModules()
+    protected override void InstallModules(IServiceCollection services)
     {
-        // 注册节点池系统
-        RegisterSystem<BulletPoolSystem>(new BulletPoolSystem());
-        RegisterSystem<EffectPoolSystem>(new EffectPoolSystem());
+        services.AddComponent<BulletPoolSystem>();
+        services.AddComponent<EffectPoolSystem>();
     }
 }
 ```
@@ -187,12 +204,9 @@ using GFramework.Godot.Extensions;
 
 public partial class Player : Node2D
 {
-    private BulletPoolSystem _bulletPool;
+    private BulletPoolSystem _bulletPool = null!;
 
-    public override void _Ready()
-    {
-        _bulletPool = this.GetSystem<BulletPoolSystem>();
-    }
+    public void Configure(BulletPoolSystem pool) => _bulletPool = pool;
 
     public void Shoot()
     {
@@ -208,6 +222,10 @@ public partial class Player : Node2D
 }
 ```
 
+节点池通过 AddComponent 显式参加生命周期；普通命名为 System 的类不会自动启动。池的预热、Acquire、Release 与节点挂接需要由 Godot 宿主线程调用。组合根将具体池通过 Configure 提供给消费节点；池创建对象时传递自身和实际键，使回收无需服务定位。
+
+不要把节点池本身交给多个拥有工厂，也不要在节点内部解析整个架构。若不使用 Architecture，可以由宿主显式调用 Initialize/Destroy，并在正常退出时等待节点清理。
+
 ## 高级用法
 
 ### 多类型节点池
@@ -215,6 +233,13 @@ public partial class Player : Node2D
 ```csharp
 public class EffectPoolSystem : AbstractNodePoolSystem<string, PoolableEffect>
 {
+    protected override PoolableEffect Create(string key)
+    {
+        var effect = base.Create(key);
+        effect.ConfigurePool(this, key);
+        return effect;
+    }
+
     protected override PackedScene LoadScene(string key)
     {
         return key switch
@@ -244,10 +269,12 @@ public class EffectPoolSystem : AbstractNodePoolSystem<string, PoolableEffect>
 // 使用特效池
 public partial class Enemy : Node2D
 {
+    private EffectPoolSystem _effectPool = null!;
+    public void Configure(EffectPoolSystem pool) => _effectPool = pool;
+
     public void Die()
     {
-        var effectPool = this.GetSystem<EffectPoolSystem>();
-        var explosion = effectPool.Acquire("Explosion");
+        var explosion = _effectPool.Acquire("Explosion");
 
         explosion.AsNode().GlobalPosition = GlobalPosition;
         GetParent().AddChild(explosion.AsNode());
@@ -262,21 +289,21 @@ public partial class Enemy : Node2D
 ```csharp
 public partial class PoolableEffect : Node2D, IPoolableNode
 {
-    private AnimationPlayer _animationPlayer;
-    private EffectPoolSystem _poolSystem;
-    private string _effectKey;
+    private AnimationPlayer _animationPlayer = null!;
+    private EffectPoolSystem _poolSystem = null!;
+    private string _effectKey = string.Empty;
 
-    public override void _Ready()
+    private void PrepareAnimation()
     {
+        if (_animationPlayer is not null)
+            return;
         _animationPlayer = GetNode<AnimationPlayer>("AnimationPlayer");
-        _poolSystem = this.GetSystem<EffectPoolSystem>();
-
-        // 动画播放完毕后自动归还
         _animationPlayer.AnimationFinished += OnAnimationFinished;
     }
 
     public void OnAcquire()
     {
+        PrepareAnimation(); // Acquire 发生在重新入树前，不能依赖 Ready。
         Show();
         _animationPlayer.Play("default");
     }
@@ -284,19 +311,22 @@ public partial class PoolableEffect : Node2D, IPoolableNode
     public void OnRelease()
     {
         Hide();
-        _animationPlayer.Stop();
+        _animationPlayer?.Stop();
+        GetParent()?.RemoveChild(this);
     }
 
     public void OnPoolDestroy()
     {
-        _animationPlayer.AnimationFinished -= OnAnimationFinished;
+        if (_animationPlayer is not null)
+            _animationPlayer.AnimationFinished -= OnAnimationFinished;
         QueueFree();
     }
 
     public Node AsNode() => this;
 
-    public void SetEffectKey(string key)
+    public void ConfigurePool(EffectPoolSystem pool, string key)
     {
+        _poolSystem = pool;
         _effectKey = key;
     }
 
@@ -366,12 +396,13 @@ public class DynamicPoolSystem : AbstractNodePoolSystem<string, PoolableEnemy>
 ```csharp
 public partial class PoolMonitor : Control
 {
-    private BulletPoolSystem _bulletPool;
+    private BulletPoolSystem _bulletPool = null!;
+
+    public void Configure(BulletPoolSystem pool) => _bulletPool = pool;
     private Label _statsLabel;
 
     public override void _Ready()
     {
-        _bulletPool = this.GetSystem<BulletPoolSystem>();
         _statsLabel = GetNode<Label>("StatsLabel");
     }
 
@@ -634,9 +665,8 @@ public void ReturnToPool()
         GetParent().RemoveChild(this);
     }
 
-    // 归还到池中
-    var poolSystem = this.GetSystem<BulletPoolSystem>();
-    poolSystem.Release("Bullet", this);
+    // 归还到创建它的池和对应的键。
+    _poolSystem.Release(_poolKey, this);
 }
 
 // 获取时重新添加到场景树

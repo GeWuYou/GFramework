@@ -1,192 +1,101 @@
-// Copyright (c) 2025 GeWuYou
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-// 
-//     http://www.apache.org/licenses/LICENSE-2.0
-// 
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-using System.Diagnostics.Contracts;
-using System.Runtime.InteropServices;
+// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
 
 namespace GFramework.Core.Functional;
 
-/// <summary>
-///     表示一个无值的操作结果，仅包含成功或失败状态
-/// </summary>
-[StructLayout(LayoutKind.Auto)]
+/// <summary>Represents success without a value, or a failure carrying an exception.</summary>
+/// <remarks>
+///     The default value is a failure with a shared uninitialized-result error. Mapping and binding propagate
+///     delegate exceptions; only explicit Try methods capture ordinary exceptions. Cancellation is never captured.
+/// </remarks>
 public readonly struct Result : IEquatable<Result>
 {
-    private readonly Exception? _exception;
-    private readonly bool _isSuccess;
+    private readonly Exception? _error;
 
-    /// <summary>
-    ///     私有构造函数，用于创建 Result 实例
-    /// </summary>
-    /// <param name="isSuccess">是否为成功状态</param>
-    /// <param name="exception">失败时的异常信息</param>
-    private Result(bool isSuccess, Exception? exception)
+    /// <summary>Creates a result through the explicit success or failure factories.</summary>
+    private Result(bool isSuccess, Exception? error)
     {
-        // 强制不变式：失败状态必须携带非空异常
-        if (!isSuccess && exception is null)
-            throw new ArgumentException("Failure Result must have a non-null exception.", nameof(exception));
-
-        _isSuccess = isSuccess;
-        _exception = exception;
+        IsSuccess = isSuccess;
+        _error = error;
     }
 
-    /// <summary>
-    ///     判断结果是否为成功状态
-    /// </summary>
-    [Pure]
-    public bool IsSuccess => _isSuccess;
-
-    /// <summary>
-    ///     判断结果是否为失败状态
-    /// </summary>
-    [Pure]
-    public bool IsFailure => !_isSuccess;
-
-    /// <summary>
-    ///     获取失败时的异常信息，若为成功状态则抛出 InvalidOperationException
-    /// </summary>
-    [Pure]
-    public Exception Error => IsFailure
-        ? _exception!
-        : throw new InvalidOperationException("Cannot access Error on a successful Result.");
-
-    /// <summary>
-    ///     创建成功结果
-    /// </summary>
-    /// <returns>成功结果</returns>
-    [Pure]
-    public static Result Success() => new(isSuccess: true, exception: null);
-
-    /// <summary>
-    ///     创建失败结果
-    /// </summary>
-    /// <param name="ex">失败的异常</param>
-    /// <returns>失败结果</returns>
-    [Pure]
-    public static Result Failure(Exception ex)
+    /// <summary>Gets whether the operation succeeded.</summary>
+    public bool IsSuccess
     {
-        ArgumentNullException.ThrowIfNull(ex);
-        return new(isSuccess: false, ex);
+        get;
     }
 
-    /// <summary>
-    ///     根据错误消息创建失败结果
-    /// </summary>
-    /// <param name="message">错误消息</param>
-    /// <returns>失败结果</returns>
-    [Pure]
+    /// <summary>Gets whether the operation failed, including an uninitialized default value.</summary>
+    public bool IsFailure => !IsSuccess;
+
+    /// <summary>Gets the failure cause; access on a successful result throws.</summary>
+    /// <exception cref="InvalidOperationException">The result is successful.</exception>
+    public Exception Error => IsFailure ? _error ?? ResultError.Uninitialized :
+        throw new InvalidOperationException("A successful result has no error.");
+
+    /// <summary>Constructs an explicit successful result.</summary>
+    /// <returns>A successful result.</returns>
+    public static Result Success() => new(isSuccess: true, error: null);
+
+    /// <summary>Constructs a failure without losing its exception identity.</summary>
+    /// <param name="error">The nonnull failure cause.</param>
+    /// <returns>A failed result.</returns>
+    public static Result Failure(Exception error)
+    {
+        ArgumentNullException.ThrowIfNull(error);
+        return new Result(isSuccess: false, error);
+    }
+
+    /// <summary>Constructs a failure describing an invalid operation.</summary>
+    /// <param name="message">The nonblank failure description.</param>
+    /// <returns>A failed result.</returns>
     public static Result Failure(string message)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
-        return new Result(isSuccess: false, new InvalidOperationException(message));
+        return Failure(new InvalidOperationException(message));
     }
 
-    /// <summary>
-    ///     根据成功或失败状态分别执行不同的处理逻辑
-    /// </summary>
-    /// <typeparam name="R">返回值类型</typeparam>
-    /// <param name="onSuccess">成功时执行的函数</param>
-    /// <param name="onFailure">失败时执行的函数</param>
-    /// <returns>处理后的结果</returns>
-    public R Match<R>(Func<R> onSuccess, Func<Exception, R> onFailure) =>
-        IsSuccess ? onSuccess() : onFailure(_exception!);
-
-    /// <summary>
-    ///     将当前无值的 Result 提升为带值的 Result
-    /// </summary>
-    /// <typeparam name="A">值的类型</typeparam>
-    /// <param name="value">成功时关联的值</param>
-    /// <returns>带值的 Result</returns>
-    [Pure]
-    public Result<A> ToResult<A>(A value) =>
-        IsSuccess ? Result<A>.Success(value) : Result<A>.Failure(_exception!);
-
-    /// <summary>
-    ///     判断当前 Result 是否与另一个 Result 相等
-    /// </summary>
-    /// <param name="other">另一个 Result</param>
-    /// <returns>若相等返回 true，否则返回 false</returns>
-    [Pure]
-    public bool Equals(Result other)
+    /// <summary>Chooses the successful or failed branch; branch exceptions propagate to the caller.</summary>
+    /// <typeparam name="TResult">The branch return type.</typeparam>
+    /// <param name="onSuccess">The successful branch.</param>
+    /// <param name="onFailure">The failure branch.</param>
+    /// <returns>The selected branch result.</returns>
+    public TResult Match<TResult>(Func<TResult> onSuccess, Func<Exception, TResult> onFailure)
     {
-        if (_isSuccess != other._isSuccess)
-            return false;
-
-        if (_isSuccess)
-            return true;
-
-        if (_exception is null || other._exception is null)
-            return _exception is null && other._exception is null;
-
-        return _exception.GetType() == other._exception.GetType() &&
-               string.Equals(_exception.Message, other._exception.Message, StringComparison.Ordinal);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+        return IsSuccess ? onSuccess() : onFailure(Error);
     }
 
-    /// <summary>
-    ///     判断当前对象是否与另一个对象相等
-    /// </summary>
-    /// <param name="obj">另一个对象</param>
-    /// <returns>若相等返回 true，否则返回 false</returns>
-    [Pure]
-    public override bool Equals(object? obj) => obj is Result other && Equals(other);
+    /// <summary>Adds a value to a success while preserving an existing failure.</summary>
+    /// <typeparam name="T">The value type.</typeparam>
+    /// <param name="value">The successful value, which may be null if T permits it.</param>
+    /// <returns>A typed result.</returns>
+    public Result<T> ToResult<T>(T value) => IsSuccess ? Result<T>.Success(value) : Result<T>.Failure(Error);
 
-    /// <summary>
-    ///     获取当前 Result 的哈希码
-    /// </summary>
-    /// <returns>哈希码</returns>
-    [Pure]
-    public override int GetHashCode()
+    /// <summary>Maps success to a value; the delegate is not invoked for failure.</summary>
+    /// <typeparam name="T">The mapped value type.</typeparam>
+    /// <param name="mapper">The successful transformation.</param>
+    /// <returns>The mapped result or the original failure.</returns>
+    public Result<T> Map<T>(Func<T> mapper)
     {
-        if (_isSuccess)
-            return 1;
-
-        return _exception is null
-            ? 0
-            : HashCode.Combine(_exception.GetType(), _exception.Message);
+        ArgumentNullException.ThrowIfNull(mapper);
+        return IsSuccess ? Result<T>.Success(mapper()) : Result<T>.Failure(Error);
     }
 
-    /// <summary>
-    ///     判断两个 Result 是否相等
-    /// </summary>
-    /// <param name="a">第一个 Result</param>
-    /// <param name="b">第二个 Result</param>
-    /// <returns>若相等返回 true，否则返回 false</returns>
-    [Pure]
-    public static bool operator ==(Result a, Result b) => a.Equals(b);
+    /// <summary>Chains a result-returning operation without capturing delegate exceptions.</summary>
+    /// <typeparam name="T">The chained value type.</typeparam>
+    /// <param name="binder">The successful continuation.</param>
+    /// <returns>The continuation result or the original failure.</returns>
+    public Result<T> Bind<T>(Func<Result<T>> binder)
+    {
+        ArgumentNullException.ThrowIfNull(binder);
+        return IsSuccess ? binder() : Result<T>.Failure(Error);
+    }
 
-    /// <summary>
-    ///     判断两个 Result 是否不相等
-    /// </summary>
-    /// <param name="a">第一个 Result</param>
-    /// <param name="b">第二个 Result</param>
-    /// <returns>若不相等返回 true，否则返回 false</returns>
-    [Pure]
-    public static bool operator !=(Result a, Result b) => !a.Equals(b);
-
-    /// <summary>
-    ///     返回当前 Result 的字符串表示
-    /// </summary>
-    /// <returns>Result 的字符串表示</returns>
-    [Pure]
-    public override string ToString() =>
-        _isSuccess ? "Success" : (_exception != null ? $"Fail({_exception.Message})" : "Fail(null)");
-
-    /// <summary>
-    ///     尝试执行一个无返回值的操作，并根据执行结果返回成功或失败的 Result
-    /// </summary>
-    /// <param name="action">要执行的无返回值操作</param>
-    /// <returns>若操作成功执行返回成功的 Result，若执行过程中抛出异常则返回失败的 Result</returns>
-    [Pure]
+    /// <summary>Explicitly captures ordinary action exceptions; cancellation continues as cancellation.</summary>
+    /// <param name="action">The operation to execute.</param>
+    /// <returns>Success or the captured failure.</returns>
     public static Result Try(Action action)
     {
         ArgumentNullException.ThrowIfNull(action);
@@ -195,33 +104,47 @@ public readonly struct Result : IEquatable<Result>
             action();
             return Success();
         }
-        catch (Exception ex)
+        catch (Exception error) when (error is not OperationCanceledException)
         {
-            return Failure(ex);
+            return Failure(error);
         }
     }
 
-    /// <summary>
-    ///     将当前 Result 的成功结果映射为另一种类型的 Result
-    /// </summary>
-    /// <typeparam name="B">映射后的目标类型</typeparam>
-    /// <param name="func">用于转换值的函数</param>
-    /// <returns>若当前为成功状态，返回包含转换后值的成功 Result；若为失败状态，返回保持原有错误的失败 Result</returns>
-    public Result<B> Map<B>(Func<B> func)
+    /// <summary>Explicitly captures an asynchronous operation's ordinary exceptions while preserving cancellation.</summary>
+    /// <param name="action">The operation to execute.</param>
+    /// <returns>Success or the captured failure.</returns>
+    public static async Task<Result> TryAsync(Func<Task> action)
     {
-        ArgumentNullException.ThrowIfNull(func);
-        return IsSuccess ? Result<B>.Success(func()) : Result<B>.Failure(_exception!);
+        ArgumentNullException.ThrowIfNull(action);
+        try
+        {
+            await action().ConfigureAwait(false);
+            return Success();
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            return Failure(error);
+        }
     }
 
-    /// <summary>
-    ///     将当前 Result 绑定到一个返回 Result 的函数上
-    /// </summary>
-    /// <typeparam name="B">Result 中值的类型</typeparam>
-    /// <param name="func">返回 Result 的函数</param>
-    /// <returns>若当前为成功状态，返回函数执行的结果；若为失败状态，返回保持原有错误的失败 Result</returns>
-    public Result<B> Bind<B>(Func<Result<B>> func)
-    {
-        ArgumentNullException.ThrowIfNull(func);
-        return IsSuccess ? func() : Result<B>.Failure(_exception!);
-    }
+    /// <summary>Compares successful status, or failure type and ordinal message.</summary>
+    /// <param name="other">The other result.</param>
+    /// <returns>Whether both results have the same value semantics.</returns>
+    public bool Equals(Result other) => IsSuccess == other.IsSuccess &&
+        (IsSuccess || ResultError.Equals(Error, other.Error));
+
+    /// <inheritdoc />
+    public override bool Equals(object? obj) => obj is Result other && Equals(other);
+
+    /// <inheritdoc />
+    public override int GetHashCode() => IsSuccess ? 1 : ResultError.GetHashCode(Error);
+
+    /// <summary>Compares result values for equality.</summary>
+    public static bool operator ==(Result left, Result right) => left.Equals(right);
+
+    /// <summary>Compares result values for inequality.</summary>
+    public static bool operator !=(Result left, Result right) => !left.Equals(right);
+
+    /// <inheritdoc />
+    public override string ToString() => IsSuccess ? "Success" : $"Failure({Error.Message})";
 }

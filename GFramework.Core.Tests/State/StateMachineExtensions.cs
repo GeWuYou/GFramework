@@ -1,7 +1,6 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Reflection;
 using GFramework.Core.Abstractions.State;
 using GFramework.Core.State;
 
@@ -20,8 +19,6 @@ public static class StateMachineExtensions
     /// <returns>找到对应状态类型时返回 <see langword="true" />，否则返回 <see langword="false" />。</returns>
     public static bool ContainsState<T>(this StateMachine stateMachine) where T : IState
     {
-        return stateMachine.GetType().GetField("States", BindingFlags.NonPublic | BindingFlags.Instance)?
-                   .GetValue(stateMachine) is Dictionary<Type, IState> states &&
-               states.ContainsKey(typeof(T));
+        return stateMachine.IsRegistered<T>();
     }
 }

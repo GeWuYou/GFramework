@@ -30,9 +30,9 @@ public class ResultExtensionsTests
     {
         var results = new[]
         {
-            Result<int>.Succeed(1),
-            Result<int>.Succeed(2),
-            Result<int>.Succeed(3),
+            Result<int>.Success(1),
+            Result<int>.Success(2),
+            Result<int>.Success(3),
         };
         var combined = results.Combine();
         Assert.That(combined.IsSuccess, Is.True);
@@ -47,13 +47,13 @@ public class ResultExtensionsTests
         var exception = new Exception("Error");
         var results = new[]
         {
-            Result<int>.Succeed(1),
-            Result<int>.Fail(exception),
-            Result<int>.Succeed(3),
+            Result<int>.Success(1),
+            Result<int>.Failure(exception),
+            Result<int>.Success(3),
         };
         var combined = results.Combine();
-        Assert.That(combined.IsFaulted, Is.True);
-        Assert.That(combined.Exception, Is.SameAs(exception));
+        Assert.That(combined.IsFailure, Is.True);
+        Assert.That(combined.Error, Is.SameAs(exception));
     }
 
     /// <summary>
@@ -86,9 +86,9 @@ public class ResultExtensionsTests
     {
         var results = new[]
         {
-            Result<int>.Succeed(3),
-            Result<int>.Succeed(1),
-            Result<int>.Succeed(2),
+            Result<int>.Success(3),
+            Result<int>.Success(1),
+            Result<int>.Success(2),
         };
         var combined = results.Combine();
         var list = combined.Match(succ: v => v, fail: _ => []);
@@ -104,8 +104,8 @@ public class ResultExtensionsTests
         var callCount = 0;
         var results = new[]
         {
-            Result<int>.Succeed(1),
-            Result<int>.Fail(new Exception("Error")),
+            Result<int>.Success(1),
+            Result<int>.Failure(new Exception("Error")),
             Result<int>.Try(() =>
             {
                 callCount++;
@@ -113,7 +113,7 @@ public class ResultExtensionsTests
             }),
         };
         var combined = results.Combine();
-        Assert.That(combined.IsFaulted, Is.True);
+        Assert.That(combined.IsFailure, Is.True);
     }
 
     /// <summary>
@@ -122,7 +122,7 @@ public class ResultExtensionsTests
     [Test]
     public void Map_Should_Transform_Success_Value()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var mapped = result.Map(x => x.ToString(CultureInfo.InvariantCulture));
         Assert.That(mapped.IsSuccess, Is.True);
         Assert.That(mapped.Match(succ: v => v, fail: _ => ""), Is.EqualTo("42"));
@@ -135,10 +135,10 @@ public class ResultExtensionsTests
     public void Map_Should_Propagate_Failure()
     {
         var exception = new Exception("Error");
-        var result = Result<int>.Fail(exception);
+        var result = Result<int>.Failure(exception);
         var mapped = result.Map(x => x.ToString(CultureInfo.InvariantCulture));
-        Assert.That(mapped.IsFaulted, Is.True);
-        Assert.That(mapped.Exception, Is.SameAs(exception));
+        Assert.That(mapped.IsFailure, Is.True);
+        Assert.That(mapped.Error, Is.SameAs(exception));
     }
 
     /// <summary>
@@ -147,7 +147,7 @@ public class ResultExtensionsTests
     [Test]
     public void Map_Should_Throw_ArgumentNullException_When_Mapper_Is_Null()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         Assert.Throws<ArgumentNullException>(() => { _ = result.Map<string>(null!); });
     }
 
@@ -157,8 +157,8 @@ public class ResultExtensionsTests
     [Test]
     public void Bind_Should_Chain_Success_Results()
     {
-        var result = Result<int>.Succeed(42);
-        var bound = result.Bind(x => Result<string>.Succeed(x.ToString(CultureInfo.InvariantCulture)));
+        var result = Result<int>.Success(42);
+        var bound = result.Bind(x => Result<string>.Success(x.ToString(CultureInfo.InvariantCulture)));
         Assert.That(bound.IsSuccess, Is.True);
         Assert.That(bound.Match(succ: v => v, fail: _ => ""), Is.EqualTo("42"));
     }
@@ -170,10 +170,10 @@ public class ResultExtensionsTests
     public void Bind_Should_Propagate_Failure()
     {
         var exception = new Exception("Error");
-        var result = Result<int>.Fail(exception);
-        var bound = result.Bind(x => Result<string>.Succeed(x.ToString(CultureInfo.InvariantCulture)));
-        Assert.That(bound.IsFaulted, Is.True);
-        Assert.That(bound.Exception, Is.SameAs(exception));
+        var result = Result<int>.Failure(exception);
+        var bound = result.Bind(x => Result<string>.Success(x.ToString(CultureInfo.InvariantCulture)));
+        Assert.That(bound.IsFailure, Is.True);
+        Assert.That(bound.Error, Is.SameAs(exception));
     }
 
     /// <summary>
@@ -182,7 +182,7 @@ public class ResultExtensionsTests
     [Test]
     public void Bind_Should_Throw_ArgumentNullException_When_Binder_Is_Null()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         Assert.Throws<ArgumentNullException>(() => { _ = result.Bind<string>(null!); });
     }
 
@@ -192,7 +192,7 @@ public class ResultExtensionsTests
     [Test]
     public void OnSuccess_Should_Execute_Action_When_Success()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var executed = false;
         result.OnSuccess(_ => executed = true);
         Assert.That(executed, Is.True);
@@ -204,7 +204,7 @@ public class ResultExtensionsTests
     [Test]
     public void OnSuccess_Should_Not_Execute_Action_When_Faulted()
     {
-        var result = Result<int>.Fail(new Exception("Error"));
+        var result = Result<int>.Failure(new Exception("Error"));
         var executed = false;
         result.OnSuccess(_ => executed = true);
         Assert.That(executed, Is.False);
@@ -216,7 +216,7 @@ public class ResultExtensionsTests
     [Test]
     public void OnSuccess_Should_Return_Original_Result_For_Chaining()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var returned = result.OnSuccess(_ => { });
         Assert.That(returned, Is.EqualTo(result));
     }
@@ -227,7 +227,7 @@ public class ResultExtensionsTests
     [Test]
     public void OnSuccess_Should_Throw_ArgumentNullException_When_Action_Is_Null()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         Assert.Throws<ArgumentNullException>(() => result.OnSuccess(null!));
     }
 
@@ -237,7 +237,7 @@ public class ResultExtensionsTests
     [Test]
     public void OnFailure_Should_Execute_Action_When_Faulted()
     {
-        var result = Result<int>.Fail(new Exception("Error"));
+        var result = Result<int>.Failure(new Exception("Error"));
         var executed = false;
         result.OnFailure(_ => executed = true);
         Assert.That(executed, Is.True);
@@ -249,7 +249,7 @@ public class ResultExtensionsTests
     [Test]
     public void OnFailure_Should_Not_Execute_Action_When_Success()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var executed = false;
         result.OnFailure(_ => executed = true);
         Assert.That(executed, Is.False);
@@ -261,7 +261,7 @@ public class ResultExtensionsTests
     [Test]
     public void OnFailure_Should_Return_Original_Result_For_Chaining()
     {
-        var result = Result<int>.Fail(new Exception("Error"));
+        var result = Result<int>.Failure(new Exception("Error"));
         var returned = result.OnFailure(_ => { });
         Assert.That(returned, Is.EqualTo(result));
     }
@@ -272,7 +272,7 @@ public class ResultExtensionsTests
     [Test]
     public void OnFailure_Should_Throw_ArgumentNullException_When_Action_Is_Null()
     {
-        var result = Result<int>.Fail(new Exception("Error"));
+        var result = Result<int>.Failure(new Exception("Error"));
         Assert.Throws<ArgumentNullException>(() => result.OnFailure(null!));
     }
 
@@ -282,7 +282,7 @@ public class ResultExtensionsTests
     [Test]
     public void Ensure_Should_Return_Success_When_Predicate_Is_True()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var ensured = result.Ensure(x => x > 0, "Value must be positive");
         Assert.That(ensured.IsSuccess, Is.True);
     }
@@ -293,10 +293,10 @@ public class ResultExtensionsTests
     [Test]
     public void Ensure_Should_Return_Failure_When_Predicate_Is_False()
     {
-        var result = Result<int>.Succeed(-1);
+        var result = Result<int>.Success(-1);
         var ensured = result.Ensure(x => x > 0, "Value must be positive");
-        Assert.That(ensured.IsFaulted, Is.True);
-        Assert.That(ensured.Exception, Is.TypeOf<ArgumentException>());
+        Assert.That(ensured.IsFailure, Is.True);
+        Assert.That(ensured.Error, Is.TypeOf<ArgumentException>());
     }
 
     /// <summary>
@@ -306,10 +306,10 @@ public class ResultExtensionsTests
     public void Ensure_Should_Propagate_Existing_Failure()
     {
         var exception = new Exception("Original error");
-        var result = Result<int>.Fail(exception);
+        var result = Result<int>.Failure(exception);
         var ensured = result.Ensure(x => x > 0, "Value must be positive");
-        Assert.That(ensured.IsFaulted, Is.True);
-        Assert.That(ensured.Exception, Is.SameAs(exception));
+        Assert.That(ensured.IsFailure, Is.True);
+        Assert.That(ensured.Error, Is.SameAs(exception));
     }
 
     /// <summary>
@@ -318,13 +318,13 @@ public class ResultExtensionsTests
     [Test]
     public void Ensure_Should_Create_ArgumentException_With_Message()
     {
-        var result = Result<int>.Succeed(-1);
+        var result = Result<int>.Success(-1);
         var ensured = result.Ensure(x => x > 0, "Value must be positive");
         Assert.Multiple(() =>
         {
-            Assert.That(ensured.Exception.Message, Does.StartWith("Value must be positive"));
-            Assert.That(ensured.Exception, Is.TypeOf<ArgumentException>());
-            Assert.That(((ArgumentException)ensured.Exception).ParamName, Is.EqualTo("result"));
+            Assert.That(ensured.Error.Message, Does.StartWith("Value must be positive"));
+            Assert.That(ensured.Error, Is.TypeOf<ArgumentException>());
+            Assert.That(((ArgumentException)ensured.Error).ParamName, Is.EqualTo("result"));
         });
     }
 
@@ -334,7 +334,7 @@ public class ResultExtensionsTests
     [Test]
     public void Ensure_Should_Throw_ArgumentNullException_When_Predicate_Is_Null()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         Assert.Throws<ArgumentNullException>(() => result.Ensure(null!, "Error"));
     }
 
@@ -344,7 +344,7 @@ public class ResultExtensionsTests
     [Test]
     public void Ensure_Should_Throw_ArgumentException_When_Message_Is_NullOrWhiteSpace()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         Assert.Throws<ArgumentException>(() => result.Ensure(x => true, ""));
         Assert.Throws<ArgumentException>(() => result.Ensure(x => true, "   "));
     }
@@ -355,7 +355,7 @@ public class ResultExtensionsTests
     [Test]
     public void Ensure_WithFactory_Should_Return_Success_When_Predicate_Is_True()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var ensured = result.Ensure(x => x > 0, _ => new InvalidOperationException("Error"));
         Assert.That(ensured.IsSuccess, Is.True);
     }
@@ -366,10 +366,10 @@ public class ResultExtensionsTests
     [Test]
     public void Ensure_WithFactory_Should_Return_Failure_With_Custom_Exception()
     {
-        var result = Result<int>.Succeed(-1);
+        var result = Result<int>.Success(-1);
         var ensured = result.Ensure(x => x > 0, _ => new InvalidOperationException("Custom error"));
-        Assert.That(ensured.IsFaulted, Is.True);
-        Assert.That(ensured.Exception, Is.TypeOf<InvalidOperationException>());
+        Assert.That(ensured.IsFailure, Is.True);
+        Assert.That(ensured.Error, Is.TypeOf<InvalidOperationException>());
     }
 
     /// <summary>
@@ -378,7 +378,7 @@ public class ResultExtensionsTests
     [Test]
     public void Ensure_WithFactory_Should_Pass_Value_To_Exception_Factory()
     {
-        var result = Result<int>.Succeed(-1);
+        var result = Result<int>.Success(-1);
         var capturedValue = 0;
         result.Ensure(x => x > 0, v =>
         {
@@ -395,9 +395,9 @@ public class ResultExtensionsTests
     public void Ensure_WithFactory_Should_Propagate_Existing_Failure()
     {
         var exception = new Exception("Original error");
-        var result = Result<int>.Fail(exception);
+        var result = Result<int>.Failure(exception);
         var ensured = result.Ensure(x => x > 0, _ => new InvalidOperationException("Error"));
-        Assert.That(ensured.Exception, Is.SameAs(exception));
+        Assert.That(ensured.Error, Is.SameAs(exception));
     }
 
     /// <summary>
@@ -406,7 +406,7 @@ public class ResultExtensionsTests
     [Test]
     public void Ensure_WithFactory_Should_Throw_ArgumentNullException_When_Parameters_Are_Null()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         Assert.Throws<ArgumentNullException>(() => result.Ensure(null!, (Func<int, Exception>)(_ => new Exception())));
         Assert.Throws<ArgumentNullException>(() => result.Ensure(x => true, (Func<int, Exception>)null!));
     }
@@ -417,7 +417,7 @@ public class ResultExtensionsTests
     [Test]
     public void Try_Should_Return_Success_When_Function_Succeeds()
     {
-        var result = ResultExtensions.Try(() => 42);
+        var result = Result<int>.Try(() => 42);
         Assert.That(result.IsSuccess, Is.True);
         Assert.That(result.Match(succ: v => v, fail: _ => 0), Is.EqualTo(42));
     }
@@ -428,9 +428,9 @@ public class ResultExtensionsTests
     [Test]
     public void Try_Should_Return_Failure_When_Function_Throws()
     {
-        var result = ResultExtensions.Try<int>(() => throw new InvalidOperationException("Error"));
-        Assert.That(result.IsFaulted, Is.True);
-        Assert.That(result.Exception, Is.TypeOf<InvalidOperationException>());
+        var result = Result<int>.Try(() => throw new InvalidOperationException("Error"));
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error, Is.TypeOf<InvalidOperationException>());
     }
 
     /// <summary>
@@ -439,7 +439,7 @@ public class ResultExtensionsTests
     [Test]
     public async Task Try_Should_Throw_ArgumentNullException_When_Function_Is_Null()
     {
-        Assert.Throws<ArgumentNullException>(() => ResultExtensions.Try<int>(null!));
+        Assert.Throws<ArgumentNullException>(() => Result<int>.Try(null!));
     }
 
     /// <summary>
@@ -448,7 +448,7 @@ public class ResultExtensionsTests
     [Test]
     public async Task TryAsync_Should_Return_Success_When_Async_Function_Succeeds()
     {
-        var result = await ResultExtensions.TryAsync(async () =>
+        var result = await Result<int>.TryAsync(async () =>
         {
             await Task.Delay(1).ConfigureAwait(false);
             return 42;
@@ -463,13 +463,13 @@ public class ResultExtensionsTests
     [Test]
     public async Task TryAsync_Should_Return_Failure_When_Async_Function_Throws()
     {
-        var result = await ResultExtensions.TryAsync<int>(async () =>
+        var result = await Result<int>.TryAsync(async () =>
         {
             await Task.Delay(1).ConfigureAwait(false);
             throw new InvalidOperationException("Error");
         }).ConfigureAwait(false);
-        Assert.That(result.IsFaulted, Is.True);
-        Assert.That(result.Exception, Is.TypeOf<InvalidOperationException>());
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error, Is.TypeOf<InvalidOperationException>());
     }
 
     /// <summary>
@@ -478,9 +478,9 @@ public class ResultExtensionsTests
     [Test]
     public async Task TryAsync_Should_Handle_Synchronous_Exceptions()
     {
-        var result = await ResultExtensions.TryAsync<int>(() => throw new InvalidOperationException("Sync error"))
+        var result = await Result<int>.TryAsync(() => throw new InvalidOperationException("Sync error"))
             .ConfigureAwait(false);
-        Assert.That(result.IsFaulted, Is.True);
+        Assert.That(result.IsFailure, Is.True);
     }
 
     /// <summary>
@@ -489,7 +489,7 @@ public class ResultExtensionsTests
     [Test]
     public async Task TryAsync_Should_Throw_ArgumentNullException_When_Function_Is_Null()
     {
-        await Assert.ThrowsAsync<ArgumentNullException>(() => ResultExtensions.TryAsync<int>(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => Result<int>.TryAsync(null!));
     }
 
     /// <summary>
@@ -498,7 +498,7 @@ public class ResultExtensionsTests
     [Test]
     public void ToNullable_Should_Return_Value_When_Success()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var nullable = result.ToNullable();
         Assert.That(nullable, Is.EqualTo(42));
     }
@@ -509,7 +509,7 @@ public class ResultExtensionsTests
     [Test]
     public void ToNullable_Should_Return_Null_When_Faulted()
     {
-        var result = Result<int>.Fail(new Exception("Error"));
+        var result = Result<int>.Failure(new Exception("Error"));
         var nullable = result.ToNullable();
         Assert.That(nullable, Is.Null);
     }
@@ -520,7 +520,7 @@ public class ResultExtensionsTests
     [Test]
     public void ToNullable_Should_Work_With_Value_Types()
     {
-        var result = Result<DateTime>.Succeed(new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        var result = Result<DateTime>.Success(new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc));
         var nullable = result.ToNullable();
         Assert.That(nullable, Is.Not.Null);
         Assert.That(nullable!.Value.Year, Is.EqualTo(2025));
@@ -548,8 +548,8 @@ public class ResultExtensionsTests
     {
         string? value = null;
         var result = value.ToResult();
-        Assert.That(result.IsFaulted, Is.True);
-        Assert.That(result.Exception, Is.TypeOf<ArgumentNullException>());
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error, Is.TypeOf<ArgumentNullException>());
     }
 
     /// <summary>
@@ -560,7 +560,7 @@ public class ResultExtensionsTests
     {
         string? value = null;
         var result = value.ToResult("Custom error");
-        Assert.That(result.Exception.Message, Does.Contain("Custom error"));
+        Assert.That(result.Error.Message, Does.Contain("Custom error"));
     }
 
     /// <summary>
@@ -583,8 +583,8 @@ public class ResultExtensionsTests
     {
         int? value = null;
         var result = value.ToResult();
-        Assert.That(result.IsFaulted, Is.True);
-        Assert.That(result.Exception, Is.TypeOf<ArgumentNullException>());
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error, Is.TypeOf<ArgumentNullException>());
     }
 
     /// <summary>
@@ -595,7 +595,7 @@ public class ResultExtensionsTests
     {
         int? value = null;
         var result = value.ToResult("Custom nullable error");
-        Assert.That(result.Exception.Message, Does.Contain("Custom nullable error"));
+        Assert.That(result.Error.Message, Does.Contain("Custom nullable error"));
     }
 
     /// <summary>
@@ -604,9 +604,9 @@ public class ResultExtensionsTests
     [Test]
     public void Should_Support_Complex_Chaining_With_Multiple_Operations()
     {
-        var result = Result<int>.Succeed(10)
+        var result = Result<int>.Success(10)
             .Map(x => x * 2)
-            .Bind(x => Result<int>.Succeed(x + 5))
+            .Bind(x => Result<int>.Success(x + 5))
             .Ensure(x => x > 20, "Value must be greater than 20")
             .OnSuccess(x => Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"Success: {x}")))
             .OnFailure(ex => Console.WriteLine($"Error: {ex.Message}"));
@@ -624,7 +624,7 @@ public class ResultExtensionsTests
         var successCount = 0;
         var failureCount = 0;
 
-        Result<int>.Succeed(42)
+        Result<int>.Success(42)
             .OnSuccess(_ => successCount++)
             .OnFailure(_ => failureCount++);
 
@@ -635,7 +635,7 @@ public class ResultExtensionsTests
     [Test]
     public void Should_Support_Ensure_Chaining_With_Multiple_Conditions()
     {
-        var result = Result<int>.Succeed(50)
+        var result = Result<int>.Success(50)
             .Ensure(x => x > 0, "Must be positive")
             .Ensure(x => x < 100, "Must be less than 100")
             .Ensure(x => x % 2 == 0, "Must be even");

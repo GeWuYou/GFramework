@@ -17,11 +17,11 @@ namespace GFramework.Cqrs.Cqrs.Notification;
 
 /// <summary>
 /// 抽象通知处理器基类
-/// 继承自轻量 CQRS 上下文基类并实现INotificationHandler接口，为具体的通知处理器提供基础功能
+/// 通过显式构造依赖并实现INotificationHandler接口，为具体的通知处理器提供基础功能
 /// 用于处理CQRS模式中的通知消息，支持异步处理
 /// </summary>
 /// <typeparam name="TNotification">通知类型，必须实现INotification接口</typeparam>
-public abstract class AbstractNotificationHandler<TNotification> : CqrsContextAwareHandlerBase,
+public abstract class AbstractNotificationHandler<TNotification> :
     INotificationHandler<TNotification>
     where TNotification : INotification
 {

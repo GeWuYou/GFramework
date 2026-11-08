@@ -212,7 +212,7 @@ public sealed class HarmonyModExtensionTests
         {
         }
         /// <inheritdoc />
-        public void OwnRegistration(IUnRegister registration)
+        public void OwnRegistration(IDisposable registration)
         {
         }
     }

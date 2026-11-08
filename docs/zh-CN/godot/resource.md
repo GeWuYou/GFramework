@@ -75,7 +75,7 @@ public interface IHasKey<out TKey>
 
 ```csharp
 using Godot;
-using GFramework.Core.Abstractions.bases;
+using GFramework.Core.Abstractions.Bases;
 
 // 定义资源数据类
 [GlobalClass]
@@ -119,15 +119,15 @@ public class ItemRepository : GodotResourceRepository<string, ItemData>
 ### 注册到架构
 
 ```csharp
-using GFramework.Godot.Architecture;
+using GFramework.Godot.Architectures;
+using GFramework.Godot.Data;
+using Microsoft.Extensions.DependencyInjection;
 
 public class GameArchitecture : AbstractArchitecture
 {
-    protected override void InstallModules()
+    protected override void InstallModules(IServiceCollection services)
     {
-        // 注册物品仓储
-        var itemRepo = new ItemRepository();
-        RegisterUtility<IResourceRepository<string, ItemData>>(itemRepo);
+        services.AddSingleton<IResourceRepository<string, ItemData>, ItemRepository>();
     }
 }
 ```
@@ -140,12 +140,16 @@ using GFramework.Godot.Extensions;
 
 public partial class InventoryController : Node
 {
-    private IResourceRepository<string, ItemData> _itemRepo;
+    private IResourceRepository<string, ItemData> _itemRepo = null!;
+
+    // 由父节点或组合根在 AddChild 前提供实际依赖。
+    public void Configure(IResourceRepository<string, ItemData> repository)
+    {
+        _itemRepo = repository;
+    }
 
     public override void _Ready()
     {
-        // 获取资源仓储
-        _itemRepo = this.GetUtility<IResourceRepository<string, ItemData>>();
 
         // 使用资源
         ShowItemInfo("sword_001");
@@ -167,6 +171,23 @@ public partial class InventoryController : Node
     }
 }
 ```
+
+## 仓储与资源租约
+
+本页的 GodotResourceRepository 按业务键索引 Godot Resource；它不负责 Core ResourceManager 的引用计数。仓储中的同步目录扫描需要在合适的 Godot 线程阶段执行，不能在 ConfigureServices 中主动构造并加载。
+
+使用架构时，组合根在启动后解析仓储，再调用节点的 Configure 后入树；普通服务通过构造函数接收相同的仓储。配置结束后不再注册服务。
+
+需要按类型与路径动态加载、共享在途请求及控制卸载时，使用 Core ResourceManager 的租约 API，并提供遵守 Godot 线程要求的加载器：
+
+```csharp
+manager.RegisterLoader<Texture2D>(textureLoader);
+using var lease = await manager.AcquireAsync<Texture2D>("res://art/player.png", cancellationToken);
+Texture2D texture = lease.Resource;
+using var retained = lease.Retain(); // 独立租约，分别释放。
+```
+
+`Unload<Texture2D>`(path) 在存在活跃租约时拒绝卸载。不要在释放租约之后继续使用其中的资源；原始加载器的释放能力必须存活到所有租约归还之后。该管理器不会自动把加载和释放调度到 Godot 主线程。
 
 ## 高级用法
 
@@ -205,11 +226,12 @@ public class ConfigRepository : GodotResourceRepository<string, ConfigData>
 ```csharp
 public partial class ResourceManager : Node
 {
-    private IResourceRepository<string, ItemData> _itemRepo;
+    private IResourceRepository<string, ItemData> _itemRepo = null!;
 
-    public override void _Ready()
+    // 由父节点或组合根在 AddChild 前提供实际依赖。
+    public void Configure(IResourceRepository<string, ItemData> repository)
     {
-        _itemRepo = this.GetUtility<IResourceRepository<string, ItemData>>();
+        _itemRepo = repository;
     }
 
     public void AddCustomItem(ItemData item)
@@ -236,11 +258,16 @@ public partial class ResourceManager : Node
 ```csharp
 public partial class ItemListUI : Control
 {
-    private IResourceRepository<string, ItemData> _itemRepo;
+    private IResourceRepository<string, ItemData> _itemRepo = null!;
+
+    // 由父节点或组合根在 AddChild 前提供实际依赖。
+    public void Configure(IResourceRepository<string, ItemData> repository)
+    {
+        _itemRepo = repository;
+    }
 
     public override void _Ready()
     {
-        _itemRepo = this.GetUtility<IResourceRepository<string, ItemData>>();
         DisplayAllItems();
     }
 
@@ -263,27 +290,17 @@ public partial class ItemListUI : Control
 ```csharp
 public partial class GameInitializer : Node
 {
-    public override async void _Ready()
+    public override void _Ready()
     {
-        await PreloadAllResources();
-        GD.Print("所有资源预加载完成");
-    }
+        // 这是无容器宿主的组合根；构造函数执行示例中的同步目录预加载。
+        var items = new ItemRepository();
+        var skills = new SkillRepository();
+        var enemies = new EnemyRepository();
 
-    private async Task PreloadAllResources()
-    {
-        // 预加载物品资源
-        var itemRepo = new ItemRepository();
-        this.RegisterUtility<IResourceRepository<string, ItemData>>(itemRepo);
-
-        // 预加载技能资源
-        var skillRepo = new SkillRepository();
-        this.RegisterUtility<IResourceRepository<string, SkillData>>(skillRepo);
-
-        // 预加载敌人资源
-        var enemyRepo = new EnemyRepository();
-        this.RegisterUtility<IResourceRepository<string, EnemyData>>(enemyRepo);
-
-        await Task.CompletedTask;
+        var inventory = new InventoryController();
+        inventory.Configure(items);
+        AddChild(inventory);
+        GD.Print("资源已准备完成。");
     }
 }
 ```
@@ -425,11 +442,12 @@ public class EquipmentManager
 ```csharp
 public partial class HotReloadManager : Node
 {
-    private IResourceRepository<string, ItemData> _itemRepo;
+    private IResourceRepository<string, ItemData> _itemRepo = null!;
 
-    public override void _Ready()
+    // 由父节点或组合根在 AddChild 前提供实际依赖。
+    public void Configure(IResourceRepository<string, ItemData> repository)
     {
-        _itemRepo = this.GetUtility<IResourceRepository<string, ItemData>>();
+        _itemRepo = repository;
     }
 
     public void ReloadResources()
@@ -461,24 +479,24 @@ public partial class HotReloadManager : Node
 
 1. **资源实现 IHasKey 接口**：确保资源可以被仓储管理
    ```csharp
-   ✓ public partial class ItemData : Resource, IHasKey<string> { }
+   ✓ public partial class ItemData : Resource, `IHasKey<string>` { }
    ✗ public partial class ItemData : Resource { } // 无法使用仓储
    ```
 
 2. **使用有意义的键类型**：根据业务需求选择合适的键类型
    ```csharp
-   ✓ IResourceRepository<string, ItemData>  // 字符串 ID
-   ✓ IResourceRepository<int, LevelData>    // 整数关卡号
-   ✓ IResourceRepository<Guid, SaveData>    // GUID 唯一标识
+   ✓ `IResourceRepository<string, ItemData>`  // 字符串 ID
+   ✓ `IResourceRepository<int, LevelData>`    // 整数关卡号
+   ✓ `IResourceRepository<Guid, SaveData>`    // GUID 唯一标识
    ```
 
 3. **在架构初始化时加载资源**：避免运行时加载卡顿
    ```csharp
-   protected override void InstallModules()
+   protected override void InstallModules(IServiceCollection services)
    {
-       var itemRepo = new ItemRepository();
-       RegisterUtility<IResourceRepository<string, ItemData>>(itemRepo);
+       services.AddSingleton<`IResourceRepository<string, ItemData>`, ItemRepository>();
    }
+   // 在主线程的启动/装配阶段首次解析仓储，并把它传给消费节点。
    ```
 
 4. **使用递归加载组织资源**：保持目录结构清晰
@@ -563,7 +581,7 @@ public override void _Ready()
 {
     // 在游戏启动时加载
     var itemRepo = new ItemRepository();
-    RegisterUtility(itemRepo);
+    // 接收方通过 Configure(itemRepo) 或构造函数取得它。
 }
 ```
 

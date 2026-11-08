@@ -44,5 +44,5 @@ public interface IGameModContext
     void OwnAsync(IAsyncDisposable resource);
     /// <summary>Tracks an existing framework event subscription without creating a second event mechanism.</summary>
     /// <param name="registration">Subscription to unregister during scope cleanup.</param>
-    void OwnRegistration(IUnRegister registration);
+    void OwnRegistration(IDisposable registration);
 }

@@ -10,7 +10,6 @@ using BenchmarkDotNet.Order;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Notification;
 using MediatR;
@@ -26,7 +25,7 @@ namespace GFramework.Cqrs.Benchmarks.Messaging;
 [Config(typeof(Config))]
 public class NotificationFanOutBenchmarks
 {
-    private MicrosoftDiContainer _container = null!;
+    private BenchmarkServiceHost _container = null!;
     private ICqrsRuntime _sequentialRuntime = null!;
     private ICqrsRuntime _taskWhenAllRuntime = null!;
     private ServiceProvider _mediatrServiceProvider = null!;

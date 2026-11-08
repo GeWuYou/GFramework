@@ -12,6 +12,10 @@ namespace GFramework.Ecs.Arch.Systems;
 /// </summary>
 public sealed class MovementSystem : ArchSystemAdapter<float>
 {
+    /// <summary>Receives the world that this system updates.</summary>
+    /// <param name="world">The composition-root owned world.</param>
+    public MovementSystem(global::Arch.Core.World world) : base(world) { }
+
     private QueryDescription _query;
 
     /// <summary>

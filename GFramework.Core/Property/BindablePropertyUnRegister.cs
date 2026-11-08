@@ -12,7 +12,7 @@ namespace GFramework.Core.Property;
 /// <param name="bindableProperty">需要注销的可绑定属性实例</param>
 /// <param name="onValueChanged">需要注销的值变化回调函数</param>
 public class BindablePropertyUnRegister<T>(BindableProperty<T> bindableProperty, Action<T> onValueChanged)
-    : IUnRegister
+    : IDisposable
 {
     /// <summary>
     ///     获取或设置可绑定属性实例
@@ -27,7 +27,7 @@ public class BindablePropertyUnRegister<T>(BindableProperty<T> bindableProperty,
     /// <summary>
     ///     执行注销操作，取消注册值变化监听并清理引用
     /// </summary>
-    public void UnRegister()
+    public void Dispose()
     {
         // 检查两个引用都不为null时才执行注销操作
         if (BindableProperty != null && OnValueChanged != null)

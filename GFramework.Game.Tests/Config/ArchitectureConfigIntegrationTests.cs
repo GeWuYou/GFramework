@@ -4,8 +4,7 @@
 using System.IO;
 using System.Threading;
 using GFramework.Core.Architectures;
-using GFramework.Core.Extensions;
-using GFramework.Core.Utility;
+using GFramework.Core.Abstractions.Lifecycle;
 using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Config;
 using GFramework.Game.Config.Generated;
@@ -48,7 +47,7 @@ public class ArchitectureConfigIntegrationTests
                 Assert.That(retrieved, Is.Not.Null);
                 Assert.That(retrieved!.Get(1).Name, Is.EqualTo("Slime"));
                 Assert.That(architecture.Registry.TryGetItemTable(out _), Is.False);
-                Assert.That(architecture.Context.GetUtility<IConfigRegistry>(), Is.SameAs(architecture.Registry));
+                Assert.That(architecture.Services.GetRequiredService<IConfigRegistry>(), Is.SameAs(architecture.Registry));
                 Assert.That(architecture.ConfigModule.IsInitialized, Is.True);
                 Assert.That(architecture.ConfigModule.IsHotReloadEnabled, Is.False);
             });
@@ -127,7 +126,7 @@ public class ArchitectureConfigIntegrationTests
             {
                 Assert.That(wasInitializedBeforeDestroy, Is.True);
                 Assert.That(exception, Is.Not.Null);
-                Assert.That(exception!.Message, Does.Contain("cannot be installed more than once"));
+                Assert.That(exception!.Message, Does.Contain("only configure one architecture"));
             });
         }
         finally
@@ -288,65 +287,7 @@ public class ArchitectureConfigIntegrationTests
         }
     }
 
-    /// <summary>
-    ///     验证模块在架构已经越过安装窗口时会拒绝安装，
-    ///     并且失败不会消耗模块实例，便于后续在新的架构上重试安装。
-    /// </summary>
-    [Test]
-    public async Task GameConfigModuleShouldRejectLateInstallationWithoutConsumingTheModuleInstance()
-    {
-        var rootPath = CreateTempConfigRoot();
-        ReadyOnlyArchitecture? readyArchitecture = null;
-        ModuleOnlyArchitecture? retryArchitecture = null;
-        var readyArchitectureInitialized = false;
-        var retryArchitectureInitialized = false;
-        try
-        {
-            var module = CreateModule(rootPath);
 
-            readyArchitecture = new ReadyOnlyArchitecture();
-            await readyArchitecture.InitializeAsync().ConfigureAwait(false);
-            readyArchitectureInitialized = true;
-
-            var exception = Assert.Throws<InvalidOperationException>(() => readyArchitecture.InstallModule(module));
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(exception, Is.Not.Null);
-                Assert.That(exception!.Message, Does.Contain("ConfigureServices"));
-                Assert.That(readyArchitecture.Context.GetUtilities<IConfigRegistry>(), Is.Empty);
-                Assert.That(module.IsInitialized, Is.False);
-            });
-
-            await readyArchitecture.DestroyAsync().ConfigureAwait(false);
-            readyArchitectureInitialized = false;
-            readyArchitecture = null;
-
-            retryArchitecture = new ModuleOnlyArchitecture(module);
-            await retryArchitecture.InitializeAsync().ConfigureAwait(false);
-            retryArchitectureInitialized = true;
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(module.IsInitialized, Is.True);
-                Assert.That(retryArchitecture.Registry.GetMonsterTable().Get(1).Name, Is.EqualTo("Slime"));
-            });
-        }
-        finally
-        {
-            if (retryArchitecture is not null && retryArchitectureInitialized)
-            {
-                await retryArchitecture.DestroyAsync().ConfigureAwait(false);
-            }
-
-            if (readyArchitecture is not null && readyArchitectureInitialized)
-            {
-                await readyArchitecture.DestroyAsync().ConfigureAwait(false);
-            }
-
-            DeleteDirectoryIfExists(rootPath);
-        }
-    }
 
     /// <summary>Distinct configuration roots receive separate provider-owned cleanup helpers without duplicate type registration.</summary>
     [Test]
@@ -386,7 +327,7 @@ public class ArchitectureConfigIntegrationTests
         {
             foreach (var module in modules)
             {
-                InstallModule(module);
+                services.AddModule(module);
             }
         }
     }
@@ -536,7 +477,7 @@ public class ArchitectureConfigIntegrationTests
     private sealed class ConsumerArchitecture : Architecture
     {
         private readonly GameConfigModule _configModule;
-        private readonly ConfigAwareProbeUtility _probeUtility = new();
+        private readonly ConfigAwareProbeUtility _probeUtility;
 
         /// <summary>
         ///     使用指定配置根目录创建一个消费者测试架构。
@@ -548,6 +489,7 @@ public class ArchitectureConfigIntegrationTests
             ArgumentNullException.ThrowIfNull(configRoot);
 
             _configModule = CreateModule(configRoot);
+            _probeUtility = new ConfigAwareProbeUtility(_configModule.Registry);
         }
 
         /// <summary>
@@ -555,7 +497,7 @@ public class ArchitectureConfigIntegrationTests
         /// </summary>
         /// <remarks>
         ///     该模块会在 <see cref="ConfigureServices" /> 中安装，并在架构进入
-        ///     <see cref="GFramework.Core.Abstractions.Enums.ArchitecturePhase.BeforeUtilityInit" /> 时完成首次加载。
+        ///     <see cref="GFramework.Core.Abstractions.Enums.ArchitecturePhase.Initializing" /> 时完成首次加载。
         ///     调用方可通过该属性观察模块初始化状态，但不应在架构初始化完成前假定加载已经成功。
         /// </remarks>
         public GameConfigModule ConfigModule => _configModule;
@@ -595,8 +537,8 @@ public class ArchitectureConfigIntegrationTests
         /// </summary>
         protected override void ConfigureServices(IServiceCollection services)
         {
-            InstallModule(_configModule);
-            RegisterUtility(_probeUtility);
+            services.AddModule(_configModule);
+            services.AddComponent(_probeUtility);
         }
     }
 
@@ -627,7 +569,7 @@ public class ArchitectureConfigIntegrationTests
         /// </summary>
         protected override void ConfigureServices(IServiceCollection services)
         {
-            InstallModule(configModule);
+            services.AddModule(configModule);
         }
     }
 
@@ -653,15 +595,15 @@ public class ArchitectureConfigIntegrationTests
         /// <inheritdoc />
         protected override void ConfigureServices(IServiceCollection services)
         {
-            InstallModule(module);
-            RegisterUtility<FailingConfigUtility>();
+            services.AddModule(module);
+            services.AddComponent<FailingConfigUtility>();
         }
     }
 
     /// <summary>
     ///     用于验证配置模块启动之后的失败清理。
     /// </summary>
-    private sealed class FailingConfigUtility : AbstractContextUtility
+    private sealed class FailingConfigUtility : IInitializable
     {
         /// <summary>
         ///     允许正式 DI provider 激活测试 utility，使故障发生在首载之后而非构造阶段。
@@ -671,7 +613,7 @@ public class ArchitectureConfigIntegrationTests
         }
 
         /// <inheritdoc />
-        protected override void OnInit()
+        public void Initialize()
         {
             throw new InvalidOperationException("Expected utility initialization failure.");
         }
@@ -681,7 +623,7 @@ public class ArchitectureConfigIntegrationTests
     ///     在 utility 初始化阶段直接读取配置表的探针工具。
     ///     如果模块没有在 utility 阶段开始前完成首次加载，这个探针会在初始化时失败。
     /// </summary>
-    private sealed class ConfigAwareProbeUtility : AbstractContextUtility
+    private sealed class ConfigAwareProbeUtility(IConfigRegistry registry) : IInitializable
     {
         /// <summary>
         ///     获取一个值，指示初始化时是否已经读取到有效配置。
@@ -710,11 +652,8 @@ public class ArchitectureConfigIntegrationTests
         /// <summary>
         ///     读取架构上下文中的配置注册表并验证目标表已经可用。
         /// </summary>
-        protected override void OnInit()
+        public void Initialize()
         {
-#pragma warning disable GF_ContextRegistration_003
-            var registry = this.GetUtility<IConfigRegistry>();
-#pragma warning restore GF_ContextRegistration_003
             var monsterTable = registry.GetMonsterTable();
 
             ObservedMonsterName = monsterTable.Get(1).Name;

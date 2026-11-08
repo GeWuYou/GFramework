@@ -26,7 +26,7 @@
 
 | 模块 | 作用 | 入口 |
 | --- | --- | --- |
-| `GFramework.Core` | 架构、命令、查询、事件、状态、日志、资源、协程等基础运行时 | [模块说明](GFramework.Core/README.md) |
+| `GFramework.Core` | 可选生命周期编排、事件、状态、日志、资源、协程等基础能力 | [模块说明](GFramework.Core/README.md) |
 | `GFramework.Core.Abstractions` | `Core` 对应的契约层，适合面向接口开发或做模块拆分 | [模块说明](GFramework.Core.Abstractions/README.md) |
 | `GFramework.Cqrs` | 新版 CQRS runtime，提供 request dispatcher、notification publish 与 handler 注册 | [模块说明](GFramework.Cqrs/README.md) |
 | `GFramework.Cqrs.Abstractions` | CQRS 消息、处理器、pipeline 行为等契约 | [模块说明](GFramework.Cqrs.Abstractions/README.md) |
@@ -131,7 +131,7 @@ NuGet 消费项目可显式开启模块级自动导入：
 
 ```xml
 <ItemGroup>
-  <GFrameworkExcludedUsing Include="GFramework.Core.Environment" />
+  <GFrameworkExcludedUsing Include="GFramework.Core.Functional" />
   <GFrameworkExcludedUsing Include="GFramework.Godot.Extensions" />
 </ItemGroup>
 ```
@@ -173,3 +173,13 @@ GFramework.sln
 
 本仓库当前采用 [Apache License 2.0](LICENSE)。贡献源码或配置文件时，请遵循
 [贡献指南中的许可证文件头要求](docs/zh-CN/contributing.md#许可证文件头)。
+
+## 开发范式与示例
+
+推荐标准 DI、按功能组织的轻量分层和可选 Architecture 生命周期。业务对象显式声明依赖，规则与引擎/存储分离。
+
+- [最小 C# 应用](Samples/MinimalApp/README.md)
+- [Godot 接入](Samples/GodotIntegration/README.md)
+- [完整游戏基础版](Samples/DodgeTheCreeps/README.md)
+- [完整游戏进阶版](Samples/DodgeTheCreeps.Advanced/README.md)
+- [进阶教程](docs/zh-CN/tutorials/godot-advanced-project.md)

@@ -1,7 +1,6 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Utility;
 
 namespace GFramework.Game.Abstractions.Config;
 
@@ -9,7 +8,7 @@ namespace GFramework.Game.Abstractions.Config;
 ///     定义配置加载器契约。
 ///     具体实现负责从文件系统、资源包或其他配置源加载文本配置，并将解析结果注册到配置注册表。
 /// </summary>
-public interface IConfigLoader : IUtility
+public interface IConfigLoader
 {
     /// <summary>
     ///     执行配置加载并将结果写入注册表。

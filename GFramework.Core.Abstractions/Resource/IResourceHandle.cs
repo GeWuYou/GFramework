@@ -3,51 +3,34 @@
 
 namespace GFramework.Core.Abstractions.Resource;
 
-/// <summary>
-///     资源句柄接口，用于管理资源的生命周期和引用
-/// </summary>
-/// <typeparam name="T">资源类型</typeparam>
+/// <summary>One independently disposable lease on a resource. Keep it alive for the entire use of the resource.</summary>
+/// <typeparam name="T">The resource type.</typeparam>
+/// <remarks>
+///     Disposal releases exactly one manager reference; the loader releases the underlying resource. Consumers
+///     must coordinate concurrent use and disposal of the same lease. Retain creates a separately owned lease.
+/// </remarks>
 public interface IResourceHandle<out T> : IDisposable where T : class
 {
-    /// <summary>
-    ///     获取资源实例
-    /// </summary>
-    T? Resource
+    /// <summary>Gets the leased resource; access after this lease is disposed throws.</summary>
+    T Resource
     {
         get;
     }
 
-    /// <summary>
-    ///     获取资源路径
-    /// </summary>
+    /// <summary>Gets the loader-specific path.</summary>
     string Path
     {
         get;
     }
 
-    /// <summary>
-    ///     获取资源是否有效（未被释放）
-    /// </summary>
+    /// <summary>Gets whether this lease has not been disposed.</summary>
     bool IsValid
     {
         get;
     }
 
-    /// <summary>
-    ///     获取当前引用计数
-    /// </summary>
-    int ReferenceCount
-    {
-        get;
-    }
-
-    /// <summary>
-    ///     增加引用计数
-    /// </summary>
-    void AddReference();
-
-    /// <summary>
-    ///     减少引用计数
-    /// </summary>
-    void RemoveReference();
+    /// <summary>Creates an independent lease on the same resource.</summary>
+    /// <returns>A new lease whose disposal does not invalidate this lease.</returns>
+    /// <exception cref="ObjectDisposedException">This lease or its manager is closed.</exception>
+    IResourceHandle<T> Retain();
 }

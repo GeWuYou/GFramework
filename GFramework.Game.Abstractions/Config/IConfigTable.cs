@@ -1,7 +1,6 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Utility;
 
 namespace GFramework.Game.Abstractions.Config;
 
@@ -9,7 +8,7 @@ namespace GFramework.Game.Abstractions.Config;
 ///     定义配置表的非泛型公共契约，用于在注册表中保存异构配置表实例。
 ///     该接口只暴露运行时发现和诊断所需的元数据，不提供具体类型访问能力。
 /// </summary>
-public interface IConfigTable : IUtility
+public interface IConfigTable
 {
     /// <summary>
     ///     获取配置表主键类型。

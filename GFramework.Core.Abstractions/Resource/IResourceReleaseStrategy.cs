@@ -10,7 +10,7 @@ namespace GFramework.Core.Abstractions.Resource;
 public interface IResourceReleaseStrategy
 {
     /// <summary>
-    ///     判断是否应该释放资源
+    ///     判断是否应该释放资源。策略应只返回决定，不执行加载、卸载或修改管理器的操作。
     /// </summary>
     /// <param name="path">资源路径</param>
     /// <param name="refCount">当前引用计数</param>

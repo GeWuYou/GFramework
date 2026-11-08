@@ -21,7 +21,7 @@ namespace GFramework.Core.Events;
 /// <typeparam name="TEvent">要监听的事件类型</typeparam>
 public sealed class EventListenerScope<TEvent> : IDisposable
 {
-    private readonly IUnRegister? _unRegister;
+    private IDisposable? _unRegister;
     private volatile bool _triggered;
 
     /// <summary>
@@ -30,7 +30,7 @@ public sealed class EventListenerScope<TEvent> : IDisposable
     /// <param name="eventBus">事件总线实例，用于注册事件监听器</param>
     public EventListenerScope(IEventBus eventBus)
     {
-        _unRegister = eventBus.Register<TEvent>(OnEventTriggered);
+        _unRegister = eventBus.Subscribe<TEvent>(OnEventTriggered);
     }
 
     /// <summary>
@@ -51,7 +51,7 @@ public sealed class EventListenerScope<TEvent> : IDisposable
     /// </summary>
     public void Dispose()
     {
-        _unRegister?.UnRegister();
+        Interlocked.Exchange(ref _unRegister, null)?.Dispose();
     }
 
     /// <summary>

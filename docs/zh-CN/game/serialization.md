@@ -29,6 +29,7 @@ description: 以当前 GFramework.Game.JsonSerializer 与 JsonSerializerTests �
 ```csharp
 using GFramework.Core.Abstractions.Serializer;
 using GFramework.Game.Serializer;
+using Microsoft.Extensions.DependencyInjection;
 
 ISerializer serializer = new JsonSerializer();
 IRuntimeTypeSerializer runtimeSerializer = new JsonSerializer();
@@ -75,7 +76,7 @@ var serializer = new JsonSerializer(settings);
 不推荐写法：
 
 ```csharp
-var serializer = architecture.GetUtility<IRuntimeTypeSerializer>();
+// IRuntimeTypeSerializer is supplied through the consumer constructor.
 
 // 序列化器已经被多个组件共享后，再继续改 converter，容易让并发调用看到不稳定配置。
 ((JsonSerializer)serializer).Converters.Add(new LateBoundConverter());
@@ -93,8 +94,8 @@ using GFramework.Game.Serializer;
 
 var serializer = new JsonSerializer();
 
-architecture.RegisterUtility<ISerializer>(serializer);
-architecture.RegisterUtility<IRuntimeTypeSerializer>(serializer);
+services.AddSingleton<ISerializer>(serializer);
+services.AddSingleton<IRuntimeTypeSerializer>(serializer);
 ```
 
 然后由：

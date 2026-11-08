@@ -3,53 +3,27 @@
 
 namespace GFramework.Core.Abstractions.Events;
 
-/// <summary>
-///     事件总线接口，提供事件的发送、注册和注销功能
-/// </summary>
+/// <summary>Instance-local synchronous notifications delivered on the publishing thread.</summary>
+/// <remarks>Each publication snapshots registrations. Callback exceptions stop delivery and propagate.</remarks>
 public interface IEventBus
 {
-    /// <summary>
-    ///     发送事件，自动创建事件实例
-    /// </summary>
-    /// <typeparam name="T">事件类型，必须具有无参构造函数</typeparam>
-    void Send<T>() where T : new();
+    /// <summary>Publish to ordinary and priority subscribers in one channel.</summary>
+    /// <typeparam name="T">Notification type.</typeparam>
+    /// <param name="value">Notification value.</param>
+    /// <param name="propagation">Delivery mode, scoped to this publication.</param>
+    void Publish<T>(T value, EventPropagation propagation = EventPropagation.All);
 
-    /// <summary>
-    ///     发送指定的事件实例
-    /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
-    /// <param name="e">事件实例</param>
-    void Send<T>(T e);
+    /// <summary>Subscribe until the token is disposed; higher priorities run first, ties retain insertion order.</summary>
+    /// <typeparam name="T">Notification type.</typeparam>
+    /// <param name="handler">Synchronous callback.</param>
+    /// <param name="priority">Larger values execute first.</param>
+    /// <returns>An independently owned idempotent token.</returns>
+    IDisposable Subscribe<T>(Action<T> handler, int priority = 0);
 
-    /// <summary>
-    ///     发送指定的事件实例，并指定传播模式
-    /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
-    /// <param name="e">事件实例</param>
-    /// <param name="propagation">事件传播模式</param>
-    void Send<T>(T e, EventPropagation propagation);
-
-    /// <summary>
-    ///     注册事件监听器
-    /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
-    /// <param name="onEvent">事件处理回调函数</param>
-    /// <returns>反注册接口，用于注销事件监听</returns>
-    IUnRegister Register<T>(Action<T> onEvent);
-
-    /// <summary>
-    ///     注册事件监听器，并指定优先级
-    /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
-    /// <param name="onEvent">事件处理回调函数</param>
-    /// <param name="priority">优先级，数值越大优先级越高</param>
-    /// <returns>反注册接口，用于注销事件监听</returns>
-    IUnRegister Register<T>(Action<T> onEvent, int priority);
-
-    /// <summary>
-    ///     注销事件监听器
-    /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
-    /// <param name="onEvent">要注销的事件处理回调函数</param>
-    void UnRegister<T>(Action<T> onEvent);
+    /// <summary>Subscribe with access to this publication's handled flag.</summary>
+    /// <typeparam name="T">Notification type.</typeparam>
+    /// <param name="handler">Synchronous callback receiving a publication-local context.</param>
+    /// <param name="priority">Larger values execute first.</param>
+    /// <returns>An independently owned idempotent token.</returns>
+    IDisposable SubscribeWithContext<T>(Action<EventContext<T>> handler, int priority = 0);
 }

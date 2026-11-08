@@ -13,7 +13,7 @@ namespace GFramework.Core.SourceGenerators.Abstractions.Bases;
 /// <example>
 /// <code>
 /// [Priority(10)]
-/// public partial class MySystem : AbstractSystem
+/// public partial class MySystem
 /// {
 ///     // 自动生成: public int Priority => 10;
 /// }

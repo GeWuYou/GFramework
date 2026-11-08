@@ -1,34 +1,23 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Architectures;
+using GFramework.Core.Architectures;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Ecs.Arch.Extensions;
 
-/// <summary>
-///     Arch ECS 扩展方法
-/// </summary>
+/// <summary>Standard composition-root extensions for optional Arch ECS adoption.</summary>
 public static class ArchExtensions
 {
-    /// <summary>
-    ///     添加 Arch ECS 支持到架构中
-    /// </summary>
-    /// <typeparam name="TArchitecture">架构类型</typeparam>
-    /// <param name="architecture">架构实例</param>
-    /// <param name="configure">可选的配置委托</param>
-    /// <returns>架构实例，支持链式调用</returns>
-    public static TArchitecture UseArch<TArchitecture>(
-        this TArchitecture architecture,
-        Action<ArchOptions>? configure = null)
-        where TArchitecture : IArchitecture
+    /// <summary>Describes one ECS World and its runtime participant.</summary>
+    /// <param name="services">The composition root to configure.</param>
+    /// <param name="configure">The explicit world and startup options.</param>
+    /// <returns>The original descriptions.</returns>
+    public static IServiceCollection AddArch(this IServiceCollection services, Action<ArchOptions>? configure = null)
     {
-        // 配置选项
+        ArgumentNullException.ThrowIfNull(services);
         var options = new ArchOptions();
         configure?.Invoke(options);
-
-        // 模块属于当前架构，不能通过全局注册表影响其他架构实例。
-        architecture.RegisterServiceModule(new ArchEcsModule(options, enabled: true));
-
-        return architecture;
+        return services.AddModule(new ArchEcsModule(options));
     }
 }

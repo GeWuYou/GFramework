@@ -25,11 +25,7 @@
         <ProjectReference Include="..\..\GFramework.Godot\GFramework.Godot.csproj"/>
         <ProjectReference Include="..\..\GFramework.Game.Abstractions\GFramework.Game.Abstractions.csproj"/>
         <ProjectReference Include="..\..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj"/>
-        <!-- 示例需要演示 [ContextAware]/[Log] 生成路径；运行时包不反向引用生成器。 -->
-        <ProjectReference Include="..\..\GFramework.Core.SourceGenerators\GFramework.Core.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all"/>
         <ProjectReference Include="..\..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all"/>
-        <ProjectReference Include="..\..\GFramework.Core.SourceGenerators.Abstractions\GFramework.Core.SourceGenerators.Abstractions.csproj" OutputItemType="Analyzer" PrivateAssets="all"/>
-        <ProjectReference Include="..\..\GFramework.Core.SourceGenerators.Abstractions\GFramework.Core.SourceGenerators.Abstractions.csproj"/>
         <ProjectReference Include="..\..\GFramework.Game.SourceGenerators\GFramework.Game.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all"/>
     </ItemGroup>
     <Import Project="..\..\GFramework.Game.SourceGenerators\GeWuYou.GFramework.Game.SourceGenerators.targets"/>

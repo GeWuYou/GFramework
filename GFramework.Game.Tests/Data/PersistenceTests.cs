@@ -7,7 +7,6 @@ using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Storage;
 using GFramework.Core.Architectures;
 using GFramework.Core.Events;
-using GFramework.Core.Ioc;
 using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Abstractions.Data.Events;
 using GFramework.Game.Data;

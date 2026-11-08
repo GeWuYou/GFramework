@@ -5,19 +5,10 @@ using GFramework.Core.Abstractions.Enums;
 
 namespace GFramework.Core.Abstractions.Architectures;
 
-/// <summary>
-///     表示架构阶段变化事件的数据。
-///     该类型用于向事件订阅者传递当前已进入的阶段值。
-/// </summary>
-/// <remarks>
-///     初始化 <see cref="ArchitecturePhaseChangedEventArgs" /> 的新实例。
-/// </remarks>
-/// <param name="phase">当前已进入的架构阶段。</param>
+/// <summary>An observation of one architecture's operation state.</summary>
+/// <param name="phase">The newly entered state.</param>
 public sealed class ArchitecturePhaseChangedEventArgs(ArchitecturePhase phase) : EventArgs
 {
-
-    /// <summary>
-    ///     获取当前已进入的架构阶段。
-    /// </summary>
+    /// <summary>The newly entered state.</summary>
     public ArchitecturePhase Phase { get; } = phase;
 }

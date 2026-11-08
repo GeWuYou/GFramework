@@ -18,9 +18,9 @@ public class PriorityEventTests
     {
         // Arrange
         var evt = new PriorityEvent<int>();
-        IUnRegister? unregister = null;
+        IDisposable? unregister = null;
 
-        unregister = evt.Register(x => { unregister?.UnRegister(); });
+        unregister = evt.Register(x => { unregister?.Dispose(); });
 
         // Act & Assert
         Assert.DoesNotThrow(() => evt.Trigger(42));
@@ -50,7 +50,7 @@ public class PriorityEventTests
     {
         // Arrange
         var evt = new PriorityEvent<int>();
-        var unregisters = new List<IUnRegister>();
+        var unregisters = new List<IDisposable>();
 
         for (int i = 0; i < 10; i++)
         {
@@ -59,7 +59,7 @@ public class PriorityEventTests
             {
                 if (index % 2 == 0)
                 {
-                    unregisters[index].UnRegister();
+                    unregisters[index].Dispose();
                 }
             });
             unregisters.Add(unreg);

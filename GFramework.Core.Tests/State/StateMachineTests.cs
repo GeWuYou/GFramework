@@ -53,7 +53,7 @@ public class StateMachineTests
     {
         var state = new TestStateV2();
         _stateMachine.Register(state);
-        await _stateMachine.UnregisterAsync<TestStateV2>();
+        _stateMachine.Unregister<TestStateV2>();
 
         Assert.That(_stateMachine.ContainsState<TestStateV2>(), Is.False);
     }
@@ -63,21 +63,14 @@ public class StateMachineTests
     ///     验证异步注销活动异步状态时调用OnExitAsync
     /// </summary>
     [Test]
-    public async Task UnregisterAsync_WhenStateIsActive_WithAsyncState_Should_Invoke_OnExitAsync()
+    public async Task Registration_Is_Frozen_After_Entry()
     {
-        var state = new TestAsyncState();
-        _stateMachine.Register(state);
+        _stateMachine.Register(new TestAsyncState());
         await _stateMachine.ChangeToAsync<TestAsyncState>();
-        await _stateMachine.UnregisterAsync<TestAsyncState>();
-
-        Assert.That(state.ExitCalled, Is.True);
-        Assert.That(state.ExitTo, Is.Null);
-        Assert.That(_stateMachine.Current, Is.Null);
+        Assert.Throws<InvalidOperationException>(() => _stateMachine.Unregister<TestAsyncState>());
+        Assert.That(_stateMachine.Current, Is.Not.Null);
     }
 
-    /// <summary>
-    ///     验证异步切换检查未注册状态返回false
-    /// </summary>
     [Test]
     public async Task CanChangeToAsync_WhenStateNotRegistered_Should_ReturnFalse()
     {

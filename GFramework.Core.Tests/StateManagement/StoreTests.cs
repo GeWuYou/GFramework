@@ -125,7 +125,7 @@ public class StoreTests
 
         var unRegister = store.Subscribe(_ => notifyCount++);
         store.Dispatch(new IncrementAction(1));
-        unRegister.UnRegister();
+        unRegister.Dispose();
         store.Dispatch(new IncrementAction(1));
 
         Assert.That(notifyCount, Is.EqualTo(1));
@@ -276,7 +276,7 @@ public class StoreTests
             });
 
         store.Dispatch(new IncrementAction(2));
-        reducerHandle.UnRegister();
+        reducerHandle.Dispose();
         store.Dispatch(new IncrementAction(2));
 
         Assert.That(store.State.Count, Is.EqualTo(2));
@@ -293,7 +293,7 @@ public class StoreTests
         var middlewareHandle = store.RegisterMiddleware(new RecordingMiddleware(logs, "dynamic"));
 
         store.Dispatch(new IncrementAction(1));
-        middlewareHandle.UnRegister();
+        middlewareHandle.Dispose();
         store.Dispatch(new IncrementAction(1));
 
         Assert.That(store.State.Count, Is.EqualTo(2));
@@ -336,7 +336,7 @@ public class StoreTests
             };
         });
 
-        middleReducer.UnRegister();
+        middleReducer.Dispose();
         store.Dispatch(new IncrementAction(1));
 
         Assert.That(executionOrder, Is.EqualTo(["first", "last"]));
@@ -360,10 +360,10 @@ public class StoreTests
 
         Assert.That(() =>
         {
-            reducerHandle.UnRegister();
-            reducerHandle.UnRegister();
-            middlewareHandle.UnRegister();
-            middlewareHandle.UnRegister();
+            reducerHandle.Dispose();
+            reducerHandle.Dispose();
+            middlewareHandle.Dispose();
+            middlewareHandle.Dispose();
         }, Throws.Nothing);
 
         store.Dispatch(new IncrementAction(1));
@@ -396,9 +396,9 @@ public class StoreTests
 
         Assert.That(entered.Wait(TimeSpan.FromSeconds(2)), Is.True, "middleware 未按预期进入阻塞阶段");
 
-        reducerHandle.UnRegister();
-        blockingHandle.UnRegister();
-        recordingHandle.UnRegister();
+        reducerHandle.Dispose();
+        blockingHandle.Dispose();
+        recordingHandle.Dispose();
         release.Set();
 
         Assert.That(dispatchTask.Wait(TimeSpan.FromSeconds(2)), Is.True, "dispatch 未在释放 middleware 后完成");
@@ -726,7 +726,7 @@ public class StoreTests
         var subscribeTask = Task.Run(() =>
         {
             var unRegister = store.Subscribe(_ => { });
-            unRegister.UnRegister();
+            unRegister.Dispose();
         });
         Assert.That(subscribeTask.Wait(TimeSpan.FromMilliseconds(200)), Is.True, "Subscribe 被 dispatch 长时间阻塞");
 

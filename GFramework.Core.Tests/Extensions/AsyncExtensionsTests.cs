@@ -285,7 +285,7 @@ public class AsyncExtensionsTests
         var result = await func.TryAsync();
 
         // Assert
-        Assert.That(result.IsFaulted, Is.True);
+        Assert.That(result.IsFailure, Is.True);
     }
 
     /// <summary>

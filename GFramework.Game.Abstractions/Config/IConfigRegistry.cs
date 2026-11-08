@@ -1,7 +1,6 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Utility;
 
 namespace GFramework.Game.Abstractions.Config;
 
@@ -9,7 +8,7 @@ namespace GFramework.Game.Abstractions.Config;
 ///     定义配置注册表契约，用于统一保存和解析按名称注册的配置表。
 ///     注册表是运行时配置系统的入口，负责在加载阶段收集配置表，并在消费阶段提供类型安全查询。
 /// </summary>
-public interface IConfigRegistry : IUtility
+public interface IConfigRegistry
 {
     /// <summary>
     ///     获取当前已注册配置表数量。

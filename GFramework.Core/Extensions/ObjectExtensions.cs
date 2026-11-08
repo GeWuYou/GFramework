@@ -152,7 +152,7 @@ public static class ObjectExtensions
     ///     <code>
     /// obj.SwitchType(
     ///     (typeof(IRule), o => HandleRule((IRule)o)),
-    ///     (typeof(ISystem), o => HandleSystem((ISystem)o))
+    ///     (typeof(IDisposable), o => HandleDisposable((IDisposable)o))
     /// );
     /// </code>
     /// </example>

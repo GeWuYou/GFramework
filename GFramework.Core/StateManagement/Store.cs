@@ -359,7 +359,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     /// <param name="listener">状态变化时的监听器。</param>
     /// <returns>用于取消订阅的句柄。</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="listener"/> 为 <see langword="null"/> 时抛出。</exception>
-    public IUnRegister Subscribe(Action<TState> listener)
+    public IDisposable Subscribe(Action<TState> listener)
     {
         ArgumentNullException.ThrowIfNull(listener);
 
@@ -370,7 +370,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
             _listeners.Add(subscription);
         }
 
-        return new DefaultUnRegister(() => UnSubscribe(subscription));
+        return new Subscription(() => UnSubscribe(subscription));
     }
 
     /// <summary>
@@ -379,7 +379,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     /// <param name="listener">状态变化时的监听器。</param>
     /// <returns>用于取消订阅的句柄。</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="listener"/> 为 <see langword="null"/> 时抛出。</exception>
-    public IUnRegister SubscribeWithInitValue(Action<TState> listener)
+    public IDisposable SubscribeWithInitValue(Action<TState> listener)
     {
         ArgumentNullException.ThrowIfNull(listener);
 
@@ -411,7 +411,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
         {
             if (!subscription.IsSubscribed)
             {
-                return new DefaultUnRegister(() => { });
+                return new Subscription(() => { });
             }
 
             subscription.IsActive = true;
@@ -429,7 +429,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
             listener(pendingState!);
         }
 
-        return new DefaultUnRegister(() => UnSubscribe(subscription));
+        return new Subscription(() => UnSubscribe(subscription));
     }
 
     /// <summary>
@@ -625,7 +625,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     /// <param name="reducer">要注册的 reducer 实例。</param>
     /// <returns>用于注销当前 reducer 注册的句柄。</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="reducer"/> 为 <see langword="null"/> 时抛出。</exception>
-    public IUnRegister RegisterReducerHandle<TAction>(IReducer<TState, TAction> reducer)
+    public IDisposable RegisterReducerHandle<TAction>(IReducer<TState, TAction> reducer)
     {
         ArgumentNullException.ThrowIfNull(reducer);
 
@@ -645,7 +645,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
             reducers.Add(registration);
         }
 
-        return new DefaultUnRegister(() => UnRegisterReducer(actionType, registration));
+        return new Subscription(() => UnRegisterReducer(actionType, registration));
     }
 
     /// <summary>
@@ -656,7 +656,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     /// <param name="reducer">执行归约的委托。</param>
     /// <returns>用于注销当前 reducer 注册的句柄。</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="reducer"/> 为 <see langword="null"/> 时抛出。</exception>
-    public IUnRegister RegisterReducerHandle<TAction>(Func<TState, TAction, TState> reducer)
+    public IDisposable RegisterReducerHandle<TAction>(Func<TState, TAction, TState> reducer)
     {
         ArgumentNullException.ThrowIfNull(reducer);
         return RegisterReducerHandle(new DelegateReducer<TAction>(reducer));
@@ -685,7 +685,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     /// <param name="middleware">要注册的中间件实例。</param>
     /// <returns>用于注销当前中间件注册的句柄。</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="middleware"/> 为 <see langword="null"/> 时抛出。</exception>
-    public IUnRegister RegisterMiddleware(IStoreMiddleware<TState> middleware)
+    public IDisposable RegisterMiddleware(IStoreMiddleware<TState> middleware)
     {
         ArgumentNullException.ThrowIfNull(middleware);
 
@@ -696,7 +696,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
             _middlewares.Add(registration);
         }
 
-        return new DefaultUnRegister(() => UnRegisterMiddleware(registration));
+        return new Subscription(() => UnRegisterMiddleware(registration));
     }
 
     /// <summary>

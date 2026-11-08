@@ -169,7 +169,7 @@ var config = new LocalizationConfig
 {
     DefaultLanguage = "eng",
     FallbackLanguage = "eng",
-    LocalizationPath = "res://localization"
+    LocalizationPath = System.IO.Path.Combine(System.AppContext.BaseDirectory, "localization")
 };
 
 // 创建管理器
@@ -185,7 +185,7 @@ public class GameArchitecture : Architecture
     protected override void ConfigureServices(IServiceCollection services)
     {
         // 登记本地化管理器
-        this.RegisterSystem<ILocalizationManager>(new LocalizationManager());
+        services.AddComponent<ILocalizationManager, LocalizationManager>();
     }
 }
 ```
@@ -194,7 +194,7 @@ public class GameArchitecture : Architecture
 
 ```csharp
 // 获取管理器
-var locManager = this.GetSystem<ILocalizationManager>();
+// locManager is supplied through the consumer constructor.
 
 // 简单文本
 string title = locManager.GetText("common", "game.title");
@@ -292,21 +292,6 @@ var text = locManager.GetText("common", "new.feature");
 // 2. 当前语言的原始数据
 // 3. 回退语言的数据
 ```
-
-### 覆盖机制
-
-**注意：** 覆盖机制功能已规划但当前版本暂不支持，将在后续版本中实现。
-
-未来版本中，用户可以在 `user://localization_override/` 目录下放置覆盖文件：
-
-```json
-// user://localization_override/eng/common.json
-{
-  "game.title": "My Custom Game Title"
-}
-```
-
-覆盖文件会自动合并到主本地化表中，优先级最高。
 
 ### 自定义格式化器
 
@@ -456,25 +441,17 @@ var text = locManager.TryGetText("common", "key", out var result)
 
 ### 5. 语言变化处理
 
+业务组件通过构造函数接收 ILocalizationManager，在初始化时订阅，在停止时使用相同委托取消订阅。UI 更新必须回到所属宿主线程。
+
 ```csharp
-// 在组件初始化时订阅
-public override void OnInit()
-{
-    var locManager = this.GetSystem<ILocalizationManager>();
-    locManager.SubscribeToLanguageChange(OnLanguageChanged);
-}
+using GFramework.Core.Abstractions.Lifecycle;
+using GFramework.Core.Abstractions.Localization;
 
-// 在组件销毁时取消订阅
-public override void OnDestroy()
+public sealed class LanguageObserver(ILocalizationManager localization) : ILifecycle
 {
-    var locManager = this.GetSystem<ILocalizationManager>();
-    locManager.UnsubscribeFromLanguageChange(OnLanguageChanged);
-}
-
-private void OnLanguageChanged(string language)
-{
-    // 更新 UI
-    UpdateUI();
+    public void Initialize() => localization.SubscribeToLanguageChange(OnChanged);
+    public void Destroy() => localization.UnsubscribeFromLanguageChange(OnChanged);
+    private void OnChanged(string language) => System.Console.WriteLine(language);
 }
 ```
 

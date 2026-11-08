@@ -4,10 +4,8 @@
 using System.Reflection;
 using System.Threading;
 using GFramework.Core.Architectures;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
-using GFramework.Cqrs.Extensions;
 using GFramework.Cqrs.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -52,10 +50,11 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     public void RegisterHandlers_Should_Register_Generated_Request_Invoker_Provider()
     {
         var generatedAssembly = CreateGeneratedRequestInvokerAssembly();
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
 
+        container.Freeze();
         var providers = container.GetAll<ICqrsRequestInvokerProvider>();
 
         Assert.That(
@@ -71,10 +70,11 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     public void RegisterHandlers_Should_Register_Generated_Request_Invoker_Provider_For_Hidden_Implementation()
     {
         var generatedAssembly = CreateHiddenImplementationGeneratedRequestInvokerAssembly();
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
 
+        container.Freeze();
         var providers = container.GetAll<ICqrsRequestInvokerProvider>();
 
         Assert.That(
@@ -89,10 +89,11 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     public void RegisterHandlers_Should_Register_Generated_Stream_Invoker_Provider()
     {
         var generatedAssembly = CreateGeneratedStreamInvokerAssembly();
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
 
+        container.Freeze();
         var providers = container.GetAll<ICqrsStreamInvokerProvider>();
 
         Assert.That(
@@ -106,14 +107,15 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     [Test]
     public void RegisterGeneratedRegistry_Should_Register_Only_The_Selected_Provider()
     {
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         var logger = NullLogger<CqrsGeneratedRequestInvokerProviderTests>.Instance;
 
         CqrsHandlerRegistrar.RegisterGeneratedRegistry(
-            container.GetServicesUnsafe,
+            container.Services,
             typeof(GeneratedRequestInvokerProviderRegistry),
             logger);
 
+        container.Freeze();
         var requestProviders = container.GetAll<ICqrsRequestInvokerProvider>();
         var streamProviders = container.GetAll<ICqrsStreamInvokerProvider>();
 
@@ -134,10 +136,11 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     public void RegisterHandlers_Should_Register_Generated_Stream_Invoker_Provider_For_Hidden_Implementation()
     {
         var generatedAssembly = CreateHiddenImplementationGeneratedStreamInvokerAssembly();
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
 
+        container.Freeze();
         var providers = container.GetAll<ICqrsStreamInvokerProvider>();
 
         Assert.That(
@@ -152,12 +155,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     public async Task SendAsync_Should_Use_Generated_Request_Invoker_When_Provider_Is_Registered()
     {
         var generatedAssembly = CreateGeneratedRequestInvokerAssembly();
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var response = await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload"));
         Assert.That(response, Is.EqualTo("generated:payload"));
     }
@@ -170,12 +173,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     public async Task SendAsync_Should_Use_Generated_Request_Invoker_For_Hidden_Implementation_When_Provider_Is_Registered()
     {
         var generatedAssembly = CreateHiddenImplementationGeneratedRequestInvokerAssembly();
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var response = await context.SendRequestAsync(
             new HiddenImplementationRequestInvokerContainer.VisibleRequest("payload"));
         Assert.That(response, Is.EqualTo("generated-hidden:payload"));
@@ -189,13 +192,13 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     public async Task SendAsync_Should_Use_Generated_Request_Invoker_Inside_Request_Pipeline()
     {
         var generatedAssembly = CreateGeneratedRequestInvokerAssembly();
-        var container = new MicrosoftDiContainer();
-        container.GetServicesUnsafe.AddCqrsPipelineBehavior<GeneratedRequestPipelineTrackingBehavior>();
+        var container = new ServiceTestHost();
+        container.Services.AddCqrsPipelineBehavior<GeneratedRequestPipelineTrackingBehavior>();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var response = await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload")).ConfigureAwait(false);
 
         Assert.Multiple(() =>
@@ -212,12 +215,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     public async Task CreateStream_Should_Use_Generated_Stream_Invoker_When_Provider_Is_Registered()
     {
         var generatedAssembly = CreateGeneratedStreamInvokerAssembly();
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var results = await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3)));
         Assert.That(results, Is.EqualTo([30, 31]));
     }
@@ -230,13 +233,13 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     public async Task CreateStream_Should_Use_Generated_Stream_Invoker_Inside_Stream_Pipeline()
     {
         var generatedAssembly = CreateGeneratedStreamInvokerAssembly();
-        var container = new MicrosoftDiContainer();
-        container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<GeneratedStreamPipelineTrackingBehavior>();
+        var container = new ServiceTestHost();
+        container.Services.AddCqrsStreamPipelineBehavior<GeneratedStreamPipelineTrackingBehavior>();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var results = await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3))).ConfigureAwait(false);
 
         Assert.Multiple(() =>
@@ -254,8 +257,8 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     public async Task CreateStream_Should_Reuse_Cached_Generated_Stream_Binding_And_Pipeline_Executor()
     {
         var generatedAssembly = CreateGeneratedStreamInvokerAssembly();
-        var container = new MicrosoftDiContainer();
-        container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<GeneratedStreamPipelineTrackingBehavior>();
+        var container = new ServiceTestHost();
+        container.Services.AddCqrsStreamPipelineBehavior<GeneratedStreamPipelineTrackingBehavior>();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
@@ -268,7 +271,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             GetStreamPipelineExecutorValue(streamBindings, requestType, responseType, 1),
             Is.Null);
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var firstResults = await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3))).ConfigureAwait(false);
         var bindingAfterFirstDispatch = GetPairCacheValue(streamBindings, requestType, responseType);
         var executorAfterFirstDispatch = GetStreamPipelineExecutorValue(streamBindings, requestType, responseType, 1);
@@ -297,12 +300,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     public async Task CreateStream_Should_Use_Generated_Stream_Invoker_For_Hidden_Implementation_When_Provider_Is_Registered()
     {
         var generatedAssembly = CreateHiddenImplementationGeneratedStreamInvokerAssembly();
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var results = await DrainAsync(
             context.CreateStream(new HiddenImplementationStreamInvokerContainer.VisibleStreamRequest(3)));
         Assert.That(results, Is.EqualTo([300, 301]));
@@ -318,12 +321,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(NonEnumeratingRequestInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.NonEnumeratingRequestInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var response = await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload")).ConfigureAwait(false);
         Assert.That(response, Is.EqualTo("runtime:payload"));
     }
@@ -338,12 +341,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(NonEnumeratingStreamInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.NonEnumeratingStreamInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var results = await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3))).ConfigureAwait(false);
         Assert.That(results, Is.EqualTo([3, 4]));
     }
@@ -358,12 +361,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(NonStaticRequestInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.NonStaticRequestInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var response = await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload")).ConfigureAwait(false);
         Assert.That(response, Is.EqualTo("runtime:payload"));
     }
@@ -378,12 +381,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(IncompatibleRequestInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.IncompatibleRequestInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload")).ConfigureAwait(false));
         Assert.That(exception, Is.Not.Null);
@@ -400,12 +403,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(NonStaticStreamInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.NonStaticStreamInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var results = await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3))).ConfigureAwait(false);
         Assert.That(results, Is.EqualTo([3, 4]));
     }
@@ -420,12 +423,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(IncompatibleStreamInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.IncompatibleStreamInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3))).ConfigureAwait(false));
         Assert.That(exception, Is.Not.Null);
@@ -442,12 +445,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(EmptyEnumeratingRequestInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.EmptyEnumeratingRequestInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var response = await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload")).ConfigureAwait(false);
         Assert.That(response, Is.EqualTo("runtime:payload"));
     }
@@ -462,12 +465,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(EmptyEnumeratingStreamInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.EmptyEnumeratingStreamInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var results = await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3))).ConfigureAwait(false);
         Assert.That(results, Is.EqualTo([3, 4]));
     }
@@ -482,12 +485,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(ThrowingEnumeratingRequestInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.ThrowingEnumeratingRequestInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var response = await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload")).ConfigureAwait(false);
         Assert.That(response, Is.EqualTo("runtime:payload"));
     }
@@ -502,12 +505,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(ThrowingEnumeratingStreamInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.ThrowingEnumeratingStreamInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var results = await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3))).ConfigureAwait(false);
         Assert.That(results, Is.EqualTo([3, 4]));
     }
@@ -522,12 +525,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(DuplicateEnumeratingRequestInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.DuplicateEnumeratingRequestInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var response = await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload")).ConfigureAwait(false);
         Assert.That(response, Is.EqualTo("generated:payload"));
     }
@@ -542,12 +545,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(DuplicateEnumeratingStreamInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.DuplicateEnumeratingStreamInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var results = await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3))).ConfigureAwait(false);
         Assert.That(results, Is.EqualTo([30, 31]));
     }
@@ -562,12 +565,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(MismatchedEnumeratingRequestInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.MismatchedEnumeratingRequestInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var response = await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload")).ConfigureAwait(false);
         Assert.That(response, Is.EqualTo("runtime:payload"));
     }
@@ -582,12 +585,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(InvalidThenValidDuplicateRequestInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.InvalidThenValidDuplicateRequestInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var response = await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload")).ConfigureAwait(false);
         Assert.That(response, Is.EqualTo("generated:payload"));
     }
@@ -602,12 +605,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(MismatchedEnumeratingStreamInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.MismatchedEnumeratingStreamInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var results = await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3))).ConfigureAwait(false);
         Assert.That(results, Is.EqualTo([3, 4]));
     }
@@ -622,12 +625,12 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(InvalidThenValidDuplicateStreamInvokerProviderRegistry),
             "GFramework.Cqrs.Tests.Cqrs.InvalidThenValidDuplicateStreamInvokerAssembly, Version=1.0.0.0");
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
         var results = await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3))).ConfigureAwait(false);
         Assert.That(results, Is.EqualTo([30, 31]));
     }

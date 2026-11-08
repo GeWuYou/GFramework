@@ -27,7 +27,7 @@ internal sealed class StatisticsEventDecorator<T>(IEvent innerEvent, EventStatis
     /// </summary>
     /// <param name="onEvent">事件处理回调</param>
     /// <returns>反注册接口</returns>
-    public IUnRegister Register(Action<T> onEvent)
+    public IDisposable Register(Action<T> onEvent)
     {
         // 包装回调以添加统计
         void wrappedHandler(T data)
@@ -59,9 +59,9 @@ internal sealed class StatisticsEventDecorator<T>(IEvent innerEvent, EventStatis
         // 更新监听器统计
         UpdateListenerCount();
 
-        return new DefaultUnRegister(() =>
+        return new Subscription(() =>
         {
-            unregister.UnRegister();
+            unregister.Dispose();
             UpdateListenerCount();
         });
     }

@@ -29,10 +29,9 @@ public class ResultTTests
     [Test]
     public void Constructor_WithValue_Should_Create_Success_Result()
     {
-        var result = new Result<int>(42);
+        var result = Result<int>.Success(42);
         Assert.That(result.IsSuccess, Is.True);
-        Assert.That(result.IsFaulted, Is.False);
-        Assert.That(result.IsBottom, Is.False);
+        Assert.That(result.IsFailure, Is.False);
     }
 
     /// <summary>
@@ -42,10 +41,10 @@ public class ResultTTests
     public void Constructor_WithException_Should_Create_Faulted_Result()
     {
         var exception = new InvalidOperationException("Test error");
-        var result = new Result<int>(exception);
-        Assert.That(result.IsFaulted, Is.True);
+        var result = Result<int>.Failure(exception);
+        Assert.That(result.IsFailure, Is.True);
         Assert.That(result.IsSuccess, Is.False);
-        Assert.That(result.Exception, Is.SameAs(exception));
+        Assert.That(result.Error, Is.SameAs(exception));
     }
 
     /// <summary>
@@ -54,19 +53,18 @@ public class ResultTTests
     [Test]
     public void Constructor_WithNullException_Should_Throw_ArgumentNullException()
     {
-        Assert.Throws<ArgumentNullException>(() => new Result<int>(null!));
+        Assert.Throws<ArgumentNullException>(() => Result<int>.Failure((Exception)null!));
     }
 
     /// <summary>
-    ///     测试默认构造函数创建Bottom状态
+    ///     测试默认构造函数创建DefaultFailure状态
     /// </summary>
     [Test]
-    public void DefaultConstructor_Should_Create_Bottom_State()
+    public void DefaultConstructor_Should_Create_DefaultFailure_State()
     {
         var result = new Result<int>();
-        Assert.That(result.IsBottom, Is.True);
         Assert.That(result.IsSuccess, Is.False);
-        Assert.That(result.IsFaulted, Is.False);
+        Assert.That(result.IsFailure, Is.True);
     }
 
     /// <summary>
@@ -86,7 +84,7 @@ public class ResultTTests
     [Test]
     public void IsSuccess_Should_Return_True_When_Result_Is_Successful()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         Assert.That(result.IsSuccess, Is.True);
     }
 
@@ -96,19 +94,10 @@ public class ResultTTests
     [Test]
     public void IsFaulted_Should_Return_True_When_Result_Is_Faulted()
     {
-        var result = Result<int>.Fail(new Exception("Error"));
-        Assert.That(result.IsFaulted, Is.True);
+        var result = Result<int>.Failure(new Exception("Error"));
+        Assert.That(result.IsFailure, Is.True);
     }
 
-    /// <summary>
-    ///     测试IsBottom属性在Bottom状态时返回true
-    /// </summary>
-    [Test]
-    public void IsBottom_Should_Return_True_When_Result_Is_Bottom()
-    {
-        var result = Result<int>.Bottom;
-        Assert.That(result.IsBottom, Is.True);
-    }
 
     /// <summary>
     ///     测试Exception属性在失败时返回异常
@@ -117,18 +106,18 @@ public class ResultTTests
     public void Exception_Should_Return_Exception_When_Faulted()
     {
         var exception = new InvalidOperationException("Test");
-        var result = Result<int>.Fail(exception);
-        Assert.That(result.Exception, Is.SameAs(exception));
+        var result = Result<int>.Failure(exception);
+        Assert.That(result.Error, Is.SameAs(exception));
     }
 
     /// <summary>
-    ///     测试Exception属性在Bottom状态时返回InvalidOperationException
+    ///     测试Exception属性在DefaultFailure状态时返回InvalidOperationException
     /// </summary>
     [Test]
-    public void Exception_Should_Return_InvalidOperationException_When_Bottom()
+    public void Exception_Should_Return_InvalidOperationException_When_DefaultFailure()
     {
-        var result = Result<int>.Bottom;
-        Assert.That(result.Exception, Is.TypeOf<InvalidOperationException>());
+        var result = default(Result<int>);
+        Assert.That(result.Error, Is.TypeOf<InvalidOperationException>());
     }
 
     /// <summary>
@@ -137,20 +126,10 @@ public class ResultTTests
     [Test]
     public void Exception_Should_Return_InvalidOperationException_When_Success()
     {
-        var result = Result<int>.Succeed(42);
-        Assert.That(result.Exception, Is.TypeOf<InvalidOperationException>());
+        var result = Result<int>.Success(42);
+        Assert.Throws<InvalidOperationException>(() => _ = result.Error);
     }
 
-    /// <summary>
-    ///     测试Succeed方法创建成功结果
-    /// </summary>
-    [Test]
-    public void Succeed_Should_Create_Successful_Result()
-    {
-        var result = Result<int>.Succeed(42);
-        Assert.That(result.IsSuccess, Is.True);
-        Assert.That(result.Match(succ: v => v, fail: _ => 0), Is.EqualTo(42));
-    }
 
     /// <summary>
     ///     测试Success方法创建成功结果
@@ -163,17 +142,6 @@ public class ResultTTests
         Assert.That(result.Match(succ: v => v, fail: _ => 0), Is.EqualTo(42));
     }
 
-    /// <summary>
-    ///     测试Fail方法创建失败结果
-    /// </summary>
-    [Test]
-    public void Fail_Should_Create_Faulted_Result()
-    {
-        var exception = new Exception("Error");
-        var result = Result<int>.Fail(exception);
-        Assert.That(result.IsFaulted, Is.True);
-        Assert.That(result.Exception, Is.SameAs(exception));
-    }
 
     /// <summary>
     ///     测试Failure方法使用异常创建失败结果
@@ -183,8 +151,8 @@ public class ResultTTests
     {
         var exception = new Exception("Error");
         var result = Result<int>.Failure(exception);
-        Assert.That(result.IsFaulted, Is.True);
-        Assert.That(result.Exception, Is.SameAs(exception));
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error, Is.SameAs(exception));
     }
 
     /// <summary>
@@ -195,8 +163,8 @@ public class ResultTTests
     {
         var message = "Test error";
         var result = Result<int>.Failure(message);
-        Assert.That(result.IsFaulted, Is.True);
-        Assert.That(result.Exception.Message, Is.EqualTo(message));
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error.Message, Is.EqualTo(message));
     }
 
     /// <summary>
@@ -217,8 +185,8 @@ public class ResultTTests
     public void Try_Should_Return_Failure_When_Function_Throws()
     {
         var result = Result<int>.Try(() => throw new InvalidOperationException("Error"));
-        Assert.That(result.IsFaulted, Is.True);
-        Assert.That(result.Exception, Is.TypeOf<InvalidOperationException>());
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error, Is.TypeOf<InvalidOperationException>());
     }
 
     /// <summary>
@@ -227,7 +195,7 @@ public class ResultTTests
     [Test]
     public void IfFail_WithDefaultValue_Should_Return_Value_When_Success()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var value = result.IfFail(0);
         Assert.That(value, Is.EqualTo(42));
     }
@@ -238,7 +206,7 @@ public class ResultTTests
     [Test]
     public void IfFail_WithDefaultValue_Should_Return_Default_When_Faulted()
     {
-        var result = Result<int>.Fail(new Exception("Error"));
+        var result = Result<int>.Failure(new Exception("Error"));
         var value = result.IfFail(99);
         Assert.That(value, Is.EqualTo(99));
     }
@@ -249,7 +217,7 @@ public class ResultTTests
     [Test]
     public void IfFail_WithFunction_Should_Return_Value_When_Success()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var value = result.IfFail(_ => 0);
         Assert.That(value, Is.EqualTo(42));
     }
@@ -261,7 +229,7 @@ public class ResultTTests
     public void IfFail_WithFunction_Should_Execute_Function_When_Faulted()
     {
         var exception = new Exception("Error");
-        var result = Result<int>.Fail(exception);
+        var result = Result<int>.Failure(exception);
         var executed = false;
         var value = result.IfFail(ex =>
         {
@@ -278,7 +246,7 @@ public class ResultTTests
     [Test]
     public void IfFail_WithAction_Should_Execute_Action_When_Faulted()
     {
-        var result = Result<int>.Fail(new Exception("Error"));
+        var result = Result<int>.Failure(new Exception("Error"));
         var executed = false;
         result.IfFail(_ => executed = true);
         Assert.That(executed, Is.True);
@@ -290,7 +258,7 @@ public class ResultTTests
     [Test]
     public void IfSucc_Should_Execute_Action_When_Success()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var executed = false;
         result.IfSucc(_ => executed = true);
         Assert.That(executed, Is.True);
@@ -302,7 +270,7 @@ public class ResultTTests
     [Test]
     public void IfSucc_Should_Not_Execute_Action_When_Faulted()
     {
-        var result = Result<int>.Fail(new Exception("Error"));
+        var result = Result<int>.Failure(new Exception("Error"));
         var executed = false;
         result.IfSucc(_ => executed = true);
         Assert.That(executed, Is.False);
@@ -314,7 +282,7 @@ public class ResultTTests
     [Test]
     public void Map_Should_Transform_Value_When_Success()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var mapped = result.Map(x => x.ToString(CultureInfo.InvariantCulture));
         Assert.That(mapped.IsSuccess, Is.True);
         Assert.That(mapped.Match(succ: v => v, fail: _ => ""), Is.EqualTo("42"));
@@ -327,10 +295,10 @@ public class ResultTTests
     public void Map_Should_Propagate_Exception_When_Faulted()
     {
         var exception = new Exception("Error");
-        var result = Result<int>.Fail(exception);
+        var result = Result<int>.Failure(exception);
         var mapped = result.Map(x => x.ToString(CultureInfo.InvariantCulture));
-        Assert.That(mapped.IsFaulted, Is.True);
-        Assert.That(mapped.Exception, Is.SameAs(exception));
+        Assert.That(mapped.IsFailure, Is.True);
+        Assert.That(mapped.Error, Is.SameAs(exception));
     }
 
     /// <summary>
@@ -339,7 +307,7 @@ public class ResultTTests
     [Test]
     public void Map_Should_Handle_Null_Result_From_Mapper()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var mapped = result.Map<string>(_ => null!);
         Assert.That(mapped.IsSuccess, Is.True);
     }
@@ -350,7 +318,7 @@ public class ResultTTests
     [Test]
     public void Map_Should_Not_Throw_When_Mapper_Returns_Null()
     {
-        var result = Result<string>.Succeed("test");
+        var result = Result<string>.Success("test");
         Assert.DoesNotThrow(() => { _ = result.Map<string?>(_ => null); });
     }
 
@@ -360,8 +328,8 @@ public class ResultTTests
     [Test]
     public void Bind_Should_Chain_Success_Results()
     {
-        var result = Result<int>.Succeed(42);
-        var bound = result.Bind(x => Result<string>.Succeed(x.ToString(CultureInfo.InvariantCulture)));
+        var result = Result<int>.Success(42);
+        var bound = result.Bind(x => Result<string>.Success(x.ToString(CultureInfo.InvariantCulture)));
         Assert.That(bound.IsSuccess, Is.True);
         Assert.That(bound.Match(succ: v => v, fail: _ => ""), Is.EqualTo("42"));
     }
@@ -373,10 +341,10 @@ public class ResultTTests
     public void Bind_Should_Propagate_First_Failure()
     {
         var exception = new Exception("Error");
-        var result = Result<int>.Fail(exception);
-        var bound = result.Bind(x => Result<string>.Succeed(x.ToString(CultureInfo.InvariantCulture)));
-        Assert.That(bound.IsFaulted, Is.True);
-        Assert.That(bound.Exception, Is.SameAs(exception));
+        var result = Result<int>.Failure(exception);
+        var bound = result.Bind(x => Result<string>.Success(x.ToString(CultureInfo.InvariantCulture)));
+        Assert.That(bound.IsFailure, Is.True);
+        Assert.That(bound.Error, Is.SameAs(exception));
     }
 
     /// <summary>
@@ -385,11 +353,11 @@ public class ResultTTests
     [Test]
     public void Bind_Should_Propagate_Second_Failure()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var exception = new Exception("Bind error");
-        var bound = result.Bind(x => Result<string>.Fail(exception));
-        Assert.That(bound.IsFaulted, Is.True);
-        Assert.That(bound.Exception, Is.SameAs(exception));
+        var bound = result.Bind(x => Result<string>.Failure(exception));
+        Assert.That(bound.IsFailure, Is.True);
+        Assert.That(bound.Error, Is.SameAs(exception));
     }
 
     /// <summary>
@@ -398,9 +366,9 @@ public class ResultTTests
     [Test]
     public void Bind_Should_Handle_Complex_Chaining()
     {
-        var result = Result<int>.Succeed(10)
-            .Bind(x => Result<int>.Succeed(x * 2))
-            .Bind(x => Result<int>.Succeed(x + 5));
+        var result = Result<int>.Success(10)
+            .Bind(x => Result<int>.Success(x * 2))
+            .Bind(x => Result<int>.Success(x + 5));
         Assert.That(result.IsSuccess, Is.True);
         Assert.That(result.Match(succ: v => v, fail: _ => 0), Is.EqualTo(25));
     }
@@ -411,7 +379,7 @@ public class ResultTTests
     [Test]
     public async Task MapAsync_Should_Transform_Value_When_Success()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var mapped = await result.MapAsync(async x =>
         {
             await Task.Delay(1).ConfigureAwait(false);
@@ -428,30 +396,25 @@ public class ResultTTests
     public async Task MapAsync_Should_Propagate_Exception_When_Faulted()
     {
         var exception = new Exception("Error");
-        var result = Result<int>.Fail(exception);
+        var result = Result<int>.Failure(exception);
         var mapped = await result.MapAsync(async x =>
         {
             await Task.Delay(1).ConfigureAwait(false);
             return x.ToString(CultureInfo.InvariantCulture);
         }).ConfigureAwait(false);
-        Assert.That(mapped.IsFaulted, Is.True);
-        Assert.That(mapped.Exception, Is.SameAs(exception));
+        Assert.That(mapped.IsFailure, Is.True);
+        Assert.That(mapped.Error, Is.SameAs(exception));
     }
 
-    /// <summary>
-    ///     测试MapAsync方法处理异步异常
-    /// </summary>
+    /// <summary>Async mapping propagates delegate exceptions just like synchronous mapping.</summary>
     [Test]
-    public async Task MapAsync_Should_Handle_Async_Exceptions()
+    public async Task MapAsync_Should_Propagate_Delegate_Exception()
     {
-        var result = Result<int>.Succeed(42);
-        var mapped = await result.MapAsync<string>(async _ =>
-        {
-            await Task.Delay(1).ConfigureAwait(false);
-            throw new InvalidOperationException("Async error");
-        }).ConfigureAwait(false);
-        Assert.That(mapped.IsFaulted, Is.True);
-        Assert.That(mapped.Exception, Is.TypeOf<InvalidOperationException>());
+        var error = new InvalidOperationException("mapper failed");
+        var actual = await Assert.ThrowsAsync<InvalidOperationException>(() => Result<int>.Success(1)
+            .MapAsync<int>(_ => Task.FromException<int>(error)));
+        Assert.That(actual, Is.SameAs(error));
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -460,7 +423,7 @@ public class ResultTTests
     [Test]
     public void Match_WithFunctions_Should_Execute_Succ_When_Success()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var value = result.Match(succ: x => x * 2, fail: _ => 0);
         Assert.That(value, Is.EqualTo(84));
     }
@@ -471,7 +434,7 @@ public class ResultTTests
     [Test]
     public void Match_WithFunctions_Should_Execute_Fail_When_Faulted()
     {
-        var result = Result<int>.Fail(new Exception("Error"));
+        var result = Result<int>.Failure(new Exception("Error"));
         var value = result.Match(succ: x => x, fail: _ => 99);
         Assert.That(value, Is.EqualTo(99));
     }
@@ -482,7 +445,7 @@ public class ResultTTests
     [Test]
     public void Match_WithActions_Should_Execute_Succ_When_Success()
     {
-        var result = Result<int>.Succeed(42);
+        var result = Result<int>.Success(42);
         var executed = false;
         result.Match(succ: _ => executed = true, fail: _ => { });
         Assert.That(executed, Is.True);
@@ -494,19 +457,19 @@ public class ResultTTests
     [Test]
     public void Match_WithActions_Should_Execute_Fail_When_Faulted()
     {
-        var result = Result<int>.Fail(new Exception("Error"));
+        var result = Result<int>.Failure(new Exception("Error"));
         var executed = false;
         result.Match(succ: _ => { }, fail: _ => executed = true);
         Assert.That(executed, Is.True);
     }
 
     /// <summary>
-    ///     测试Match方法正确处理Bottom状态
+    ///     测试Match方法正确处理DefaultFailure状态
     /// </summary>
     [Test]
-    public void Match_Should_Handle_Bottom_State_Correctly()
+    public void Match_Should_Handle_DefaultFailure_State_Correctly()
     {
-        var result = Result<int>.Bottom;
+        var result = default(Result<int>);
         var value = result.Match(succ: x => x, fail: _ => 99);
         Assert.That(value, Is.EqualTo(99));
     }
@@ -517,8 +480,8 @@ public class ResultTTests
     [Test]
     public void Equals_Should_Return_True_When_Both_Success_With_Same_Value()
     {
-        var result1 = Result<int>.Succeed(42);
-        var result2 = Result<int>.Succeed(42);
+        var result1 = Result<int>.Success(42);
+        var result2 = Result<int>.Success(42);
         Assert.That(result1.Equals(result2), Is.True);
     }
 
@@ -528,8 +491,8 @@ public class ResultTTests
     [Test]
     public void Equals_Should_Return_False_When_Success_Values_Differ()
     {
-        var result1 = Result<int>.Succeed(42);
-        var result2 = Result<int>.Succeed(43);
+        var result1 = Result<int>.Success(42);
+        var result2 = Result<int>.Success(43);
         Assert.That(result1.Equals(result2), Is.False);
     }
 
@@ -539,8 +502,8 @@ public class ResultTTests
     [Test]
     public void Equals_Should_Return_True_When_Both_Faulted_With_Same_Exception()
     {
-        var result1 = Result<int>.Fail(new InvalidOperationException("Error"));
-        var result2 = Result<int>.Fail(new InvalidOperationException("Error"));
+        var result1 = Result<int>.Failure(new InvalidOperationException("Error"));
+        var result2 = Result<int>.Failure(new InvalidOperationException("Error"));
         Assert.That(result1.Equals(result2), Is.True);
     }
 
@@ -550,18 +513,18 @@ public class ResultTTests
     [Test]
     public void Equals_Should_Return_False_When_Exception_Types_Differ()
     {
-        var result1 = Result<int>.Fail(new InvalidOperationException("Error"));
-        var result2 = Result<int>.Fail(new InvalidCastException("Error"));
+        var result1 = Result<int>.Failure(new InvalidOperationException("Error"));
+        var result2 = Result<int>.Failure(new InvalidCastException("Error"));
         Assert.That(result1.Equals(result2), Is.False);
     }
 
     /// <summary>
-    ///     测试Equals方法在两个都是Bottom时返回true
+    ///     测试Equals方法在两个都是DefaultFailure时返回true
     /// </summary>
     [Test]
-    public void Equals_Should_Return_True_When_Both_Bottom()
+    public void Equals_Should_Return_True_When_Both_DefaultFailure()
     {
-        var result1 = Result<int>.Bottom;
+        var result1 = default(Result<int>);
         var result2 = new Result<int>();
         Assert.That(result1.Equals(result2), Is.True);
     }
@@ -572,8 +535,8 @@ public class ResultTTests
     [Test]
     public void Equals_Should_Return_False_When_States_Differ()
     {
-        var result1 = Result<int>.Succeed(42);
-        var result2 = Result<int>.Fail(new Exception("Error"));
+        var result1 = Result<int>.Success(42);
+        var result2 = Result<int>.Failure(new Exception("Error"));
         Assert.That(result1.Equals(result2), Is.False);
     }
 
@@ -583,8 +546,8 @@ public class ResultTTests
     [Test]
     public void GetHashCode_Should_Be_Consistent_For_Equal_Results()
     {
-        var result1 = Result<int>.Succeed(42);
-        var result2 = Result<int>.Succeed(42);
+        var result1 = Result<int>.Success(42);
+        var result2 = Result<int>.Success(42);
         Assert.That(result1.GetHashCode(), Is.EqualTo(result2.GetHashCode()));
     }
 
@@ -594,9 +557,9 @@ public class ResultTTests
     [Test]
     public void OperatorEquals_Should_Work_Correctly()
     {
-        var result1 = Result<int>.Succeed(42);
-        var result2 = Result<int>.Succeed(42);
-        var result3 = Result<int>.Succeed(43);
+        var result1 = Result<int>.Success(42);
+        var result2 = Result<int>.Success(42);
+        var result3 = Result<int>.Success(43);
         Assert.That(result1 == result2, Is.True);
         Assert.That(result1 == result3, Is.False);
     }
@@ -607,120 +570,20 @@ public class ResultTTests
     [Test]
     public void OperatorNotEquals_Should_Work_Correctly()
     {
-        var result1 = Result<int>.Succeed(42);
-        var result2 = Result<int>.Succeed(43);
+        var result1 = Result<int>.Success(42);
+        var result2 = Result<int>.Success(43);
         Assert.That(result1 != result2, Is.True);
     }
 
-    /// <summary>
-    ///     测试CompareTo方法排序Bottom在失败之前
-    /// </summary>
-    [Test]
-    public void CompareTo_Should_Order_Bottom_Before_Faulted()
-    {
-        var bottom = Result<int>.Bottom;
-        var faulted = Result<int>.Fail(new Exception("Error"));
-        Assert.That(bottom.CompareTo(faulted), Is.LessThan(0));
-    }
 
-    /// <summary>
-    ///     测试CompareTo方法排序失败在成功之前
-    /// </summary>
-    [Test]
-    public void CompareTo_Should_Order_Faulted_Before_Success()
-    {
-        var faulted = Result<int>.Fail(new Exception("Error"));
-        var success = Result<int>.Succeed(42);
-        Assert.That(faulted.CompareTo(success), Is.LessThan(0));
-    }
 
-    /// <summary>
-    ///     测试CompareTo方法在两个成功时比较值
-    /// </summary>
-    [Test]
-    public void CompareTo_Should_Compare_Success_Values_When_Both_Success()
-    {
-        var result1 = Result<int>.Succeed(10);
-        var result2 = Result<int>.Succeed(20);
-        Assert.That(result1.CompareTo(result2), Is.LessThan(0));
-    }
 
-    /// <summary>
-    ///     测试CompareTo方法在两个都失败时返回0
-    /// </summary>
-    [Test]
-    public void CompareTo_Should_Return_Zero_When_Both_Faulted()
-    {
-        var result1 = Result<int>.Fail(new Exception("Error1"));
-        var result2 = Result<int>.Fail(new Exception("Error2"));
-        Assert.That(result1.CompareTo(result2), Is.EqualTo(0));
-    }
 
-    /// <summary>
-    ///     测试CompareTo方法在两个都是Bottom时返回0
-    /// </summary>
-    [Test]
-    public void CompareTo_Should_Return_Zero_When_Both_Bottom()
-    {
-        var result1 = Result<int>.Bottom;
-        var result2 = new Result<int>();
-        Assert.That(result1.CompareTo(result2), Is.EqualTo(0));
-    }
 
-    /// <summary>
-    ///     测试<操作符正确工作
-    /// </summary>
-    [Test]
-    public void OperatorLessThan_Should_Work_Correctly()
-    {
-        var result1 = Result<int>.Succeed(10);
-        var result2 = Result<int>.Succeed(20);
-        Assert.That(result1 < result2, Is.True);
-    }
 
-    /// <summary>
-    ///     测试<=操作符正确工作
-    /// </summary>
-    [Test]
-    public void OperatorLessThanOrEqual_Should_Work_Correctly()
-    {
-        var result1 = Result<int>.Succeed(10);
-        var result2 = Result<int>.Succeed(10);
-        Assert.That(result1 <= result2, Is.True);
-    }
 
-    /// <summary>
-    ///     测试>操作符正确工作
-    /// </summary>
-    [Test]
-    public void OperatorGreaterThan_Should_Work_Correctly()
-    {
-        var result1 = Result<int>.Succeed(20);
-        var result2 = Result<int>.Succeed(10);
-        Assert.That(result1 > result2, Is.True);
-    }
 
-    /// <summary>
-    ///     测试>=操作符正确工作
-    /// </summary>
-    [Test]
-    public void OperatorGreaterThanOrEqual_Should_Work_Correctly()
-    {
-        var result1 = Result<int>.Succeed(20);
-        var result2 = Result<int>.Succeed(20);
-        Assert.That(result1 >= result2, Is.True);
-    }
 
-    /// <summary>
-    ///     测试CompareTo方法优雅处理不可比较类型
-    /// </summary>
-    [Test]
-    public void CompareTo_Should_Handle_NonComparable_Types_Gracefully()
-    {
-        var result1 = Result<object>.Succeed(new object());
-        var result2 = Result<object>.Succeed(new object());
-        Assert.DoesNotThrow(() => { _ = result1.CompareTo(result2); });
-    }
 
     /// <summary>
     ///     测试ToString方法在成功时返回值字符串
@@ -728,8 +591,8 @@ public class ResultTTests
     [Test]
     public void ToString_Should_Return_Value_String_When_Success()
     {
-        var result = Result<int>.Succeed(42);
-        Assert.That(result.ToString(), Is.EqualTo("42"));
+        var result = Result<int>.Success(42);
+        Assert.That(result.ToString(), Is.EqualTo("Success(42)"));
     }
 
     /// <summary>
@@ -738,18 +601,18 @@ public class ResultTTests
     [Test]
     public void ToString_Should_Return_Fail_Message_When_Faulted()
     {
-        var result = Result<int>.Fail(new Exception("Test error"));
-        Assert.That(result.ToString(), Is.EqualTo("Fail(Test error)"));
+        var result = Result<int>.Failure(new Exception("Test error"));
+        Assert.That(result.ToString(), Is.EqualTo("Failure(Test error)"));
     }
 
     /// <summary>
-    ///     测试ToString方法在Bottom时返回Bottom
+    ///     测试ToString方法在DefaultFailure时返回DefaultFailure
     /// </summary>
     [Test]
-    public void ToString_Should_Return_Bottom_When_Bottom()
+    public void ToString_Should_Return_DefaultFailure_When_DefaultFailure()
     {
-        var result = Result<int>.Bottom;
-        Assert.That(result.ToString(), Is.EqualTo("(Bottom)"));
+        var result = default(Result<int>);
+        Assert.That(result.ToString(), Is.EqualTo("Failure(The result has not been initialized.)"));
     }
 
     /// <summary>
@@ -758,7 +621,7 @@ public class ResultTTests
     [Test]
     public void Success_WithNullValue_Should_Create_Valid_Result()
     {
-        var result = Result<string?>.Succeed(value: null);
+        var result = Result<string?>.Success(value: null);
         Assert.That(result.IsSuccess, Is.True);
     }
 
@@ -768,7 +631,7 @@ public class ResultTTests
     [Test]
     public void Map_WithNullValue_Should_Handle_Correctly()
     {
-        var result = Result<string?>.Succeed(value: null);
+        var result = Result<string?>.Success(value: null);
         var mapped = result.Map(x => x?.Length ?? 0);
         Assert.That(mapped.IsSuccess, Is.True);
         Assert.That(mapped.Match(succ: v => v, fail: _ => -1), Is.EqualTo(0));
@@ -780,8 +643,8 @@ public class ResultTTests
     [Test]
     public void Equals_WithNullValues_Should_Work_Correctly()
     {
-        var result1 = Result<string?>.Succeed(value: null);
-        var result2 = Result<string?>.Succeed(value: null);
+        var result1 = Result<string?>.Success(value: null);
+        var result2 = Result<string?>.Success(value: null);
         Assert.That(result1.Equals(result2), Is.True);
     }
 
@@ -796,13 +659,13 @@ public class ResultTTests
     }
 
     /// <summary>
-    ///     测试Bottom是只读和不可变的
+    ///     测试DefaultFailure是只读和不可变的
     /// </summary>
     [Test]
-    public void Bottom_Should_Be_Readonly_And_Immutable()
+    public void DefaultFailure_Should_Be_Readonly_And_Immutable()
     {
-        var bottom1 = Result<int>.Bottom;
-        var bottom2 = Result<int>.Bottom;
+        var bottom1 = default(Result<int>);
+        var bottom2 = default(Result<int>);
         Assert.That(bottom1.Equals(bottom2), Is.True);
     }
 }

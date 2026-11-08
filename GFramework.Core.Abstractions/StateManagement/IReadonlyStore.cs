@@ -28,7 +28,7 @@ public interface IReadonlyStore<out TState>
     /// </summary>
     /// <param name="listener">状态变化时的监听器，参数为新的状态快照。</param>
     /// <returns>用于取消订阅的句柄。</returns>
-    IUnRegister Subscribe(Action<TState> listener);
+    IDisposable Subscribe(Action<TState> listener);
 
     /// <summary>
     ///     订阅状态变化通知，并立即以当前状态调用一次监听器。
@@ -36,7 +36,7 @@ public interface IReadonlyStore<out TState>
     /// </summary>
     /// <param name="listener">状态变化时的监听器，参数为新的状态快照。</param>
     /// <returns>用于取消订阅的句柄。</returns>
-    IUnRegister SubscribeWithInitValue(Action<TState> listener);
+    IDisposable SubscribeWithInitValue(Action<TState> listener);
 
     /// <summary>
     ///     取消订阅指定的状态监听器。

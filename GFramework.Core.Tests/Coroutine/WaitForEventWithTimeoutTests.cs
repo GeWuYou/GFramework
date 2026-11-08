@@ -35,8 +35,8 @@ public class WaitForEventWithTimeoutTests
     public void WaitForEventWithTimeout_Should_Not_Be_Done_Initially()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var waitForEvent = new WaitForEvent<TestEvent>(eventBusMock.Object);
@@ -53,8 +53,8 @@ public class WaitForEventWithTimeoutTests
     public void WaitForEventWithTimeout_Should_Be_Done_When_Timeout()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var waitForEvent = new WaitForEvent<TestEvent>(eventBusMock.Object);
@@ -75,11 +75,11 @@ public class WaitForEventWithTimeoutTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         var waitForEvent = new WaitForEvent<TestEvent>(eventBusMock.Object);
         var wait = new WaitForEventWithTimeout<TestEvent>(waitForEvent, 2.0f);
@@ -100,11 +100,11 @@ public class WaitForEventWithTimeoutTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         var waitForEvent = new WaitForEvent<TestEvent>(eventBusMock.Object);
         var wait = new WaitForEventWithTimeout<TestEvent>(waitForEvent, 2.0f);
@@ -123,8 +123,8 @@ public class WaitForEventWithTimeoutTests
     public void WaitForEventWithTimeout_Should_Return_Null_EventData_When_Timeout()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var waitForEvent = new WaitForEvent<TestEvent>(eventBusMock.Object);
@@ -142,8 +142,8 @@ public class WaitForEventWithTimeoutTests
     public void WaitForEventWithTimeout_Should_Calculate_Timeout_Correctly()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var waitForEvent = new WaitForEvent<TestEvent>(eventBusMock.Object);
@@ -170,11 +170,11 @@ public class WaitForEventWithTimeoutTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         var waitForEvent = new WaitForEvent<TestEvent>(eventBusMock.Object);
         var wait = new WaitForEventWithTimeout<TestEvent>(waitForEvent, 1.0f);
@@ -209,11 +209,11 @@ public class WaitForEventWithTimeoutTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         var waitForEvent = new WaitForEvent<TestEvent>(eventBusMock.Object);
         var wait = new WaitForEventWithTimeout<TestEvent>(waitForEvent, 2.0f);
@@ -238,8 +238,8 @@ public class WaitForEventWithTimeoutTests
     public void WaitForEventWithTimeout_Should_Implement_IYieldInstruction()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var waitForEvent = new WaitForEvent<TestEvent>(eventBusMock.Object);
@@ -255,8 +255,8 @@ public class WaitForEventWithTimeoutTests
     public void WaitForEventWithTimeout_Should_Handle_Small_Timeout()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var waitForEvent = new WaitForEvent<TestEvent>(eventBusMock.Object);
@@ -275,8 +275,8 @@ public class WaitForEventWithTimeoutTests
     public void WaitForEventWithTimeout_Should_Handle_Large_Timeout()
     {
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        var unRegisterMock = new Mock<IDisposable>();
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object);
 
         var waitForEvent = new WaitForEvent<TestEvent>(eventBusMock.Object);
@@ -296,11 +296,11 @@ public class WaitForEventWithTimeoutTests
     {
         Action<TestEvent>? registeredAction = null;
         var eventBusMock = new Mock<IEventBus>();
-        var unRegisterMock = new Mock<IUnRegister>();
+        var unRegisterMock = new Mock<IDisposable>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Subscribe<TestEvent>(It.IsAny<Action<TestEvent>>(), 0))
             .Returns(unRegisterMock.Object)
-            .Callback<Action<TestEvent>>(action => registeredAction = action);
+            .Callback<Action<TestEvent>, int>((action, _) => registeredAction = action);
 
         var waitForEvent = new WaitForEvent<TestEvent>(eventBusMock.Object);
         var wait = new WaitForEventWithTimeout<TestEvent>(waitForEvent, 1.0f);

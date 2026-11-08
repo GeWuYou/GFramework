@@ -24,7 +24,7 @@ internal sealed class OrderArchitecture : Architecture
     /// <summary>宿主准备完成后通过标准解析使用普通服务。</summary>
     protected override void OnStarted()
     {
-        var processor = Context.GetService<OrderProcessor>();
+        var processor = Services.GetRequiredService<OrderProcessor>();
         processor.Process("boot");
     }
 
@@ -32,7 +32,7 @@ internal sealed class OrderArchitecture : Architecture
     /// <param name="orderId">订单编号。</param>
     public void PlaceDemoOrder(string orderId)
     {
-        var processor = Context.GetService<OrderProcessor>();
+        var processor = Services.GetRequiredService<OrderProcessor>();
         processor.Process(orderId);
     }
 }

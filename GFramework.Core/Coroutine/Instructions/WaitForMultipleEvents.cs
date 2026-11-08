@@ -28,8 +28,8 @@ public sealed class WaitForMultipleEvents<TEvent1, TEvent2> : IYieldInstruction,
     private TEvent1? _firstEventData;
     private TEvent2? _secondEventData;
     private int _triggeredBy;
-    private IUnRegister? _unRegister1;
-    private IUnRegister? _unRegister2;
+    private IDisposable? _unRegister1;
+    private IDisposable? _unRegister2;
 
     /// <summary>
     ///     订阅两种事件；第二个注册失败时也释放第一个注册。
@@ -38,10 +38,10 @@ public sealed class WaitForMultipleEvents<TEvent1, TEvent2> : IYieldInstruction,
     public WaitForMultipleEvents(IEventBus eventBus)
     {
         ArgumentNullException.ThrowIfNull(eventBus);
-        _unRegister1 = eventBus.Register<TEvent1>(OnFirstEvent);
+        _unRegister1 = eventBus.Subscribe<TEvent1>(OnFirstEvent);
         try
         {
-            _unRegister2 = eventBus.Register<TEvent2>(OnSecondEvent);
+            _unRegister2 = eventBus.Subscribe<TEvent2>(OnSecondEvent);
         }
         catch (Exception registrationException)
         {
@@ -49,7 +49,7 @@ public sealed class WaitForMultipleEvents<TEvent1, TEvent2> : IYieldInstruction,
             _unRegister1 = null;
             try
             {
-                registration?.UnRegister();
+                registration?.Dispose();
             }
             catch (Exception cleanupException)
             {
@@ -119,8 +119,8 @@ public sealed class WaitForMultipleEvents<TEvent1, TEvent2> : IYieldInstruction,
     /// </summary>
     public void Dispose()
     {
-        IUnRegister? first;
-        IUnRegister? second;
+        IDisposable? first;
+        IDisposable? second;
         lock (_sync)
         {
             if (_disposed)
@@ -138,7 +138,7 @@ public sealed class WaitForMultipleEvents<TEvent1, TEvent2> : IYieldInstruction,
         Exception? firstFailure = null;
         try
         {
-            first?.UnRegister();
+            first?.Dispose();
         }
         catch (Exception exception)
         {
@@ -147,7 +147,7 @@ public sealed class WaitForMultipleEvents<TEvent1, TEvent2> : IYieldInstruction,
 
         try
         {
-            second?.UnRegister();
+            second?.Dispose();
         }
         catch (Exception exception)
         {

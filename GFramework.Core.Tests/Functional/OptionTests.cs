@@ -351,9 +351,9 @@ public class OptionTests
     {
         var option = Option<int>.None;
         var result = option.ToResult("Value not found");
-        Assert.That(result.IsFaulted, Is.True);
-        Assert.That(result.Exception, Is.TypeOf<InvalidOperationException>());
-        Assert.That(result.Exception.Message, Is.EqualTo("Value not found"));
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error, Is.TypeOf<InvalidOperationException>());
+        Assert.That(result.Error.Message, Is.EqualTo("Value not found"));
     }
 
     /// <summary>

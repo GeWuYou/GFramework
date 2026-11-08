@@ -26,30 +26,29 @@ using GFramework.Core.Architectures;
 using GFramework.Godot.Logging;
 using Microsoft.Extensions.Logging;
 
-var loggerFactory = LoggerFactory.Create(builder =>
+using var loggerFactory = LoggerFactory.Create(builder =>
 {
     builder.SetMinimumLevel(LogLevel.Trace);
     builder.AddProvider(GodotLog.Provider);
 });
 
-var architecture = new GameArchitecture(
+await using var architecture = new GameArchitecture(
     new ArchitectureConfiguration
     {
         LoggerProperties = new LoggerProperties
         {
             LoggerFactory = loggerFactory
         }
-    },
-    environment);
+    });
 
 await architecture.InitializeAsync();
 ```
 
 传入的工厂所有权归调用方；需要文件输出等更多落点时，在同一个 builder 上继续 `AddProvider(new AppenderLoggerProvider(...))`，见 [Core 日志系统](../core/logging.md)。
 
-### 2. 业务代码通过构造注入或 [Log] 获取 logger
+### 2. 显式提供标准日志依赖
 
-配置好工厂后，节点、System、Utility 等组件继续面向标准 `ILogger`：
+配置好工厂后，普通 C# 服务通过构造注入 `ILogger<T>`。Godot 引擎创建的节点使用显式配置入口，在节点入树前由组合根提供日志：
 
 ```csharp
 using Microsoft.Extensions.Logging;
@@ -57,9 +56,9 @@ using Godot;
 
 public partial class SettingsPanel : Control
 {
-    private readonly ILogger<SettingsPanel> _logger;
+    private ILogger<SettingsPanel> _logger = null!;
 
-    public SettingsPanel(ILogger<SettingsPanel> logger)
+    public void Configure(ILogger<SettingsPanel> logger)
     {
         _logger = logger;
     }
@@ -79,7 +78,7 @@ using GFramework.Godot.Logging;
 private static readonly ILogger Log = GodotLog.CreateLogger(nameof(SettingsPanel));
 ```
 
-如果你在用 `GFramework.Core.SourceGenerators`，也可以让 `[Log]` 生成实例日志属性，见[日志生成器](../source-generators/logging-generator.md)。`GodotLog.CreateLogger<T>()` 适合 `static readonly` 字段：logger 延迟解析配置，首次写入才锁定行为。
+组合根可从 architecture.Services.GetRequiredService<`ILogger<SettingsPanel>`>() 取得日志，再传给节点的 Configure；业务对象不查找架构或容器。`GodotLog.CreateLogger<T>()` 适合 `static readonly` 字段：logger 延迟解析配置，首次写入才锁定行为。
 
 ## `GodotLog` 入口
 
@@ -192,14 +191,13 @@ Godot 项目的 `user://` 路径需要先用 `ProjectSettings.GlobalizePath(...)
 - `GFramework.Godot.Logging` 只提供 Godot 控制台落点；文件落盘、JSON formatter、异步 appender 或按 namespace 的过滤继续使用 Core 日志组件组合
 - `GodotLog.Provider` 只改变输出方式，不改变 `ILogger` 契约；业务代码不需要切换到 Godot 专用日志 API
 - 没有 `GodotLog.UseAsDefaultProvider()` 之类的进程级覆盖；每个宿主组合自己的工厂
-- `[Log]`、`[ContextAware]` 这类注入能力属于 `GFramework.Core.SourceGenerators`，不属于 `GFramework.Godot.Logging`
+- 节点和普通服务显式接收 `ILogger<T>`；Godot 日志模块不生成依赖注入成员
 - 配置热重载只覆盖 Godot logger 自身的模板、颜色、模式和级别；不包含 `Microsoft.Extensions.Logging` 的完整 options / builder 模型
 - 时间戳使用 UTC；需要本地时区展示时自定义模板或 appender
 
 ## 继续阅读
 
 - [Core 日志系统](../core/logging.md)
-- [日志生成器](../source-generators/logging-generator.md)
 - [Godot 运行时集成](./index.md)
 - [Godot 场景系统](./scene.md)
 - [Godot UI 系统](./ui.md)

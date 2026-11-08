@@ -53,7 +53,7 @@ public sealed class GameRuntimeAdoptionTests
         var routes = new UiRegistry().Register(route, (_, _, _) => Task.FromResult<IUiView>(view));
         var architecture = new AdoptionArchitecture(routes, host);
         await architecture.InitializeAsync().ConfigureAwait(false);
-        var ui = architecture.Context.GetService<IUiService>();
+        var ui = architecture.Services.GetRequiredService<IUiService>();
         await ui.PushAsync(route, "Main menu").ConfigureAwait(false);
 
         await architecture.DestroyAsync().ConfigureAwait(false);
@@ -159,7 +159,7 @@ public sealed class GameRuntimeAdoptionTests
     {
         /// <inheritdoc />
         protected override void ConfigureServices(IServiceCollection services) =>
-            RegisterServiceModule(new GameRuntimeModule(new InlineGameDispatcher(), collection =>
+            services.AddModule(new GameRuntimeModule(new InlineGameDispatcher(), collection =>
                 collection.AddGamePause().AddGameUi(routes, host, new InlineGameDispatcher())));
         /// <inheritdoc />
         protected override ValueTask OnStoppedAsync()

@@ -60,4 +60,4 @@ GitHub 自动管理的 NuGet 依赖提交独立于主 CI。默认分支规则集
 
 编译成功不是行为验收，普通 dotnet test 不是 Godot/VS Code 原生宿主验收；历史 CI、合并、发布和部署分别需要当前证据。警告检查任务按 AGENTS 要求先 clean 再 build，不能用增量零警告证明警告基线。
 
-本地构建/测试一次只运行一个，不启动后台 CI 监控。发布仅在任务授权范围内进行，文档改动使用 docs 类型，不触发功能版本发布。核心治理的阶段边界见[实施路线](../roadmap/core-governance.md)。
+本地构建/测试一次只运行一个，不启动后台 CI 监控。发布仅在任务授权范围内进行，文档改动使用 docs 类型，不触发功能版本发布。架构边界见[当前架构](../architecture/current-architecture.md)。

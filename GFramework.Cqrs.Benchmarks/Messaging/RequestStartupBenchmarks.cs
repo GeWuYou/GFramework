@@ -10,7 +10,6 @@ using BenchmarkDotNet.Order;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,7 +27,7 @@ public class RequestStartupBenchmarks
     private static readonly ILogger RuntimeLogger = CreateLogger(nameof(RequestStartupBenchmarks));
     private static readonly BenchmarkRequest Request = new(Guid.NewGuid());
 
-    private MicrosoftDiContainer _container = null!;
+    private BenchmarkServiceHost _container = null!;
     private ServiceProvider _serviceProvider = null!;
     private ServiceProvider _mediatorServiceProvider = null!;
     private IMediator _mediatr = null!;
@@ -180,7 +179,7 @@ public class RequestStartupBenchmarks
     ///     该 benchmark 故意保持与 MediatR 对照组同样的“单 handler 最小宿主”模型，
     ///     因此这里继续使用单点手工注册，而不引入依赖完整 CQRS 注册协调器的程序集扫描路径。
     /// </remarks>
-    private static MicrosoftDiContainer CreateGFrameworkContainer()
+    private static BenchmarkServiceHost CreateGFrameworkContainer()
     {
         return BenchmarkHostFactory.CreateFrozenGFrameworkContainer(static currentContainer =>
         {
@@ -192,7 +191,7 @@ public class RequestStartupBenchmarks
     ///     基于已冻结的 benchmark 容器构建最小 GFramework.CQRS runtime。
     /// </summary>
     /// <param name="container">当前 benchmark 拥有并负责释放的容器。</param>
-    private static ICqrsRuntime CreateGFrameworkRuntime(MicrosoftDiContainer container)
+    private static ICqrsRuntime CreateGFrameworkRuntime(BenchmarkServiceHost container)
     {
         ArgumentNullException.ThrowIfNull(container);
         return GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(container, RuntimeLogger);

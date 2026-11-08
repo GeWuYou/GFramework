@@ -75,7 +75,7 @@ public sealed class ConcreteAsyncStateV2 : IState, IAsyncState
     ///     异步进入当前状态时调用的方法。
     /// </summary>
     /// <param name="from">从哪个状态进入。</param>
-    public async Task OnEnterAsync(IState? from)
+    public async Task OnEnterAsync(IState? from, CancellationToken cancellationToken = default)
     {
         await Task.Delay(1).ConfigureAwait(false);
         EnterCalled = true;
@@ -87,7 +87,7 @@ public sealed class ConcreteAsyncStateV2 : IState, IAsyncState
     ///     异步退出当前状态时调用的方法。
     /// </summary>
     /// <param name="to">退出到哪个状态。</param>
-    public async Task OnExitAsync(IState? to)
+    public async Task OnExitAsync(IState? to, CancellationToken cancellationToken = default)
     {
         await Task.Delay(1).ConfigureAwait(false);
         ExitCalled = true;
@@ -100,7 +100,7 @@ public sealed class ConcreteAsyncStateV2 : IState, IAsyncState
     /// </summary>
     /// <param name="target">目标状态。</param>
     /// <returns>如果可以转换则返回 <see langword="true" />，否则返回 <see langword="false" />。</returns>
-    public async Task<bool> CanTransitionToAsync(IState target)
+    public async Task<bool> CanTransitionToAsync(IState target, CancellationToken cancellationToken = default)
     {
         await Task.Delay(1).ConfigureAwait(false);
         CanTransitionToAsyncAction?.Invoke(target);

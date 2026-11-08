@@ -146,14 +146,14 @@ export default defineConfig({
               items: [
                 { text: '概览', link: '/zh-CN/core/' },
                 { text: '架构组件', link: '/zh-CN/core/architecture' },
-                { text: 'Context 上下文', link: '/zh-CN/core/context' },
+                { text: '依赖边界', link: '/zh-CN/core/context' },
                 { text: '异步初始化', link: '/zh-CN/core/async-initialization' },
                 { text: '生命周期', link: '/zh-CN/core/lifecycle' },
                 { text: 'CQRS 运行时', link: '/zh-CN/core/cqrs' },
                 { text: '事件系统', link: '/zh-CN/core/events' },
                 { text: '属性系统', link: '/zh-CN/core/property' },
                 { text: '状态管理', link: '/zh-CN/core/state-management' },
-                { text: 'IoC容器', link: '/zh-CN/core/ioc' },
+                { text: '依赖注入', link: '/zh-CN/core/ioc' },
                 { text: '协程系统', link: '/zh-CN/core/coroutine' },
                 { text: '状态机', link: '/zh-CN/core/state-machine' },
                 { text: '暂停系统', link: '/zh-CN/core/pause' },
@@ -166,8 +166,8 @@ export default defineConfig({
                 { text: '工具类', link: '/zh-CN/core/utility' },
                 { text: '模型层', link: '/zh-CN/core/model' },
                 { text: '系统层', link: '/zh-CN/core/system' },
-                { text: '规则系统', link: '/zh-CN/core/rule' },
-                { text: '环境接口', link: '/zh-CN/core/environment' },
+                { text: '业务规则', link: '/zh-CN/core/rule' },
+                { text: '运行环境', link: '/zh-CN/core/environment' },
                 { text: '本地化', link: '/zh-CN/core/localization' }
               ]
             }
@@ -250,12 +250,8 @@ export default defineConfig({
               items: [
                 { text: '概览', link: '/zh-CN/source-generators/' },
                 { text: 'Schema 配置生成器', link: '/zh-CN/source-generators/schema-config-generator' },
-                { text: '日志生成器', link: '/zh-CN/source-generators/logging-generator' },
                 { text: '枚举扩展生成器', link: '/zh-CN/source-generators/enum-generator' },
-                { text: 'ContextAware 生成器', link: '/zh-CN/source-generators/context-aware-generator' },
                 { text: 'Priority 生成器', link: '/zh-CN/source-generators/priority-generator' },
-                { text: 'Context Get 注入生成器', link: '/zh-CN/source-generators/context-get-generator' },
-                { text: '模块自动注册生成器', link: '/zh-CN/source-generators/auto-register-module-generator' },
                 { text: 'CQRS Handler Registry 生成器', link: '/zh-CN/source-generators/cqrs-handler-registry-generator' },
                 { text: 'Godot 项目元数据生成器', link: '/zh-CN/source-generators/godot-project-generator' },
                 { text: 'GetNode 生成器 (Godot)', link: '/zh-CN/source-generators/get-node-generator' },
@@ -309,6 +305,7 @@ export default defineConfig({
                 { text: '官方素材小游戏制作', link: '/zh-CN/tutorials/godot-complete-project' },
                 { text: '高级模式', link: '/zh-CN/tutorials/advanced-patterns' },
                 { text: '大型项目组织', link: '/zh-CN/tutorials/large-project-organization' },
+                { text: '进阶游戏范式', link: '/zh-CN/tutorials/godot-advanced-project' },
                 { text: '单元测试', link: '/zh-CN/tutorials/unit-testing' }
               ]
             }

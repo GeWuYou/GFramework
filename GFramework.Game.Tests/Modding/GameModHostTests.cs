@@ -103,7 +103,7 @@ public sealed class GameModHostTests
         {
             ["GFramework.Game"] = typeof(GameModHost).Assembly.Location,
             ["GFramework.Game.Abstractions"] = typeof(IGameMod).Assembly.Location,
-            ["GFramework.Core.Abstractions"] = typeof(GFramework.Core.Abstractions.Events.IUnRegister).Assembly.Location,
+            ["GFramework.Core.Abstractions"] = typeof(GFramework.Core.Abstractions.Events.IEventBus).Assembly.Location,
             ["System.ComponentModel"] = typeof(IServiceProvider).Assembly.Location,
             ["netstandard"] = Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "netstandard.dll"),
         };

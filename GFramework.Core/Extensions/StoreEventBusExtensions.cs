@@ -24,7 +24,7 @@ public static class StoreEventBusExtensions
     /// <param name="publishDispatches">是否发布每次 action 分发事件。</param>
     /// <param name="publishStateChanges">是否发布状态变化事件。</param>
     /// <returns>用于拆除桥接的句柄。</returns>
-    public static IUnRegister BridgeToEventBus<TState>(
+    public static IDisposable BridgeToEventBus<TState>(
         this Store<TState> store,
         IEventBus eventBus,
         bool publishDispatches = true,
@@ -34,8 +34,8 @@ public static class StoreEventBusExtensions
 
         ArgumentNullException.ThrowIfNull(eventBus);
 
-        IUnRegister? dispatchBridge = null;
-        IUnRegister? stateBridge = null;
+        IDisposable? dispatchBridge = null;
+        IDisposable? stateBridge = null;
 
         if (publishDispatches)
         {
@@ -47,10 +47,10 @@ public static class StoreEventBusExtensions
             stateBridge = store.BridgeStateChangesToEventBus(eventBus);
         }
 
-        return new DefaultUnRegister(() =>
+        return new Subscription(() =>
         {
-            dispatchBridge?.UnRegister();
-            stateBridge?.UnRegister();
+            dispatchBridge?.Dispose();
+            stateBridge?.Dispose();
         });
     }
 
@@ -62,7 +62,7 @@ public static class StoreEventBusExtensions
     /// <param name="store">源 Store。</param>
     /// <param name="eventBus">目标事件总线。</param>
     /// <returns>用于移除 dispatch 桥接中间件的句柄。</returns>
-    public static IUnRegister BridgeDispatchesToEventBus<TState>(this Store<TState> store, IEventBus eventBus)
+    public static IDisposable BridgeDispatchesToEventBus<TState>(this Store<TState> store, IEventBus eventBus)
     {
         ArgumentNullException.ThrowIfNull(store);
 
@@ -79,7 +79,7 @@ public static class StoreEventBusExtensions
     /// <param name="store">源 Store。</param>
     /// <param name="eventBus">目标事件总线。</param>
     /// <returns>用于移除状态变化桥接的句柄。</returns>
-    public static IUnRegister BridgeStateChangesToEventBus<TState>(this IReadonlyStore<TState> store,
+    public static IDisposable BridgeStateChangesToEventBus<TState>(this IReadonlyStore<TState> store,
         IEventBus eventBus)
     {
         ArgumentNullException.ThrowIfNull(store);
@@ -87,7 +87,7 @@ public static class StoreEventBusExtensions
         ArgumentNullException.ThrowIfNull(eventBus);
 
         return store.Subscribe(state =>
-            eventBus.Send(new StoreStateChangedEvent<TState>(state, DateTimeOffset.UtcNow)));
+            eventBus.Publish(new StoreStateChangedEvent<TState>(state, DateTimeOffset.UtcNow)));
     }
 
     /// <summary>
@@ -118,7 +118,7 @@ public static class StoreEventBusExtensions
                 context.HasStateChanged,
                 context.DispatchedAt);
 
-            _eventBus.Send(new StoreDispatchedEvent<TState>(dispatchRecord));
+            _eventBus.Publish(new StoreDispatchedEvent<TState>(dispatchRecord));
         }
     }
 }

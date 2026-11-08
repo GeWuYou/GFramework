@@ -24,7 +24,7 @@ public sealed class WaitForEvent<TEvent> : IYieldInstruction, IDisposable
     private bool _disposed;
     private volatile bool _done;
     private TEvent? _eventData;
-    private IUnRegister? _unRegister;
+    private IDisposable? _unRegister;
 
     /// <summary>
     ///     订阅事件。指令从创建起拥有订阅，调用方须交给调度器或主动释放。
@@ -33,7 +33,7 @@ public sealed class WaitForEvent<TEvent> : IYieldInstruction, IDisposable
     public WaitForEvent(IEventBus eventBus)
     {
         ArgumentNullException.ThrowIfNull(eventBus);
-        _unRegister = eventBus.Register<TEvent>(OnEventTriggered);
+        _unRegister = eventBus.Subscribe<TEvent>(OnEventTriggered);
     }
 
     /// <summary>
@@ -67,7 +67,7 @@ public sealed class WaitForEvent<TEvent> : IYieldInstruction, IDisposable
     /// </summary>
     public void Dispose()
     {
-        IUnRegister? registration;
+        IDisposable? registration;
         lock (_sync)
         {
             if (_disposed)
@@ -81,7 +81,7 @@ public sealed class WaitForEvent<TEvent> : IYieldInstruction, IDisposable
         }
 
         // 不在状态锁内调用外部总线，避免注销回调重入形成死锁。
-        registration?.UnRegister();
+        registration?.Dispose();
     }
 
     /// <summary>

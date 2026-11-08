@@ -29,7 +29,7 @@ public sealed class GameConfigBootstrap : IDisposable
     private readonly object _stateGate = new();
 #endif
     private readonly GameConfigBootstrapOptions _options;
-    private IUnRegister? _hotReload;
+    private IDisposable? _hotReload;
     private YamlConfigLoader? _loader;
     private bool _disposed;
     private bool _isInitializing;
@@ -164,7 +164,7 @@ public sealed class GameConfigBootstrap : IDisposable
             _isInitializing = true;
         }
 
-        IUnRegister? hotReload = null;
+        IDisposable? hotReload = null;
 
         try
         {
@@ -202,7 +202,7 @@ public sealed class GameConfigBootstrap : IDisposable
                 _isInitializing = false;
             }
 
-            hotReload?.UnRegister();
+            hotReload?.Dispose();
             throw;
         }
     }
@@ -223,7 +223,7 @@ public sealed class GameConfigBootstrap : IDisposable
     public void StartHotReload(YamlConfigHotReloadOptions? options = null)
     {
         var loader = BeginHotReloadStart();
-        IUnRegister? hotReload = null;
+        IDisposable? hotReload = null;
         try
         {
             hotReload = loader.EnableHotReload(Registry, options);
@@ -232,7 +232,7 @@ public sealed class GameConfigBootstrap : IDisposable
         catch
         {
             ResetHotReloadStartAfterFailure();
-            hotReload?.UnRegister();
+            hotReload?.Dispose();
             throw;
         }
     }
@@ -243,7 +243,7 @@ public sealed class GameConfigBootstrap : IDisposable
     /// </summary>
     public void StopHotReload()
     {
-        IUnRegister? hotReload;
+        IDisposable? hotReload;
         lock (_stateGate)
         {
             if (_isStartingHotReload && _hotReload == null)
@@ -256,7 +256,7 @@ public sealed class GameConfigBootstrap : IDisposable
             _hotReload = null;
         }
 
-        hotReload?.UnRegister();
+        hotReload?.Dispose();
     }
 
     /// <summary>
@@ -264,7 +264,7 @@ public sealed class GameConfigBootstrap : IDisposable
     /// </summary>
     public void Dispose()
     {
-        IUnRegister? hotReload;
+        IDisposable? hotReload;
         lock (_stateGate)
         {
             if (_disposed)
@@ -283,7 +283,7 @@ public sealed class GameConfigBootstrap : IDisposable
             _hotReload = null;
         }
 
-        hotReload?.UnRegister();
+        hotReload?.Dispose();
     }
 
     private void ThrowIfDisposedCore()
@@ -311,7 +311,7 @@ public sealed class GameConfigBootstrap : IDisposable
         }
     }
 
-    private IUnRegister? CompleteHotReloadStart(IUnRegister? hotReload)
+    private IDisposable? CompleteHotReloadStart(IDisposable? hotReload)
     {
         var shouldStop = false;
         lock (_stateGate)
@@ -341,7 +341,7 @@ public sealed class GameConfigBootstrap : IDisposable
 
         if (shouldStop)
         {
-            hotReload?.UnRegister();
+            hotReload?.Dispose();
             return null;
         }
 

@@ -1,158 +1,138 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Events;
+using System.Reflection;
 
 namespace GFramework.Core.Events;
 
-/// <summary>
-///     支持弱引用订阅的泛型事件类
-///     使用弱引用存储监听器，避免事件订阅导致的内存泄漏
-///     线程安全：使用锁保护监听器列表的修改
-/// </summary>
-/// <typeparam name="T">事件数据类型</typeparam>
-/// <remarks>
-///     构造函数
-/// </remarks>
-/// <param name="statistics">事件统计对象（可选）</param>
+/// <summary>A standalone synchronous event retaining instance targets weakly.</summary>
+/// <typeparam name="T">Notification type.</typeparam>
+/// <param name="statistics">Optional statistics for this local event.</param>
+/// <remarks>A live target continues receiving notifications even if its temporary delegate is collected.
+/// Holding a token does not keep an instance target alive. Static callbacks remain until explicitly detached.</remarks>
 public sealed class WeakEvent<T>(EventStatistics? statistics = null)
 {
 #if NET9_0_OR_GREATER
-    // net9.0 及以上目标使用专用 Lock，以满足分析器对专用同步原语的建议。
-    private readonly System.Threading.Lock _lock = new();
+    private readonly System.Threading.Lock _gate = new();
 #else
-    // net8.0 目标仍回退到 object 锁，以保持多目标编译兼容性。
-    private readonly object _lock = new();
+    private readonly object _gate = new();
 #endif
-    private readonly EventStatistics? _statistics = statistics;
-    private readonly List<WeakReference<Action<T>>> _weakHandlers = [];
+    private readonly List<Registration> _registrations = [];
 
-    /// <summary>
-    ///     注册事件监听器（弱引用）
-    /// </summary>
-    /// <param name="onEvent">事件处理回调</param>
-    /// <returns>反注册接口</returns>
-    public IUnRegister Register(Action<T> onEvent)
+    /// <summary>Optional local statistics, keyed by the notification type name.</summary>
+    public EventStatistics? Statistics => statistics;
+
+    /// <summary>Register a weak instance target or a strongly held static callback.</summary>
+    /// <param name="handler">Callback, including optional multicast delegates.</param>
+    /// <returns>An idempotent token which does not root instance targets.</returns>
+    public IDisposable Register(Action<T> handler)
     {
-        lock (_lock)
+        ArgumentNullException.ThrowIfNull(handler);
+        var entries = handler.GetInvocationList().Cast<Action<T>>().Select(value => new Registration(value)).ToArray();
+        lock (_gate)
         {
-            _weakHandlers.Add(new WeakReference<Action<T>>(onEvent));
-            UpdateListenerCount();
+            _registrations.AddRange(entries);
+            UpdateStatistics();
         }
-
-        return new DefaultUnRegister(() => UnRegister(onEvent));
+        return new Subscription(() =>
+        {
+            lock (_gate)
+            {
+                foreach (var entry in entries)
+                    _registrations.Remove(entry);
+                UpdateStatistics();
+            }
+        });
     }
 
-    /// <summary>
-    ///     注销事件监听器
-    /// </summary>
-    /// <param name="onEvent">事件处理回调</param>
-    public void UnRegister(Action<T> onEvent)
+    /// <summary>Detach matching callbacks and prune expired instance targets.</summary>
+    /// <param name="handler">Callback to detach.</param>
+    public void UnRegister(Action<T> handler)
     {
-        lock (_lock)
+        ArgumentNullException.ThrowIfNull(handler);
+        var callbacks = handler.GetInvocationList().Cast<Action<T>>().ToArray();
+        lock (_gate)
         {
-            _weakHandlers.RemoveAll(wr =>
-            {
-                if (!wr.TryGetTarget(out var target))
-                    return true; // 目标已被回收，移除
-                return ReferenceEquals(target, onEvent);
-            });
-            UpdateListenerCount();
+            _registrations.RemoveAll(entry => callbacks.Any(entry.Matches) || !entry.IsAlive);
+            UpdateStatistics();
         }
     }
 
-    /// <summary>
-    ///     触发事件
-    /// </summary>
-    /// <param name="data">事件数据</param>
-    public void Trigger(T data)
+    /// <summary>Publish to a live snapshot on the current thread; observer errors propagate.</summary>
+    /// <param name="value">Notification value.</param>
+    public void Trigger(T value)
     {
-        // 记录发布统计
-        _statistics?.RecordPublish(typeof(T).Name);
-
-        // 收集存活的监听器
-        var aliveHandlers = new List<Action<T>>();
-        var needsUpdate = false;
-
-        lock (_lock)
+        Action<T>[] callbacks;
+        lock (_gate)
         {
-            var beforeCount = _weakHandlers.Count;
-
-            // 清理已回收的弱引用并收集存活的监听器
-            _weakHandlers.RemoveAll(wr =>
+            var alive = new List<Action<T>>();
+            _registrations.RemoveAll(entry =>
             {
-                if (wr.TryGetTarget(out var target))
-                {
-                    aliveHandlers.Add(target);
-                    return false;
-                }
-
-                return true; // 目标已被回收，移除
+                var callback = entry.GetCallback();
+                if (callback is null)
+                    return true;
+                alive.Add(callback);
+                return false;
             });
-
-            // 检查是否有监听器被清理
-            needsUpdate = _weakHandlers.Count != beforeCount;
+            callbacks = alive.ToArray();
+            UpdateStatistics();
         }
-
-        // 在锁外调用监听器，避免死锁
-        foreach (var handler in aliveHandlers)
+        statistics?.RecordPublish(typeof(T).Name);
+        foreach (var callback in callbacks)
         {
             try
             {
-                handler(data);
-                _statistics?.RecordHandle();
+                callback(value);
+                statistics?.RecordHandle();
             }
-            catch
-            {
-                _statistics?.RecordFailure();
-                throw;
-            }
-        }
-
-        // 如果有监听器被清理，更新统计
-        if (needsUpdate)
-        {
-            lock (_lock)
-            {
-                UpdateListenerCount();
-            }
+            catch { statistics?.RecordFailure(); throw; }
         }
     }
 
-    /// <summary>
-    ///     清理已回收的弱引用
-    /// </summary>
+    /// <summary>Remove registrations whose instance targets have been collected.</summary>
     public void Cleanup()
     {
-        lock (_lock)
+        lock (_gate)
         {
-            var beforeCount = _weakHandlers.Count;
-            _weakHandlers.RemoveAll(wr => !wr.TryGetTarget(out _));
-            if (_weakHandlers.Count != beforeCount)
-                UpdateListenerCount();
+            _registrations.RemoveAll(entry => !entry.IsAlive);
+            UpdateStatistics();
         }
     }
 
-    /// <summary>
-    ///     获取当前存活的监听器数量
-    /// </summary>
-    public int GetListenerCount()
+    /// <summary>Update the local count while registry mutations remain serialized.</summary>
+    private void UpdateStatistics() => statistics?.UpdateListenerCount(typeof(T).Name, _registrations.Count);
+
+    /// <summary>Store method identity separately from the weak target so a transient delegate is not the lifetime anchor.</summary>
+    private sealed class Registration
     {
-        lock (_lock)
+        private readonly MethodInfo _method;
+        private readonly WeakReference<object>? _target;
+        private readonly Action<T>? _staticHandler;
+
+        /// <summary>Record callback metadata without rooting instance targets.</summary>
+        public Registration(Action<T> handler)
         {
-            return _weakHandlers.Count(wr => wr.TryGetTarget(out _));
+            _method = handler.Method;
+            if (handler.Target is { } target)
+                _target = new WeakReference<object>(target);
+            else
+                _staticHandler = handler;
         }
-    }
 
-    /// <summary>
-    ///     更新监听器数量统计
-    /// </summary>
-    private void UpdateListenerCount()
-    {
-        if (_statistics == null)
-            return;
+        /// <summary>Whether the target still exists or the callback is static.</summary>
+        public bool IsAlive => _staticHandler is not null || _target!.TryGetTarget(out _);
 
-        var count = _weakHandlers.Count(wr => wr.TryGetTarget(out _));
-        _statistics.UpdateListenerCount(typeof(T).Name, count);
+        /// <summary>Temporarily root a live instance during the current publication.</summary>
+        public Action<T>? GetCallback()
+        {
+            if (_staticHandler is not null)
+                return _staticHandler;
+            return _target!.TryGetTarget(out var target) ? _method.CreateDelegate<Action<T>>(target) : null;
+        }
+
+        /// <summary>Compare method and target identity for explicit callback removal.</summary>
+        public bool Matches(Action<T> handler) => _method == handler.Method &&
+            (handler.Target is null ? _staticHandler is not null :
+                _target is not null && _target.TryGetTarget(out var target) && ReferenceEquals(target, handler.Target));
     }
 }

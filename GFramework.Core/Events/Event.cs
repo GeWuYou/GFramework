@@ -23,8 +23,8 @@ public class Event<T> : IEvent
     ///     允许使用无参 <see cref="Action" /> 来订阅当前带参事件。
     /// </summary>
     /// <param name="onEvent">无参事件处理方法。</param>
-    /// <returns><see cref="IUnRegister" /> 对象，用于稍后注销该事件监听器。</returns>
-    IUnRegister IEvent.Register(Action onEvent)
+    /// <returns><see cref="IDisposable" /> 对象，用于稍后注销该事件监听器。</returns>
+    IDisposable IEvent.Register(Action onEvent)
     {
         return Register(Action);
 
@@ -38,11 +38,11 @@ public class Event<T> : IEvent
     ///     注册一个事件监听器，并返回可用于取消注册的对象。
     /// </summary>
     /// <param name="onEvent">要注册的事件处理方法。</param>
-    /// <returns><see cref="IUnRegister" /> 对象，用于稍后注销该事件监听器。</returns>
-    public IUnRegister Register(Action<T> onEvent)
+    /// <returns><see cref="IDisposable" /> 对象，用于稍后注销该事件监听器。</returns>
+    public IDisposable Register(Action<T> onEvent)
     {
         _mOnEvent += onEvent;
-        return new DefaultUnRegister(() => UnRegister(onEvent));
+        return new Subscription(() => UnRegister(onEvent));
     }
 
     /// <summary>
@@ -92,8 +92,8 @@ public class Event<T, TK> : IEvent
     ///     允许使用无参 <see cref="Action" /> 来订阅当前带参事件。
     /// </summary>
     /// <param name="onEvent">无参事件处理方法。</param>
-    /// <returns><see cref="IUnRegister" /> 对象，用于稍后注销该事件监听器。</returns>
-    IUnRegister IEvent.Register(Action onEvent)
+    /// <returns><see cref="IDisposable" /> 对象，用于稍后注销该事件监听器。</returns>
+    IDisposable IEvent.Register(Action onEvent)
     {
         return Register(Action);
 
@@ -107,11 +107,11 @@ public class Event<T, TK> : IEvent
     ///     注册一个接受两个参数的事件监听器，并返回可用于取消注册的对象。
     /// </summary>
     /// <param name="onEvent">要注册的事件处理方法。</param>
-    /// <returns><see cref="IUnRegister" /> 对象，用于稍后注销该事件监听器。</returns>
-    public IUnRegister Register(Action<T, TK> onEvent)
+    /// <returns><see cref="IDisposable" /> 对象，用于稍后注销该事件监听器。</returns>
+    public IDisposable Register(Action<T, TK> onEvent)
     {
         _mOnEvent += onEvent;
-        return new DefaultUnRegister(() => UnRegister(onEvent));
+        return new Subscription(() => UnRegister(onEvent));
     }
 
     /// <summary>

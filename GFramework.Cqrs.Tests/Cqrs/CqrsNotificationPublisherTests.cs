@@ -1,13 +1,10 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Architectures;
-using GFramework.Core.Ioc;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Cqrs;
-using GFramework.Cqrs.Extensions;
 using GFramework.Cqrs.Notification;
 using GFramework.Cqrs.Tests.Logging;
 using Microsoft.Extensions.Logging;
@@ -49,42 +46,21 @@ internal sealed class CqrsNotificationPublisherTests
     [Test]
     public async Task RegisterInfrastructure_Should_Use_PreRegistered_NotificationPublisher()
     {
-        var container = new MicrosoftDiContainer();
+        var container = new ServiceTestHost();
         var publisher = new TrackingNotificationPublisher();
         container.Register<INotificationPublisher>(publisher);
         container.Register<INotificationHandler<PublisherNotification>>(new RecordingNotificationHandler<PublisherNotification>("only", []));
         CqrsTestRuntime.RegisterInfrastructure(container);
         container.Freeze();
 
-        var context = new ArchitectureContext(container);
+        var context = new CqrsTestHost(container);
 
         await context.PublishAsync(new PublisherNotification()).ConfigureAwait(false);
 
         Assert.That(publisher.WasCalled, Is.True);
     }
 
-    /// <summary>
-    ///     验证自定义通知发布器通过发布上下文回调执行处理器时，dispatcher 仍会在调用前注入当前架构上下文。
-    /// </summary>
-    [Test]
-    public async Task PublishAsync_Should_Prepare_Context_Before_Custom_Publisher_Invokes_Handler()
-    {
-        var handler = new ContextAwarePublisherTestHandler();
-        var architectureContext = new Mock<IArchitectureContext>(MockBehavior.Strict);
-        var runtime = CreateRuntime(
-            provider =>
-            {
-                provider.Register(typeof(INotificationHandler<PublisherNotification>), handler);
-            },
-            new PassthroughNotificationPublisher());
 
-        // 架构集成路径会把宿主上下文包装成公开的 ArchitectureCqrsDispatchContext 后传入 runtime。
-        var dispatchContext = new ArchitectureCqrsDispatchContext(architectureContext.Object);
-
-        await runtime.PublishAsync(new PublisherNotification(), cancellationToken: default, dispatchContext).ConfigureAwait(false);
-
-        Assert.That(handler.ObservedContext, Is.SameAs(architectureContext.Object));
-    }
 
     /// <summary>
     ///     验证当容器里可见多个通知发布策略时，dispatcher 会拒绝在歧义状态下继续发布。
@@ -410,33 +386,7 @@ internal sealed class CqrsNotificationPublisherTests
         }
     }
 
-    /// <summary>
-    ///     记录 dispatcher 是否在自定义发布器路径中完成上下文注入的测试处理器。
-    /// </summary>
-    private sealed class ContextAwarePublisherTestHandler
-        : CqrsContextAwareHandlerBase,
-            INotificationHandler<PublisherNotification>
-    {
-        /// <summary>
-        ///     获取当前处理器在执行时观察到的架构上下文。
-        /// </summary>
-        public IArchitectureContext? ObservedContext
-        {
-            get; private set;
-        }
 
-        /// <summary>
-        ///     记录当前执行时观察到的架构上下文。
-        /// </summary>
-        /// <param name="notification">当前通知。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>已完成的值任务。</returns>
-        public ValueTask Handle(PublisherNotification notification, CancellationToken cancellationToken)
-        {
-            ObservedContext = Context;
-            return ValueTask.CompletedTask;
-        }
-    }
 
     /// <summary>
     ///     最小化实现标准 <see cref="IServiceProvider" /> 解析契约的测试替身。

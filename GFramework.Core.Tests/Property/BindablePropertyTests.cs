@@ -166,10 +166,10 @@ public class BindablePropertyTests
     }
 
     /// <summary>
-    ///     测试注册应返回IUnRegister接口
+    ///     测试注册应返回IDisposable接口
     /// </summary>
     [Test]
-    public void Register_Should_Return_IUnRegister()
+    public void Register_Should_Return_DisposableSubscription()
     {
         var property = new BindableProperty<int>();
         var unRegister = property.Register(_ => { });

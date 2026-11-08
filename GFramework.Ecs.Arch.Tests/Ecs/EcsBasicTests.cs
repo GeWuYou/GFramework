@@ -6,11 +6,11 @@ using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Logging;
-using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
-using GFramework.Core.Ioc;
 using GFramework.Ecs.Arch.Components;
 using GFramework.Ecs.Arch.Systems;
+
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Ecs.Arch.Tests.Ecs;
 
@@ -21,54 +21,40 @@ namespace GFramework.Ecs.Arch.Tests.Ecs;
 [Experimental("GFrameworkECS")]
 public class EcsBasicTests
 {
-    [SetUp]
-    public void Setup()
-    {
-        _container = new MicrosoftDiContainer();
-        _container.Register<ILoggerFactory>(NullLoggerFactory.Instance);
-        _context = new ArchitectureContext(_container);
-        ((IContextAware)_container).SetContext(_context);
-    }
-
-    [TearDown]
-    public async Task TearDown()
-    {
-        if (_ecsModule != null)
-        {
-            await _ecsModule.DestroyAsync().ConfigureAwait(false);
-        }
-        if (_container != null)
-        {
-            await _container.DisposeAsync().ConfigureAwait(false);
-        }
-        _world = null;
-        _context = null;
-        _ecsModule = null;
-    }
-
-    private MicrosoftDiContainer? _container;
-    private ArchitectureContext? _context;
+    private TestArchitecture? _architecture;
     private World? _world;
     private ArchEcsModule? _ecsModule;
 
-    /// <summary>
-    /// 初始化 ECS 模块
-    /// </summary>
-    private void InitializeEcsModule()
+    /// <summary>Stops the real participant and releases its provider-owned World.</summary>
+    [TearDown]
+    public async Task TearDown()
     {
-        // 注册系统（直接继承 ArchSystemAdapter，它继承自 AbstractSystem）
-        var movementSystem = new MovementSystem();
-        ((IContextAware)movementSystem).SetContext(_context!);
-        _container!.Register<ArchSystemAdapter<float>>(movementSystem);
+        if (_architecture is not null)
+            await _architecture.DestroyAsync().ConfigureAwait(false);
+        _architecture = null;
+        _world = null;
+        _ecsModule = null;
+    }
 
-        // 创建并注册 ArchEcsModule
-        _ecsModule = new ArchEcsModule(enabled: true);
-        _ecsModule.Register(_container);
-        _container.Freeze();
-        _ecsModule.Initialize();
+    /// <summary>Uses standard DI constructor injection and the production lifecycle adapter.</summary>
+    private void InitializeEcsModule(bool withSystem = true)
+    {
+        _ecsModule = new ArchEcsModule();
+        _architecture = new TestArchitecture(_ecsModule, withSystem);
+        _architecture.Initialize();
+        _world = _architecture.Services.GetRequiredService<World>();
+    }
 
-        // 获取 World
-        _world = _container.Get<World>();
+    /// <summary>Minimal ECS composition root for behavioral tests.</summary>
+    private sealed class TestArchitecture(ArchEcsModule module, bool withSystem) : Architecture
+    {
+        /// <inheritdoc />
+        protected override void ConfigureServices(IServiceCollection services)
+        {
+            services.AddModule(module);
+            if (withSystem)
+                services.AddSingleton<ArchSystemAdapter<float>, MovementSystem>();
+        }
     }
 
     [Test]

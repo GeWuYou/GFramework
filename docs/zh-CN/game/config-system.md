@@ -200,10 +200,6 @@ GameProject/
 
 - 运行时项目需要引用 `GeWuYou.GFramework.Game`
 - 配置 schema 生成器需要引用 `GeWuYou.GFramework.Game.SourceGenerators`
-- 如果同一项目还会使用 `[Log]`、`[ContextAware]`、`[GetSystem]` 等 Core 侧生成器特性，再额外引用
-  `GeWuYou.GFramework.Core.SourceGenerators`
-- schema 目录默认仍然是 `schemas/`
-
 如果你的 schema 不放在默认目录，可以在项目文件里覆盖：
 
 ```xml
@@ -489,7 +485,7 @@ if (monsterTable.TryFindFirstByFaction("dungeon", out var firstDungeonMonster))
 
 ### Architecture 推荐接入模板
 
-在 `ConfigureServices(IServiceCollection)` 中声明 `GameConfigModule`。配置阶段不执行文件加载；正式 provider 建立后，异步 `BeforeUtilityInit` 钩子会等待首载完成，再初始化依赖配置的组件。
+在 `ConfigureServices(IServiceCollection)` 中声明 `GameConfigModule`。配置阶段不执行文件加载；正式 provider 建立后，配置组件以 order -100 等待首载完成，再初始化后续依赖配置的组件。
 
 ```csharp
 using GFramework.Core.Architectures;
@@ -501,7 +497,7 @@ public sealed class GameArchitecture(string configRootPath) : Architecture
 {
     protected override void ConfigureServices(IServiceCollection services)
     {
-        InstallModule(new GameConfigModule(
+        services.AddModule(new GameConfigModule(
             new GameConfigBootstrapOptions
             {
                 RootPath = configRootPath,
@@ -523,7 +519,7 @@ await architecture.InitializeAsync(cancellationToken);
 初始化完成后，业务组件通过自己的实例上下文读取注册表，再访问生成表：
 
 ```csharp
-var registry = architecture.Context.GetUtility<IConfigRegistry>();
+var registry = architecture.Services.GetRequiredService<IConfigRegistry>();
 var monsterTable = registry.GetMonsterTable();
 var slime = monsterTable.Get(1);
 ```
@@ -531,7 +527,7 @@ var slime = monsterTable.Get(1);
 资源责任如下：
 
 - 配置阶段只声明注册表和生命周期适配器，不能提前解析服务或读取表。
-- 首载发生在 `BeforeUtilityInit`，utility、model、system 的初始化可以使用已加载的数据。
+- 配置组件以 order -100 首载；后续 order 的组件可使用已加载的数据。
 - provider 拥有模块的 bootstrap 释放适配器；首载失败、取消或后续组件初始化失败时也会释放它。
 - 正常停止先关闭热重载，再由 provider 释放资源；调用方无需为模块重复调用 `Dispose()`。
 

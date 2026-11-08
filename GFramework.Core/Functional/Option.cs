@@ -251,8 +251,8 @@ public readonly struct Option<T> : IEquatable<Option<T>>
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
         return _isSome
-            ? Result<T>.Succeed(_value)
-            : Result<T>.Fail(new InvalidOperationException(errorMessage));
+            ? Result<T>.Success(_value)
+            : Result<T>.Failure(new InvalidOperationException(errorMessage));
     }
 
     /// <summary>
