@@ -54,6 +54,30 @@ public static class CoroutineNodeExtensions
         return Timing.RunOwnedCoroutine(owner, coroutine, segment, tag, cancellationToken);
     }
 
+    /// <summary>Runs a structured flow in the node's default Supervisor scope.</summary>
+    /// <param name="owner">The live lifetime owner.</param>
+    /// <param name="factory">Creates a flow that can explicitly own child tasks.</param>
+    /// <param name="segment">The initial stage and pause policy.</param>
+    /// <param name="tag">An optional management tag.</param>
+    /// <param name="cancellationToken">External cancellation.</param>
+    /// <returns>The flow handle.</returns>
+    public static CoroutineHandle RunCoroutine(this Node owner,
+        Func<CoroutineContext, IEnumerator<IYieldInstruction>> factory,
+        Segment segment = Segment.Process, string? tag = null, CancellationToken cancellationToken = default)
+    {
+        return Timing.RunOwnedCoroutine(owner, factory, segment, tag, cancellationToken);
+    }
+
+    /// <summary>Creates an independent scope that cannot outlive its node.</summary>
+    /// <param name="owner">The live lifetime owner.</param>
+    /// <param name="policy">The immutable failure policy; independent node work defaults to Supervisor.</param>
+    /// <returns>The new node-owned scope.</returns>
+    public static CoroutineScope CreateCoroutineScope(this Node owner,
+        CoroutineFailurePolicy policy = CoroutineFailurePolicy.Supervisor)
+    {
+        return Timing.CreateScope(owner, policy);
+    }
+
     /// <summary>
     /// 让协程在指定节点被销毁时自动取消。
     /// </summary>
@@ -63,8 +87,7 @@ public static class CoroutineNodeExtensions
     public static IEnumerator<IYieldInstruction> CancelWith(this IEnumerator<IYieldInstruction> coroutine,
         Node node)
     {
-        while (Timing.IsNodeAlive(node) && coroutine.MoveNext())
-            yield return coroutine.Current;
+        return new NodeBoundCoroutine(coroutine, [node]);
     }
 
     /// <summary>
@@ -77,14 +100,11 @@ public static class CoroutineNodeExtensions
     public static IEnumerator<IYieldInstruction> CancelWith(this IEnumerator<IYieldInstruction> coroutine,
         Node node1, Node node2)
     {
-        while (Timing.IsNodeAlive(node1) &&
-               Timing.IsNodeAlive(node2) &&
-               coroutine.MoveNext())
-            yield return coroutine.Current;
+        return new NodeBoundCoroutine(coroutine, [node1, node2]);
     }
 
     /// <summary>
-    /// 让协程在多个节点都被销毁时自动取消。
+    /// 让协程在任一绑定节点退出场景树时取消，包括当前等待尚未结束的情况。
     /// </summary>
     /// <param name="coroutine">要包装的协程枚举器。</param>
     /// <param name="nodes">用于检查是否存活的节点数组。</param>
@@ -92,18 +112,7 @@ public static class CoroutineNodeExtensions
     public static IEnumerator<IYieldInstruction> CancelWith(this IEnumerator<IYieldInstruction> coroutine,
         params Node[] nodes)
     {
-        // 持续执行协程直到任一节点被销毁或协程执行完毕
-        while (nodes.AllNodesAlive() && coroutine.MoveNext())
-            yield return coroutine.Current;
-    }
-
-    /// <summary>
-    /// 检查所有节点是否都处于存活状态。
-    /// </summary>
-    /// <param name="nodes">要检查的节点数组。</param>
-    /// <returns>如果所有节点都存活则返回 true，否则返回 false。</returns>
-    private static bool AllNodesAlive(this Node[] nodes)
-    {
-        return nodes.All(Timing.IsNodeAlive);
+        ArgumentNullException.ThrowIfNull(nodes);
+        return new NodeBoundCoroutine(coroutine, nodes);
     }
 }

@@ -26,7 +26,10 @@ internal sealed class CoroutineStatistics : ICoroutineStatistics
     private double _maxExecutionTimeMs;
     private int _pausedCount;
     private long _totalCompleted;
-    private long _totalExecutionTimeMs;
+    private double _totalExecutionTimeMs;
+    private double _totalLifetimeMs;
+    private double _maxLifetimeMs;
+    private long _totalCancelled;
     private long _totalFailed;
     private long _totalStarted;
 
@@ -38,6 +41,36 @@ internal sealed class CoroutineStatistics : ICoroutineStatistics
 
     /// <inheritdoc />
     public long TotalFailed => Interlocked.Read(ref _totalFailed);
+
+    /// <inheritdoc />
+    public long TotalCancelled => Interlocked.Read(ref _totalCancelled);
+
+    /// <inheritdoc />
+    public double LastUpdateElapsedMs { get; internal set; }
+
+    /// <inheritdoc />
+    public double AverageLifetimeMs
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return TotalCompleted == 0 ? 0 : _totalLifetimeMs / TotalCompleted;
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public double MaxLifetimeMs
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _maxLifetimeMs;
+            }
+        }
+    }
 
     /// <inheritdoc />
     public int ActiveCount
@@ -62,8 +95,10 @@ internal sealed class CoroutineStatistics : ICoroutineStatistics
             if (completed == 0)
                 return 0;
 
-            var totalTime = Interlocked.Read(ref _totalExecutionTimeMs);
-            return (double)totalTime / completed;
+            lock (_lock)
+            {
+                return _totalExecutionTimeMs / completed;
+            }
         }
     }
 
@@ -103,13 +138,17 @@ internal sealed class CoroutineStatistics : ICoroutineStatistics
         Interlocked.Exchange(ref _totalStarted, 0);
         Interlocked.Exchange(ref _totalCompleted, 0);
         Interlocked.Exchange(ref _totalFailed, 0);
-        Interlocked.Exchange(ref _totalExecutionTimeMs, 0);
+        Interlocked.Exchange(ref _totalCancelled, 0);
         Interlocked.Exchange(ref _activeCount, 0);
         Interlocked.Exchange(ref _pausedCount, 0);
 
         lock (_lock)
         {
             _maxExecutionTimeMs = 0;
+            _totalExecutionTimeMs = 0;
+            _totalLifetimeMs = 0;
+            _maxLifetimeMs = 0;
+            LastUpdateElapsedMs = 0;
             _countByPriority.Clear();
             _countByTag.Clear();
         }
@@ -181,10 +220,10 @@ internal sealed class CoroutineStatistics : ICoroutineStatistics
     public void RecordComplete(double executionTimeMs, CoroutinePriority priority, string? tag)
     {
         Interlocked.Increment(ref _totalCompleted);
-        Interlocked.Add(ref _totalExecutionTimeMs, (long)executionTimeMs);
 
         lock (_lock)
         {
+            _totalExecutionTimeMs += executionTimeMs;
             if (executionTimeMs > _maxExecutionTimeMs)
                 _maxExecutionTimeMs = executionTimeMs;
 
@@ -222,6 +261,33 @@ internal sealed class CoroutineStatistics : ICoroutineStatistics
                 if (_countByTag[tag] == 0)
                     _countByTag.Remove(tag);
             }
+        }
+    }
+
+    /// <summary>Records every terminal path with consistent active-label accounting and separate wall-clock lifetime.</summary>
+    /// <param name="status">Terminal state.</param>
+    /// <param name="executionTimeMs">Cumulative user-code execution time.</param>
+    /// <param name="lifetimeMs">Wall-clock lifetime including waits.</param>
+    /// <param name="priority">Task priority.</param>
+    /// <param name="tag">Task diagnostic label.</param>
+    internal void RecordTermination(CoroutineCompletionStatus status, double executionTimeMs, double lifetimeMs,
+        CoroutinePriority priority, string? tag)
+    {
+        if (status == CoroutineCompletionStatus.Completed)
+        {
+            RecordComplete(executionTimeMs, priority, tag);
+            lock (_lock)
+            {
+                _totalLifetimeMs += lifetimeMs;
+                _maxLifetimeMs = Math.Max(_maxLifetimeMs, lifetimeMs);
+            }
+            return;
+        }
+        RecordFailure(priority, tag);
+        if (status == CoroutineCompletionStatus.Cancelled)
+        {
+            Interlocked.Decrement(ref _totalFailed);
+            Interlocked.Increment(ref _totalCancelled);
         }
     }
 }

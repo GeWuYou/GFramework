@@ -78,6 +78,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DodgeTheCreeps.BonusMod", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DodgeTheCreeps.HarmonyMod", "Samples\DodgeTheCreeps.HarmonyMod\DodgeTheCreeps.HarmonyMod.csproj", "{64E8FFB4-DD48-54C0-A590-5D1E8C44D6E0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoroutinePerformance", "Samples\CoroutinePerformance\CoroutinePerformance.csproj", "{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -472,6 +474,18 @@ Global
 		{9AF03A3C-93DA-457F-838A-9EB0A2BDEE38}.Release|x64.Build.0 = Release|Any CPU
 		{9AF03A3C-93DA-457F-838A-9EB0A2BDEE38}.Release|x86.ActiveCfg = Release|Any CPU
 		{9AF03A3C-93DA-457F-838A-9EB0A2BDEE38}.Release|x86.Build.0 = Release|Any CPU
+		{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7}.Debug|x64.Build.0 = Debug|Any CPU
+		{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7}.Debug|x86.Build.0 = Debug|Any CPU
+		{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7}.Release|x64.ActiveCfg = Release|Any CPU
+		{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7}.Release|x64.Build.0 = Release|Any CPU
+		{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7}.Release|x86.ActiveCfg = Release|Any CPU
+		{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -480,5 +494,6 @@ Global
 		{1DBEE32D-839F-450D-9A05-EA23F4AA5543} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 		{9AF03A3C-93DA-457F-838A-9EB0A2BDEE38} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
+		{611FFBD4-AD22-41AA-8BA6-E16C79FA36C7} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 	EndGlobalSection
 EndGlobal

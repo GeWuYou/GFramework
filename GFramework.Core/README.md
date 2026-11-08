@@ -43,7 +43,7 @@
 | `Property/` | `BindableProperty<T>` 与相关解绑对象 |
 | `State/` | 状态机与状态切换事件 |
 | `StateManagement/` | Store、selector、middleware 与状态诊断 |
-| `Coroutine/` | 协程调度、快照、统计与优先级 |
+| `Coroutine/` | 多阶段协程调度、父子流程、FailFast / Supervisor 作用域、结果与统计 |
 | `Time/` | 默认时间提供器与协程时间源 |
 | `Resource/` | 资源缓存、句柄和释放策略 |
 | `Pool/` | 对象池系统与常用池化辅助实现 |
@@ -72,6 +72,8 @@
 | `Model/` `Systems/` `Utility/` `Rule/` `Extensions/` `Functional/` | `AbstractModel`、`AbstractSystem`、`NumericDisplayFormatter`、`ContextAwareBase`、`Result<T>` | 看业务模型、系统基类、上下文辅助类型与函数式工具如何配合 |
 
 完整的模块化接入说明和阅读顺序见 [Core 栏目](../docs/zh-CN/core/index.md)。
+
+协程从 `CoroutineScheduler.Run` 或 `CoroutineScope.Run` 启动，由宿主在驱动线程推进。独立任务的根容器使用 Supervisor，单个流程的子任务默认 FailFast；`SwitchTo` 显式切换并保持阶段。采用方式见[协程系统](../docs/zh-CN/core/coroutine.md)，可重复测量见[协程性能样例](../Samples/CoroutinePerformance/README.md)。
 
 ## 当前使用边界
 

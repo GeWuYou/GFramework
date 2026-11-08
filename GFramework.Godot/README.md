@@ -22,13 +22,16 @@
 | `Setting/` | 音频、图形、语言应用器 | 将设置数据应用到引擎 |
 | `Config/`、`Resource/` | Godot 配置与资源适配 | 项目资源和内容加载 |
 | `Content/` | 内容资源会话、官方 PCK 信任策略、资料素材加载 | 启动时挂载可信 DLC，隔离第三方数据与素材 |
-| `Coroutine/`、`Extensions/`、`Signal/`、`Logging/`、`Text/` | 协程、节点与日志等扩展 | 保留的引擎能力 |
+| `Coroutine/` | `Timing`、节点作用域、`SwitchTo` | 统一阶段推进、场景暂停与父子任务清理 |
+| `Extensions/`、`Signal/`、`Logging/`、`Text/` | 节点与日志等扩展 | 引擎能力 |
 
 ## 最小采用
 
 在 Godot 主线程挂载 `GodotUiRoot`，捕获宿主同步上下文创建 `SynchronizationContextGameDispatcher`，通过 `UiRegistry.RegisterGodot` 或 `RegisterGodotScene` 登记普通 `Control`。创建 `UiService` 后，即可通过共享强类型路由打开页面和窗口。
 
 场景使用显式注册表构造 `GodotSceneFactory`，再创建 `SceneRouter(factory, root, dispatcher)`。需要暂停的 UI 共享一个 `PauseStackManager`，通过 `GodotPauseHandler` 接到场景树。
+
+协程通过 `node.RunCoroutine(...)` 进入节点默认 Supervisor 容器；任务内部子流程默认 FailFast。需要整体失败的多任务操作时，用 `node.CreateCoroutineScope(CoroutineFailurePolicy.FailFast)`。阶段切换保持同一句柄及暂停策略，节点退树取消其全部任务与后代。
 
 ### 关闭顺序
 
@@ -43,6 +46,7 @@
 - [场景系统](../docs/zh-CN/godot/scene.md)
 - [输入](../docs/zh-CN/godot/input.md)
 - [暂停](../docs/zh-CN/godot/pause.md)
+- [协程与作用域](../docs/zh-CN/godot/coroutine.md)
 - [设置](../docs/zh-CN/godot/setting.md)
 - [存储](../docs/zh-CN/godot/storage.md)
 - [DLC 与资料型模组](../docs/zh-CN/game/content-packs.md)

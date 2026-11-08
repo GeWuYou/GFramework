@@ -351,4 +351,24 @@ public sealed class CoroutineStatisticsTests
         Assert.That(scheduler.Statistics!.TotalStarted, Is.EqualTo(100));
         Assert.That(scheduler.Statistics.TotalCompleted, Is.EqualTo(100));
     }
+
+    /// <summary>Cancellation removes live diagnostic labels just like completion and failure.</summary>
+    [Test]
+    public void Cancellation_ClearsActivePriorityAndTagCounts()
+    {
+        var scheduler = new CoroutineScheduler(new FakeTimeSource(), enableStatistics: true);
+        IEnumerator<IYieldInstruction> Routine() { yield return new Delay(100); }
+        var handle = scheduler.Run(Routine(), tag: "cancelled", priority: CoroutinePriority.High);
+        scheduler.Pause(handle);
+        scheduler.Kill(handle);
+        Assert.Multiple(() =>
+        {
+            Assert.That(scheduler.Statistics!.ActiveCount, Is.Zero);
+            Assert.That(scheduler.Statistics.PausedCount, Is.Zero);
+            Assert.That(scheduler.Statistics.TotalCancelled, Is.EqualTo(1));
+            Assert.That(scheduler.Statistics.TotalFailed, Is.Zero);
+            Assert.That(scheduler.Statistics.GetCountByTag("cancelled"), Is.Zero);
+            Assert.That(scheduler.Statistics.GetCountByPriority(CoroutinePriority.High), Is.Zero);
+        });
+    }
 }

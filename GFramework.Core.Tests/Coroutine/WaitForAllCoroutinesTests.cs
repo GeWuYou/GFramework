@@ -377,16 +377,18 @@ public class WaitForAllCoroutinesTests
         var coroutine2 = CreateDelayedCoroutine(() => executionOrder.Add(2), 0.5);
         var coroutine3 = CreateDelayedCoroutine(() => executionOrder.Add(3), 0.5);
 
-        var parallel = scheduler.ParallelCoroutines(coroutine1, coroutine2, coroutine3);
+        var handle = scheduler.Run(context => context.ParallelCoroutines(coroutine1, coroutine2, coroutine3));
+        var wait = new WaitForAllCoroutines(scheduler, new[] { handle });
+        Assert.That(wait.IsDone, Is.False);
 
-        parallel.MoveNext();
-
-        while (scheduler.ActiveCoroutineCount > 0)
+        // 包装器的每次 MoveNext 必须由调度器消费其等待指令后驱动。
+        for (var frame = 0; frame < 100 && !wait.IsDone; frame++)
         {
-            parallel.MoveNext();
             scheduler.Update();
         }
 
+        Assert.That(wait.IsDone, Is.True);
+        Assert.That(scheduler.ActiveCoroutineCount, Is.Zero);
         Assert.That(executionOrder.Count, Is.EqualTo(3));
         Assert.That(executionOrder, Does.Contain(1));
         Assert.That(executionOrder, Does.Contain(2));

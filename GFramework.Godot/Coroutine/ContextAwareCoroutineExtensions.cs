@@ -32,11 +32,9 @@ public static class ContextAwareCoroutineExtensions
         CancellationToken cancellationToken = default)
         where TCommand : IRequest<Unit>
     {
-        return ContextAwareCqrsExtensions
-            .SendAsync(contextAware, command, cancellationToken)
-            .AsTask()
-            .ToCoroutineEnumerator()
-            .RunCoroutine(segment, tag);
+        return Timing.RunCoroutine(context => ContextAwareCqrsExtensions
+            .SendAsync(contextAware, command, context.CancellationToken)
+            .AsTask().ToCoroutineEnumerator(), segment, tag, cancellationToken);
     }
 
     /// <summary>
@@ -56,11 +54,9 @@ public static class ContextAwareCoroutineExtensions
         string? tag = null,
         CancellationToken cancellationToken = default)
     {
-        return ContextAwareCqrsExtensions
-            .SendAsync(contextAware, request, cancellationToken)
-            .AsTask()
-            .ToCoroutineEnumerator()
-            .RunCoroutine(segment, tag);
+        return Timing.RunCoroutine(context => ContextAwareCqrsExtensions
+            .SendAsync(contextAware, request, context.CancellationToken)
+            .AsTask().ToCoroutineEnumerator(), segment, tag, cancellationToken);
     }
 
     /// <summary>
@@ -79,11 +75,9 @@ public static class ContextAwareCoroutineExtensions
         string? tag = null,
         CancellationToken cancellationToken = default)
     {
-        return ContextAwareCqrsExtensions
-            .PublishAsync(contextAware, notification, cancellationToken)
-            .AsTask()
-            .ToCoroutineEnumerator()
-            .RunCoroutine(segment, tag);
+        return Timing.RunCoroutine(context => ContextAwareCqrsExtensions
+            .PublishAsync(contextAware, notification, context.CancellationToken)
+            .AsTask().ToCoroutineEnumerator(), segment, tag, cancellationToken);
     }
 
     /// <summary>
@@ -107,9 +101,8 @@ public static class ContextAwareCoroutineExtensions
         string? tag = null,
         CancellationToken cancellationToken = default)
     {
-        return EnumerateStreamAsync(contextAware, request, cancellationToken)
-            .ToCoroutineEnumerator()
-            .RunCoroutine(segment, tag);
+        return Timing.RunCoroutine(context => EnumerateStreamAsync(contextAware, request, context.CancellationToken)
+            .ToCoroutineEnumerator(), segment, tag, cancellationToken);
     }
 
     /// <summary>

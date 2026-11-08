@@ -53,7 +53,7 @@ public sealed class CoroutineSchedulerAdvancedTests
     ///     验证固定更新等待指令仅在固定阶段调度器中推进。
     /// </summary>
     [Test]
-    public void WaitForFixedUpdate_Should_Only_Advance_On_FixedUpdate_Scheduler()
+    public void SwitchTo_Should_Fail_Explicitly_When_Host_Does_Not_Drive_Target_Phase()
     {
         var defaultTime = new FakeTimeSource();
         var fixedTime = new FakeTimeSource();
@@ -66,17 +66,17 @@ public sealed class CoroutineSchedulerAdvancedTests
 
         IEnumerator<IYieldInstruction> DefaultCoroutine()
         {
-            yield return new WaitForFixedUpdate();
+            yield return new SwitchTo(CoroutineExecutionStage.FixedUpdate);
             defaultCompleted = true;
         }
 
         IEnumerator<IYieldInstruction> FixedCoroutine()
         {
-            yield return new WaitForFixedUpdate();
+            yield return new SwitchTo(CoroutineExecutionStage.FixedUpdate);
             fixedCompleted = true;
         }
 
-        defaultScheduler.Run(DefaultCoroutine());
+        var unsupportedHandle = defaultScheduler.Run(DefaultCoroutine());
         fixedScheduler.Run(FixedCoroutine());
 
         defaultTime.Advance(0.1);
@@ -85,7 +85,9 @@ public sealed class CoroutineSchedulerAdvancedTests
         fixedScheduler.Update();
 
         Assert.That(defaultCompleted, Is.False);
-        Assert.That(defaultScheduler.ActiveCoroutineCount, Is.EqualTo(1));
+        Assert.That(defaultScheduler.ActiveCoroutineCount, Is.EqualTo(0));
+        Assert.That(defaultScheduler.TryGetCompletionStatus(unsupportedHandle, out var status), Is.True);
+        Assert.That(status, Is.EqualTo(CoroutineCompletionStatus.Faulted));
         Assert.That(fixedCompleted, Is.True);
         Assert.That(fixedScheduler.ActiveCoroutineCount, Is.EqualTo(0));
     }
@@ -126,11 +128,11 @@ public sealed class CoroutineSchedulerAdvancedTests
         var timeSource = new FakeTimeSource();
         var scheduler = new CoroutineScheduler(
             timeSource,
-            executionStage: CoroutineExecutionStage.EndOfFrame);
+            executionStage: CoroutineExecutionStage.Deferred);
 
         IEnumerator<IYieldInstruction> Coroutine()
         {
-            yield return new WaitForEndOfFrame();
+            yield return new SwitchTo(CoroutineExecutionStage.Deferred);
         }
 
         var handle = scheduler.Run(Coroutine(), tag: "ui", group: "frame-end");
@@ -142,8 +144,8 @@ public sealed class CoroutineSchedulerAdvancedTests
         Assert.That(snapshot.Tag, Is.EqualTo("ui"));
         Assert.That(snapshot.Group, Is.EqualTo("frame-end"));
         Assert.That(snapshot.IsWaiting, Is.True);
-        Assert.That(snapshot.WaitingInstructionType, Is.EqualTo(typeof(WaitForEndOfFrame)));
-        Assert.That(snapshot.ExecutionStage, Is.EqualTo(CoroutineExecutionStage.EndOfFrame));
+        Assert.That(snapshot.WaitingInstructionType, Is.EqualTo(typeof(SwitchTo)));
+        Assert.That(snapshot.ExecutionStage, Is.EqualTo(CoroutineExecutionStage.Deferred));
     }
 
     /// <summary>

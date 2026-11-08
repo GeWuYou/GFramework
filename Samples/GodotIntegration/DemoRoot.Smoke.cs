@@ -32,6 +32,7 @@ public partial class DemoRoot
             Require(_dataRootPath.StartsWith("user://runtime_smoke/", StringComparison.Ordinal), "smoke data is not isolated");
 
             await VerifySceneProcessingFlagsAsync().ConfigureAwait(true);
+            await VerifyCoroutineRuntimeAsync().ConfigureAwait(true);
             if (_smokeContinue)
             {
                 await VerifyPersistedProcessAsync().ConfigureAwait(true);

@@ -7,132 +7,81 @@ using GFramework.Core.Abstractions.Coroutine;
 namespace GFramework.Core.Coroutine.Instructions;
 
 /// <summary>
-///     异步操作包装器，用于桥接协程系统和async/await异步编程模型
+///     把外部完成通知同时暴露为协程等待与标准 Task awaiter。
 /// </summary>
-public class AsyncOperation : IYieldInstruction, INotifyCompletion
+/// <remarks>
+///     完成可以由任意线程竞争，首次终结获胜。Task 管理延续注册及异常传播；
+///     异步延续不会在设置结果的线程内联执行。引擎对象仍须由宿主线程访问。
+/// </remarks>
+public sealed class AsyncOperation : IYieldInstruction, ICoroutineCompletionStatusSource
 {
-    private readonly TaskCompletionSource<object?> _tcs = new();
-    private volatile bool _completed;
-    private volatile Action? _continuation;
+    private readonly TaskCompletionSource<object?> _completion =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>
-    ///     获取异步操作的任务
+    ///     获取可重复等待且保留终结结果的任务。
     /// </summary>
-    public Task Task => _tcs.Task;
+    public Task<object?> Task => _completion.Task;
 
     /// <summary>
-    ///     检查是否已完成
+    ///     获取外部操作是否已成功、失败或取消。
     /// </summary>
-    public bool IsCompleted => _completed;
+    public bool IsCompleted => Task.IsCompleted;
+
+    /// <inheritdoc />
+    public bool IsDone => IsCompleted;
 
     /// <summary>
-    ///     设置延续操作
+    ///     保留显式失败与显式取消的区别，即使失败异常本身是 OperationCanceledException。
     /// </summary>
-    /// <param name="continuation">要执行的延续操作</param>
-    public void OnCompleted(Action continuation)
+    CoroutineCompletionStatus ICoroutineCompletionStatusSource.CompletionStatus => Task.IsFaulted
+        ? CoroutineCompletionStatus.Faulted
+        : Task.IsCanceled ? CoroutineCompletionStatus.Cancelled
+        : Task.IsCompleted ? CoroutineCompletionStatus.Completed
+        : CoroutineCompletionStatus.Unknown;
+
+    /// <inheritdoc />
+    public void Update(double deltaTime)
     {
-        while (true)
+        if (IsCompleted)
         {
-            // 尝试添加延续
-            var current = _continuation;
-            var newContinuation = current == null ? continuation : current + continuation;
-
-            if (Interlocked.CompareExchange(ref _continuation, newContinuation, current) != current)
-            {
-                // 如果CAS失败，说明可能已经完成，直接执行
-                if (_completed)
-                    continuation();
-                else
-                    // 重试
-                    continue;
-
-                return;
-            }
-
-            // 双重检查：如果在设置延续后发现已完成，需要执行延续
-            if (_completed)
-            {
-                var cont = Interlocked.Exchange(ref _continuation, null);
-                cont?.Invoke();
-            }
-
-            break;
+            _ = Task.GetAwaiter().GetResult();
         }
     }
 
     /// <summary>
-    ///     获取异步操作是否已完成
-    /// </summary>
-    public bool IsDone => _completed;
-
-    /// <summary>
-    ///     更新方法，用于处理时间更新逻辑
-    /// </summary>
-    /// <param name="deltaTime">时间增量</param>
-    public void Update(double deltaTime)
-    {
-        // 由外部调用SetCompleted来更新状态
-    }
-
-    /// <summary>
-    ///     标记异步操作已完成
+    ///     尝试完成操作；重复或竞争的终结请求不会覆盖已有结果。
     /// </summary>
     public void SetCompleted()
     {
-        if (_completed) return;
-
-        _completed = true;
-        _tcs.SetResult(null);
-
-        var continuation = Interlocked.Exchange(ref _continuation, null);
-        if (continuation != null)
-            try
-            {
-                continuation.Invoke();
-            }
-            catch
-            {
-                // 忽略延续中的异常
-            }
+        _completion.TrySetResult(null);
     }
 
     /// <summary>
-    ///     标记异步操作因异常而失败
+    ///     尝试以异常终结操作。
     /// </summary>
-    /// <param name="exception">导致失败的异常</param>
+    /// <param name="exception">要保留并传播给等待者的异常。</param>
     public void SetException(Exception exception)
     {
-        if (_completed) return;
-
-        _completed = true;
-        _tcs.SetException(exception);
-
-        var continuation = Interlocked.Exchange(ref _continuation, null);
-        if (continuation != null)
-            try
-            {
-                continuation.Invoke();
-            }
-            catch
-            {
-                // 忽略延续中的异常
-            }
+        ArgumentNullException.ThrowIfNull(exception);
+        _completion.TrySetException(exception);
     }
 
     /// <summary>
-    ///     获取异步操作结果
+    ///     尝试以取消状态终结操作。
     /// </summary>
-    /// <returns>操作结果</returns>
-    public object? GetResult()
+    /// <param name="cancellationToken">描述取消来源的令牌。</param>
+    public void SetCanceled(CancellationToken cancellationToken = default)
     {
-        return _tcs.Task.GetAwaiter().GetResult();
+        _completion.TrySetCanceled(cancellationToken);
     }
 
     /// <summary>
-    ///     获取awaiter对象
+    ///     返回标准 Task awaiter，避免复制延续竞争和结果传播逻辑。
     /// </summary>
-    public AsyncOperation GetAwaiter()
+    /// <returns>由 Task 实现的 awaiter。</returns>
+    public TaskAwaiter<object?> GetAwaiter()
     {
-        return this;
+        return Task.GetAwaiter();
     }
 }

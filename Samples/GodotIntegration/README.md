@@ -88,6 +88,8 @@ godot --headless --path Samples/GodotIntegration -- --smoke
 
 检查使用真实按钮信号、原生键盘事件与引擎帧，覆盖配置加载、新游戏、移动、嵌套暂停、设置与按键快照落盘重载、存档与继续，以及节点释放后的协程停止。每次运行使用独立的 `user://runtime_smoke/<随机标识>/` 目录，不读取或覆盖日常样例数据。
 
+协程检查还覆盖 Update → FixedUpdate → Deferred → Update 的实际阶段顺序、暂停期间普通 Physics 冻结与忽略暂停任务继续、暂停时令牌取消、`CancelWith` 长等待注销，以及节点退出后父子任务的 `finally`。这些检查使用真实节点和引擎回调，托管阶段测试不能替代它们。
+
 正常完成输出 `GFRAMEWORK_SMOKE_RESULT PASS` 并返回 0；断言或清理失败输出 FAIL 并返回非零。CI 或本地调用方仍应为引擎进程设置超时，以发现启动或调度挂起。该检查不评价 GUI 布局、可读性或视觉效果，桌面导出仍需单独运行验证。
 
 首次通过还会输出 `GFRAMEWORK_SMOKE_DATA <标识>`。退出后用新进程确认设置和存档能跨进程恢复：

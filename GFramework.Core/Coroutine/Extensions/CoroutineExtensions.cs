@@ -51,45 +51,30 @@ public static class CoroutineExtensions
     }
 
     /// <summary>
-    ///     顺序执行多个协程
+    ///     顺序执行多个协程，并拥有所有传入枚举器的释放责任。
     /// </summary>
     /// <param name="coroutines">要顺序执行的协程集合</param>
     /// <returns>协程枚举器</returns>
     public static IEnumerator<IYieldInstruction> Sequence(
         params IEnumerator<IYieldInstruction>[] coroutines)
     {
-        foreach (var coroutine in coroutines)
-        {
-            while (coroutine.MoveNext()) yield return coroutine.Current;
-
-            // 清理协程
-            coroutine.Dispose();
-        }
+        ArgumentNullException.ThrowIfNull(coroutines);
+        return new OwnedCoroutineEnumerator(coroutines);
     }
 
     /// <summary>
-    ///     并行执行多个协程（等待所有协程完成）
-    ///     注意：这需要协程调度器的支持，这里提供一个包装器返回多个句柄
+    ///     并行运行当前流程的子任务，并保留结构化父子取消与失败策略。
     /// </summary>
-    /// <param name="scheduler">协程调度器</param>
-    /// <param name="coroutines">要并行执行的协程集合</param>
-    /// <returns>等待所有协程完成的协程</returns>
+    /// <param name="context">拥有子任务的流程上下文。</param>
+    /// <param name="coroutines">需要并行执行的子任务。</param>
+    /// <returns>等待全部子任务收尾的枚举器。</returns>
     public static IEnumerator<IYieldInstruction> ParallelCoroutines(
-        this CoroutineScheduler scheduler,
-        params IEnumerator<IYieldInstruction>[]? coroutines)
+        this CoroutineContext context,
+        params IEnumerator<IYieldInstruction>[] coroutines)
     {
-        if (coroutines == null || coroutines.Length == 0) yield break;
-
-        // 启动所有协程并收集句柄
-        var handles = new List<CoroutineHandle>();
-        foreach (var coroutine in coroutines)
-        {
-            var handle = scheduler.Run(coroutine);
-            handles.Add(handle);
-        }
-
-        // 等待所有协程完成
-        yield return new WaitForAllCoroutines(scheduler, handles);
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(coroutines);
+        return context.WhenAll(coroutines);
     }
 
     /// <summary>

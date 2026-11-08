@@ -36,7 +36,7 @@ public class CoroutineSchedulerTests
     public void SetUp()
     {
         _timeSource = new TestTimeSource();
-        _scheduler = new CoroutineScheduler(_timeSource, 1, 4);
+        _scheduler = new CoroutineScheduler(_timeSource, initialCapacity: 4);
     }
 
     /// <summary>
@@ -103,7 +103,7 @@ public class CoroutineSchedulerTests
     [Test]
     public void Run_Should_Return_Invalid_Handle_For_Null_Coroutine()
     {
-        var handle = _scheduler.Run(null);
+        var handle = _scheduler.Run((IEnumerator<IYieldInstruction>?)null);
 
         Assert.That(handle.IsValid, Is.False);
         Assert.That(_scheduler.ActiveCoroutineCount, Is.EqualTo(0));

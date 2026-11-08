@@ -19,7 +19,11 @@ namespace GFramework.Core.Coroutine;
 ///     当前等待指令的具体类型。
 ///     若协程当前未处于等待状态，则该值为 <see langword="null" />。
 /// </param>
-/// <param name="ExecutionStage">所属调度器的执行阶段。</param>
+/// <param name="ExecutionStage">当前执行阶段。</param>
+/// <param name="IgnorePause">是否忽略宿主暂停。</param>
+/// <param name="Parent">拥有此任务的父流程；独立任务为空句柄。</param>
+/// <param name="LifetimeMs">单调时钟测量的存活时间，包含等待和暂停。</param>
+/// <param name="ExecutionTimeMs">实际执行等待指令和枚举器代码的累计耗时。</param>
 public readonly record struct CoroutineSnapshot(
     CoroutineHandle Handle,
     CoroutineState State,
@@ -29,4 +33,8 @@ public readonly record struct CoroutineSnapshot(
     double StartTimeMs,
     bool IsWaiting,
     Type? WaitingInstructionType,
-    CoroutineExecutionStage ExecutionStage);
+    CoroutineExecutionStage ExecutionStage,
+    bool IgnorePause,
+    CoroutineHandle Parent,
+    double LifetimeMs,
+    double ExecutionTimeMs);

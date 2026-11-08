@@ -1,173 +1,130 @@
 ---
 title: Godot 协程系统
-description: 说明 GFramework.Godot.Coroutine 的宿主集成能力、阶段语义与使用方式。
+description: 将协程阶段、暂停策略、作用域及父子任务接入 Godot 节点生命周期。
 ---
 
 # Godot 协程系统
 
-## 概述
+`GFramework.Godot.Coroutine.Timing` 把 Godot 的 Process、Physics 和延迟回调接到同一个 Core 调度器。阶段切换保留句柄、所有权、取消与完成结果；节点归属协程在节点退出场景树时取消。
 
-`GFramework.Godot.Coroutine` 在 Core 协程内核之上提供 Godot 宿主集成，负责把 Godot 的不同更新循环映射为真实的协程阶段语义：
-
-- `Segment.Process`
-- `Segment.ProcessIgnorePause`
-- `Segment.PhysicsProcess`
-- `Segment.DeferredProcess`
-
-它同时补充了以下宿主能力：
-
-- 节点归属协程运行入口
-- 节点退树自动终止
-- Godot 真实时间源
-- 句柄控制与快照查询
-
-## 启动协程
-
-### 直接运行枚举器
+## 节点归属入口
 
 ```csharp
+using System.Collections.Generic;
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Coroutine.Instructions;
 using GFramework.Godot.Coroutine;
+using Godot;
 
 public partial class DemoNode : Node
 {
     public override void _Ready()
     {
-        Demo().RunCoroutine();
+        this.RunCoroutine(PlaySequence(), tag: "intro");
     }
 
-    private IEnumerator<IYieldInstruction> Demo()
+    private IEnumerator<IYieldInstruction> PlaySequence()
     {
-        GD.Print("start");
-        yield return new Delay(1.0);
-        yield return new WaitForEndOfFrame();
-        GD.Print("done");
+        yield return new Delay(1);
+        yield return new SwitchTo(CoroutineExecutionStage.FixedUpdate);
+        GD.Print("fixed tick");
+        yield return new SwitchTo(CoroutineExecutionStage.Deferred);
+        GD.Print("deferred callback");
+        yield return new SwitchTo(CoroutineExecutionStage.Update);
     }
 }
 ```
 
-默认情况下，`RunCoroutine()` 会在 `Segment.Process` 上运行。
+推荐通过 Node 入口启动有明确所有者的流程。需要全局独立任务时可以使用 `Timing.RunCoroutine(...)`，并由调用方负责其生命周期。
 
-### 以 Node 作为生命周期所有者运行
+`Run` 会立即执行至首次等待，因此首次等待前的代码在调用位置执行。需要等待物理回调后才能执行的代码，应先切换到 `FixedUpdate`。切换后保持目标阶段；普通延时和帧等待不会自动切回 Process。
 
-更推荐的方式是以节点为入口运行协程：
+## Segment、阶段与暂停
+
+| 启动 Segment | 初始阶段 | 场景暂停时 |
+| --- | --- | --- |
+| `Process` | `Update` | 冻结 |
+| `ProcessIgnorePause` | `Update` | 继续 |
+| `PhysicsProcess` | `FixedUpdate` | 冻结 |
+| `DeferredProcess` | `Deferred` | 冻结 |
+
+Segment 选择初始阶段与暂停策略；随后 `SwitchTo` 只改变执行阶段，不改变任务的暂停策略。例如从 `ProcessIgnorePause` 启动的 UI 任务切换到 Physics 后仍忽略场景暂停。
+
+`Deferred` 使用 Godot 延迟调用，是引擎空闲处理阶段，不承诺屏幕已经绘制或 GPU 渲染完成。同阶段切换至少等待下一次该阶段推进，不会在同一次回调中反复执行。
+
+暂停会冻结普通游戏任务的所有阶段，取消和节点退出清理仍可处理。`PauseCoroutine(handle)` 是任务自身的暂停请求，与场景暂停及子任务自身的请求分别管理。
+
+## 时间等待
+
+`Delay` 和 `WaitForSecondsScaled` 使用引擎阶段的缩放增量。`WaitForSecondsRealtime` 使用 Godot 单调时钟，不受时间缩放影响；宿主对各阶段分别采样，普通任务恢复后不会补算冻结期间的等待进度。
 
 ```csharp
-public override void _Ready()
+this.RunCoroutine(UiCountdown(), Segment.ProcessIgnorePause);
+
+IEnumerator<IYieldInstruction> UiCountdown()
 {
-    this.RunCoroutine(LongRunningTask(), Segment.Process, tag: "ui-blink");
+    yield return new WaitForSecondsRealtime(2);
+    GD.Print("two real seconds");
 }
 ```
 
-这会自动把协程登记为该节点归属协程，并在节点退出场景树时终止它。
+忽略场景暂停与使用真实时间是两个选择。暂停期间需要继续的 UI 计时应同时选择这两者。
 
-你仍然可以继续使用 `CancelWith(...)` 包装已有枚举器；它适合把一个协程显式绑定到多个节点生命周期。
+## 作用域与父子流程
 
-## Segment 与阶段语义
-
-Godot 层会把不同 segment 映射为不同的 `CoroutineExecutionStage`：
-
-- `Segment.Process`
-    - 对应默认更新阶段
-    - 场景树暂停时不会推进
-- `Segment.ProcessIgnorePause`
-    - 同样对应默认更新阶段
-    - 场景树暂停时仍会推进
-- `Segment.PhysicsProcess`
-    - 对应固定更新阶段
-    - `WaitForFixedUpdate` 会在这里真实完成
-- `Segment.DeferredProcess`
-    - 对应帧结束阶段
-    - `WaitForEndOfFrame` 会在这里真实完成
-
-示例：
+节点默认持有 Supervisor 容器：一个独立任务失败不会取消该节点的其他独立任务。每个任务内部的子流程默认 FailFast，父任务取消时统一取消后代。
 
 ```csharp
-this.RunCoroutine(PhysicsRoutine(), Segment.PhysicsProcess);
-this.RunCoroutine(UiAnimation(), Segment.ProcessIgnorePause);
+this.RunCoroutine(context => RunSkill(context));
+
+IEnumerator<IYieldInstruction> RunSkill(GFramework.Core.Coroutine.CoroutineContext context)
+{
+    context.RunChild(PlayEffect());
+    context.RunChild(ApplyDamage());
+    yield break;
+}
 ```
 
-## 时间等待语义
+父枚举器结束后，父任务等待两个子步骤收尾。子步骤失败使默认技能流程失败，并取消另一个步骤；节点下其他独立流程继续运行。
 
-Godot 集成层为每个调度器同时提供了两套时间源：
-
-- 缩放时间
-    - 来自 `_Process` / `_PhysicsProcess` 的帧增量
-- 真实时间
-    - 来自 Godot 单调时钟，不受时间缩放和暂停影响
-
-因此：
-
-- `Delay` / `WaitForSecondsScaled` 使用宿主帧增量
-- `WaitForSecondsRealtime` 使用真实时间
-
-这意味着 UI 或暂停菜单中的协程可以安全使用 `WaitForSecondsRealtime` 保持真实计时。
-
-## 生命周期管理
-
-### 自动归属
+需要多个独立任务组成一个共同失败的操作时，显式创建节点拥有的作用域：
 
 ```csharp
-var handle = this.RunCoroutine(LoadAvatar(), tag: "avatar");
+var loading = this.CreateCoroutineScope(CoroutineFailurePolicy.FailFast);
+loading.Run(LoadMap());
+loading.Run(LoadCharacters());
 ```
 
-### 手动绑定多个节点
+作用域策略创建后固定。`Cancel()` 取消当前成员并保留作用域，`Dispose()` 关闭作用域。节点退树会关闭其全部作用域，包括显式创建的额外作用域；调用方无需再为子任务手动登记节点所有权。
+
+## 控制、结果与清理
 
 ```csharp
-LongRunningTask()
-    .CancelWith(this, panelNode)
-    .RunCoroutine();
-```
-
-### 主动清理
-
-```csharp
+Timing.PauseCoroutine(handle);
+Timing.ResumeCoroutine(handle);
 Timing.KillCoroutine(handle);
 Timing.KillCoroutines(this);
-Timing.KillCoroutines("avatar");
-Timing.KillAllCoroutines();
-```
+Timing.KillCoroutines("intro");
 
-## 调试与查询
-
-```csharp
 if (Timing.TryGetCoroutineSnapshot(handle, out var snapshot))
 {
     GD.Print(snapshot.ExecutionStage);
     GD.Print(snapshot.WaitingInstructionType);
 }
-
-var ownedCount = Timing.GetOwnedCoroutineCount(this);
 ```
 
-实例级计数器：
+启动后可先取得 `Timing.WaitForResultAsync(handle)`，再等待最终状态和异常；也可用 `Timing.TryGetCoroutineResult(handle, out result)` 查询保留历史。宿主退出时，已经取得的完成任务仍会收到收尾结果。监督模式隔离任务失败，但不会将失败当作成功或丢弃原始异常。
 
-- `Timing.Instance.ProcessCoroutines`
-- `Timing.Instance.ProcessIgnorePauseCoroutines`
-- `Timing.Instance.PhysicsCoroutines`
-- `Timing.Instance.DeferredCoroutines`
+`GetOwnedCoroutineCount(node)` 包含节点作用域内的活跃子任务。句柄不再依赖有限的宿主槽位前缀，多宿主之间不会互相控制。
 
-## 延迟调用
+`CancelWith(node1, node2)` 用于额外绑定多个节点：经 Timing 启动后，任意节点退树会请求取消，即使协程正阻塞在长期等待中；内部枚举器仍被释放。它只在 Godot 主线程创建和释放。普通单节点任务优先采用 Node 归属入口或节点拥有的作用域。
 
-```csharp
-Timing.CallDelayed(1.0, () => GD.Print("1 秒后执行"));
-Timing.CallDelayed(1.0, () => GD.Print("节点仍然有效时执行"), this);
-```
+`CallDelayed(delay, action, owner)` 在 owner 退树后不会再执行动作。自定义等待指令、组合器及业务资源应提供确定的释放路径；调度器会隔离清理异常和完成通知异常。
 
-第二个重载内部使用节点归属语义，因此节点退树后不会再触发动作。
+Task 桥接的取消与错误语义见 [Core 协程系统](/zh-CN/core/coroutine.md)。协程控制及节点操作在 Godot 主线程执行；Task 的 `await` 延续不因此自动获得引擎线程保证。
 
-## 与 IContextAware 集成
+## 运行样例
 
-Godot 层还提供以下扩展方法，用于把 CQRS 请求、通知和流式请求直接包装成协程并交给 Timing 调度：
+[原生集成样例](https://github.com/GeWuYou/GFramework/tree/main/Samples/GodotIntegration) 提供真实节点退树、场景暂停、跨阶段流程和子任务清理的运行入口。托管阶段测试不替代原生引擎及导出态检查。
 
-- `RunRequestCoroutine<TCommand>(TCommand command)`
-  - 发送无返回值请求（`TCommand : IRequest<Unit>`）
-- `RunRequestCoroutine<TResponse>(IRequest<TResponse> request)`
-  - 发送带返回值请求
-- `RunPublishCoroutine(INotification notification)`
-  - 发布通知
-- `RunStreamCoroutine<TResponse>(IStreamRequest<TResponse> request)`
-  - 发送流式请求
-
-这些 API 仍然可以与 `Segment`、节点归属和标签控制一起使用。使用前需要架构安装 CQRS 运行时，接入方式见 [CQRS 运行时](../core/cqrs.md)。
+框架采用边界与独立性能测量见 [Core 协程系统](/zh-CN/core/coroutine.md) 和[协程教程](/zh-CN/tutorials/coroutine-tutorial.md)。
