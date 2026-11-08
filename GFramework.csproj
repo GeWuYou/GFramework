@@ -174,4 +174,10 @@
         <AdditionalFiles Remove="AnalyzerReleases.Shipped.md"/>
         <AdditionalFiles Remove="AnalyzerReleases.Unshipped.md"/>
     </ItemGroup>
+    <!-- Optional mod adapters and their tests are independently compiled and never aggregated. -->
+    <ItemGroup>
+        <Compile Remove="GFramework.Game.Harmony*/**" />
+        <None Remove="GFramework.Game.Harmony*/**" />
+        <EmbeddedResource Remove="GFramework.Game.Harmony*/**" />
+    </ItemGroup>
 </Project>

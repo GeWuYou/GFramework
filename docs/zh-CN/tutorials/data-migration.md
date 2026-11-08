@@ -1,785 +1,85 @@
 ---
-title: 实现数据版本迁移
-description: 学习如何实现数据版本迁移系统，处理不同版本间的数据升级
+title: 双向存档迁移
+description: 在创建当前 DTO 前转换版本化文档，为升级、降级和模组数据声明可检查的转换路径。
 ---
 
-# 实现数据版本迁移
+# 双向存档迁移
 
-## 学习目标
+本教程接续[存档教程](./save-system.md)，使用 `SaveMigrationGraph` 转换 `SaveDataBlock`。游戏负责每一步的含义和可能损失；框架负责路径、版本验证、独立准备、备份及提交。
 
-完成本教程后，你将能够：
+## 先转换文档，再创建 DTO
 
-- 理解数据版本迁移的重要性和应用场景
-- 定义版本化数据结构
-- 实现数据迁移接口
-- 注册和管理迁移策略
-- 处理多版本连续升级
-- 测试迁移流程的正确性
+假设 v1 游戏负载用 `Score` 保存分数，v2 改为 `Progress.Score`。把 v1 直接反序列化为当前 DTO 可能丢失旧字段，也可能因类型变化而失败。迁移器应直接处理历史 JSON，成功到达目标 schema 后才创建当前 DTO。
 
-## 前置条件
+`SaveDocument.FormatVersion` 是框架信封格式；`Game.Version` 是游戏自己的 schema 版本；每个 `Mods[id].Version` 则是对应模组的数据版本。这些版本相互独立，不使用游戏发行号或 DLL 版本代替数据 schema。
 
-- 已安装 GFramework.Game NuGet 包
-- 了解 C# 基础语法和接口实现
-- 阅读过[快速开始](/zh-CN/getting-started/quick-start.md)
-- 了解[数据与存档系统](/zh-CN/game/data.md)
-- 建议先完成[实现存档系统](/zh-CN/tutorials/save-system.md)教程
+## 声明两个方向
 
-## 为什么需要数据迁移
-
-在游戏开发过程中，数据结构经常会发生变化：
-
-- **新增功能**：添加新的游戏系统需要新的数据字段
-- **重构优化**：改进数据结构以提升性能或可维护性
-- **修复问题**：修正早期设计的缺陷
-- **平衡调整**：调整游戏数值和配置
-
-数据迁移系统能够：
-
-- 自动将旧版本数据升级到新版本
-- 保证玩家存档的兼容性
-- 避免数据丢失和游戏崩溃
-- 提供平滑的版本过渡体验
-
-## 步骤 1：定义版本化数据结构
-
-首先，让我们定义一个支持版本控制的游戏数据结构。
+`SaveMigrationStep` 接收源版本、目标版本、说明和纯转换函数；`isLossy` 表示即使升级也需要显式确认。两个方向都必须明确实现：
 
 ```csharp
-using GFramework.Game.Abstractions.Data;
-using System;
-using System.Collections.Generic;
+using System.Threading.Tasks;
+using GFramework.Game.Data;
+using Newtonsoft.Json.Linq;
 
-namespace MyGame.Data
+var graph = new SaveMigrationGraph(new[]
 {
-    /// <summary>
-    /// 玩家数据 - 版本 1（初始版本）
-    /// </summary>
-    public class PlayerSaveData : IVersionedData
+    new SaveMigrationStep(1, 2, "Move score into Progress", static (source, token) =>
     {
-        // IVersionedData 接口要求的属性
-        public int Version { get; set; } = 1;
-        public DateTime LastModified { get; set; } = DateTime.Now;
-
-        // 基础数据
-        public string PlayerName { get; set; } = "Player";
-        public int Level { get; set; } = 1;
-        public int Gold { get; set; } = 0;
-
-        // 版本 1 的简单位置数据
-        public float PositionX { get; set; }
-        public float PositionY { get; set; }
-    }
-}
+        token.ThrowIfCancellationRequested();
+        var data = (JObject)source.Data.DeepClone();
+        data["Progress"] = new JObject { ["Score"] = data["Score"]?.DeepClone() ?? 0 };
+        data.Remove("Score");
+        return Task.FromResult(new SaveDataBlock { Version = 2, Data = data });
+    }),
+    new SaveMigrationStep(2, 1, "Flatten score for schema 1", static (source, token) =>
+    {
+        token.ThrowIfCancellationRequested();
+        var data = (JObject)source.Data.DeepClone();
+        data["Score"] = data["Progress"]?["Score"]?.DeepClone() ?? 0;
+        data.Remove("Progress");
+        return Task.FromResult(new SaveDataBlock { Version = 1, Data = data });
+    })
+});
 ```
 
-**代码说明**：
+这里删除 `Progress` 的降级仅适用于该对象只有分数的 schema；若其中还有不能表示的进度，应在转换说明中列出损失并设置 `isLossy: true`，或直接拒绝。不能把“设置一个较小版本号”当作完成降级。
 
-- 实现 `IVersionedData` 接口以支持版本管理
-- `Version` 属性标识当前数据版本（从 1 开始）
-- `LastModified` 记录最后修改时间
-- 初始版本使用简单的 X、Y 坐标表示位置
+转换函数只能处理给定数据，不写文件、不修改当前世界，不依赖未安装模组。保留未修改字段，显式删除真正废弃的字段。每一步返回声明的目标版本，空结果或错误版本都会终止准备，原档不变。
 
-## 步骤 2：定义新版本数据结构
-
-随着游戏开发，我们需要添加新功能，数据结构也需要升级。
+## 路径选择
 
 ```csharp
-namespace MyGame.Data
-{
-    /// <summary>
-    /// 玩家数据 - 版本 2（添加 Z 轴和经验值）
-    /// </summary>
-    public class PlayerSaveDataV2 : IVersionedData
-    {
-        public int Version { get; set; } = 2;
-        public DateTime LastModified { get; set; } = DateTime.Now;
-
-        // 基础数据
-        public string PlayerName { get; set; } = "Player";
-        public int Level { get; set; } = 1;
-        public int Gold { get; set; } = 0;
-
-        // 版本 2：添加 Z 轴支持 3D 游戏
-        public float PositionX { get; set; }
-        public float PositionY { get; set; }
-        public float PositionZ { get; set; }  // 新增
-
-        // 版本 2：添加经验值系统
-        public int Experience { get; set; }  // 新增
-        public int ExperienceToNextLevel { get; set; } = 100;  // 新增
-    }
-
-    /// <summary>
-    /// 玩家数据 - 版本 3（重构为结构化数据）
-    /// </summary>
-    public class PlayerSaveDataV3 : IVersionedData
-    {
-        public int Version { get; set; } = 3;
-        public DateTime LastModified { get; set; } = DateTime.Now;
-
-        // 基础数据
-        public string PlayerName { get; set; } = "Player";
-        public int Level { get; set; } = 1;
-        public int Gold { get; set; } = 0;
-
-        // 版本 3：使用结构化的位置数据
-        public Vector3Data Position { get; set; } = new();
-
-        // 版本 3：使用结构化的经验值数据
-        public ExperienceData Experience { get; set; } = new();
-
-        // 版本 3：新增技能系统
-        public List<string> UnlockedSkills { get; set; } = new();
-    }
-
-    /// <summary>
-    /// 3D 位置数据
-    /// </summary>
-    public class Vector3Data
-    {
-        public float X { get; set; }
-        public float Y { get; set; }
-        public float Z { get; set; }
-    }
-
-    /// <summary>
-    /// 经验值数据
-    /// </summary>
-    public class ExperienceData
-    {
-        public int Current { get; set; }
-        public int ToNextLevel { get; set; } = 100;
-    }
-}
+var upgrade = graph.Plan(1, 2);
+var downgrade = graph.Plan(2, 1);
 ```
 
-**代码说明**：
+框架只使用向目标版本单调前进的已注册边，不绕远路后再折返，也不自动求逆。默认选择唯一最短路径；例如 `1→2→4` 与 `1→3→4` 同样短时，必须通过 `Plan(1, 4, new[] { 1, 2, 4 })` 明确选择。缺链、重复边、自环、非正版本和非法显式路径被拒绝。
 
-- **版本 2**：添加 Z 轴坐标和经验值系统
-- **版本 3**：重构为更清晰的结构化数据
-- 每个版本的 `Version` 属性递增
-- 保持向后兼容，新字段提供默认值
+为仓库设置 `SaveRepositoryOptions<T>.Migrations = graph` 和明确的 `CurrentVersion`。仓库需要消除歧义时调用 `PrepareLoadAsync(slot, versionPath, cancellationToken)`；模组策略通过 `ModSavePolicy.VersionPath` 指定对应路径。准备和提交时目标版本由运行时策略决定，不从 `new T()` 推导。实际运行工程的转换定义见[小游戏存档转换](https://github.com/GeWuYou/GFramework/blob/main/Samples/DodgeTheCreeps/DodgeProgressMigration.cs)。
 
-## 步骤 3：实现数据迁移器
+## 准备与显式提交
 
-创建迁移器来处理版本间的数据转换。
+先调用 `PrepareLoadAsync`，读取 `MigrationPath`、内容差异、`RequiresCommit` 和 `RequiresConfirmation`。准备后的 `Document`、DTO 和模组 session 都是副本，不能通过修改这些副本悄悄更改即将提交的候选结果。
 
-```csharp
-using GFramework.Game.Abstractions.Setting;
-using System;
+降级始终需要明确决定；声明有损的升级及内容修复同样需要确认。游戏可以展示说明、取消操作、重新启用原内容或选择新游戏。确认后将同一份准备结果交给 `CommitPreparedAsync`，框架核对原文件与内容会话，保存原始字节备份并原子提交。
 
-namespace MyGame.Data.Migrations
-{
-    /// <summary>
-    /// 从版本 1 迁移到版本 2
-    /// </summary>
-    public class PlayerDataMigration_V1_to_V2 : ISettingsMigration
-    {
-        public Type SettingsType => typeof(PlayerSaveData);
-        public int FromVersion => 1;
-        public int ToVersion => 2;
+普通 `LoadAsync` 不自动回写，遇到待转换文档会提供 `SavePreparationRequiredException<T>.Prepared`。不要捕获该异常后将默认 DTO 覆盖回原文件。完整调用和关闭顺序见[数据与存档](../game/data.md)。
 
-        public ISettingsSection Migrate(ISettingsSection oldData)
-        {
-            if (oldData is not PlayerSaveData v1)
-            {
-                throw new ArgumentException($"Expected PlayerSaveData, got {oldData.GetType().Name}");
-            }
+## 内容恢复与模组版本
 
-            Console.WriteLine($"[迁移] 版本 1 -> 2: {v1.PlayerName}");
+内容元数据位于外层，不依赖业务 DTO。游戏和活跃模组到达各自当前 schema 后，`ContentSaveOptions.EnumerateReferences` 接收完整 `SaveDocument`，检查游戏及模组数据中的稳定 ID；`RecoverAsync` 接收独立文档和差异报告，返回修复后的完整文档。缺失关卡如何替换、物品是否保留、指定失效模组块是否删除均由游戏决定。恢复不能改变所属游戏或绕过当前 schema，完成后还要验证全部引用及业务条件。
 
-            // 创建版本 2 数据
-            var v2 = new PlayerSaveDataV2
-            {
-                Version = 2,
-                LastModified = DateTime.Now,
+模组通过 `ModSavePolicy(modId, currentVersion, graph)` 采用相同的转换执行器，但独立规划其数据版本。未安装模组的负载保持原样，不执行缺失代码；重新启用后再使用该模组声明的迁移图。
 
-                // 复制现有数据
-                PlayerName = v1.PlayerName,
-                Level = v1.Level,
-                Gold = v1.Gold,
-                PositionX = v1.PositionX,
-                PositionY = v1.PositionY,
+## 验证转换
 
-                // 新字段：Z 轴默认为 0
-                PositionZ = 0f,
+对实际保存文档进行回归，至少覆盖：
 
-                // 新字段：根据等级计算经验值
-                Experience = 0,
-                ExperienceToNextLevel = 100 * v1.Level
-            };
+- 历史负载无法直接转换为当前 DTO，但文档转换后可以恢复。
+- 多步升级、明确实现的降级、缺链、歧义和错误输出版本。
+- 未修改字段保留，有损说明与确认准确，取消不写文件。
+- 备份、提交失败及准备后源文件变化时，原文件不被覆盖。
+- 游戏与模组分别迁移，缺失模组的数据保留，内容恢复后的引用仍有效。
 
-            Console.WriteLine($"  - 添加 Z 轴坐标: {v2.PositionZ}");
-            Console.WriteLine($"  - 初始化经验值系统: {v2.Experience}/{v2.ExperienceToNextLevel}");
-
-            return v2;
-        }
-    }
-
-    /// <summary>
-    /// 从版本 2 迁移到版本 3
-    /// </summary>
-    public class PlayerDataMigration_V2_to_V3 : ISettingsMigration
-    {
-        public Type SettingsType => typeof(PlayerSaveDataV2);
-        public int FromVersion => 2;
-        public int ToVersion => 3;
-
-        public ISettingsSection Migrate(ISettingsSection oldData)
-        {
-            if (oldData is not PlayerSaveDataV2 v2)
-            {
-                throw new ArgumentException($"Expected PlayerSaveDataV2, got {oldData.GetType().Name}");
-            }
-
-            Console.WriteLine($"[迁移] 版本 2 -> 3: {v2.PlayerName}");
-
-            // 创建版本 3 数据
-            var v3 = new PlayerSaveDataV3
-            {
-                Version = 3,
-                LastModified = DateTime.Now,
-
-                // 复制基础数据
-                PlayerName = v2.PlayerName,
-                Level = v2.Level,
-                Gold = v2.Gold,
-
-                // 迁移位置数据到结构化格式
-                Position = new Vector3Data
-                {
-                    X = v2.PositionX,
-                    Y = v2.PositionY,
-                    Z = v2.PositionZ
-                },
-
-                // 迁移经验值数据到结构化格式
-                Experience = new ExperienceData
-                {
-                    Current = v2.Experience,
-                    ToNextLevel = v2.ExperienceToNextLevel
-                },
-
-                // 新字段：根据等级解锁基础技能
-                UnlockedSkills = GenerateDefaultSkills(v2.Level)
-            };
-
-            Console.WriteLine($"  - 重构位置数据: ({v3.Position.X}, {v3.Position.Y}, {v3.Position.Z})");
-            Console.WriteLine($"  - 重构经验值数据: {v3.Experience.Current}/{v3.Experience.ToNextLevel}");
-            Console.WriteLine($"  - 初始化技能系统: {v3.UnlockedSkills.Count} 个技能");
-
-            return v3;
-        }
-
-        /// <summary>
-        /// 根据等级生成默认技能
-        /// </summary>
-        private List<string> GenerateDefaultSkills(int level)
-        {
-            var skills = new List<string> { "basic_attack" };
-
-            if (level >= 5)
-                skills.Add("power_strike");
-
-            if (level >= 10)
-                skills.Add("shield_block");
-
-            if (level >= 15)
-                skills.Add("ultimate_skill");
-
-            return skills;
-        }
-    }
-}
-```
-
-**代码说明**：
-
-- 实现 `ISettingsMigration` 接口
-- `SettingsType` 指定要迁移的数据类型
-- `FromVersion` 和 `ToVersion` 定义迁移的版本范围
-- `Migrate` 方法执行实际的数据转换
-- 为新字段提供合理的默认值或计算值
-- 添加日志输出便于调试
-
-## 步骤 4：注册迁移策略
-
-创建迁移管理器来注册和执行迁移。
-
-```csharp
-using GFramework.Game.Abstractions.Setting;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace MyGame.Data.Migrations
-{
-    /// <summary>
-    /// 数据迁移管理器
-    /// </summary>
-    public class DataMigrationManager
-    {
-        private readonly Dictionary<(Type type, int from), ISettingsMigration> _migrations = new();
-
-        /// <summary>
-        /// 注册迁移器
-        /// </summary>
-        public void RegisterMigration(ISettingsMigration migration)
-        {
-            var key = (migration.SettingsType, migration.FromVersion);
-
-            if (_migrations.ContainsKey(key))
-            {
-                Console.WriteLine($"警告: 迁移器已存在 {migration.SettingsType.Name} " +
-                                $"v{migration.FromVersion}->v{migration.ToVersion}");
-                return;
-            }
-
-            _migrations[key] = migration;
-            Console.WriteLine($"注册迁移器: {migration.SettingsType.Name} " +
-                            $"v{migration.FromVersion} -> v{migration.ToVersion}");
-        }
-
-        /// <summary>
-        /// 执行迁移（支持跨多个版本）
-        /// </summary>
-        public ISettingsSection MigrateToLatest(ISettingsSection data, int targetVersion)
-        {
-            if (data is not IVersionedData versioned)
-            {
-                Console.WriteLine("数据不支持版本控制，跳过迁移");
-                return data;
-            }
-
-            var currentVersion = versioned.Version;
-
-            if (currentVersion == targetVersion)
-            {
-                Console.WriteLine($"数据已是最新版本 v{targetVersion}");
-                return data;
-            }
-
-            if (currentVersion > targetVersion)
-            {
-                Console.WriteLine($"警告: 数据版本 v{currentVersion} 高于目标版本 v{targetVersion}");
-                return data;
-            }
-
-            Console.WriteLine($"\n开始迁移: v{currentVersion} -> v{targetVersion}");
-
-            var current = data;
-            var currentVer = currentVersion;
-
-            // 逐步迁移到目标版本
-            while (currentVer < targetVersion)
-            {
-                var key = (current.GetType(), currentVer);
-
-                if (!_migrations.TryGetValue(key, out var migration))
-                {
-                    Console.WriteLine($"错误: 找不到迁移器 {current.GetType().Name} v{currentVer}");
-                    break;
-                }
-
-                current = migration.Migrate(current);
-                currentVer = migration.ToVersion;
-                      Console.WriteLine($"迁移完成: v{currentVersion} -> v{currentVer}\n");
-            return current;
-        }
-
-        /// <summary>
-        /// 获取迁移路径
-        /// </summary>
-        public List<string> GetMigrationPath(Type dataType, int fromVersion, int toVersion)
-        {
-            var path = new List<string>();
-            var currentVer = fromVersion;
-            var currentType = dataType;
-
-            while (currentVer < toVersion)
-            {
-                var key = (currentType, currentVer);
-
-                if (!_migrations.TryGetValue(key, out var migration))
-                {
-                    path.Add($"v{currentVer} -> ? (缺失迁移器)");
-                    break;
-                }
-
-                path.Add($"v{migration.FromVersion} -> v{migration.ToVersion}");
-                currentVer = migration.ToVersion;
-                currentType = migration.SettingsType;
-            }
-
-            return path;
-        }
-    }
-}
-```
-
-**代码说明**：
-
-- 使用字典存储迁移器，键为 (类型, 源版本)
-- `RegisterMigration` 注册单个迁移器
-- `MigrateToLatest` 自动执行多步迁移
-- `GetMigrationPath` 显示迁移路径，便于调试
-- 支持跨多个版本的连续迁移
-
-## 步骤 5：测试迁移流程
-
-创建完整的测试程序验证迁移功能。
-
-```csharp
-using MyGame.Data;
-using MyGame.Data.Migrations;
-using System;
-
-namespace MyGame
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            Console.WriteLine("=== 数据迁移系统测试 ===\n");
-
-            // 1. 创建迁移管理器
-            var migrationManager = new DataMigrationManager();
-
-            // 2. 注册所有迁移器
-            Console.WriteLine("--- 注册迁移器 ---");
-            migrationManager.RegisterMigration(new PlayerDataMigration_V1_to_V2());
-            migrationManager.RegisterMigration(new PlayerDataMigration_V2_to_V3());
-            Console.WriteLine();
-
-            // 3. 测试场景 1：从版本 1 迁移到版本 3
-            Console.WriteLine("--- 测试 1: V1 -> V3 迁移 ---");
-            var v1Data = new PlayerSaveData
-            {
-                Version = 1,
-                PlayerName = "老玩家",
-                Level = 12,
-                Gold = 5000,
-                PositionX = 100.5f,
-                PositionY = 200.3f
-            };
-
-            Console.WriteLine("原始数据 (V1):");
-            Console.WriteLine($"  玩家: {v1Data.PlayerName}");
-            Console.WriteLine($"  等级: {v1Data.Level}");
-            Console.WriteLine($"  金币: {v1Data.Gold}");
-            Console.WriteLine($"  位置: ({v1Data.PositionX}, {v1Data.PositionY})");
-            Console.WriteLine();
-
-            // 显示迁移路径
-            var path = migrationManager.GetMigrationPath(typeof(PlayerSaveData), 1, 3);
-            Console.WriteLine("迁移路径:");
-            foreach (var step in path)
-            {
-                Console.WriteLine($"  {step}");
-            }
-            Console.WriteLine();
-
-            // 执行迁移
-            var v3Data = (PlayerSaveDataV3)migrationManager.MigrateToLatest(v1Data, 3);
-
-            Console.WriteLine("迁移后数据 (V3):");
-            Console.WriteLine($"  玩家: {v3Data.PlayerName}");
-            Console.WriteLine($"  等级: {v3Data.Level}");
-            Console.WriteLine($"  金币: {v3Data.Gold}");
-            Console.WriteLine($"  位置: ({v3Data.Position.X}, {v3Data.Position.Y}, {v3Data.Position.Z})");
-            Console.WriteLine($"  经验值: {v3Data.Experience.Current}/{v3Data.Experience.ToNextLevel}");
-            Console.WriteLine($"  技能: {string.Join(", ", v3Data.UnlockedSkills)}");
-            Console.WriteLine();
-
-            // 4. 测试场景 2：从版本 2 迁移到版本 3
-            Console.WriteLine("--- 测试 2: V2 -> V3 迁移 ---");
-            var v2Data = new PlayerSaveDataV2
-            {
-                Version = 2,
-                PlayerName = "中期玩家",
-                Level = 8,
-                Gold = 2000,
-                PositionX = 50.0f,
-                PositionY = 75.0f,
-                PositionZ = 10.0f,
-                Experience = 350,
-                ExperienceToNextLevel = 800
-            };
-
-            Console.WriteLine("原始数据 (V2):");
-            Console.WriteLine($"  玩家: {v2Data.PlayerName}");
-            Console.WriteLine($"  等级: {v2Data.Level}");
-            Console.WriteLine($"  位置: ({v2Data.PositionX}, {v2Data.PositionY}, {v2Data.PositionZ})");
-            Console.WriteLine($"  经验值: {v2Data.Experience}/{v2Data.ExperienceToNextLevel}");
-            Console.WriteLine();
-
-            var v3Data2 = (PlayerSaveDataV3)migrationManager.MigrateToLatest(v2Data, 3);
-
-            Console.WriteLine("迁移后数据 (V3):");
-            Console.WriteLine($"  玩家: {v3Data2.PlayerName}");
-            Console.WriteLine($"  等级: {v3Data2.Level}");
-            Console.WriteLine($"  位置: ({v3Data2.Position.X}, {v3Data2.Position.Y}, {v3Data2.Position.Z})");
-            Console.WriteLine($"  经验值: {v3Data2.Experience.Current}/{v3Data2.Experience.ToNextLevel}");
-            Console.WriteLine($"  技能: {string.Join(", ", v3Data2.UnlockedSkills)}");
-            Console.WriteLine();
-
-            // 5. 测试场景 3：已是最新版本
-            Console.WriteLine("--- 测试 3: 已是最新版本 ---");
-            var v3DataLatest = new PlayerSaveDataV3
-            {
-                Version = 3,
-                PlayerName = "新玩家",
-                Level = 1
-            };
-
-            migrationManager.MigrateToLatest(v3DataLatest, 3);
-            Console.WriteLine();
-
-            Console.WriteLine("=== 测试完成 ===");
-        }
-    }
-}
-```
-
-**代码说明**：
-
-- 创建不同版本的测试数据
-- 测试单步迁移（V2 -> V3）
-- 测试多步迁移（V1 -> V3）
-- 测试已是最新版本的情况
-- 显示迁移前后的数据对比
-
-## 完整代码
-
-所有代码文件已在上述步骤中提供。项目结构如下：
-
-```text
-MyGame/
-├── Data/
-│   ├── PlayerSaveData.cs          # 版本 1 数据结构
-│   ├── PlayerSaveDataV2.cs        # 版本 2 数据结构
-│   ├── PlayerSaveDataV3.cs        # 版本 3 数据结构
-│   └── Migrations/
-│       ├── PlayerDataMigration_V1_to_V2.cs
-│       ├── PlayerDataMigration_V2_to_V3.cs
-│       └── DataMigrationManager.cs
-└── Program.cs
-```
-
-## 运行结果
-
-运行程序后，你将看到类似以下的输出：
-
-```text
-=== 数据迁移系统测试 ===
-
---- 注册迁移器 ---
-注册迁移器: PlayerSaveData v1 -> v2
-注册迁移器: PlayerSaveDataV2 v2 -> v3
-
---- 测试 1: V1 -> V3 迁移 ---
-原始数据 (V1):
-  玩家: 老玩家
-  等级: 12
-  金币: 5000
-  位置: (100.5, 200.3)
-
-迁移路径:
-  v1 -> v2
-  v2 -> v3
-
-开始迁移: v1 -> v3
-[迁移] 版本 1 -> 2: 老玩家
-  - 添加 Z 轴坐标: 0
-  - 初始化经验值系统: 0/1200
-[迁移] 版本 2 -> 3: 老玩家
-  - 重构位置数据: (100.5, 200.3, 0)
-  - 重构经验值数据: 0/1200
-  - 初始化技能系统: 3 个技能
-迁移完成: v1 -> v3
-
-迁移后数据 (V3):
-  玩家: 老玩家
-  等级: 12
-  金币: 5000
-  位置: (100.5, 200.3, 0)
-  经验值: 0/1200
-  技能: basic_attack, power_strike, shield_block
-
---- 测试 2: V2 -> V3 迁移 ---
-原始数据 (V2):
-  玩家: 中期玩家
-  等级: 8
-  金币: 2000
-  位置: (50, 75, 10)
-  经验值: 350/800
-
-开始迁移: v2 -> v3
-[迁移] 版本 2 -> 3: 中期玩家
-  - 重构位置数据: (50, 75, 10)
-  - 重构经验值数据: 350/800
-  - 初始化技能系统: 2 个技能
-迁移完成: v2 -> v3
-
-迁移后数据 (V3):
-  玩家: 中期玩家
-  等级: 8
-  位置: (50, 75, 10)
-  经验值: 350/800
-  技能: basic_attack, power_strike
-
---- 测试 3: 已是最新版本 ---
-数据已是最新版本 v3
-
-=== 测试完成 ===
-```
-
-**验证步骤**：
-
-1. 迁移器成功注册
-2. V1 数据正确迁移到 V3
-3. V2 数据正确迁移到 V3
-4. 新字段获得合理的默认值
-5. 已是最新版本的数据不会重复迁移
-6. 迁移路径清晰可追踪
-
-## 下一步
-
-恭喜！你已经实现了一个完整的数据版本迁移系统。接下来可以学习：
-
-- [实现存档系统](/zh-CN/tutorials/save-system.md) - 结合存档系统使用迁移
-- [Godot 完整项目搭建](/zh-CN/tutorials/godot-complete-project.md) - 在实际项目中应用
-- [数据与存档系统](/zh-CN/game/data.md) - 深入了解数据系统
-
-## 最佳实践
-
-### 1. 版本号管理
-
-```csharp
-// 使用常量管理版本号
-public static class DataVersions
-{
-    public const int PlayerData_V1 = 1;
-    public const int PlayerData_V2 = 2;
-    public const int PlayerData_V3 = 3;
-    public const int PlayerData_Latest = PlayerData_V3;
-}
-```
-
-### 2. 迁移测试
-
-```csharp
-// 为每个迁移器编写单元测试
-[Test]
-public void TestMigration_V1_to_V2()
-{
-    var v1 = new PlayerSaveData { Level = 10 };
-    var migration = new PlayerDataMigration_V1_to_V2();
-    var v2 = (PlayerSaveDataV2)migration.Migrate(v1);
-
-    Assert.AreEqual(10, v2.Level);
-    Assert.AreEqual(0, v2.PositionZ);
-    Assert.AreEqual(1000, v2.ExperienceToNextLevel);
-}
-```
-
-### 3. 数据备份
-
-```csharp
-// 迁移前自动备份
-public ISettingsSection MigrateWithBackup(ISettingsSection data)
-{
-    // 备份原始数据
-    var backup = SerializeData(data);
-    SaveBackup(backup);
-
-    try
-    {
-        // 执行迁移
-        var migrated = MigrateToLatest(data, targetVersion);
-        return migrated;
-    }
-    catch (Exception ex)
-    {
-        // 迁移失败，恢复备份
-        RestoreBackup(backup);
-        throw;
-    }
-}
-```
-
-### 4. 迁移日志
-
-```csharp
-// 记录详细的迁移日志
-public class MigrationLogger
-{
-    public void LogMigration(string playerName, int from, int to)
-    {
-        var log = $"[{DateTime.Now}] {playerName}: v{from} -> v{to}";
-        File.AppendAllText("migration.log", log + "\n");
-    }
-}
-```
-
-### 5. 向后兼容
-
-- 新版本保留所有旧字段
-- 为新字段提供合理的默认值
-- 避免删除或重命名字段
-- 使用 `[Obsolete]` 标记废弃字段
-
-### 6. 性能优化
-
-```csharp
-// 批量迁移优化
-public async Task<List<ISettingsSection>> MigrateBatchAsync(
-    List<ISettingsSection> dataList,
-    int targetVersion)
-{
-    var tasks = dataList.Select(data =>
-        Task.Run(() => MigrateToLatest(data, targetVersion)));
-
-    return (await Task.WhenAll(tasks)).ToList();
-}
-```
-
-## 常见问题
-
-### 1. 如何处理跨多个版本的迁移？
-
-迁移管理器会自动按顺序应用所有必要的迁移。例如从 V1 到 V3，会先执行 V1->V2，再执行 V2->V3。
-
-### 2. 迁移失败如何处理？
-
-建议在迁移前备份原始数据，迁移失败时可以恢复。同时在迁移过程中添加详细的日志记录。
-
-### 3. 如何处理不兼容的数据变更？
-
-对于破坏性变更，建议：
-
-- 提供数据转换工具
-- 在迁移中添加数据验证
-- 通知用户可能的数据丢失
-- 提供回滚机制
-
-### 4. 是否需要保留所有历史版本的数据结构？
-
-建议保留，这样可以：
-
-- 支持从任意旧版本迁移
-- 便于调试和测试
-- 作为文档记录数据演变
-
-### 5. 如何测试迁移功能？
-
-- 创建各个版本的测试数据
-- 验证迁移后的数据完整性
-- 测试迁移链的正确性
-- 使用真实的历史数据进行测试
-
-## 相关文档
-
-- [数据与存档系统](/zh-CN/game/data.md) - 数据系统详细说明
-- [实现存档系统](/zh-CN/tutorials/save-system.md) - 存档系统教程
-- [架构系统](/zh-CN/core/architecture.md) - 架构设计原则
+正向再反向不必然无损；只有游戏定义为可逆的转换才检查完整往返相等。有损降级应检查明确保留和明确丢弃的数据，并验证原始备份可恢复。

@@ -32,6 +32,7 @@ workspace/
 想先观察完成后的效果，可以运行仓库样例：
 
 ```bash
+python3 GFramework/scripts/build-dodge-mods.py
 dotnet build GFramework/Samples/DodgeTheCreeps/DodgeTheCreeps.csproj -c Debug
 godot --editor --path GFramework/Samples/DodgeTheCreeps
 ```
@@ -56,13 +57,15 @@ godot --editor --path GFramework/Samples/DodgeTheCreeps
 
 <<< ../../../Samples/DodgeTheCreeps/DodgeTheCreeps.csproj{xml}
 
-上面的引用路径用于仓库内的样例。按本教程的并列目录布局，将三项引用改为：
+上面的引用路径用于仓库内的样例。按本教程的并列目录布局，将样例中的五项引用改为：
 
 ```xml
 <ItemGroup>
   <ProjectReference Include="../GFramework/GFramework.Godot/GFramework.Godot.csproj"/>
   <ProjectReference Include="../GFramework/GFramework.Game.Abstractions/GFramework.Game.Abstractions.csproj"/>
   <ProjectReference Include="../GFramework/GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj"/>
+  <ProjectReference Include="../GFramework/GFramework.Game.Harmony/GFramework.Game.Harmony.csproj"/>
+  <ProjectReference Include="../GFramework/Samples/DodgeTheCreeps.ModApi/DodgeTheCreeps.ModApi.csproj"/>
 </ItemGroup>
 ```
 
@@ -111,7 +114,7 @@ godot --path DodgeTheCreeps
 
 保留源码中的 `DodgeTheCreeps.Gameplay` 命名空间。可以先复制完整实现作为起点，再按本节和下一节逐项调整。
 
-当前玩法源码也包含内容包和完整快照接入口。将样例的 `Content/`、`DodgeProgress.cs` 和 `OfficialPackTrust.cs` 一并复制到练习工程，并保留 `Gameplay/` 中的敌人快照类型，使这些类型可编译；本阶段的预览脚本不创建内容会话，仍使用默认的敌人参数。完整内容启动在第六步接入。
+当前玩法源码也包含内容包和完整快照接入口。将样例的 `Content/`、`Modding/`、`DodgeProgress.cs` 和 `OfficialPackTrust.cs` 一并复制到练习工程，并保留 `Gameplay/` 中的敌人快照类型，使这些类型可编译；本阶段的预览脚本不创建内容会话，仍使用默认的敌人参数。完整内容启动在第六步接入。
 
 ### 输入动作
 
@@ -202,7 +205,8 @@ DodgeTheCreeps/
 ├─ Main.tscn
 ├─ DodgeApp.cs                 # 服务装配与游戏业务流程
 ├─ DodgeApp.Smoke.cs           # 同一个 partial 类型中的原生自检
-├─ DodgeApp.Content.cs         # 内容存档检查与确认恢复
+├─ DodgeApp.Content.cs         # 文档转换、内容检查与确认提交
+├─ DodgeApp.Mods.cs            # 模组独立 API 与状态作用域
 ├─ DodgeApp.ContentSmoke.cs    # 内容跨进程自检
 ├─ DodgeApp.Settings.cs        # 设置应用、回滚与持久化
 ├─ DodgeApp.*Smoke.cs          # 朝向、完整存档及设置验收
@@ -212,10 +216,11 @@ DodgeTheCreeps/
 ├─ DodgeMenus.Settings.cs      # 音频、显示、语言与未应用草稿
 ├─ OfficialPackTrust.cs        # 游戏拥有的官方 PCK 摘要
 ├─ DodgeProgress.cs            # 当前局存档
-├─ DodgeProgressMigration.cs   # 稀疏 v1 到完整 v2 快照
+├─ DodgeProgressMigration.cs   # 文档升级与显式降级
 ├─ DodgePreferences.cs         # 音量、全屏、最高分
 ├─ Gameplay/
 ├─ Content/                   # 敌人／关卡定义和内容会话
+├─ Modding/                   # 内部计分补丁目标
 ├─ content_sources/           # 本体和可选内容包
 ├─ content-schemas/           # 游戏拥有的 schema
 ├─ Localization/              # 框架本地化接线及中英文本
@@ -246,7 +251,7 @@ DodgeTheCreeps/
 
 ### 存档与偏好
 
-当前局保存可序列化的数值、稳定关卡 ID，以及同文件中的内容包快照，不保存原生节点：
+当前局 DTO 保存可序列化的数值和稳定关卡 ID，不保存原生节点。框架在外层 `SaveDocument` 中保存结构版本、内容包快照和模组状态：
 
 <<< ../../../Samples/DodgeTheCreeps/DodgeProgress.cs{csharp}
 
@@ -260,13 +265,13 @@ DodgeTheCreeps/
 
 v2 存档同时保存敌人 ID、数量、位置、速度、外观、动画进度，玩家朝向，计分余量、下次生成时间、剩余保护时间，以及随机生成器的 seed/state。继续游戏恢复该局面，不重新随机生成敌人，也不额外增加保护时间。新局保持为内存状态，玩家明确保存后才更新槽位。
 
-早期存档由迁移器补充当前格式所需的默认值，更新前先备份原始文件：
+结构转换在创建当前 DTO 之前处理独立文档；游戏提供每个方向的转换逻辑，准备后经显式提交备份并写入：
 
 <<< ../../../Samples/DodgeTheCreeps/DodgeProgressMigration.cs{csharp}
 
 ## 六、装配框架服务并注册原生视图 {#services}
 
-用 [完整启动脚本](https://github.com/GeWuYou/GFramework/blob/main/Samples/DodgeTheCreeps/DodgeApp.cs) 替换第四步的预览脚本。复制样例根目录的全部 `*.cs`、`Localization/` 及前面列出的数据和素材目录，保留同一 `partial DodgeApp`、`partial DodgeMenus` 的全部伴随文件。普通启动也调用其中的设置、内容、翻译及参数解析方法，不能只复制正文展示的代码片段。
+用 [完整启动脚本](https://github.com/GeWuYou/GFramework/blob/main/Samples/DodgeTheCreeps/DodgeApp.cs) 替换第四步的预览脚本。复制样例根目录的全部 `*.cs`、`Localization/`、`Modding/` 及前面列出的数据和素材目录，保留同一 `partial DodgeApp`、`partial DodgeMenus` 的全部伴随文件。普通启动也调用其中的设置、内容、翻译及参数解析方法，不能只复制正文展示的代码片段。
 
 ### 在原生线程创建服务
 
@@ -374,7 +379,7 @@ v2 存档同时保存敌人 ID、数量、位置、速度、外观、动画进�
 
 主菜单的 Content 管理本体、官方 Moon DLC 和资料模组。启停与排序保存为下次启动配置，不改变当前局；重启后显示最终敌人速度及其来源。资料型模组可以追加敌人与关卡，玩法由游戏已有模板解释。
 
-继续游戏前先检查内容依赖。缺失 DLC 时可以取消并重新启用原包，或确认降级：框架先备份原始文件，再调用游戏修复钩子，将缺失关卡替换为本体关卡。长诊断可以滚动，恢复按钮保持可见。完整包格式、依赖、字段补丁、旧档导入和备份恢复见 [DLC 与资料型模组](../game/content-packs.md)。
+继续游戏前先准备文档版本转换与内容检查。缺失 DLC 时可以取消并重新启用原包，或确认游戏准备的修复结果：将缺失关卡替换为本体关卡，提交时框架备份原始文件并原子写入。长诊断可以滚动，恢复按钮保持可见。完整包格式、依赖、字段补丁、版本转换和备份恢复见 [DLC 与资料型模组](../game/content-packs.md)。
 
 ## 十、等待服务与原生资源完成关闭 {#shutdown}
 
@@ -418,7 +423,9 @@ godot --headless --path DodgeTheCreeps -- --persistence-smoke
 godot --headless --path DodgeTheCreeps -- --persistence-smoke-continue=<上一轮输出的GUID>
 ```
 
-该组比较敌人、计时、朝向、随机状态和后续生成。所有自检均使用独立数据目录，调用方设置进程超时并检查退出码与 `DODGE_SMOKE_RESULT PASS`。
+该组比较敌人、计时、朝向、随机状态和后续生成，并检查无法直接反序列化为当前 DTO 的 v3 文档在降级准备、取消和备份提交时的行为。所有自检均使用独立数据目录，调用方设置进程超时并检查退出码与 `DODGE_SMOKE_RESULT PASS`。
+
+代码模组使用 `--modding-smoke`，再按 `DODGE_MODDING_NEXT` 输出的 GUID 连续运行三次 `--modding-smoke-continue=<GUID>`。它通过真实授权对话框和外部 DLL 检查拒绝／允许、重启生效、计分与状态保存、缺失模组数据保留、重新启用及独立清理；每阶段检查 `DODGE_MODDING_RESULT PASS`。运行前先执行 `python3 GFramework/scripts/build-dodge-mods.py` 并把暂存包复制到练习工程。
 
 安装与引擎同版本的 .NET 导出模板，在练习工程中建立 `exports/`，然后执行：
 
@@ -427,7 +434,7 @@ godot --headless --path DodgeTheCreeps --export-release "Windows Desktop"
 godot --headless --path DodgeTheCreeps --export-release "Linux Desktop"
 ```
 
-分发时保留可执行文件、`.pck`、对应的 `data_DodgeTheCreeps_*` 目录，以及素材署名和许可证。导出程序支持相同的 `--smoke` 与 `--smoke-continue` 参数。
+分发时保留可执行文件、`.pck`、对应的 `data_DodgeTheCreeps_*` 目录，以及素材署名和许可证。导出程序支持相同的普通、持久化及代码模组自检参数。
 
 最后实际操作移动、暂停、焦点切换、设置、保存继续、重试和退出，检查窗口缩放、文字可读性、音量与游戏手感。
 
@@ -454,7 +461,7 @@ godot --headless --path DodgeTheCreeps --export-release "Linux Desktop"
 
 ```json
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "id": "practice-speed",
   "name": "Practice Speed",
   "version": "1.0.0",
@@ -484,9 +491,22 @@ godot --headless --path DodgeTheCreeps --script build-official-pack.gd
 dotnet build DodgeTheCreeps/DodgeTheCreeps.csproj -c Debug
 ```
 
-固定摘要由游戏拥有，不能通过把第三方包标为“官方”绕过校验。资料型模组只使用数据和安全媒体入口；本示例不加载第三方玩法代码。
+固定摘要由游戏拥有，不能通过把第三方包标为“官方”绕过校验。资料型模组只使用数据和安全媒体入口。代码模组另走 DLL 授权与生命周期入口，完整构建、安装、API 和 Harmony 接线见[代码模组与 Harmony](../game/code-mods.md)。
 
-保存月面关卡后停用 Moon，再重启并继续游戏，会出现依赖差异。可以取消并重新启用原包，或确认备份后降级到本体关卡；只有缺失内容提供的敌人才被移除，有效敌人状态继续保留。恢复按钮可以找回原始文件，之后仍需满足其内容依赖。包格式、合并规则和通用接入见 [DLC 与资料型模组](../game/content-packs.md)。
+### 独立代码模组
+
+运行 `python3 GFramework/scripts/build-dodge-mods.py`，分别编译 `DodgeTheCreeps.BonusMod` 与 `DodgeTheCreeps.HarmonyMod`，并暂存模组自己的 DLL 和依赖描述。将生成的 `GFramework/Samples/DodgeTheCreeps/content_sources/code-bonus/`、`code-double/` 完整目录复制到练习工程的 `content_sources/`，完成后重启，尚未安装过的代码示例会被补装。主游戏只引用共享 API 和可选 Harmony，不引用示例模组实现项目。
+
+Content 中启用代码包时确认代码执行权限，重启后观察计分：Bonus 每次额外加 1，Double 修改内部基础结果乘 2，两者同时启用时每次加 3。保存并重启继续，Bonus 的累计次数随模组独立数据区恢复。代码包更新后重新确认精确版本和指纹。
+
+宿主和模组共享的最小接口：
+
+<<< ../../../Samples/DodgeTheCreeps.ModApi/IDodgeModApi.cs{csharp}
+
+游戏将该接口绑定到对应模组的数据作用域，代码包不能通过自己的作用域参数选择另一个 owner。纯资料包仍走受限素材入口，代码授权不替代官方 PCK 校验。
+
+
+保存月面关卡后停用 Moon，再重启并继续游戏，会出现依赖差异。可以取消并重新启用原包，或确认准备好的结果并备份提交到本体关卡；只有缺失内容提供的敌人才被移除，有效敌人状态继续保留。恢复按钮可以找回原始文件，之后仍需满足其内容依赖。包格式、合并规则和通用接入见 [DLC 与资料型模组](../game/content-packs.md)。
 
 ## 常见问题
 

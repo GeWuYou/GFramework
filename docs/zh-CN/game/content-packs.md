@@ -34,7 +34,7 @@ mods/
 
 ```json
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "id": "fast-creeps",
   "name": "Fast Creeps",
   "version": "1.0.0",
@@ -116,23 +116,22 @@ var walker = catalog.GetTable<EnemyDefinition>("enemies").Get(new ContentId("bas
 
 ## 存档依赖与降级恢复
 
-内容感知存档通过 `IContentAwareSaveData.Content` 将启用包的精确版本、指纹和实际顺序与游戏数据写入同一文件。游戏为 `SaveRepository` 提供 `ContentSaveOptions`，声明当前目录、存档引用和业务有效性检查。
+`SaveDocument.Content` 将启用包的精确版本、指纹和实际顺序与游戏负载保存到同一份文档。游戏通过 `SaveRepositoryOptions<TSaveData>` 和 `ContentSaveOptions` 提供当前内容会话、完整文档中的引用以及恢复策略。`EnumerateReferences` 检查 `SaveDocument` 的游戏与模组负载，`RecoverAsync` 返回修复后的完整文档，可由游戏明确修复或移除指定模组块。检查元数据和转换历史负载不要求先创建当前版本的 DTO。
 
-普通加载在执行版本迁移和自动回写之前检查内容。缺失包、不兼容版本或缺失 ID 会返回可展示的差异，原存档不变。包可以声明接受的旧存档版本范围；省略时按精确版本和指纹检查，不推测同主版本就一定兼容。
+`PrepareLoadAsync` 在独立文档中准备结构迁移与内容修复，返回候选结果及需要展示的差异。准备函数只能转换输入数据，不能修改运行中的世界、写入文件或加载缺失模组的代码。缺失包、不兼容版本、缺失 ID 和转换说明共同构成玩家的决定依据；游戏决定替换、保留、清理或拒绝，不由框架猜测。
 
-玩家选择降级恢复时，执行顺序为：
+包可以声明接受的旧存档版本范围；省略时按精确版本和指纹检查。同版本文件被修改不会因为版本区间而自动兼容。新增包及顺序变化会被报告，不能据此静默删除原有内容。
 
-1. 展示缺失包、版本差异和游戏定义的恢复说明，取得玩家确认。
-2. 重新读取并核对存档，拒绝使用过期的检查结果覆盖后来保存的数据。
-3. 将原文件按字节备份到独立位置，备份成功后才调用游戏恢复钩子。
-4. 在独立数据上修复内容，执行存档版本迁移并校验全部引用与业务条件。
-5. 成功后更新内容快照、原子写回并继续游戏。
+需要转换的存档由游戏展示准备结果并取得确认，再调用 `CommitPreparedAsync`：
 
-游戏通过 `InspectContentAsync` 取得报告并展示；将玩家确认过的同一报告交给 `RecoverContentAsync`。已知无元数据的旧档使用 `ImportLegacyAsync`，原始备份通过 `RestoreBackupAsync` 恢复。备份恢复后仍执行普通内容检查，不能借此绕过缺失包要求。
+1. 核对原文件指纹、候选结果和目标内容会话，拒绝过期确认。
+2. 验证准备好的版本、内容引用及游戏业务条件，将原文件按字节备份到当前槽位的独立位置。
+3. 再次核对原文件和目标会话，原子提交完整文档。
+4. 提交成功后，才把返回的数据交给游戏世界。
 
-恢复钩子属于游戏代码，例如把缺失的关卡替换为本体关卡、清理失效物品并报告损失。框架不会调用缺失模组的代码，也不自行决定删除哪些角色。没有钩子、备份失败、钩子失败或验证失败时，停止恢复并保留原文件。
+`LoadAsync` 不回写迁移结果；需要转换时返回准备要求，由宿主进入显式处理流程。原始备份使用 `RestoreBackupAsync` 恢复，恢复后仍须执行正常的内容与版本检查。已删除能力的旧接口不作为另一路兼容入口保留，完整采用见[数据与存档](./data.md)及[双向存档迁移](../tutorials/data-migration.md)。
 
-备份使用可选的 `IStorageBackup` 能力，文件存储和 Godot 存储提供实现；自定义存储需要实现它才能启用恢复。备份保留未知字段与原始编码，不通过重新序列化制造“备份”。恢复入口同时返回备份位置，不自动清理历史备份。旧存档缺少内容元数据时，需要游戏显式接受旧格式，再通过备份和导入补充元数据。
+文件存储和 Godot 存储通过 `IStorageBackup` 保留原始字节与编码；自定义存储需要提供该能力才能使用文档存档。备份位置随提交结果返回，不自动清理历史备份。备份失败、验证失败、取消或源文件变化时不覆盖原档。
 
 ## Godot 素材与官方 PCK
 
@@ -142,11 +141,12 @@ var walker = catalog.GetTable<EnemyDefinition>("enemies").Get(new ContentId("bas
 
 PCK 在 Godot 主线程、内容资源首次使用之前加载，使用包专属的 `res://content/<包ID>/` 路径和 `replace_files=false`。逻辑覆盖由内容操作表达，不通过全局路径覆盖实现。挂载中途失败时停止启动，修复后重启；不承诺卸载已经挂载的 PCK。
 
-Godot 的资源包可以包含脚本和场景，因此可信官方资源包与第三方资料模组使用不同入口；本机制不提供第三方代码模组加载或沙箱。[Godot 资源包说明](https://docs.godotengine.org/en/stable/tutorials/export/exporting_pcks.html)
+Godot 的资源包可以包含脚本和场景，因此可信官方资源包与第三方资料模组使用不同入口。第三方 C# DLL 通过独立的[代码模组](./code-mods.md)授权与生命周期入口加载，不通过资料素材读取器执行；代码模组也不提供安全沙箱。[Godot 资源包说明](https://docs.godotengine.org/en/stable/tutorials/export/exporting_pcks.html)
 
 ## 相关主题
 
 - [配置系统](./config-system.md)：schema、只读配置表与开发期热重载。
-- [数据与存档](./data.md)：槽位、结构版本迁移和持久化。
+- [数据与存档](./data.md)：文档存档、结构版本迁移和持久化。
+- [代码模组与 Harmony](./code-mods.md)：可信 DLL、宿主 API、补丁和模组状态。
 - [存储系统](./storage.md)：文件存储与原子写入。
 - [官方素材小游戏制作教程](../tutorials/godot-complete-project.md)：普通 Godot 宿主的实际采用。

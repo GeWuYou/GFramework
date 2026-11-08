@@ -3,11 +3,11 @@
 
 namespace GFramework.Game.Abstractions.Content;
 
-/// <summary>Declares data and resource entrypoints; it never authorizes code or establishes package trust.</summary>
+/// <summary>Declares data, resource and optional code entrypoints; declarations never establish execution trust.</summary>
 public sealed class ContentPackManifest
 {
     /// <summary>Gets the manifest format understood by this framework.</summary>
-    public int FormatVersion { get; init; } = 1;
+    public int FormatVersion { get; init; } = 2;
     /// <summary>Gets the stable canonical package identity.</summary>
     public string Id { get; init; } = string.Empty;
     /// <summary>Gets the player-facing display name.</summary>
@@ -28,6 +28,8 @@ public sealed class ContentPackManifest
     public IReadOnlyList<string> ContentFiles { get; init; } = Array.Empty<string>();
     /// <summary>Gets package-relative PCK paths for an explicitly trusted host adapter; declaration is not trust.</summary>
     public IReadOnlyList<string> ResourcePacks { get; init; } = Array.Empty<string>();
+    /// <summary>Gets an optional trusted-code entrypoint, approved separately by the host.</summary>
+    public ContentCodeEntrypoint? Code { get; init; }
     /// <summary>Gets old package versions explicitly accepted for saves; absent means exact version and fingerprint.</summary>
     public ContentVersionRange? SaveCompatibleVersions { get; init; }
 }

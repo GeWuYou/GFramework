@@ -1,6 +1,6 @@
 ---
 title: 数据与存档系统
-description: 使用构造注入的数据仓库、统一设置文件和槽位存档，管理取消、迁移与通知。
+description: 使用文档存档、双向迁移和模组数据，显式准备、确认并原子提交游戏进度。
 ---
 
 # 数据与存档系统
@@ -11,25 +11,39 @@ Game 提供三类普通服务，可直接构造或登记到标准 DI：
 | --- | --- | --- |
 | `DataRepository` | 一个 `IDataLocation` 对应一份对象 | 玩家档案、缓存与独立业务数据 |
 | `UnifiedSettingsDataRepository` | 多个 section 聚合到一个文件 | 音频、图形、语言和输入设置 |
-| `SaveRepository<TSaveData>` | 按槽位组织数据 | 游戏进度及版本迁移 |
+| `SaveRepository<TSaveData>` | 槽位内的一份版本化文档 | 游戏进度、DLC／模组依赖、结构转换及模组状态 |
 
-仓库通过构造函数接收存储和序列化依赖，操作不要求 Architecture、Utility 角色或初始化调用。静态内容配置使用独立的 [配置系统](./config-system.md)。
+仓库通过构造函数接收存储与策略，不要求 Architecture、Utility 角色或初始化调用。静态内容配置使用独立的[配置系统](./config-system.md)。
 
-使用 DLC 或模组时，可以为 `SaveRepository` 配置内容依赖检查和显式恢复策略。内容检查先于版本迁移与回写；经玩家确认的降级先备份原文件，再调用游戏修复钩子。接口和采用流程见 [DLC 与资料型模组](./content-packs.md)。未启用该能力的仓库保留原有存档格式。
+## 文档与业务 DTO
 
-## 槽位存档
+`SaveDocument` 是外层信封：`FormatVersion` 表示文档格式，`GameId` 表示所属游戏，`Game` 包含独立的 `Version` 和 JSON 对象 `Data`，`Content` 保存内容包快照，`Mods` 按模组 ID 保存各自版本和负载。
+
+框架先检查信封，再对完整文档负载执行结构转换和内容修复，最后创建当前版本的 DTO。业务 DTO 只需实现 `IData`，不必携带版本或内容元数据。字段改名、类型变化或删除字段时，转换仍能读取历史原文中的信息，不会先丢给当前 DTO。
+
+默认 `JsonSaveDocumentCodec` 使用 UTF-8 JSON 和 Newtonsoft DOM，不解释文件中的 CLR 类型元数据；`ISaveDocumentCodec` 是文档编解码与 DTO 转换边界。`IStorage` 继续负责键空间和底层读写，不解释游戏 schema。文档仓库要求存储实现 `IStorageBackup`，以保留原始文件字节和原子提交。
+
+## 最小采用
 
 ```csharp
+using System;
 using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Data;
 using GFramework.Game.Serializer;
 using GFramework.Game.Storage;
 
 using var storage = new FileStorage("GameData", new JsonSerializer());
-var saves = new SaveRepository<PlayerSave>(storage, new SaveConfiguration
-{
-    SaveRoot = "saves"
-});
+var saves = new SaveRepository<PlayerSave>(storage,
+    new SaveConfiguration { SaveRoot = "saves" },
+    new SaveRepositoryOptions<PlayerSave>
+    {
+        GameId = "my-game",
+        CurrentVersion = 1,
+        Validate = static data =>
+        {
+            if (data.Score < 0) throw new InvalidOperationException("Invalid score.");
+        }
+    });
 await saves.SaveAsync(1, new PlayerSave { Score = 12 });
 var restored = await saves.LoadAsync(1);
 
@@ -39,36 +53,75 @@ public sealed class PlayerSave : IData
 }
 ```
 
-`ExistsAsync` 检查槽位；`LoadAsync` 在槽位不存在时创建默认对象；`ListSlotsAsync` 按编号返回包含存档文件的槽位。缺失文件、损坏文件和不支持的版本由应用按业务需要处理，保存应由明确的业务动作触发。
+`ExistsAsync` 检查槽位；`LoadAsync` 在槽位不存在时返回默认对象；`ListSlotsAsync` 按编号列举包含存档文件的槽位。`SaveConfiguration` 定义根目录、槽位前缀和文件名，`SaveRepositoryOptions<T>` 定义游戏身份、当前版本、迁移图、内容策略和业务校验。配置在组合根完成，运行期间不修改。
 
-版本化 DTO 实现 `IVersionedData`，通过 `RegisterMigration` 登记递增版本的迁移。重复起始版本被拒绝；缺少迁移链、非法输出版本和高于当前运行时的文件版本会失败。迁移使用注册表快照，全部成功后才回写升级内容。
+## 准备、确认与提交
+
+`LoadAsync` 不自动回写。需要版本转换或内容协调时抛出 `SavePreparationRequiredException<T>`，异常携带 `Prepared`；宿主也可以主动调用 `PrepareLoadAsync`。
+
+```csharp
+var prepared = await saves.PrepareLoadAsync(1, cancellationToken);
+if (prepared.RequiresConfirmation &&
+    !await ConfirmPreparedSaveAsync(prepared, cancellationToken))
+{
+    return;
+}
+if (prepared.RequiresCommit)
+{
+    var committed = await saves.CommitPreparedAsync(1, prepared, cancellationToken);
+    ApplyRestoredProgress(committed.Data);
+    RememberBackup(committed.BackupKey);
+}
+else
+{
+    ApplyRestoredProgress(prepared.Data);
+}
+```
+
+`ConfirmPreparedSaveAsync`、`ApplyRestoredProgress` 和 `RememberBackup` 是游戏自己的 UI、世界恢复和备份入口；确认被拒绝时必须退出当前加载流程。`RequiresCommit` 表示存在待提交的转换或元数据更新，`RequiresConfirmation` 表示降级、有损转换或内容修复需要玩家决定。
+
+准备阶段只操作独立文档，不持久化、不修改活动世界。`Data`、`Document` 和 `ModState` 返回独立副本；修改它们不会改变批准的候选结果。转换和恢复钩子必须是纯数据操作，不能自行保存文件或执行缺失模组代码。
+
+提交核对仓库、槽位、源文件指纹及目标内容会话，保存原字节备份，再原子写入已准备的文档。原文件变化、取消、备份失败、转换结果非法或写入失败时，拒绝覆盖。`SaveCommitResult<T>` 返回提交数据和备份位置；调用方在成功后才进入游戏。
+
+`RestoreBackupAsync` 恢复选定槽位内的原始备份，恢复前也备份当前文件。恢复后的文件仍要经过正常游戏身份、结构版本和内容依赖检查。备份不自动清理，文件替换不等同于跨进程锁或断电落盘保证。
+
+## 双向结构迁移与内容修复
+
+`SaveMigrationGraph` 捕获不可变的 `SaveMigrationStep` 集合。游戏分别注册升级和降级，每一步只处理 `SaveDataBlock`；框架校验方向、路径和输出版本，不推测反向转换。完整示例见[双向存档迁移](../tutorials/data-migration.md)。
+
+`ContentSaveOptions` 声明当前 `ContentCatalog`、引用枚举和纯恢复函数。`EnumerateReferences` 接收完整 `SaveDocument`，可以同时检查 `document.Game.Data` 和 `document.Mods` 中的稳定引用；`RecoverAsync` 接收独立文档与差异报告，并返回完整 `SaveDocument`。游戏因此可以明确修复游戏负载、调整模组数据或删除指定的失效模组块，而不是只能清理游戏 DTO。
+
+结构转换先于当前引用检查，因此游戏可以先把旧字段整理为当前 schema，再检查缺失物品或关卡。恢复结果必须保持所属游戏、信封格式以及当前游戏／活跃模组的 schema；框架重新验证文档和引用，并附加当前内容快照。缺失模组负载默认保留，只有游戏自己的恢复策略可以明确删除。包版本、指纹和顺序差异来自独立信封，`PreparedSave.SavedContent` 可供界面展示原始包版本。内容规则与包兼容声明见[DLC 与资料型模组](./content-packs.md)。
+
+## 模组数据
+
+在 `ModPolicies` 中声明当前启用模组的 `ModSavePolicy`，每个模组有自己的当前版本和迁移图。新局用 `CreateModState()` 创建草稿，读档用 `prepared.ModState` 取得保留全部历史数据块的草稿。
+
+通过 `modState.ForMod("my-mod")` 为对应模组提供 `ModSaveScope`，作用域的 `Read<T>()` 和 `Write<T>(data)` 只访问该模组的数据。游戏应只向模组暴露匹配的作用域，不暴露整个 session，并明确该作用域所对应的局面生命周期。小游戏只允许已开始或已恢复的当前局访问状态；模组初始化和无当前局的主菜单阶段会拒绝状态访问。
+
+修改草稿不会保存文件；`SaveDocumentAsync(slot, gameData, modState, cancellationToken)` 把游戏数据与该草稿的全部模组块一次提交。读档草稿携带同一局的缺失模组数据；新局的空草稿不会继承目标槽位中上一局的任何模组状态。普通 `SaveAsync` 保留槽位已有模组块。同一局中未启用或缺失模组的块保持纯数据，不执行其代码；业务恢复策略由游戏决定。
 
 ## 数据与统一设置仓库
 
-`DataRepository` 接收 `IStorage`；`UnifiedSettingsDataRepository` 同时接收 `IRuntimeTypeSerializer`。使用统一文件时，在加载前调用 `RegisterDataType(location, typeof(T))` 明确登记允许恢复的类型。
+`DataRepository` 接收 `IStorage`；`UnifiedSettingsDataRepository` 同时接收 `IRuntimeTypeSerializer`。统一文件在加载前通过 `RegisterDataType(location, typeof(T))` 登记允许恢复的类型。
 
-`DataRepositoryOptions.AutoBackup` 在覆盖前保存旧快照。独立数据按 key 备份，统一设置按完整文件备份。统一仓库先生成下一份缓存快照，在写入成功后交换缓存，失败不会把未提交数据留在内存中。
+`DataRepositoryOptions.AutoBackup` 在覆盖前保存旧快照；独立数据按 key 备份，统一设置按完整文件备份。统一仓库先准备下一份缓存，写入成功后交换，失败不污染当前缓存。`SaveAllAsync` 发出一次批量通知；独立仓库逐项写入，统一设置合并为一次文件提交。
 
-`SaveAllAsync` 发出一次批量通知。独立数据仓库逐项写入；统一设置仓库将本批 section 合并到一次文件提交。
+数据仓库通知通过可选 `Action<object>? publishEvent` 接入宿主，`EnableEvents` 控制发布。事件包括 `DataLoadedEvent<T>`、`DataSavedEvent<T>`、`DataDeletedEvent` 和 `DataBatchSavedEvent`；通知发生在对应操作成功后。
 
-## 通知
+## 取消、关闭与接口调整
 
-仓库构造函数最后的 `Action<object>? publishEvent` 是可选通知出口，`EnableEvents` 控制是否发布。宿主可在组合根把它接到自己的事件总线或显式回调。没有回调时，仓库只执行数据操作。
+异步接口最后一个参数为 `CancellationToken`。取消控制尚未接纳的操作和后续步骤，已接纳的底层写入完整等待；关闭时先停止新业务并等待保存，再释放存储。
 
-通知使用 `DataLoadedEvent<T>`、`DataSavedEvent<T>`、`DataDeletedEvent` 和 `DataBatchSavedEvent`。通知在对应操作成功后发生；内部加载、备份和迁移回写不额外生成公开操作通知。
+槽位仓库采用新的 `SaveDocument` 格式和显式策略，不提供旧扁平 DTO 格式或旧恢复 API 的兼容分支。原来的 `ISaveMigration<T>`、`IContentAwareSaveData`、`RegisterMigration`、`InspectContentAsync`、`RecoverContentAsync` 和 `ImportLegacyAsync` 被文档转换、准备与提交流程替代。已有历史格式需要游戏明确编写转换工具或选择新存档，不能通过当前 DTO 猜测旧数据。
 
-## 取消与关闭
-
-仓库异步方法的最后一个参数是 `CancellationToken`。令牌撤销尚未接纳的工作、设置提交锁等待和后续批次项；已经开始的底层写入会被完整等待。调用方应等待所有保存任务，再释放底层存储。
-
-`IStorage` 提供同步与异步读写；文件存储使用同目录临时文件替换目标。路径、扩展名和存储所有权见 [存储系统](./storage.md)。
-
-## 迁移
-
-删除仓库的 `SetContext`、Utility 注册和空初始化代码，改为显式传入依赖。需要事件时传入通知回调；文件布局、槽位命名和已有序列化格式保持原样。
+设置系统仍使用自己的迁移和应用生命周期；一般业务数据仓库的格式不随槽位存档重构改变。
 
 ## 相关主题
 
+- [存档教程](../tutorials/save-system.md)
+- [双向存档迁移](../tutorials/data-migration.md)
+- [代码模组与 Harmony](./code-mods.md)
 - [设置系统](./setting.md)
-- [序列化系统](./serialization.md)
 - [存储系统](./storage.md)

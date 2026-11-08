@@ -112,7 +112,7 @@ public partial class DemoRoot : Node, ISceneRoot
             _saves = new SaveRepository<DemoSave>(_storage, new SaveConfiguration
             {
                 SaveRoot = _dataRootPath + "/saves"
-            });
+            }, new SaveRepositoryOptions<DemoSave> { GameId = "godot-integration", CurrentVersion = 1 });
             _settings = new UnifiedSettingsDataRepository(_storage, serializer,
                 new DataRepositoryOptions { BasePath = _dataRootPath, EnableEvents = false });
             _settings.RegisterDataType(_settingsLocation, typeof(DemoPreferences));

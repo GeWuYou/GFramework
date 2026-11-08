@@ -6,6 +6,7 @@
 
 - `Game` 提供 `UiService`、`SceneRouter`、设置、存档和配置运行时。
 - `Core` 提供标准 DI、日志、暂停和可选 Architecture 编排。
+- `Game` 的 DLL 模组宿主通过显式 dispatcher 使用 Godot 主线程；需要方法补丁时另引 `Game.Harmony`。
 - `Godot.SourceGenerators` 按需生成节点注入、信号、场景包装和项目元数据；普通 UI 直接登记 `Control` 场景。
 
 ## 子系统
@@ -31,7 +32,7 @@
 
 ### 关闭顺序
 
-观察按钮、输入和启动任务的错误。退出时关闭新的业务入口、等待在途操作，停止 UI 和场景服务，再释放暂停、存储与原生 root。使用 Architecture 时，`GameRuntimeModule(dispatcher, configure)` 将普通服务停止接入宿主分离之前的阶段。
+观察按钮、输入和启动任务的错误。退出时关闭新的业务入口、等待在途操作，停止玩法、UI 和场景服务，再停止代码模组及其补丁和订阅，最后释放暂停、存储与原生 root。使用 Architecture 时，`GameRuntimeModule(dispatcher, configure)` 将普通服务停止接入宿主分离之前的阶段。
 
 ## 可运行工程与文档
 
@@ -45,3 +46,4 @@
 - [设置](../docs/zh-CN/godot/setting.md)
 - [存储](../docs/zh-CN/godot/storage.md)
 - [DLC 与资料型模组](../docs/zh-CN/game/content-packs.md)
+- [代码模组与 Harmony](../docs/zh-CN/game/code-mods.md)

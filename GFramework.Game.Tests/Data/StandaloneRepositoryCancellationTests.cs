@@ -5,6 +5,7 @@ using System.Threading;
 using GFramework.Core.Abstractions.Serializer;
 using GFramework.Core.Abstractions.Storage;
 using GFramework.Game.Abstractions.Data;
+using GFramework.Game.Abstractions.Storage;
 using GFramework.Game.Data;
 using GFramework.Game.Serializer;
 
@@ -19,7 +20,9 @@ public sealed class StandaloneRepositoryCancellationTests
     public async Task SaveAsync_WhenAlreadyCanceled_DoesNotTouchStorage()
     {
         var storage = new Mock<IStorage>(MockBehavior.Strict);
-        var repository = new SaveRepository<TestSaveData>(storage.Object, new SaveConfiguration());
+        _ = storage.As<IStorageBackup>();
+        var repository = new SaveRepository<TestSaveData>(storage.Object, new SaveConfiguration(),
+            new SaveRepositoryOptions<TestSaveData> { GameId = "test", CurrentVersion = 1 });
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
@@ -35,10 +38,12 @@ public sealed class StandaloneRepositoryCancellationTests
         var entered = NewCompletion();
         var release = NewCompletion();
         var storage = new Mock<IStorage>(MockBehavior.Strict);
-        storage.Setup(value => value.DirectoryExistsAsync(It.IsAny<string>())).ReturnsAsync(true);
-        storage.Setup(value => value.WriteAsync(It.IsAny<string>(), It.IsAny<TestSaveData>()))
+        storage.Setup(value => value.ExistsAsync(It.IsAny<string>())).ReturnsAsync(false);
+        var snapshots = storage.As<IStorageBackup>();
+        snapshots.Setup(value => value.WriteSnapshotAsync(It.IsAny<string>(), It.IsAny<StorageSnapshot>(), It.IsAny<CancellationToken>()))
             .Returns(() => { entered.TrySetResult(); return release.Task; });
-        var repository = new SaveRepository<TestSaveData>(storage.Object, new SaveConfiguration());
+        var repository = new SaveRepository<TestSaveData>(storage.Object, new SaveConfiguration(),
+            new SaveRepositoryOptions<TestSaveData> { GameId = "test", CurrentVersion = 1 });
         using var cancellation = new CancellationTokenSource();
 
         var save = repository.SaveAsync(1, new TestSaveData(), cancellation.Token);
@@ -48,7 +53,7 @@ public sealed class StandaloneRepositoryCancellationTests
         release.TrySetResult();
         await save.WaitAsync(TimeSpan.FromSeconds(5));
 
-        storage.Verify(value => value.WriteAsync(It.IsAny<string>(), It.IsAny<TestSaveData>()), Times.Once);
+        snapshots.Verify(value => value.WriteSnapshotAsync(It.IsAny<string>(), It.IsAny<StorageSnapshot>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     /// <summary>A canceled settings mutation waiting behind a write cannot become the committed cache.</summary>

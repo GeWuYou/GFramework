@@ -27,6 +27,8 @@ internal static class DodgeRoutes
     internal static UiRoute<bool> Content { get; } = new("content", Modal(30));
     /// <summary>Content repair requires an explicit player decision before backup and downgrade.</summary>
     internal static UiDialogRoute<Func<string>, bool> Recover { get; } = new("recover", Modal(40));
+    /// <summary>Executing an installed DLL requires a separate explicit authorization decision.</summary>
+    internal static UiDialogRoute<Func<string>, bool> CodePermission { get; } = new("code-permission", Modal(40));
 
     /// <summary>Declares input and pause behavior independently of visual ordering.</summary>
     private static UiRouteOptions Modal(int layer) => new()

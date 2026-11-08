@@ -25,6 +25,7 @@ public static class ContentPackResolver
         ArgumentException.ThrowIfNullOrWhiteSpace(host.GameId, nameof(host));
         _ = ContentVersionRules.Parse(host.GameVersion);
         _ = ContentVersionRules.Parse(host.ContentApiVersion);
+        if (host.CodeApiVersion is not null) _ = ContentVersionRules.Parse(host.CodeApiVersion);
         if (!ContentId.IsCanonicalSegment(host.BasePackId))
             throw new ArgumentException("Base package ID must be canonical.", nameof(host));
         ArgumentNullException.ThrowIfNull(profile.EnabledPackages, nameof(profile));
@@ -71,6 +72,9 @@ public static class ContentPackResolver
             !ContentVersionRules.Contains(host.GameVersion, manifest.GameVersions) ||
             !ContentVersionRules.Contains(host.ContentApiVersion, manifest.ContentApiVersions))
             throw Failure("HostIncompatible", manifest.Id, $"Package '{manifest.Id}' does not support this game/content API.");
+        if (manifest.Code is { } code && (host.CodeApiVersion is null ||
+            !ContentVersionRules.Contains(host.CodeApiVersion, code.ApiVersions)))
+            throw Failure("CodeApiIncompatible", manifest.Id, $"Package '{manifest.Id}' requires a compatible code-mod host.");
         if (string.Equals(manifest.Id, host.BasePackId, StringComparison.Ordinal) && manifest.Dependencies.Count != 0)
             throw Failure("InvalidBasePackage", manifest.Id, "The mandatory base package cannot depend on optional packages.");
         foreach (var dependency in manifest.Dependencies)

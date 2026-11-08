@@ -16,6 +16,6 @@ public enum ContentSaveIssueKind
     AdditionalPack,
     /// <summary>The order of retained packages changed; this is advisory.</summary>
     LoadOrderChanged,
-    /// <summary>The file predates content metadata and requires explicit import.</summary>
-    LegacyMetadata
+    /// <summary>The envelope lacks content metadata and requires an explicit game-owned recovery decision.</summary>
+    MissingMetadata
 }

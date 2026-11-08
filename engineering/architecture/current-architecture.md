@@ -1,6 +1,6 @@
 # 当前架构
 
-核对日期：2026-11-07。本页随核心治理实现更新，当前任务与验证见[路线图](../roadmap/core-governance.md)。后续方向见[架构决策](adr-001-standard-dotnet-foundation.md)。
+核对日期：2026-11-08。本页随核心治理实现更新，当前任务与验证见[路线图](../roadmap/core-governance.md)。后续方向见[架构决策](adr-001-standard-dotnet-foundation.md)。
 
 ## 包依赖与责任
 
@@ -13,6 +13,7 @@
 | Core.Abstractions | 依赖 Microsoft DI 抽象；上下文与容器契约不再包含 CQRS 能力 | [契约项目](../../GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj) |
 | CQRS | Runtime 依赖 Core.Abstractions 与 Cqrs.Abstractions，运行在标准 DI 上；消息契约包可单独引用 | [CQRS 项目](../../GFramework.Cqrs/GFramework.Cqrs.csproj)、[运行时工厂](../../GFramework.Cqrs/CqrsRuntimeFactory.cs) |
 | Game | 依赖 Core 与 Game.Abstractions；配置、设置、存储、Scene/UI 等游戏能力 | [Game 项目](../../GFramework.Game/GFramework.Game.csproj) |
+| Game.Harmony | 可选依赖 Game 与 Lib.Harmony；共享补丁引擎、提供模组 owner 作用域，不由 Game/Godot 传递引入 | [补丁项目](../../GFramework.Game.Harmony/GFramework.Game.Harmony.csproj) |
 | Godot | 在 Game/Core 之上接入节点、主线程与场景树生命周期 | [Godot 项目](../../GFramework.Godot/GFramework.Godot.csproj)、[宿主架构](../../GFramework.Godot/Architectures/AbstractArchitecture.cs) |
 | Arch ECS | 依赖 Core 与自身抽象；服务模块创建 World、解析系统并负责更新与销毁 | [ECS 模块](../../GFramework.Ecs.Arch/ArchEcsModule.cs) |
 | Source Generators | 编译消费项目，生成注册表、上下文与宿主样板；运行时包不反向引用生成器 | [边界校验器](../../scripts/validate-runtime-generator-boundaries.py) |
@@ -77,15 +78,40 @@ IUiView 是服务拥有的租约，IUiHost 负责挂载与焦点。打开在挂�
 
 设置初始化先独立准备全部加载与迁移结果，再更新现有实例；失败保留当前数据，IsInitialized 为 false，并向调用方返回聚合错误。每个设置应用器通过显式 dispatcher 执行，独立失败不跳过其他项，最终报告聚合错误。仓库和设置通知通过显式回调接入宿主事件系统。
 
-FileStorage 和 GodotFileStorage 共用同目录临时文件替换逻辑；Godot 可变数据使用 user://，res:// 用于只读资源。取消控制操作接纳、锁等待和后续步骤；已开始的底层写入等待到完成。数据文件布局和序列化格式保持原样。资源缓存保留创建条目时的 loader 释放责任，活跃句柄阻止普通卸载。
+FileStorage 和 GodotFileStorage 共用同目录临时文件替换逻辑；Godot 可变数据使用 user://，res:// 用于只读资源。取消控制操作接纳、锁等待和后续步骤；已开始的底层写入等待到完成。一般数据仓库与设置保持各自格式；槽位存档使用独立文档信封，结构版本与业务 DTO 解耦。资源缓存保留创建条目时的 loader 释放责任，活跃句柄阻止普通卸载。
 
-## 内容会话与存档恢复
+## 内容会话与代码模组
 
-内容包通过 Game 层的发现、依赖解析和合并服务创建一次启动会话。包描述数据与资源入口，游戏注册类型、schema 和行为模板；包不成为 DI 服务描述，也不通过反射改变组合根。因此服务模块和 provider 继续在初始化前完成注册，玩家内容选择在重启后创建新的内容会话，无需重新开放已经冻结的服务容器。
+[内容发现](../../GFramework.Game/Content/ContentPackDiscovery.cs)、[依赖解析](../../GFramework.Game/Content/ContentPackResolver.cs)和[目录合并](../../GFramework.Game/Content/ContentCatalogLoader.cs)创建一次启动会话。依赖先于玩家偏好，同字段后加载者覆盖；目录在 schema／跨表引用校验完成后发布，来源保留包、文件和操作位置。游戏持有类型、schema 与业务 API。
 
-内容目录在全部操作及 schema／跨表引用校验通过后发布。依赖约束先于玩家偏好，同字段后加载者覆盖；字段来源保留包、文件和操作位置。Godot PCK 属于独立的宿主信任边界：挂载前校验实际哈希，关闭全局文件替换，挂载失败后需要重启；第三方资料使用受限解码入口。
+清单格式 v2 的 `code` 声明唯一 DLL 和入口类型及所需代码 API／能力，本身不提供信任。[GameModHost](../../GFramework.Game/Modding/GameModHost.cs)在任何模组代码执行前检查全部选择和精确包指纹授权，分别为每包准备加载上下文。框架契约、游戏 API 与扩展程序集明确共享，私有托管依赖留在包范围。宿主通过 admission 接入内容 loader，普通数据入口拒绝静默忽略代码。
 
-内容感知存档是可选能力，元数据与数据同文件。普通加载在结构版本迁移和回写之前检查依赖；恢复使用原始文件快照作为确认凭据，备份成功后才运行游戏钩子，最后迁移、验证并原子提交。原文件备份能力不扩张 Core 的必需存储契约，也不将缺失物品的业务补偿放入框架。
+模组不是根容器中的动态注册描述；根 provider 仍在启动前冻结。`IGameModContext.Services` 暴露宿主选定的 API 和模组本地作用域，不重新打开组合根。原生资源准备完成后按包顺序初始化与启动；失败与关闭逆序停止，即使初始化部分完成也执行清理。模组跟踪的资源、事件订阅和扩展作用域先于原生宿主释放。加载上下文保持进程生命周期，模组选集变化必须重启。
+
+[Harmony 扩展](../../GFramework.Game.Harmony/HarmonyModExtension.cs)是独立可选能力。补丁引擎由适配器加载／复用到 `AssemblyLoadContext.Default`，该确切的 `0Harmony` 程序集再共享给模组。这样 MonoMod 生成代理和补丁引擎使用同一类型身份，而不会在独立引擎加载上下文与默认上下文之间形成第二份引擎类型。背景见[上游类型身份问题](https://github.com/pardeike/Harmony/issues/642)。
+
+[引擎桥接](../../GFramework.Game.Harmony/HarmonyEngine.cs)限定 `0Harmony 2.4.3.0` 身份。无参扩展优先复用默认上下文中匹配的现有引擎，否则按名称解析，再尝试应用根目录的 `0Harmony.dll`；自定义宿主可以通过构造参数提供宿主拥有的绝对引擎路径。缺失或不兼容引擎明确失败，不自动改写运行时内部状态。适配器通过已知公开 API 桥接，公开方法补丁描述使用 `ModPatchMethod` 与 BCL `MethodInfo`，不静态暴露另一加载上下文中的 `HarmonyLib` 类型；正常注解和 `PatchAll(Assembly)` 仍使用共享引擎。
+
+补丁 owner 按游戏和模组身份创建，排序使用 Harmony 的 priority/before/after；作用域只撤销自身 owner，不代替业务冲突判定。DLL 具有进程权限；加载上下文与 API 选择不是安全沙箱。
+
+Godot PCK 保持独立的宿主信任边界：挂载前校验实际哈希，关闭全局文件替换，挂载失败后需要重启；第三方资料使用受限解码入口。批准代码执行不等于把任意 PCK 认定为官方资源。
+
+宿主共享契约包含其公开签名中的类型定义程序集，例如 `IServiceProvider` 的定义程序集。游戏宿主独立加载上下文持有的实际契约身份优先于默认上下文；这与补丁引擎固定默认上下文是两个独立边界。私有依赖和运行时包元数据的标准库回退不替代契约共享，也不将全部 BCL 强制共享。
+
+
+## 文档存档与显式提交
+
+[SaveDocument](../../GFramework.Game/Data/SaveDocument.cs)把框架格式、游戏身份、游戏 schema、内容快照及模组版本负载放在业务 DTO 外层。[文档 codec](../../GFramework.Game/Data/ISaveDocumentCodec.cs)负责信封和纯数据转换；默认实现使用 Newtonsoft JSON DOM 并关闭 CLR 类型元数据解释。存储只提供键空间、原始快照和原子替换，不拥有游戏 schema。
+
+[迁移图](../../GFramework.Game/Data/SaveMigrationGraph.cs)捕获明确的有向转换边，分别实现升级和降级，选择唯一最短单调路径；歧义由宿主提供完整版本序列。游戏与每个模组拥有独立 schema，同一个执行器验证转换输出；不从当前 DTO 构造函数推导版本，也不自动生成逆向逻辑。
+
+[准备与提交](../../GFramework.Game/Data/SaveRepository.Preparation.cs)分开。准备在独立文档中转换结构，再按当前 schema 检查并修复内容，最后创建和验证当前 DTO。引用枚举和恢复均接收完整 `SaveDocument`，游戏可以覆盖游戏／模组引用并明确修复或删除模组块；恢复不能改变游戏身份、信封格式或绕过当前 schema，框架最后附加目标内容快照。纯准备钩子不能修改世界或持久化。候选结果保存私有编码字节，公开 DTO、文档和模组 session 都是副本，调用方修改不能替换已确认结果。
+
+普通加载不自动回写；需要变换时交给宿主展示路径、差异与损失说明。降级、有损转换和内容修复要求明确决定。提交校验仓库／槽位、源文件指纹和目标内容会话，保存原始字节备份并再次核对源文件，最终原子写入。复用槽位串行锁、快照及备份能力，不扩张 Core 的必需存储接口。该保护不是跨进程事务。
+
+[ModSaveSession](../../GFramework.Game/Data/ModSaveSession.cs)保留全部历史数据块，只对当前活跃 owner 暴露匹配作用域；缺失模组的负载保持纯数据，不调用缺失代码。同一局的读档草稿携带缺失模组数据，新局空草稿不继承目标槽位旧状态；显式草稿是整份模组数据快照。游戏进度与模组草稿验证后写入同一文档；丢弃或补偿业务状态的决定属于游戏。模组启动不等于单局载入，小游戏在进入运行局面后才开放状态访问，初始化和无当前局时给出明确错误。
+
+旧 typed-save 迁移和内容恢复分支被文档流程替代，同步调整仓库消费者与公开采用说明，不建立兼容双轨。设置迁移继续维护自己的加载和应用生命周期，不强制套用槽位存档流程。
 
 ## 采用工程
 

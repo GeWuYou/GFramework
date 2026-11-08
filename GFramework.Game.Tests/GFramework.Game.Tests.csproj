@@ -42,4 +42,18 @@
     -->
     <Import Project="..\GFramework.Game.SourceGenerators\GeWuYou.GFramework.Game.SourceGenerators.targets"/>
 
+    <ItemGroup>
+        <Compile Remove="Modding/Fixtures/**/*.cs"/>
+        <ProjectReference Include="Modding/Fixtures/ModOne/ModOne.csproj" ReferenceOutputAssembly="false"/>
+        <ProjectReference Include="Modding/Fixtures/ModTwo/ModTwo.csproj" ReferenceOutputAssembly="false"/>
+    </ItemGroup>
+    <!-- Only inner framework builds own an output directory; an outer build must not copy binaries into source. -->
+    <Target Name="CopyModFixtures" AfterTargets="Build" Condition="'$(TargetFramework)' != ''">
+        <ItemGroup>
+            <ModFixtureOne Include="Modding/Fixtures/ModOne/bin/$(Configuration)/net8.0/*.dll;Modding/Fixtures/ModOne/bin/$(Configuration)/net8.0/*.deps.json"/>
+            <ModFixtureTwo Include="Modding/Fixtures/ModTwo/bin/$(Configuration)/net8.0/*.dll;Modding/Fixtures/ModTwo/bin/$(Configuration)/net8.0/*.deps.json"/>
+        </ItemGroup>
+        <Copy SourceFiles="@(ModFixtureOne)" DestinationFolder="$(OutDir)ModFixtures/one"/>
+        <Copy SourceFiles="@(ModFixtureTwo)" DestinationFolder="$(OutDir)ModFixtures/two"/>
+    </Target>
 </Project>

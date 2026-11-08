@@ -1,0 +1,24 @@
+{
+  "formatVersion": 2,
+  "id": "code-bonus",
+  "name": "Bonus Score",
+  "version": "1.0.0",
+  "gameId": "dodge-the-creeps",
+  "dependencies": [
+    {
+      "id": "base",
+      "versions": {
+        "minimumInclusive": "1.0.0"
+      }
+    }
+  ],
+  "code": {
+    "assemblyPath": "DodgeTheCreeps.BonusMod.dll",
+    "entryType": "DodgeTheCreeps.BonusMod.BonusScoreMod",
+    "apiVersions": {
+      "minimumInclusive": "1.0.0",
+      "maximumExclusive": "2.0.0"
+    },
+    "requiredCapabilities": []
+  }
+}

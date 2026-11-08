@@ -19,6 +19,7 @@ description: 通过独立服务采用 UI、场景、设置、存档、输入和�
 | 文件与序列化 | `FileStorage`、`ScopedStorage`、`JsonSerializer` | [存储](./storage.md)、[序列化](./serialization.md) |
 | 静态 YAML 内容 | `GameConfigBootstrap`、`YamlConfigLoader` | [配置系统](./config-system.md) |
 | DLC 与资料型模组 | `ContentPackDiscovery`、`ContentPackResolver`、`ContentCatalogLoader` | [内容包](./content-packs.md) |
+| DLL 模组与方法补丁 | `GameModHost`、可选 `HarmonyModExtension` | [代码模组与 Harmony](./code-mods.md) |
 
 ## 最小采用
 
@@ -30,7 +31,13 @@ using GFramework.Game.Serializer;
 using GFramework.Game.Storage;
 
 using var storage = new FileStorage("GameData", new JsonSerializer());
-var saves = new SaveRepository<PlayerSave>(storage, new SaveConfiguration { SaveRoot = "saves" });
+var saves = new SaveRepository<PlayerSave>(storage,
+    new SaveConfiguration { SaveRoot = "saves" },
+    new SaveRepositoryOptions<PlayerSave>
+    {
+        GameId = "my-game",
+        CurrentVersion = 1
+    });
 ```
 
 `PlayerSave` 是实现 `IData` 的项目 DTO，完整采用见 [存档教程](../tutorials/save-system.md)。

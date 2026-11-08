@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using DodgeTheCreeps.Content;
+using DodgeTheCreeps.Modding;
 using GFramework.Game.Abstractions.Content;
 using Godot;
 
@@ -36,6 +37,11 @@ public partial class DodgeWorld : Node2D
     private int _hostThreadId;
     private DodgeContent? _content;
     private DodgeArenaDefinition? _arena;
+    private Func<int, int>? _modifyScore;
+
+    /// <summary>Assigns the game's ordered API modifiers before gameplay begins.</summary>
+    /// <param name="modifier">Applies registrations without retaining native nodes in external mods.</param>
+    internal void ConfigureScoring(Func<int, int> modifier) => _modifyScore = modifier;
 
     /// <summary>Assigns one immutable content session before this world enters the scene tree.</summary>
     internal void ConfigureContent(DodgeContent content, DodgeArenaDefinition arena)
@@ -134,7 +140,7 @@ public partial class DodgeWorld : Node2D
             Score = Score, X = _player.Position.X, Y = _player.Position.Y,
             ArenaId = _arena?.Id ?? "base:yard", PlayerFacing = _player.FacingDirection,
             ScoreElapsed = _scoreElapsed, SpawnRemaining = _spawnRemaining, GraceRemaining = _graceRemaining,
-            RandomSeed = _random.Seed, RandomState = _random.State, Content = _content?.Catalog.Snapshot
+            RandomSeed = _random.Seed, RandomState = _random.State
         };
         foreach (var enemy in _mobs) save.Enemies.Add(enemy.CaptureProgress());
         DodgeProgress.ValidateSnapshot(save);
@@ -302,7 +308,9 @@ public partial class DodgeWorld : Node2D
         while (_scoreElapsed >= 1 && IsRunning)
         {
             _scoreElapsed -= 1;
-            Score++;
+            var increment = _modifyScore?.Invoke(DodgeScoreRules.Calculate()) ?? DodgeScoreRules.Calculate();
+            if (increment < 1 || increment > 1000) throw new InvalidOperationException("A score mod returned an invalid increment.");
+            Score = checked(Score + increment);
             ScoreChanged?.Invoke(this, new ScoreChangedEventArgs(Score));
         }
     }

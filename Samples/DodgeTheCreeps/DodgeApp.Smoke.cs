@@ -137,7 +137,7 @@ public partial class DodgeApp
     /// <summary>Parses bounded acceptance identities without permitting arbitrary player-data paths.</summary>
     private bool TryConfigureFeatureSmoke(string argument)
     {
-        foreach (var feature in new[] { "movement", "persistence", "localization", "settings" })
+        foreach (var feature in new[] { "movement", "persistence", "localization", "settings", "modding" })
         {
             var initial = "--" + feature + "-smoke";
             var continuation = initial + "-continue=";
@@ -157,6 +157,7 @@ public partial class DodgeApp
     {
         switch (_featureSmoke)
         {
+            case "modding": await RunModdingSmokeAsync(_featureContinuation).ConfigureAwait(true); break;
             case "movement": await RunMovementSmokeAsync().ConfigureAwait(true); break;
             case "persistence": await RunPersistenceSmokeAsync(_featureContinuation).ConfigureAwait(true); break;
             case "localization": await RunLocalizationSmokeAsync(_featureContinuation).ConfigureAwait(true); break;

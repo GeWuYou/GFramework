@@ -210,6 +210,7 @@ export default defineConfig({
                 { text: '概览', link: '/zh-CN/game/' },
                 { text: '内容配置系统', link: '/zh-CN/game/config-system' },
                 { text: 'DLC 与资料型模组', link: '/zh-CN/game/content-packs' },
+                { text: '代码模组与 Harmony', link: '/zh-CN/game/code-mods' },
                 { text: 'VS Code 配置工具', link: '/zh-CN/game/config-tool' },
                 { text: '数据管理', link: '/zh-CN/game/data' },
                 { text: '场景系统', link: '/zh-CN/game/scene' },

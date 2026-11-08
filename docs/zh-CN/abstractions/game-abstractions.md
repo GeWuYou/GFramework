@@ -16,6 +16,7 @@ description: 游戏通用服务、强类型路由、宿主视图与持久化契�
 | `Runtime/` | `IGameDispatcher` | 宿主回调调度 |
 | `Scene/` | `ISceneRouter`、`ISceneFactory`、`ISceneRoot`、`ISceneBehavior` | 场景生命周期和导航 |
 | `Data/` | `IData`、`IDataLocation`、`IDataRepository`、`ISaveRepository<T>` | 数据位置和持久化 |
+| `Modding/` | `IGameMod`、`IGameModContext` | 显式授权的代码扩展与宿主生命周期 |
 | `Setting/` | `ISettingsModel`、`ISettingsSystem`、`ISettingsData` | 设置、迁移和应用 |
 | `Input/` | `IInputBindingStore`、`IUiInputDispatcher` | 动作绑定与语义分发 |
 | `Config/` | `IConfigRegistry`、配置表契约 | 静态内容加载 |
@@ -40,3 +41,5 @@ Scene、UI、数据、设置和暂停采用普通服务契约。异步接口使�
 - [场景系统](../game/scene.md)
 - [设置系统](../game/setting.md)
 - [数据与存档](../game/data.md)
+
+- [代码模组与 Harmony](../game/code-mods.md)

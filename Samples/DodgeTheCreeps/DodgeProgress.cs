@@ -13,16 +13,14 @@ namespace DodgeTheCreeps;
 /// Portable snapshot of one paused survival board. No native nodes, resources or engine vectors are serialized.
 /// Version two preserves enemies, fractional timers and the RNG state rather than generating a new board on continue.
 /// </summary>
-public sealed class DodgeProgress : IVersionedData, IContentAwareSaveData
+public sealed class DodgeProgress : IData
 {
     /// <summary>Gets the complete-board format written by this game.</summary>
     public const int CurrentVersion = 2;
     /// <summary>Bounds native allocations before restoring an externally supplied snapshot.</summary>
     public const int MaxSavedEnemies = 512;
 
-    /// <inheritdoc />
-    public int Version { get; set; } = CurrentVersion;
-    /// <inheritdoc />
+    /// <summary>Gets or sets the time this portable board was captured.</summary>
     public DateTime LastModified { get; set; } = DateTime.UtcNow;
     /// <summary>Gets or sets completed survival seconds.</summary>
     public int Score { get; set; }
@@ -46,8 +44,6 @@ public sealed class DodgeProgress : IVersionedData, IContentAwareSaveData
     public ulong? RandomState { get; set; }
     /// <summary>Gets or sets every living enemy in the world's stable iteration order.</summary>
     public IList<DodgeMobProgress> Enemies { get; set; } = new List<DodgeMobProgress>();
-    /// <inheritdoc />
-    public ContentSnapshot? Content { get; set; }
 
     /// <summary>Rejects unsupported or dangerous state before allocating native enemies or modifying a live board.</summary>
     /// <param name="save">Snapshot to validate; this method has no engine or persistence side effects.</param>
@@ -55,8 +51,6 @@ public sealed class DodgeProgress : IVersionedData, IContentAwareSaveData
     public static void ValidateSnapshot(DodgeProgress save)
     {
         ArgumentNullException.ThrowIfNull(save);
-        if (save.Version != CurrentVersion)
-            throw new InvalidOperationException("The save must be migrated to the supported complete-board format before restoring.");
         ValidateLegacyValues(save);
         if (save.X is < 26 or > 454 || save.Y is < 82 or > 686 ||
             save.RandomState is null || save.PlayerFacing is < 0 or > 7 || !double.IsFinite(save.ScoreElapsed) || save.ScoreElapsed is < 0 or >= 1 ||

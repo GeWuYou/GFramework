@@ -32,6 +32,7 @@
 | `GFramework.Cqrs.Abstractions` | CQRS 消息、处理器、pipeline 行为等契约 | [模块说明](GFramework.Cqrs.Abstractions/README.md) |
 | `GFramework.Game` | 面向游戏项目的配置、数据、路由、场景、UI、设置和存储运行时 | [模块说明](GFramework.Game/README.md) |
 | `GFramework.Game.Abstractions` | `Game` 对应的契约层 | [模块说明](GFramework.Game.Abstractions/README.md) |
+| `GFramework.Game.Harmony` | 代码模组可选的方法补丁、owner 隔离和撤销 | [模块说明](GFramework.Game.Harmony/README.md) |
 | `GFramework.Godot` | Godot 集成层，负责把框架能力接入节点、场景、UI、设置与存储 | [模块说明](GFramework.Godot/README.md) |
 | `GFramework.Ecs.Arch` | Arch ECS 集成 | [模块说明](GFramework.Ecs.Arch/README.md) |
 | `GFramework.Ecs.Arch.Abstractions` | Arch ECS 集成对应的契约层，适合共享宿主循环与 ECS 模块边界 | [模块说明](GFramework.Ecs.Arch.Abstractions/README.md) |
@@ -76,6 +77,8 @@
   架构采用的起步包，不依赖 CQRS。需要 request / notification / stream 消息模型的项目按需追加 `Cqrs`、`Game`、`Godot` 和 Source Generators；消息契约项目可直接引用 `Cqrs.Abstractions`。
 - `GeWuYou.GFramework.*.Abstractions`
   适合需要单独依赖契约层、插件化、测试替身或多模块解耦的场景。
+- `GeWuYou.GFramework.Game.Harmony`
+  仅在需要 Harmony 方法补丁时安装；Game、Godot 和聚合包不自动引入。代码模组公开 API 扩展由 Game 提供。
 - `GeWuYou.GFramework.*.SourceGenerators`
   只在需要编译期生成代码时安装，版本应与运行时包保持一致。
 
@@ -103,6 +106,9 @@ dotnet add package GeWuYou.GFramework.Game.Abstractions
 
 # Godot 集成
 dotnet add package GeWuYou.GFramework.Godot
+
+# 可选代码模组方法补丁
+dotnet add package GeWuYou.GFramework.Game.Harmony
 
 # 按需安装源码生成器
 dotnet add package GeWuYou.GFramework.Core.SourceGenerators

@@ -2,411 +2,303 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.IO;
-using System.Text;
 using System.Threading;
-using GFramework.Core.Abstractions.Serializer;
 using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Abstractions.Content;
 using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Content;
 using GFramework.Game.Data;
-using GFramework.Game.Serializer;
 using GFramework.Game.Storage;
+using Newtonsoft.Json.Linq;
+using RuntimeJsonSerializer = GFramework.Game.Serializer.JsonSerializer;
 
 namespace GFramework.Game.Tests.Data;
 
-/// <summary>Exercises persisted content compatibility and lossless, player-approved recovery.</summary>
+/// <summary>Checks document-level content recovery before DTO construction and exact session-bound commit.</summary>
 [TestFixture]
 public sealed class ContentSaveTests
 {
     private string _root = null!;
     private FileStorage _storage = null!;
+    private readonly JsonSaveDocumentCodec _codec = new();
     private static readonly ContentReference BaseArena = new("arenas", new ContentId("base:arena"));
     private static readonly ContentReference ModArena = new("arenas", new ContentId("extra:arena"));
     private static readonly SaveConfiguration Configuration = new() { SaveRoot = "saves", SaveFileName = "save" };
 
-    /// <summary>Creates isolated physical files for byte-for-byte assertions.</summary>
+    /// <summary>Creates a private persistence root.</summary>
     [SetUp]
     public void SetUp()
     {
-        _root = Path.Combine(Path.GetTempPath(), "gframework-content-saves-" + Guid.NewGuid().ToString("N"));
-        _storage = new FileStorage(_root, new JsonSerializer(), ".json");
+        _root = Path.Combine(Path.GetTempPath(), "gframework-content-documents-" + Guid.NewGuid().ToString("N"));
+        _storage = new FileStorage(_root, new RuntimeJsonSerializer(), ".json");
     }
 
-    /// <summary>Releases storage locks and removes only this test's temporary directory.</summary>
+    /// <summary>Releases only this fixture's temporary files.</summary>
     [TearDown]
     public void TearDown()
     {
         _storage.Dispose();
-        Directory.Delete(_root, recursive: true);
+        if (Directory.Exists(_root)) Directory.Delete(_root, true);
     }
 
-    /// <summary>Metadata survives serialization and a newly created repository without a sidecar file.</summary>
+    /// <summary>Content metadata lives in the envelope, without imposing metadata interfaces on game DTOs.</summary>
     [Test]
-    public async Task SaveAndNewRepositoryLoad_PersistOneFileWithContentMetadata()
+    public async Task SaveAndLoad_UseEnvelopeMetadata()
     {
         var catalog = CreateCatalog(false);
-        await CreateRepository(catalog).SaveAsync(1, new ContentSave { Value = 7 });
-        var loaded = await CreateRepository(catalog).LoadAsync(1);
+        var repository = CreateRepository(() => catalog);
+        await repository.SaveAsync(1, new ContentSave { Value = 7 });
+        var loaded = await CreateRepository(() => catalog).LoadAsync(1);
+        var document = _codec.Decode(await SnapshotAsync());
         Assert.Multiple(() =>
         {
             Assert.That(loaded.Value, Is.EqualTo(7));
-            Assert.That(loaded.Content!.Packs.Single().Id, Is.EqualTo("base"));
-            Assert.That(Directory.GetFiles(SlotPath), Has.Length.EqualTo(1));
+            Assert.That(document.Content!.Packs.Single().Id, Is.EqualTo("base"));
+            Assert.That(document.Game.Data.ContainsKey("Content"), Is.False);
         });
     }
 
-    /// <summary>Missing packages stop loading before a version migration can mutate or write the file.</summary>
+    /// <summary>Missing outer content metadata is a policy decision, without reviving an old-format import path.</summary>
     [Test]
-    public async Task MissingPack_IsCheckedBeforeMigrationAndDoesNotWrite()
+    public async Task MissingMetadata_RequiresExplicitDocumentRecovery()
     {
-        await CreateRepository(CreateCatalog(true)).SaveAsync(1,
-            new ContentSave { ArenaId = "extra:arena", Version = 1 });
-        var bytes = await File.ReadAllBytesAsync(SavePath);
-        var migrations = 0;
-        var repository = CreateRepository(CreateCatalog(false));
-        repository.RegisterMigration(new SaveMigration(() => migrations++));
-        var exception = await Assert.ThrowsAsync<ContentSaveCompatibilityException>(() => repository.LoadAsync(1));
-        Assert.Multiple(() =>
+        var document = new SaveDocument
         {
-            Assert.That(exception!.Report.Issues.Any(static issue => issue.Kind == ContentSaveIssueKind.MissingPack), Is.True);
-            Assert.That(migrations, Is.Zero);
-            Assert.That(File.ReadAllBytes(SavePath), Is.EqualTo(bytes));
+            GameId = "test", Game = new SaveDataBlock { Version = 2, Data = JObject.Parse("""{"ArenaId":"base:arena","Value":7}""") }
+        };
+        await _storage.WriteSnapshotAsync("saves/slot_1/save", _codec.Encode(document));
+        var repository = CreateRepository(() => CreateCatalog(false), static (candidate, report, _) =>
+        {
+            Assert.That(report.Issues.Single().Kind, Is.EqualTo(ContentSaveIssueKind.MissingMetadata));
+            return Task.FromResult(candidate);
         });
+        var prepared = await repository.PrepareLoadAsync(1);
+        Assert.That(prepared.RequiresConfirmation, Is.True);
+        Assert.That(prepared.SavedContent, Is.Null);
+        Assert.That(prepared.Document.Content!.Packs.Single().Id, Is.EqualTo("base"));
     }
 
-    /// <summary>A successful repair backs up every original byte, migrates once, commits and remains reversible.</summary>
+    /// <summary>Missing packages and references become explicit candidate diagnostics, with raw recovery before DTO validation.</summary>
     [Test]
-    public async Task RecoveryAndRestore_PreserveUnknownFieldsAndOriginalEncoding()
+    public async Task Prepare_RepairsMissingContentBeforeCurrentDtoValidation()
     {
-        await CreateRepository(CreateCatalog(true)).SaveAsync(1,
-            new ContentSave { ArenaId = "extra:arena", Version = 1, Value = 5 });
-        var text = await File.ReadAllTextAsync(SavePath);
-        text = text.Insert(text.LastIndexOf('}'), ",\n  \"UnknownFutureField\": {\"untouched\": true}\n");
-        var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(text)).ToArray();
-        await File.WriteAllBytesAsync(SavePath, bytes);
-        var hookCalls = 0;
-        var repository = CreateRepository(CreateCatalog(false), recover: (data, _, _) =>
-        {
-            hookCalls++;
-            Assert.That(Directory.GetFiles(Path.Combine(SlotPath, "backups")), Has.Length.EqualTo(1));
-            data.ArenaId = "base:arena";
-            return Task.FromResult(data);
-        });
-        repository.RegisterMigration(new SaveMigration(static () => { }));
-        var report = await repository.InspectContentAsync(1);
-        var result = await repository.RecoverContentAsync(1, report);
-        var backupPath = Path.Combine(SlotPath, result.BackupKey + ".json");
-        var recoveredBytes = await File.ReadAllBytesAsync(SavePath);
-        Assert.Multiple(() =>
-        {
-            Assert.That(hookCalls, Is.EqualTo(1));
-            Assert.That(result.Data.Version, Is.EqualTo(2));
-            Assert.That(result.Data.ArenaId, Is.EqualTo("base:arena"));
-            Assert.That(File.ReadAllBytes(backupPath), Is.EqualTo(bytes));
-            Assert.That(result.Data.Content!.Packs.Select(static pack => pack.Id), Is.EqualTo(new[] { "base" }));
-        });
-        Assert.That((await CreateRepository(CreateCatalog(false)).LoadAsync(1)).ArenaId, Is.EqualTo("base:arena"));
-        var preRestore = await repository.RestoreBackupAsync(1, result.BackupKey);
-        Assert.Multiple(() =>
-        {
-            Assert.That(File.ReadAllBytes(SavePath), Is.EqualTo(bytes));
-            Assert.That(File.ReadAllBytes(Path.Combine(SlotPath, preRestore + ".json")), Is.EqualTo(recoveredBytes));
-        });
-    }
-
-    /// <summary>A stale confirmation cannot repair a file that changed after the dialog was shown.</summary>
-    [Test]
-    public async Task ChangedFile_InvalidatesApprovalBeforeBackupOrHook()
-    {
-        var oldCatalog = CreateCatalog(true);
-        await CreateRepository(oldCatalog).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
+        var originalCatalog = CreateCatalog(true);
+        await CreateRepository(() => originalCatalog).SaveAsync(1, new ContentSave { ArenaId = "extra:arena", Value = 5 });
+        var original = await SnapshotAsync();
+        var baseCatalog = CreateCatalog(false);
         var calls = 0;
-        var repository = CreateRepository(CreateCatalog(false), recover: (data, _, _) =>
+        var repository = CreateRepository(() => baseCatalog, (data, report, _) =>
         {
             calls++;
-            data.ArenaId = "base:arena";
+            Assert.That(report.Issues.Select(static issue => issue.Kind), Does.Contain(ContentSaveIssueKind.MissingPack));
+            Assert.That(Directory.Exists(Path.Combine(_root, "saves", "slot_1", "backups")), Is.False,
+                "Pure preparation must not persist a backup before an approval exists.");
+            data.Game.Data["ArenaId"] = "base:arena";
             return Task.FromResult(data);
         });
-        var report = await repository.InspectContentAsync(1);
-        await CreateRepository(oldCatalog).SaveAsync(1, new ContentSave { ArenaId = "extra:arena", Value = 99 });
-        var bytes = await File.ReadAllBytesAsync(SavePath);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => repository.RecoverContentAsync(1, report));
+        var prepared = await repository.PrepareLoadAsync(1);
         Assert.Multiple(() =>
         {
-            Assert.That(calls, Is.Zero);
-            Assert.That(File.ReadAllBytes(SavePath), Is.EqualTo(bytes));
-            Assert.That(Directory.Exists(Path.Combine(SlotPath, "backups")), Is.False);
+            Assert.That(calls, Is.EqualTo(1));
+            Assert.That(prepared.RequiresConfirmation, Is.True);
+            Assert.That(prepared.Data.ArenaId, Is.EqualTo("base:arena"));
+            Assert.That(File.ReadAllBytes(SavePath), Is.EqualTo(original.ToArray()));
         });
+        var committed = await repository.CommitPreparedAsync(1, prepared);
+        Assert.That(calls, Is.EqualTo(1), "Commit must use immutable prepared bytes instead of rerunning recovery.");
+        Assert.That((await repository.LoadAsync(1)).Value, Is.EqualTo(5));
+        Assert.That((await _storage.ReadSnapshotAsync("saves/slot_1/" + committed.BackupKey)).ToArray(), Is.EqualTo(original.ToArray()));
     }
 
-    /// <summary>A failed backup prevents the game's potentially destructive recovery code from running.</summary>
+    /// <summary>Absent recovery policy stops before publishing any prepared current data.</summary>
     [Test]
-    public async Task BackupFailure_PreventsHookAndPreservesOriginal()
+    public async Task MissingContentWithoutPolicy_PreservesOriginal()
     {
-        await CreateRepository(CreateCatalog(true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
-        await File.WriteAllTextAsync(Path.Combine(SlotPath, "backups"), "a file blocks the directory");
-        var calls = 0;
-        var repository = CreateRepository(CreateCatalog(false), recover: (data, _, _) =>
-        {
-            calls++;
-            return Task.FromResult(data);
-        });
-        var bytes = await File.ReadAllBytesAsync(SavePath);
-        var report = await repository.InspectContentAsync(1);
-        await Assert.ThrowsAsync<IOException>(() => repository.RecoverContentAsync(1, report));
-        Assert.Multiple(() =>
-        {
-            Assert.That(calls, Is.Zero);
-            Assert.That(File.ReadAllBytes(SavePath), Is.EqualTo(bytes));
-        });
+        await CreateRepository(() => CreateCatalog(true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
+        var original = await SnapshotAsync();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => CreateRepository(() => CreateCatalog(false)).PrepareLoadAsync(1));
+        Assert.That((await SnapshotAsync()).Fingerprint, Is.EqualTo(original.Fingerprint));
     }
 
-    /// <summary>Failures and cancellation after backup keep both the original and a useful lossless backup.</summary>
-    [TestCase("hook")]
-    [TestCase("validation")]
-    [TestCase("cancellation")]
-    public async Task FailureAfterBackup_PreservesOriginal(string failure)
+    /// <summary>Recovery that leaves missing references or invalid business data cannot be committed.</summary>
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task InvalidRecovery_PreservesOriginal(bool invalidBusinessValue)
     {
-        await CreateRepository(CreateCatalog(true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
-        using var cancellation = new CancellationTokenSource();
-        var bytes = await File.ReadAllBytesAsync(SavePath);
-        var repository = CreateRepository(CreateCatalog(false), recover: (data, _, _) =>
+        await CreateRepository(() => CreateCatalog(true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
+        var original = await SnapshotAsync();
+        var repository = CreateRepository(() => CreateCatalog(false), (data, _, _) =>
         {
-            data.ArenaId = "base:arena";
-            if (string.Equals(failure, "hook", StringComparison.Ordinal)) throw new InvalidOperationException("Game cannot repair this save");
-            if (string.Equals(failure, "cancellation", StringComparison.Ordinal)) cancellation.Cancel();
-            if (string.Equals(failure, "validation", StringComparison.Ordinal)) data.Value = -1;
+            if (invalidBusinessValue) { data.Game.Data["ArenaId"] = "base:arena"; data.Game.Data["Value"] = -1; }
             return Task.FromResult(data);
         });
-        var report = await repository.InspectContentAsync(1);
-        if (string.Equals(failure, "cancellation", StringComparison.Ordinal))
-            await Assert.ThrowsAsync<OperationCanceledException>(() => repository.RecoverContentAsync(1, report, cancellation.Token));
-        else
-            await Assert.ThrowsAsync<InvalidOperationException>(() => repository.RecoverContentAsync(1, report, cancellation.Token));
-        Assert.Multiple(() =>
-        {
-            Assert.That(File.ReadAllBytes(SavePath), Is.EqualTo(bytes));
-            var backup = Directory.GetFiles(Path.Combine(SlotPath, "backups")).Single();
-            Assert.That(File.ReadAllBytes(backup), Is.EqualTo(bytes));
-        });
+        await Assert.ThrowsAsync<InvalidOperationException>(() => repository.PrepareLoadAsync(1));
+        Assert.That((await SnapshotAsync()).Fingerprint, Is.EqualTo(original.Fingerprint));
     }
 
-    /// <summary>Serialization failure at final commit preserves the original file and its completed backup.</summary>
+    /// <summary>Source schema conversion precedes raw-reference enumeration and content repair.</summary>
     [Test]
-    public async Task RecoveryWriteFailure_PreservesOriginalAndBackup()
+    public async Task SchemaConversionPrecedesContentRepair_WithoutCurrentDtoDependency()
     {
-        await CreateRepository(CreateCatalog(true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
-        var bytes = await File.ReadAllBytesAsync(SavePath);
-        var serializer = new ControlledSerializer();
-        using var storage = new FileStorage(_root, serializer, ".json");
-        var repository = CreateRepository(CreateCatalog(false), recover: (data, _, _) =>
-        {
-            data.ArenaId = "base:arena";
-            serializer.FailWrite = true;
-            return Task.FromResult(data);
-        }, storage: storage);
-        var report = await repository.InspectContentAsync(1);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => repository.RecoverContentAsync(1, report));
-        Assert.Multiple(() =>
-        {
-            Assert.That(File.ReadAllBytes(SavePath), Is.EqualTo(bytes));
-            Assert.That(File.ReadAllBytes(Directory.GetFiles(Path.Combine(SlotPath, "backups")).Single()), Is.EqualTo(bytes));
-        });
-    }
-
-    /// <summary>Known old formats require explicit import rather than automatic metadata fabrication during Load.</summary>
-    [Test]
-    public async Task LegacyImport_RequiresDeclarationAndBacksUpBeforeMigration()
-    {
-        await _storage.WriteAsync("saves/slot_1/save", new ContentSave { Version = 1 });
-        var bytes = await File.ReadAllBytesAsync(SavePath);
         var catalog = CreateCatalog(false);
-        var repository = CreateRepository(catalog, acceptLegacy: static data => data.Version == 1);
-        repository.RegisterMigration(new SaveMigration(static () => { }));
-        await Assert.ThrowsAsync<ContentSaveCompatibilityException>(() => repository.LoadAsync(1));
-        var report = await repository.InspectContentAsync(1);
-        var result = await repository.ImportLegacyAsync(1, report);
-        Assert.Multiple(() =>
+        var source = new SaveDocument
         {
-            Assert.That(report.IsLegacy, Is.True);
-            Assert.That(result.Data.Version, Is.EqualTo(2));
-            Assert.That(result.Data.Content, Is.Not.Null);
-            Assert.That(File.ReadAllBytes(Path.Combine(SlotPath, result.BackupKey + ".json")), Is.EqualTo(bytes));
+            GameId = "test", Content = CreateCatalog(true).Snapshot,
+            Game = new SaveDataBlock { Version = 1, Data = JObject.Parse("""{"OldArena":"extra:arena","Value":4}""") }
+        };
+        await _storage.WriteSnapshotAsync("saves/slot_1/save", _codec.Encode(source));
+        var step = new SaveMigrationStep(1, 2, "Rename arena", (block, _) =>
+        {
+            block.Data["ArenaId"] = block.Data["OldArena"];
+            block.Data.Remove("OldArena");
+            block.Version = 2;
+            return Task.FromResult(block);
         });
-        Assert.That((await CreateRepository(catalog).LoadAsync(1)).Version, Is.EqualTo(2));
-    }
-
-    /// <summary>A removed row is detected even when the providing package itself is still enabled.</summary>
-    [Test]
-    public async Task MissingReference_IsBlockingEvenWithMatchingPackageStamps()
-    {
-        await CreateRepository(CreateCatalog(true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
-        var repository = CreateRepository(CreateCatalog(true, includeModReference: false));
-        var report = await repository.InspectContentAsync(1);
-        Assert.That(report.Issues.Single().Kind, Is.EqualTo(ContentSaveIssueKind.MissingContent));
-        await Assert.ThrowsAsync<ContentSaveCompatibilityException>(() => repository.LoadAsync(1));
-    }
-
-    /// <summary>Adding content is advisory and ordinary loading does not rewrite metadata merely to hide differences.</summary>
-    [Test]
-    public async Task AdditionalPack_IsAdvisoryAndDoesNotRewriteFile()
-    {
-        await CreateRepository(CreateCatalog(false)).SaveAsync(1, new ContentSave());
-        var bytes = await File.ReadAllBytesAsync(SavePath);
-        var repository = CreateRepository(CreateCatalog(true));
-        var report = await repository.InspectContentAsync(1);
-        Assert.That(report.RequiresRecovery, Is.False);
-        Assert.That(report.Issues.Single().Kind, Is.EqualTo(ContentSaveIssueKind.AdditionalPack));
-        await repository.LoadAsync(1);
-        Assert.That(File.ReadAllBytes(SavePath), Is.EqualTo(bytes));
-    }
-
-    /// <summary>Installed packages explicitly declare which prior save versions they accept.</summary>
-    [TestCase("1.1.0", true)]
-    [TestCase("0.9.0", false)]
-    [TestCase("2.0.0", false)]
-    public async Task DeclaredCompatibilityRange_AppliesInclusiveMinimumAndExclusiveMaximum(string savedVersion, bool compatible)
-    {
-        await CreateRepository(CreateCatalog(false, baseVersion: savedVersion)).SaveAsync(1, new ContentSave());
-        var current = CreateCatalog(false, baseVersion: "3.0.0", baseFingerprint: "new-hash",
-            compatibleVersions: new ContentVersionRange { MinimumInclusive = "1.0.0", MaximumExclusive = "2.0.0" });
-        var report = await CreateRepository(current).InspectContentAsync(1);
-        Assert.That(report.RequiresRecovery, Is.EqualTo(!compatible));
-    }
-
-    /// <summary>A broad version range does not hide changes to a local package that kept its version number.</summary>
-    [Test]
-    public async Task SameVersionEditedFingerprint_RemainsBlockingDespiteDeclaredRange()
-    {
-        await CreateRepository(CreateCatalog(false)).SaveAsync(1, new ContentSave());
-        var current = CreateCatalog(false, baseFingerprint: "edited-hash", compatibleVersions: new ContentVersionRange());
-        var report = await CreateRepository(current).InspectContentAsync(1);
-        Assert.That(report.Issues.Single().Kind, Is.EqualTo(ContentSaveIssueKind.IncompatiblePack));
-    }
-
-    /// <summary>The slot gate prevents a concurrent Save from interleaving between backup and recovery commit.</summary>
-    [Test]
-    public async Task Recovery_SerializesConcurrentSaveForTheSameSlot()
-    {
-        await CreateRepository(CreateCatalog(true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var proceed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var repository = CreateRepository(CreateCatalog(false), recover: async (data, _, _) =>
+        var repository = CreateRepository(() => catalog, (data, _, _) =>
         {
-            entered.SetResult();
-            await proceed.Task.ConfigureAwait(false);
-            data.ArenaId = "base:arena";
-            return data;
+            Assert.That(data.Game.Data.ContainsKey("OldArena"), Is.False);
+            data.Game.Data["ArenaId"] = "base:arena";
+            return Task.FromResult(data);
+        }, migrations: new SaveMigrationGraph([step]));
+        var prepared = await repository.PrepareLoadAsync(1);
+        Assert.That(prepared.Data.ArenaId, Is.EqualTo("base:arena"));
+        Assert.That(prepared.MigrationPath.Single().ToVersion, Is.EqualTo(2));
+    }
+
+    /// <summary>Whole-document recovery lets the game explicitly remove an unavailable owner's opaque state.</summary>
+    [Test]
+    public async Task Recovery_CanExplicitlyRemoveUnavailableModData()
+    {
+        var document = new SaveDocument
+        {
+            GameId = "test", Content = CreateCatalog(true).Snapshot,
+            Game = new SaveDataBlock { Version = 2, Data = JObject.Parse("""{"ArenaId":"extra:arena","Value":7}""") }
+        };
+        document.Mods["extra"] = new SaveDataBlock { Version = 9, Data = JObject.Parse("""{"UnknownProgress":123}""") };
+        await _storage.WriteSnapshotAsync("saves/slot_1/save", _codec.Encode(document));
+        var repository = CreateRepository(() => CreateCatalog(false), static (candidate, _, _) =>
+        {
+            candidate.Game.Data["ArenaId"] = "base:arena";
+            candidate.Mods.Remove("extra");
+            return Task.FromResult(candidate);
         });
-        var report = await repository.InspectContentAsync(1);
-        var recovery = repository.RecoverContentAsync(1, report);
-        await entered.Task;
-        var save = repository.SaveAsync(1, new ContentSave { Value = 99 });
-        Assert.That(save.IsCompleted, Is.False);
-        proceed.SetResult();
-        await recovery;
-        await save;
-        Assert.That((await repository.LoadAsync(1)).Value, Is.EqualTo(99));
+        var prepared = await repository.PrepareLoadAsync(1);
+        Assert.That(prepared.RequiresConfirmation, Is.True);
+        Assert.That(prepared.Document.Mods, Is.Empty);
+        Assert.That(_codec.Decode(await SnapshotAsync()).Mods.ContainsKey("extra"), Is.True);
     }
 
-    /// <summary>Restore cannot select another slot or an arbitrary physical file through a crafted backup key.</summary>
-    [TestCase("../slot_2/save")]
-    [TestCase("backups/../../save")]
-    [TestCase("/absolute/save")]
-    public async Task Restore_RejectsKeysOutsideTheSlotBackupDirectory(string key)
+    /// <summary>Recovery cannot forge ownership or pretend a different schema is current.</summary>
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task Recovery_RejectsChangedIdentityOrCurrentVersion(bool changeIdentity)
     {
-        await Assert.ThrowsAsync<ArgumentException>(() => CreateRepository(CreateCatalog(false)).RestoreBackupAsync(1, key));
-    }
-
-    /// <summary>Gets the only file managed by slot 1.</summary>
-    private string SavePath => Path.Combine(SlotPath, "save.json");
-    /// <summary>Gets this fixture's isolated slot directory.</summary>
-    private string SlotPath => Path.Combine(_root, "saves", "slot_1");
-
-    /// <summary>Creates a repository with game-owned repair and reference semantics.</summary>
-    private SaveRepository<ContentSave> CreateRepository(ContentCatalog catalog,
-        Func<ContentSave, ContentSaveReport, CancellationToken, Task<ContentSave>>? recover = null,
-        Func<ContentSave, bool>? acceptLegacy = null, FileStorage? storage = null)
-    {
-        return new SaveRepository<ContentSave>(storage ?? _storage, Configuration, new ContentSaveOptions<ContentSave>
+        await CreateRepository(() => CreateCatalog(true)).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
+        var repository = CreateRepository(() => CreateCatalog(false), (candidate, _, _) =>
         {
-            CurrentCatalog = () => catalog,
-            EnumerateReferences = static data => [new ContentReference("arenas", new ContentId(data.ArenaId))],
-            RecoverAsync = recover,
-            AcceptLegacy = acceptLegacy,
-            Validate = static data =>
+            candidate.Game.Data["ArenaId"] = "base:arena";
+            if (changeIdentity) candidate.GameId = "forged";
+            else candidate.Game.Version = 999;
+            return Task.FromResult(candidate);
+        });
+        var original = await SnapshotAsync();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => repository.PrepareLoadAsync(1));
+        Assert.That((await SnapshotAsync()).Fingerprint, Is.EqualTo(original.Fingerprint));
+    }
+
+    /// <summary>Changing the startup content session invalidates a prior approval even if the source bytes did not change.</summary>
+    [Test]
+    public async Task Commit_RejectsChangedTargetSession()
+    {
+        var current = CreateCatalog(true);
+        await CreateRepository(() => current).SaveAsync(1, new ContentSave { ArenaId = "extra:arena" });
+        current = CreateCatalog(false);
+        var repository = CreateRepository(() => current, static (data, _, _) =>
+        {
+            data.Game.Data["ArenaId"] = "base:arena";
+            return Task.FromResult(data);
+        });
+        var prepared = await repository.PrepareLoadAsync(1);
+        current = CreateCatalog(false, baseFingerprint: "changed");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => repository.CommitPreparedAsync(1, prepared));
+    }
+
+    /// <summary>Version-range compatibility is explicit and does not silently accept same-version file edits.</summary>
+    [TestCase("1.0.0", "2.0.0", true)]
+    [TestCase("1.0.0", "1.0.0", false)]
+    [TestCase("3.0.0", "2.0.0", false)]
+    public async Task PackageCompatibility_UsesDeclaredRangeButRejectsSameVersionEdits(string oldVersion, string currentVersion, bool compatible)
+    {
+        await CreateRepository(() => CreateCatalog(false, baseVersion: oldVersion)).SaveAsync(1, new ContentSave());
+        var current = CreateCatalog(false, baseVersion: currentVersion, baseFingerprint: "updated",
+            compatibleVersions: new ContentVersionRange { MinimumInclusive = "1.0.0", MaximumExclusive = "3.0.0" });
+        var repository = CreateRepository(() => current);
+        if (compatible)
+        {
+            var prepared = await repository.PrepareLoadAsync(1);
+            Assert.That(prepared.RequiresConfirmation, Is.False);
+            Assert.That(prepared.RequiresCommit, Is.True);
+        }
+        else await Assert.ThrowsAsync<InvalidOperationException>(() => repository.PrepareLoadAsync(1));
+    }
+
+    /// <summary>Newly enabled packages are advisory; persisting the new session remains an explicit commit.</summary>
+    [Test]
+    public async Task AdditionalPackage_IsAdvisoryAndNoWrite()
+    {
+        await CreateRepository(() => CreateCatalog(false)).SaveAsync(1, new ContentSave());
+        var original = await SnapshotAsync();
+        var prepared = await CreateRepository(() => CreateCatalog(true)).PrepareLoadAsync(1);
+        Assert.That(prepared.RequiresConfirmation, Is.False);
+        Assert.That(prepared.Issues.Single().Kind, Is.EqualTo(ContentSaveIssueKind.AdditionalPack));
+        Assert.That((await SnapshotAsync()).Fingerprint, Is.EqualTo(original.Fingerprint));
+    }
+
+    /// <summary>Creates explicit current-schema policy with raw references and optional pure recovery.</summary>
+    private SaveRepository<ContentSave> CreateRepository(Func<ContentCatalog> catalog,
+        Func<SaveDocument, ContentSaveReport, CancellationToken, Task<SaveDocument>>? recover = null, SaveMigrationGraph? migrations = null) =>
+        new(_storage, Configuration, new SaveRepositoryOptions<ContentSave>
+        {
+            GameId = "test", CurrentVersion = 2, Migrations = migrations ?? new SaveMigrationGraph(),
+            Content = new ContentSaveOptions
             {
-                if (data.Value < 0) throw new InvalidOperationException("Negative business value is invalid");
-            }
+                CurrentCatalog = catalog,
+                EnumerateReferences = static data => [new ContentReference("arenas", new ContentId(data.Game.Data["ArenaId"]!.Value<string>()!))],
+                RecoverAsync = recover
+            },
+            Validate = static data => { if (data.Value < 0) throw new InvalidOperationException("Invalid negative business value."); }
         });
-    }
 
-    /// <summary>Publishes a minimal catalog using the same immutable internal state as the real loader.</summary>
-    private ContentCatalog CreateCatalog(bool includeMod, bool includeModReference = true,
-        string baseVersion = "1.0.0", string baseFingerprint = "base-hash", ContentVersionRange? compatibleVersions = null)
+    /// <summary>Creates immutable catalog state through the production catalog representation.</summary>
+    private ContentCatalog CreateCatalog(bool includeMod, string baseVersion = "1.0.0", string baseFingerprint = "base-hash",
+        ContentVersionRange? compatibleVersions = null)
     {
         var packages = new List<ContentPack>
         {
-            new(_root, new ContentPackManifest
-            {
-                Id = "base", GameId = "test", Name = "Base", Version = baseVersion,
-                SaveCompatibleVersions = compatibleVersions
-            }, baseFingerprint)
+            new(_root, new ContentPackManifest { Id = "base", Name = "Base", GameId = "test", Version = baseVersion,
+                SaveCompatibleVersions = compatibleVersions }, baseFingerprint)
         };
         var references = new HashSet<ContentReference> { BaseArena };
         if (includeMod)
         {
-            packages.Add(new ContentPack(_root, new ContentPackManifest { Id = "extra", GameId = "test", Name = "Extra" }, "extra-hash"));
-            if (includeModReference) references.Add(ModArena);
+            packages.Add(new ContentPack(_root, new ContentPackManifest { Id = "extra", Name = "Extra", GameId = "test" }, "extra-hash"));
+            references.Add(ModArena);
         }
         return new ContentCatalog(new ContentLoadPlan(packages), new Dictionary<string, IConfigTable>(StringComparer.Ordinal), references,
-            new Dictionary<ContentReference, IReadOnlyList<ContentSource>>(),
-            new Dictionary<(ContentReference Reference, string Field), ContentSource>());
+            new Dictionary<ContentReference, IReadOnlyList<ContentSource>>(), new Dictionary<(ContentReference Reference, string Field), ContentSource>());
     }
 
-    /// <summary>Portable test DTO with opt-in content and a game-owned arena reference.</summary>
-    public sealed class ContentSave : IVersionedData, IContentAwareSaveData
+    /// <summary>Reads immutable source bytes.</summary>
+    private Task<GFramework.Game.Abstractions.Storage.StorageSnapshot> SnapshotAsync() => _storage.ReadSnapshotAsync("saves/slot_1/save");
+    /// <summary>Gets the physical slot file for byte preservation assertions.</summary>
+    private string SavePath => Path.Combine(_root, "saves", "slot_1", "save.json");
+
+    /// <summary>Pure game DTO with no required version/content interfaces.</summary>
+    public sealed class ContentSave : IData
     {
-        /// <inheritdoc />
-        public int Version { get; set; } = 2;
-        /// <inheritdoc />
-        public DateTime LastModified { get; set; } = DateTime.UtcNow;
-        /// <inheritdoc />
-        public ContentSnapshot? Content { get; set; }
-        /// <summary>Gets or sets the selected arena's stable identity.</summary>
+        /// <summary>Gets or sets the stable arena reference.</summary>
         public string ArenaId { get; set; } = "base:arena";
-        /// <summary>Gets or sets a business value validated after recovery.</summary>
+        /// <summary>Gets or sets a validated business value.</summary>
         public int Value { get; set; }
-    }
-
-    /// <summary>Allows only the final DTO serialization to fail while lossless backup operations continue to work.</summary>
-    private sealed class ControlledSerializer : ISerializer
-    {
-        private readonly JsonSerializer _inner = new();
-        /// <summary>Gets or sets whether subsequent DTO writes should fail.</summary>
-        internal bool FailWrite { get; set; }
-        /// <inheritdoc />
-        public string Serialize<T>(T value) => FailWrite
-            ? throw new InvalidOperationException("Cannot serialize repaired data")
-            : _inner.Serialize(value);
-        /// <inheritdoc />
-        public T Deserialize<T>(string data) => _inner.Deserialize<T>(data);
-    }
-
-    /// <summary>Verifies content checking occurs before this otherwise valid schema migration.</summary>
-    private sealed class SaveMigration(Action onMigrate) : ISaveMigration<ContentSave>
-    {
-        /// <inheritdoc />
-        public int FromVersion => 1;
-        /// <inheritdoc />
-        public int ToVersion => 2;
-        /// <inheritdoc />
-        public ContentSave Migrate(ContentSave oldData)
-        {
-            onMigrate();
-            oldData.Version = 2;
-            return oldData;
-        }
     }
 }
