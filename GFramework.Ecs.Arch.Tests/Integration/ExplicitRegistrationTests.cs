@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Arch.Core;
+using GFramework.Ecs.Arch.Abstractions;
 using GFramework.Core.Architectures;
 using GFramework.Ecs.Arch.Components;
 using GFramework.Ecs.Arch.Extensions;
@@ -38,10 +39,10 @@ public sealed class ExplicitRegistrationTests
         await using var architecture = new TestArchitecture(services =>
         {
             services.AddArch();
-            services.AddSingleton<ArchSystemAdapter<float>, MovementSystem>();
+            services.AddSingleton<global::Arch.System.ISystem<float>, MovementSystem>();
         });
         await architecture.InitializeAsync();
-        Assert.That(architecture.Services.GetRequiredService<ArchSystemAdapter<float>>().World,
+        Assert.That(architecture.Services.GetRequiredService<global::Arch.System.ISystem<float>>() is ArchSystemAdapter<float> adapter ? adapter.World : null,
             Is.SameAs(architecture.Services.GetRequiredService<World>()));
     }
 
@@ -54,8 +55,8 @@ public sealed class ExplicitRegistrationTests
         var architecture = new TestArchitecture(services =>
         {
             services.AddArch();
-            services.AddSingleton<ArchSystemAdapter<float>>(provider => first = new StartedSystem(provider.GetRequiredService<World>()));
-            services.AddSingleton<ArchSystemAdapter<float>>(provider => second = new FailingSystem(provider.GetRequiredService<World>()));
+            services.AddSingleton<global::Arch.System.ISystem<float>>(provider => first = new StartedSystem(provider.GetRequiredService<World>()));
+            services.AddSingleton<global::Arch.System.ISystem<float>>(provider => second = new FailingSystem(provider.GetRequiredService<World>()));
         });
         await Assert.ThrowsAsync<InvalidOperationException>(() => architecture.InitializeAsync());
         Assert.That(first!.Stops, Is.EqualTo(1));
@@ -71,6 +72,80 @@ public sealed class ExplicitRegistrationTests
         await using var architecture = new TestArchitecture(services => services.AddModule(new ArchEcsModule(enabled: false)));
         await architecture.InitializeAsync();
         Assert.That(architecture.Services.GetService<World>(), Is.Null);
+    }
+
+    /// <summary>A configuration-only module can describe independent owners without sharing mutable runtime state.</summary>
+    [Test]
+    public void ReusedModuleCreatesIndependentRuntimes()
+    {
+        var module = new ArchEcsModule();
+        var first = new TestArchitecture(services => services.AddModule(module));
+        var second = new TestArchitecture(services => services.AddModule(module));
+        try
+        {
+            first.Initialize();
+            second.Initialize();
+            Assert.That(first.Services.GetRequiredService<IArchRuntime>(),
+                Is.Not.SameAs(second.Services.GetRequiredService<IArchRuntime>()));
+        }
+        finally
+        {
+            first.DestroyAsync().GetAwaiter().GetResult();
+            second.DestroyAsync().GetAwaiter().GetResult();
+        }
+    }
+
+    /// <summary>The provider stops business once, disposes a native root once, and leaves its World alive until then.</summary>
+    [Test]
+    public void ProviderOwnsNativeFinalRelease()
+    {
+        OwnedNativeSystem? native = null;
+        var architecture = new TestArchitecture(services =>
+        {
+            services.AddArch();
+            services.AddSingleton<global::Arch.System.ISystem<float>>(provider =>
+                native = new OwnedNativeSystem(provider.GetRequiredService<World>()));
+        });
+        architecture.Initialize();
+        architecture.DestroyAsync().GetAwaiter().GetResult();
+        architecture.DestroyAsync().GetAwaiter().GetResult();
+        Assert.That(native!.DisposeCalls, Is.EqualTo(1));
+        Assert.That(native.Stopped, Is.True);
+        Assert.That(native.WorldWasAliveAtDispose, Is.True);
+    }
+
+    /// <summary>A native system records ownership without depending on the optional adapter base.</summary>
+    private sealed class OwnedNativeSystem(World world) : global::Arch.System.BaseSystem<World, float>(world),
+        GFramework.Core.Abstractions.Lifecycle.IDestroyable
+    {
+        /// <summary>Number of provider-owned final releases.</summary>
+        public int DisposeCalls
+        {
+            get; private set;
+        }
+        /// <summary>Whether business work has stopped.</summary>
+        public bool Stopped
+        {
+            get; private set;
+        }
+        /// <summary>Whether disposal could still use the provider-owned World.</summary>
+        public bool WorldWasAliveAtDispose
+        {
+            get; private set;
+        }
+        /// <inheritdoc />
+        public override void Update(in float t)
+        {
+        }
+        /// <inheritdoc />
+        public void Destroy() => Stopped = true;
+        /// <inheritdoc />
+        public override void Dispose()
+        {
+            DisposeCalls++;
+            var entity = World.Create(new Position(1, 1));
+            WorldWasAliveAtDispose = World.IsAlive(entity);
+        }
     }
 
     /// <summary>A production architecture with only fixture descriptions.</summary>

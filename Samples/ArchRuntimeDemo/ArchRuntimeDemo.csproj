@@ -1,0 +1,14 @@
+<!-- Copyright (c) 2026 GeWuYou
+SPDX-License-Identifier: Apache-2.0 -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../GFramework.Ecs.Arch/GFramework.Ecs.Arch.csproj"/>
+  </ItemGroup>
+</Project>

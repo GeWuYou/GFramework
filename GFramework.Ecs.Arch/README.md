@@ -1,95 +1,37 @@
 # GFramework.Ecs.Arch
 
-`GFramework.Ecs.Arch` 将 Arch ECS 的 World 与系统接入标准 DI 和可选 Architecture 生命周期。宿主负责主循环，`IArchEcsModule.Update(deltaTime)` 驱动已启动的系统。
+可选的 Arch ECS 运行时与标准 DI／Architecture 接入。直接接受原生 `ISystem<float>`，支持 `BaseSystem<World, float>` 和 `Group<float>`；不要求框架基类。
 
-## 包关系与目录
+## 包与入口
 
-- Core 提供可选的组件启动与停止编排。
-- `GFramework.Ecs.Arch.Abstractions` 提供模块与系统适配契约。
-- 本包提供 `ArchEcsModule`、`ArchSystemAdapter<T>`、`ArchOptions` 与 `AddArch` 注册入口。
-- `Extensions` 提供装配入口；`Components`、`Systems` 提供最小数据与系统示例。
+- `ArchRuntime`：直接构造的宿主线程运行时，负责初始化、三阶段帧更新、业务停止和按需统计。
+- `ArchEcsModule`／`Extensions.AddArch`：只组织服务和可选生命周期编排。
+- `ArchSystemAdapter<T>`：可选基类，区分业务停止与最终资源释放。
+- `Components`／`Systems`：最小组件与系统示例。
+- `Ecs.Arch.Abstractions`：`IArchRuntime`、唯一的 `ArchOptions` 及不可变快照。Core 提供可选编排；Arch 提供实体与原生系统。
 
-## 最小接入
-
-```bash
-dotnet add package GeWuYou.GFramework.Ecs.Arch
-```
-
-在组合根配置 World、模块与系统：
+## 最小采用
 
 ```csharp
-using System;
-using System.Threading.Tasks;
-using Arch.Core;
-using GFramework.Core.Architectures;
-using GFramework.Ecs.Arch;
-using GFramework.Ecs.Arch.Abstractions;
-using GFramework.Ecs.Arch.Extensions;
-using GFramework.Ecs.Arch.Systems;
-using Microsoft.Extensions.DependencyInjection;
-
-await using var architecture = new GameArchitecture();
-await architecture.InitializeAsync();
-var world = architecture.Services.GetRequiredService<World>();
-var ecs = architecture.Services.GetRequiredService<IArchEcsModule>();
-// The owning host calls ecs.Update(deltaTime) from its frame loop.
-
-public sealed class GameArchitecture : Architecture
-{
-    protected override void ConfigureServices(IServiceCollection services)
-    {
-        services.AddArch(options =>
-        {
-            options.WorldCapacity = 2048;
-            options.Priority = 50;
-        });
-        services.AddSingleton<ArchSystemAdapter<float>, MovementSystem>();
-    }
-}
+services.AddArch(options => options.EnableStatistics = true);
+services.AddSingleton<Arch.System.ISystem<float>, MovementSystem>();
 ```
 
-`AddArch` 只描述当前组合根，不立即创建 World。系统通过构造函数接收同一个 provider 拥有的 World；业务代码不需要取得容器或框架上下文。普通宿主可保留已解析的模块引用并驱动更新。
+这些登记放在 Architecture 的组合根，使用 `GFramework.Ecs.Arch.Extensions` 与标准 DI。启动后宿主注入 `IArchRuntime` 并调用 `Update(deltaTime)`，不再通过配置模块更新。普通宿主可以直接构造 `new ArchRuntime(world, systems, options)` 并显式 Initialize／Stop。
 
-## 编写系统
+系统按 `IPrioritized` 升序、同值按登记顺序运行。每帧完成全部 BeforeUpdate，再完成全部 Update 和 AfterUpdate。更新失败会封闭运行时，调用方负责停止；部分初始化失败也参与逆序业务清理。
 
-```csharp
-using Arch.Core;
-using GFramework.Ecs.Arch;
-using GFramework.Ecs.Arch.Components;
+## 所有权与统计
 
-public sealed class PlayerMovementSystem(World world) : ArchSystemAdapter<float>(world)
-{
-    private QueryDescription _query;
+runtime 借用系统和 World。DI 创建的对象由 provider 最终释放，直接构造对象由调用方释放；先 Stop，再释放系统，最后释放 World。Group 自己拥有其内部系统，不能重复登记这些内部对象的最终释放责任。
 
-    protected override void OnArchInitialize()
-    {
-        _query = new QueryDescription().WithAll<Position, Velocity>();
-    }
+统计默认关闭。启用后在宿主拥有线程读取 `GetStatistics()`，得到实体数、系统数、完成／失败帧和顶层系统阶段耗时的不可变快照。失败阶段保留耗时，未执行阶段为 null。快照可跨线程分享，runtime 本身不允许跨线程调用或回调重入。
 
-    protected override void OnUpdate(in float deltaTime)
-    {
-        var step = deltaTime;
-        World.Query(in _query, (ref Position position, ref Velocity velocity) =>
-        {
-            position.X += velocity.X * step;
-            position.Y += velocity.Y * step;
-        });
-    }
-}
-```
+## 文档与运行工程
 
-将该系统注册为 `ArchSystemAdapter<float>` 服务即可由模块驱动。系统实现 `IPrioritized` 时按其 Priority 升序启动；相同值保持注册顺序。模块自身的 `ArchOptions.Priority` 决定它在 Architecture 组件中的启动顺序。
+- [ECS 概览](../docs/zh-CN/ecs/index.md)
+- [Arch ECS 接入](../docs/zh-CN/ecs/arch.md)
+- [原生 Arch 示例](../Samples/ArchRuntimeDemo/README.md)
+- [Godot 集成工程](../Samples/GodotIntegration/README.md)
 
-## 停止与所有权
-
-初始化中途失败的系统也会参与业务停止。模块逆序停止已尝试启动的系统，继续收集停止错误；World 与通过类型/工厂创建的系统最终由同一 provider 释放。停止后模块不再更新系统。
-
-系统业务停止使用 `OnArchStopped`，资源清理使用 `OnArchDispose`。两者分别由生命周期编排和对象拥有者调用，不在业务停止中重复释放 DI 拥有的 World 或依赖。
-
-不要同时将同一系统登记为独立 `AddComponent` 参与者；它已由 ECS 模块管理业务生命周期。不要手动销毁 provider 拥有的 World，也不要使用多个 owning 工厂为同一可释放系统建立别名。显式传入的外部实例保留调用者的最终资源责任。
-
-## 相关文档
-
-- [ECS 入门](../docs/zh-CN/ecs/index.md)
-- [Arch ECS 采用指南](../docs/zh-CN/ecs/arch.md)
-- [ECS 契约](../docs/zh-CN/abstractions/ecs-arch-abstractions.md)
+Godot 等具有线程约束的宿主应显式提供 `AddArch(..., hostContext: SynchronizationContext.Current)`，并用异步 Architecture 启动／停止。该路径把 World、系统和 runtime 的激活、初始化及业务停止派发回拥有上下文，避免前置异步组件导致线程切换；普通同步宿主省略此参数。最终资源释放仍由对象拥有者负责，持有原生对象的系统应在自己的释放边界进行宿主调度。

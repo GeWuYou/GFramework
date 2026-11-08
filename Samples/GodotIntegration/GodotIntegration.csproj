@@ -23,6 +23,7 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\GFramework.Godot\GFramework.Godot.csproj"/>
+        <ProjectReference Include="..\..\GFramework.Ecs.Arch\GFramework.Ecs.Arch.csproj"/>
         <ProjectReference Include="..\..\GFramework.Game.Abstractions\GFramework.Game.Abstractions.csproj"/>
         <ProjectReference Include="..\..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj"/>
         <ProjectReference Include="..\..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all"/>

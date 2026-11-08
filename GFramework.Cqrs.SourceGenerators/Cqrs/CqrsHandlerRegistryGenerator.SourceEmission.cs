@@ -686,7 +686,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
         string indent)
     {
         builder.Append(indent);
-        builder.Append("logger.Debug(\"Registered CQRS handler ");
+        builder.Append("global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, \"Registered CQRS handler ");
         builder.Append(EscapeStringLiteral(implementationLogName));
         builder.Append(" as ");
         builder.Append(EscapeStringLiteral(handlerInterfaceLogName));

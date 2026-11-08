@@ -72,7 +72,7 @@ public sealed class ApplicationArchitecture : Architecture
 
 ## 管道与通知
 
-- `AddCqrsPipelineBehavior<TBehavior>()` 注册 request 管道；`AddCqrsStreamPipelineBehavior<TBehavior>()` 注册 stream 管道。
+- `AddCqrsPipelineBehavior<TBehavior>()` 注册 request 管道；Type 重载支持开放泛型。默认 Transient，可显式传入 Scoped 或 Singleton；`AddCqrsStreamPipelineBehavior<TBehavior>()` 注册 stream 管道，具有相同的 Type 重载和生命周期选择。
 - 注册的管道按登记顺序包裹处理器。内置 `LoggingBehavior`、`PerformanceBehavior` 服务 request；stream 行为由应用实现。
 - 通知分发解析全部 `INotificationHandler<T>`。没有处理器时成功完成。
 - 默认 `SequentialNotificationPublisher` 按解析顺序逐个调用，首个异常停止后续调用。
@@ -120,3 +120,5 @@ request/stream 的生成调用元数据可用于缓存分发绑定；通知继�
 - [CQRS 采用指南](../docs/zh-CN/core/cqrs.md)
 - [CQRS 契约包](../GFramework.Cqrs.Abstractions/README.md)
 - [生成处理器注册表](../docs/zh-CN/source-generators/cqrs-handler-registry-generator.md)
+
+完整开放泛型与 Scoped 依赖示例见 [CQRS 管道工程](../Samples/CqrsPipelineDemo/README.md)。

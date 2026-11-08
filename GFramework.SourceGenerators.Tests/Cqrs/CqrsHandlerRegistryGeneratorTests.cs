@@ -28,9 +28,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                     namespace Microsoft.Extensions.Logging
                                                                     {
-                                                                        public interface ILogger
+                                                                        public interface ILogger { }
+                                                                        public static class LoggerExtensions
                                                                         {
-                                                                            void Debug(string msg);
+                                                                            public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                         }
                                                                     }
 
@@ -112,14 +113,14 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                            services,
                                                                                            serviceType0_0,
                                                                                            implementationType0);
-                                                                                       logger.Debug("Registered CQRS handler TestApp.Container.HiddenHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.Container.HiddenRequest, string>.");
+                                                                                       global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.Container.HiddenHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.Container.HiddenRequest, string>.");
                                                                                    }
                                                                                }
                                                                                global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
                                                                                    services,
                                                                                    typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::TestApp.VisibleRequest, string>),
                                                                                    typeof(global::TestApp.VisibleHandler));
-                                                                               logger.Debug("Registered CQRS handler TestApp.VisibleHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.VisibleRequest, string>.");
+                                                                               global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.VisibleHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.VisibleRequest, string>.");
                                                                            }
                                                                        }
 
@@ -140,9 +141,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                               namespace Microsoft.Extensions.Logging
                                                                               {
-                                                                                  public interface ILogger
+                                                                                  public interface ILogger { }
+                                                                                  public static class LoggerExtensions
                                                                                   {
-                                                                                      void Debug(string msg);
+                                                                                      public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                                   }
                                                                               }
 
@@ -210,7 +212,7 @@ public class CqrsHandlerRegistryGeneratorTests
                         services,
                         typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::TestApp.VisibleRequest, string>),
                         implementationType0);
-                    logger.Debug("Registered CQRS handler TestApp.Container.HiddenHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.VisibleRequest, string>.");
+                    global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.Container.HiddenHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.VisibleRequest, string>.");
                 }
             }
         }
@@ -232,9 +234,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                             namespace Microsoft.Extensions.Logging
                                                             {
-                                                                public interface ILogger
+                                                                public interface ILogger { }
+                                                                public static class LoggerExtensions
                                                                 {
-                                                                    void Debug(string msg);
+                                                                    public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                 }
                                                             }
 
@@ -309,7 +312,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                    services,
                                                                                    serviceType0_0,
                                                                                    implementationType0);
-                                                                               logger.Debug("Registered CQRS handler TestApp.Container.HiddenHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.Container.HiddenRequest, TestApp.Container.HiddenResponse[]>.");
+                                                                               global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.Container.HiddenHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.Container.HiddenRequest, TestApp.Container.HiddenResponse[]>.");
                                                                            }
                                                                        }
                                                                    }
@@ -332,9 +335,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                       namespace Microsoft.Extensions.Logging
                                                                       {
-                                                                          public interface ILogger
+                                                                          public interface ILogger { }
+                                                                          public static class LoggerExtensions
                                                                           {
-                                                                              void Debug(string msg);
+                                                                              public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                           }
                                                                       }
 
@@ -393,9 +397,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                              namespace Microsoft.Extensions.Logging
                                                              {
-                                                                 public interface ILogger
+                                                                 public interface ILogger { }
+                                                                 public static class LoggerExtensions
                                                                  {
-                                                                     void Debug(string msg);
+                                                                     public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                  }
                                                              }
 
@@ -454,9 +459,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                namespace Microsoft.Extensions.Logging
                                                                {
-                                                                   public interface ILogger
+                                                                   public interface ILogger { }
+                                                                   public static class LoggerExtensions
                                                                    {
-                                                                       void Debug(string msg);
+                                                                       public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                    }
                                                                }
 
@@ -531,7 +537,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                      services,
                                                                                      serviceType0_0,
                                                                                      implementationType0);
-                                                                                 logger.Debug("Registered CQRS handler TestApp.Container.HiddenHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.Container.HiddenRequest, TestApp.Container.HiddenEnvelope<string>>.");
+                                                                                 global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.Container.HiddenHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.Container.HiddenRequest, TestApp.Container.HiddenEnvelope<string>>.");
                                                                              }
                                                                          }
                                                                      }
@@ -570,13 +576,13 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                           services,
                                                                                           serviceType0_0,
                                                                                           implementationType0);
-                                                                                      logger.Debug("Registered CQRS handler TestApp.Container.MixedHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.Container.HiddenRequest, TestApp.Container.HiddenResponse[]>.");
+                                                                                      global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.Container.MixedHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.Container.HiddenRequest, TestApp.Container.HiddenResponse[]>.");
                                                                                   }
                                                                                   global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
                                                                                       services,
                                                                                       typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::TestApp.VisibleRequest, string>),
                                                                                       implementationType0);
-                                                                                  logger.Debug("Registered CQRS handler TestApp.Container.MixedHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.VisibleRequest, string>.");
+                                                                                  global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.Container.MixedHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.VisibleRequest, string>.");
                                                                               }
                                                                           }
                                                                       }
@@ -614,13 +620,13 @@ public class CqrsHandlerRegistryGeneratorTests
                             services,
                             serviceType0_0,
                             implementationType0);
-                        logger.Debug("Registered CQRS handler TestApp.Container.HiddenMixedHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.Container.HiddenRequest, TestApp.Container.HiddenResponse[]>.");
+                        global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.Container.HiddenMixedHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.Container.HiddenRequest, TestApp.Container.HiddenResponse[]>.");
                     }
                     global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
                         services,
                         typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::TestApp.VisibleRequest, string>),
                         implementationType0);
-                    logger.Debug("Registered CQRS handler TestApp.Container.HiddenMixedHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.VisibleRequest, string>.");
+                    global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.Container.HiddenMixedHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.VisibleRequest, string>.");
                 }
             }
         }
@@ -658,13 +664,13 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                      services,
                                                                                      serviceType0_0,
                                                                                      implementationType0);
-                                                                                 logger.Debug("Registered CQRS handler TestApp.DerivedHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<Dep.VisibilityScope.ProtectedRequest, Dep.VisibilityScope.ProtectedResponse[]>.");
+                                                                                 global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.DerivedHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<Dep.VisibilityScope.ProtectedRequest, Dep.VisibilityScope.ProtectedResponse[]>.");
                                                                              }
                                                                              global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
                                                                                  services,
                                                                                  typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::Dep.VisibleRequest, string>),
                                                                                  implementationType0);
-                                                                             logger.Debug("Registered CQRS handler TestApp.DerivedHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<Dep.VisibleRequest, string>.");
+                                                                             global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.DerivedHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<Dep.VisibleRequest, string>.");
                                                                          }
                                                                      }
 
@@ -721,9 +727,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                   namespace Microsoft.Extensions.Logging
                                                                   {
-                                                                      public interface ILogger
+                                                                      public interface ILogger { }
+                                                                      public static class LoggerExtensions
                                                                       {
-                                                                          void Debug(string msg);
+                                                                          public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                       }
                                                                   }
 
@@ -793,17 +800,17 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                 services,
                                                                                 typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::TestApp.PingQuery, string>),
                                                                                 typeof(global::TestApp.AlphaQueryHandler));
-                                                                            logger.Debug("Registered CQRS handler TestApp.AlphaQueryHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.PingQuery, string>.");
+                                                                            global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.AlphaQueryHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.PingQuery, string>.");
                                                                             global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
                                                                                 services,
                                                                                 typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<global::TestApp.NumberStream, int>),
                                                                                 typeof(global::TestApp.StreamHandler));
-                                                                            logger.Debug("Registered CQRS handler TestApp.StreamHandler as GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<TestApp.NumberStream, int>.");
+                                                                            global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.StreamHandler as GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<TestApp.NumberStream, int>.");
                                                                             global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
                                                                                 services,
                                                                                 typeof(global::GFramework.Cqrs.Abstractions.Cqrs.INotificationHandler<global::TestApp.DomainEvent>),
                                                                                 typeof(global::TestApp.ZetaNotificationHandler));
-                                                                            logger.Debug("Registered CQRS handler TestApp.ZetaNotificationHandler as GFramework.Cqrs.Abstractions.Cqrs.INotificationHandler<TestApp.DomainEvent>.");
+                                                                            global::Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(logger, "Registered CQRS handler TestApp.ZetaNotificationHandler as GFramework.Cqrs.Abstractions.Cqrs.INotificationHandler<TestApp.DomainEvent>.");
                                                                         }
                                                                     }
 
@@ -825,9 +832,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                        namespace Microsoft.Extensions.Logging
                                                                        {
-                                                                           public interface ILogger
+                                                                           public interface ILogger { }
+                                                                           public static class LoggerExtensions
                                                                            {
-                                                                               void Debug(string msg);
+                                                                               public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                            }
                                                                        }
 
@@ -890,9 +898,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                      namespace Microsoft.Extensions.Logging
                                                                      {
-                                                                         public interface ILogger
+                                                                         public interface ILogger { }
+                                                                         public static class LoggerExtensions
                                                                          {
-                                                                             void Debug(string msg);
+                                                                             public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                          }
                                                                      }
 
@@ -957,9 +966,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                                      namespace Microsoft.Extensions.Logging
                                                                                      {
-                                                                                         public interface ILogger
+                                                                                         public interface ILogger { }
+                                                                                         public static class LoggerExtensions
                                                                                          {
-                                                                                             void Debug(string msg);
+                                                                                             public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                                          }
                                                                                      }
 
@@ -1060,9 +1070,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                               namespace Microsoft.Extensions.Logging
                                                               {
-                                                                  public interface ILogger
+                                                                  public interface ILogger { }
+                                                                  public static class LoggerExtensions
                                                                   {
-                                                                      void Debug(string msg);
+                                                                      public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                   }
                                                               }
 
@@ -1141,9 +1152,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                     namespace Microsoft.Extensions.Logging
                                                                     {
-                                                                        public interface ILogger
+                                                                        public interface ILogger { }
+                                                                        public static class LoggerExtensions
                                                                         {
-                                                                            void Debug(string msg);
+                                                                            public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                         }
                                                                     }
 
@@ -1210,9 +1222,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                         namespace Microsoft.Extensions.Logging
                                                                         {
-                                                                            public interface ILogger
+                                                                            public interface ILogger { }
+                                                                            public static class LoggerExtensions
                                                                             {
-                                                                                void Debug(string msg);
+                                                                                public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                             }
                                                                         }
 
@@ -1273,9 +1286,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                     namespace Microsoft.Extensions.Logging
                                                                     {
-                                                                        public interface ILogger
+                                                                        public interface ILogger { }
+                                                                        public static class LoggerExtensions
                                                                         {
-                                                                            void Debug(string msg);
+                                                                            public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                         }
                                                                     }
 
@@ -1338,9 +1352,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                   namespace Microsoft.Extensions.Logging
                                                                   {
-                                                                      public interface ILogger
+                                                                      public interface ILogger { }
+                                                                      public static class LoggerExtensions
                                                                       {
-                                                                          void Debug(string msg);
+                                                                          public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                       }
                                                                   }
 
@@ -1402,9 +1417,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                               namespace Microsoft.Extensions.Logging
                                                               {
-                                                                  public interface ILogger
+                                                                  public interface ILogger { }
+                                                                  public static class LoggerExtensions
                                                                   {
-                                                                      void Debug(string msg);
+                                                                      public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                   }
                                                               }
 
@@ -1460,9 +1476,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                namespace Microsoft.Extensions.Logging
                                                                {
-                                                                   public interface ILogger
+                                                                   public interface ILogger { }
+                                                                   public static class LoggerExtensions
                                                                    {
-                                                                       void Debug(string msg);
+                                                                       public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                    }
                                                                }
 
@@ -1541,9 +1558,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                      namespace Microsoft.Extensions.Logging
                                                                      {
-                                                                         public interface ILogger
+                                                                         public interface ILogger { }
+                                                                         public static class LoggerExtensions
                                                                          {
-                                                                             void Debug(string msg);
+                                                                             public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                          }
                                                                      }
 
@@ -1624,9 +1642,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                     namespace Microsoft.Extensions.Logging
                                                                     {
-                                                                        public interface ILogger
+                                                                        public interface ILogger { }
+                                                                        public static class LoggerExtensions
                                                                         {
-                                                                            void Debug(string msg);
+                                                                            public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                         }
                                                                     }
 
@@ -1711,9 +1730,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                         namespace Microsoft.Extensions.Logging
                                                         {
-                                                            public interface ILogger
+                                                            public interface ILogger { }
+                                                            public static class LoggerExtensions
                                                             {
-                                                                void Debug(string msg);
+                                                                public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                             }
                                                         }
 
@@ -1812,9 +1832,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                        namespace Microsoft.Extensions.Logging
                                                        {
-                                                           public interface ILogger
+                                                           public interface ILogger { }
+                                                           public static class LoggerExtensions
                                                            {
-                                                               void Debug(string msg);
+                                                               public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                            }
                                                        }
 
@@ -1918,9 +1939,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                            namespace Microsoft.Extensions.Logging
                                                                            {
-                                                                               public interface ILogger
+                                                                               public interface ILogger { }
+                                                                               public static class LoggerExtensions
                                                                                {
-                                                                                   void Debug(string msg);
+                                                                                   public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                                }
                                                                            }
 
@@ -2022,9 +2044,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                             namespace Microsoft.Extensions.Logging
                                                             {
-                                                                public interface ILogger
+                                                                public interface ILogger { }
+                                                                public static class LoggerExtensions
                                                                 {
-                                                                    void Debug(string msg);
+                                                                    public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                 }
                                                             }
 
@@ -2136,9 +2159,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                           namespace Microsoft.Extensions.Logging
                                                                           {
-                                                                              public interface ILogger
+                                                                              public interface ILogger { }
+                                                                              public static class LoggerExtensions
                                                                               {
-                                                                                  void Debug(string msg);
+                                                                                  public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                               }
                                                                           }
 
@@ -2241,9 +2265,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                            namespace Microsoft.Extensions.Logging
                                                            {
-                                                               public interface ILogger
+                                                               public interface ILogger { }
+                                                               public static class LoggerExtensions
                                                                {
-                                                                   void Debug(string msg);
+                                                                   public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                }
                                                            }
 
@@ -2357,9 +2382,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                                 namespace Microsoft.Extensions.Logging
                                                                                 {
-                                                                                    public interface ILogger
+                                                                                    public interface ILogger { }
+                                                                                    public static class LoggerExtensions
                                                                                     {
-                                                                                        void Debug(string msg);
+                                                                                        public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                                     }
                                                                                 }
 
@@ -2463,9 +2489,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                                namespace Microsoft.Extensions.Logging
                                                                                {
-                                                                                   public interface ILogger
+                                                                                   public interface ILogger { }
+                                                                                   public static class LoggerExtensions
                                                                                    {
-                                                                                       void Debug(string msg);
+                                                                                       public static void LogDebug(ILogger logger, string message, params object[] args) { }
                                                                                    }
                                                                                }
 

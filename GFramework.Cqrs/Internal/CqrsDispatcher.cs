@@ -12,7 +12,7 @@ namespace GFramework.Cqrs.Internal;
 /// <summary>
 ///     GFramework 自有 CQRS 运行时分发器。
 ///     该类型基于标准 <see cref="IServiceProvider" /> 解析请求/通知/流式处理器与 pipeline 行为，
-///     并在调用前为上下文感知对象注入宿主提供的架构上下文。
+///     处理器和行为始终通过构造函数接收依赖，不执行可变上下文注入。
 /// </summary>
 /// <param name="provider">
 ///     承载 handler、behavior 与 notification publisher 注册的标准服务提供者。
@@ -231,7 +231,9 @@ internal sealed class CqrsDispatcher(
     /// <returns>存在注册时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
     private static bool HasRegistration(IServiceProvider currentProvider, Type serviceType)
     {
-        if (currentProvider is IServiceProviderIsService isService)
+        var isService = currentProvider as IServiceProviderIsService
+                        ?? currentProvider.GetService<IServiceProviderIsService>();
+        if (isService is not null)
             return isService.IsService(serviceType);
 
         // 兜底路径仅面向未实现 IServiceProviderIsService 的自定义 provider；

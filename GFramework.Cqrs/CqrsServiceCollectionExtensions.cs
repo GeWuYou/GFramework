@@ -20,7 +20,7 @@ namespace GFramework.Cqrs;
 ///     <c>AddCqrsPipelineBehavior</c> / <c>AddCqrsStreamPipelineBehavior</c> /
 ///     <c>AddCqrsHandlersFromAssembly</c>。所有注册都发生在 provider 构建之前。</para>
 ///     <para>Architecture 用户可直接在 <c>ConfigureServices</c> 中使用这些扩展，
-///     或通过 <c>UseCqrsRuntime</c> 便捷入口安装 <see cref="CqrsRuntimeModule" />。</para>
+///     或通过显式配置模块安装 <see cref="CqrsRuntimeModule" />。</para>
 /// </remarks>
 public static class CqrsServiceCollectionExtensions
 {
@@ -137,41 +137,43 @@ public static class CqrsServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    ///     注册 CQRS 请求 pipeline 行为。
-    ///     同时支持开放泛型行为类型和已闭合的具体行为类型，
-    ///     以兼容通用行为和针对单一请求的专用行为两种注册方式。
-    /// </summary>
-    /// <typeparam name="TBehavior">行为类型，必须是引用类型。</typeparam>
-    /// <param name="services">目标服务集合。</param>
-    /// <returns>同一个 <paramref name="services" />，便于链式配置。</returns>
-    /// <exception cref="InvalidOperationException"><typeparamref name="TBehavior" /> 未实现 <c>IPipelineBehavior&lt;,&gt;</c>。</exception>
-    public static IServiceCollection AddCqrsPipelineBehavior<TBehavior>(this IServiceCollection services)
-        where TBehavior : class
-    {
-        ArgumentNullException.ThrowIfNull(services);
+    /// <summary>Registers a closed request behavior with an explicit DI lifetime.</summary>
+    /// <typeparam name="TBehavior">A concrete implementation of IPipelineBehavior.</typeparam>
+    /// <param name="services">The composition root.</param>
+    /// <param name="lifetime">Transient by default; scoped dependencies require a scoped runtime.</param>
+    /// <returns>The original collection.</returns>
+    public static IServiceCollection AddCqrsPipelineBehavior<TBehavior>(
+        this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Transient)
+        where TBehavior : class => services.AddCqrsPipelineBehavior(typeof(TBehavior), lifetime);
 
-        return AddCqrsPipelineBehavior<TBehavior>(services, typeof(IPipelineBehavior<,>), "IPipelineBehavior<,>");
-    }
+    /// <summary>Registers a closed or open generic request behavior before building the provider.</summary>
+    /// <param name="services">The composition root.</param>
+    /// <param name="behaviorType">A concrete behavior; open generic arguments must map in declaration order.</param>
+    /// <param name="lifetime">The DI lifetime; no scope is implicitly created.</param>
+    /// <returns>The original collection.</returns>
+    /// <exception cref="ArgumentException">The type, mapping or lifetime is invalid.</exception>
+    public static IServiceCollection AddCqrsPipelineBehavior(this IServiceCollection services,
+        Type behaviorType, ServiceLifetime lifetime = ServiceLifetime.Transient) =>
+        RegisterPipelineBehavior(services, behaviorType, typeof(IPipelineBehavior<,>), lifetime);
 
-    /// <summary>
-    ///     注册 CQRS 流式请求 pipeline 行为。
-    ///     同时支持开放泛型行为类型和已闭合的具体行为类型。
-    /// </summary>
-    /// <typeparam name="TBehavior">行为类型，必须是引用类型。</typeparam>
-    /// <param name="services">目标服务集合。</param>
-    /// <returns>同一个 <paramref name="services" />，便于链式配置。</returns>
-    /// <exception cref="InvalidOperationException"><typeparamref name="TBehavior" /> 未实现 <c>IStreamPipelineBehavior&lt;,&gt;</c>。</exception>
-    public static IServiceCollection AddCqrsStreamPipelineBehavior<TBehavior>(this IServiceCollection services)
-        where TBehavior : class
-    {
-        ArgumentNullException.ThrowIfNull(services);
+    /// <summary>Registers a closed stream behavior with an explicit DI lifetime.</summary>
+    /// <typeparam name="TBehavior">A concrete implementation of IStreamPipelineBehavior.</typeparam>
+    /// <param name="services">The composition root.</param>
+    /// <param name="lifetime">Transient by default; the caller scope must cover the complete enumeration.</param>
+    /// <returns>The original collection.</returns>
+    public static IServiceCollection AddCqrsStreamPipelineBehavior<TBehavior>(
+        this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Transient)
+        where TBehavior : class => services.AddCqrsStreamPipelineBehavior(typeof(TBehavior), lifetime);
 
-        return AddCqrsPipelineBehavior<TBehavior>(
-            services,
-            typeof(IStreamPipelineBehavior<,>),
-            "IStreamPipelineBehavior<,>");
-    }
+    /// <summary>Registers a closed or open generic stream behavior before building the provider.</summary>
+    /// <param name="services">The composition root.</param>
+    /// <param name="behaviorType">A concrete behavior; open generic arguments must map in declaration order.</param>
+    /// <param name="lifetime">The explicit DI lifetime.</param>
+    /// <returns>The original collection.</returns>
+    /// <exception cref="ArgumentException">The type, mapping or lifetime is invalid.</exception>
+    public static IServiceCollection AddCqrsStreamPipelineBehavior(this IServiceCollection services,
+        Type behaviorType, ServiceLifetime lifetime = ServiceLifetime.Transient) =>
+        RegisterPipelineBehavior(services, behaviorType, typeof(IStreamPipelineBehavior<,>), lifetime);
 
     /// <summary>
     ///     从指定程序集显式注册 CQRS 处理器。
@@ -217,40 +219,38 @@ public static class CqrsServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    ///     复用 request 与 stream 两条入口的开放泛型/封闭接口校验与注册逻辑。
-    /// </summary>
-    private static IServiceCollection AddCqrsPipelineBehavior<TBehavior>(
-        IServiceCollection services,
-        Type openGenericInterfaceType,
-        string interfaceTypeDisplayName)
-        where TBehavior : class
+    /// <summary>Validates the complete mapping before adding any descriptors to the collection.</summary>
+    private static IServiceCollection RegisterPipelineBehavior(IServiceCollection services, Type behaviorType,
+        Type contract, ServiceLifetime lifetime)
     {
-        var behaviorType = typeof(TBehavior);
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(behaviorType);
+        if (!Enum.IsDefined(lifetime))
+            throw new ArgumentOutOfRangeException(nameof(lifetime));
+        if (!behaviorType.IsClass || behaviorType.IsAbstract ||
+            (behaviorType.ContainsGenericParameters && !behaviorType.IsGenericTypeDefinition))
+            throw new ArgumentException("A concrete closed type or generic type definition is required.", nameof(behaviorType));
+
+        var mappings = behaviorType.GetInterfaces()
+            .Where(type => type.IsGenericType && type.GetGenericTypeDefinition() == contract).ToArray();
+        if (mappings.Length == 0)
+            throw new ArgumentException($"The behavior must implement {contract}.", nameof(behaviorType));
+
         if (behaviorType.IsGenericTypeDefinition)
         {
-            services.AddSingleton(openGenericInterfaceType, behaviorType);
-            return services;
+            // Standard DI closes implementation parameters in service argument order; reordered or fixed
+            // arguments would produce a different closed interface and must not be silently registered.
+            var arguments = behaviorType.GetGenericArguments();
+            if (arguments.Length != 2 || mappings.Length != 1 ||
+                !mappings[0].GetGenericArguments().SequenceEqual(arguments))
+                throw new ArgumentException("Open behaviors must map both generic parameters in declaration order.", nameof(behaviorType));
+            services.Add(ServiceDescriptor.Describe(contract, behaviorType, lifetime));
         }
-
-        var pipelineInterfaces = behaviorType
-            .GetInterfaces()
-            .Where(type => type.IsGenericType &&
-                           type.GetGenericTypeDefinition() == openGenericInterfaceType)
-            .ToList();
-
-        if (pipelineInterfaces.Count == 0)
+        else
         {
-            throw new InvalidOperationException(
-                $"{behaviorType.Name} does not implement {interfaceTypeDisplayName}");
+            foreach (var mapping in mappings)
+                services.Add(ServiceDescriptor.Describe(mapping, behaviorType, lifetime));
         }
-
-        // 为每个已闭合的行为接口建立显式映射，支持针对特定请求/响应对的专用行为。
-        foreach (var pipelineInterface in pipelineInterfaces)
-        {
-            services.AddSingleton(pipelineInterface, behaviorType);
-        }
-
         return services;
     }
 

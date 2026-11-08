@@ -15,7 +15,7 @@ namespace GFramework.Cqrs;
 ///     dispatcher 会在首次创建 request binding 时，把该方法绑定成内部使用的强类型委托。
 /// </param>
 /// <remarks>
-///     dispatcher 会继续自行构造 pipeline behavior 服务类型并负责上下文注入；
+///     dispatcher 会继续自行构造 pipeline behavior 服务类型并按当前 provider 解析行为与处理器；
 ///     该描述符只前移请求处理器服务类型与直接调用方法元数据。
 /// </remarks>
 public sealed class CqrsRequestInvokerDescriptor(
