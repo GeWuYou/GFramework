@@ -1,0 +1,18 @@
+<!--
+  Copyright (c) 2025-2026 GeWuYou
+  SPDX-License-Identifier: Apache-2.0
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <PackageId>GeWuYou.$(AssemblyName)</PackageId>
+        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <EnableGFrameworkPackageTransitiveGlobalUsings>true</EnableGFrameworkPackageTransitiveGlobalUsings>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../GFramework.Game/GFramework.Game.csproj"/>
+        <PackageReference Include="Lib.Harmony" Version="2.4.3"/>
+    </ItemGroup>
+</Project>

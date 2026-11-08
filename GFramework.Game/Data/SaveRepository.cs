@@ -1,350 +1,206 @@
-// Copyright (c) 2026 GeWuYou
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
 
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Storage;
 using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Abstractions.Storage;
-using GFramework.Game.Internal;
+using GFramework.Game.Content;
 using GFramework.Game.Storage;
 
 namespace GFramework.Game.Data;
 
 /// <summary>
-///     基于槽位的存档仓库实现
+/// Owns slot serialization and document-first save preparation. Schema conversion never requires the current
+/// game DTO to understand historical data. Preparation has no storage/world side effects; explicit commit backs
+/// up original bytes and atomically replaces them. One repository owns a slot set; gates are not inter-process locks.
 /// </summary>
-/// <typeparam name="TSaveData">存档数据类型</typeparam>
-public partial class SaveRepository<TSaveData> : ISaveRepository<TSaveData>
-    where TSaveData : class, IData, new()
+/// <typeparam name="TSaveData">Current-schema game DTO.</typeparam>
+public sealed partial class SaveRepository<TSaveData> : ISaveRepository<TSaveData> where TSaveData : class, IData, new()
 {
-    private readonly SaveConfiguration _config;
-    private readonly Dictionary<int, ISaveMigration<TSaveData>> _migrations = new();
-#if NET9_0_OR_GREATER
-    // net9.0 及以上目标使用专用 Lock，以满足分析器对专用同步原语的建议。
-    private readonly System.Threading.Lock _migrationsLock = new();
-#else
-    // net8.0 目标仍回退到 object 锁，以保持多目标编译兼容性。
-    private readonly object _migrationsLock = new();
-#endif
+    private readonly SaveConfiguration _configuration;
     private readonly IStorage _rootStorage;
-    // Slot-wide operations must stay serialized through inspection, backup, repair and atomic commit.
-    // The lifetime is one repository instance; this does not claim inter-process synchronization.
+    private readonly SaveRepositoryOptions<TSaveData> _options;
+    private readonly ISaveDocumentCodec _codec;
+    private readonly IReadOnlyDictionary<string, ModSavePolicy> _modPolicies;
     private readonly ConcurrentDictionary<int, SemaphoreSlim> _slotGates = new();
-    private readonly ContentSaveOptions<TSaveData>? _contentOptions;
-    private readonly Guid _reportOwner = Guid.NewGuid();
+    private readonly Guid _owner = Guid.NewGuid();
 
-    /// <summary>
-    ///     初始化存档仓库
-    /// </summary>
-    /// <param name="storage">存储实例</param>
-    /// <param name="config">存档配置</param>
-    public SaveRepository(IStorage storage, SaveConfiguration config)
+    /// <summary>Creates an explicitly configured document repository; storage must support lossless atomic snapshots.</summary>
+    /// <param name="storage">Independent game-owned storage with IStorageBackup support.</param>
+    /// <param name="configuration">Slot layout.</param>
+    /// <param name="options">Game identity, current schema and pure transformation policies.</param>
+    public SaveRepository(IStorage storage, SaveConfiguration configuration, SaveRepositoryOptions<TSaveData> options)
     {
         ArgumentNullException.ThrowIfNull(storage);
-        ArgumentNullException.ThrowIfNull(config);
-
-        _config = config;
-        _rootStorage = new ScopedStorage(storage, config.SaveRoot);
-    }
-
-    /// <summary>
-    /// Creates an opt-in content-aware repository. Lossless snapshot storage is required so incompatible
-    /// files can be inspected without migrating them and backed up before any approved repair.
-    /// </summary>
-    /// <param name="storage">Storage implementing the optional <see cref="IStorageBackup"/> capability.</param>
-    /// <param name="config">Slot layout.</param>
-    /// <param name="contentOptions">Game-owned reference, validation and recovery policies.</param>
-    public SaveRepository(IStorage storage, SaveConfiguration config, ContentSaveOptions<TSaveData> contentOptions)
-        : this(storage, config)
-    {
-        ArgumentNullException.ThrowIfNull(contentOptions);
-        ArgumentNullException.ThrowIfNull(contentOptions.CurrentCatalog, nameof(contentOptions));
-        ArgumentNullException.ThrowIfNull(contentOptions.EnumerateReferences, nameof(contentOptions));
-        if (!typeof(IContentAwareSaveData).IsAssignableFrom(typeof(TSaveData)))
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.GameId, nameof(options));
+        if (options.CurrentVersion < 1) throw new ArgumentOutOfRangeException(nameof(options));
+        if (storage is not IStorageBackup) throw new ArgumentException("Document saves require IStorageBackup.", nameof(storage));
+        _codec = options.Codec ?? throw new ArgumentException("A document codec is required.", nameof(options));
+        ArgumentNullException.ThrowIfNull(options.Migrations, nameof(options));
+        ArgumentNullException.ThrowIfNull(options.ModPolicies, nameof(options));
+        if (options.Content is not null) ArgumentNullException.ThrowIfNull(options.Content.CurrentCatalog, nameof(options));
+        _configuration = configuration;
+        _options = options;
+        _rootStorage = new ScopedStorage(storage, configuration.SaveRoot);
+        var policies = new Dictionary<string, ModSavePolicy>(StringComparer.Ordinal);
+        foreach (var policy in options.ModPolicies)
         {
-            throw new ArgumentException("Content-aware saves must implement IContentAwareSaveData.", nameof(contentOptions));
-        }
-        if (storage is not IStorageBackup)
-        {
-            throw new ArgumentException("Content-aware saves require lossless IStorageBackup support.", nameof(storage));
-        }
-        _contentOptions = contentOptions;
-    }
-
-    /// <summary>
-    ///     注册存档迁移器，使仓库在加载旧版本存档时自动执行升级。
-    /// </summary>
-    /// <param name="migration">要注册的存档迁移器。</param>
-    /// <returns>当前存档仓库实例，支持链式调用。</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="migration" /> 为 <see langword="null" />。</exception>
-    /// <exception cref="InvalidOperationException">
-    ///     <typeparamref name="TSaveData" /> 未实现 <see cref="IVersionedData" />，无法使用版本化迁移。
-    ///     或者同一个源版本已经注册过迁移器，导致迁移链配置存在歧义。
-    /// </exception>
-    /// <exception cref="ArgumentException">迁移器的目标版本不大于源版本。</exception>
-    /// <remarks>
-    ///     迁移注册表是可变共享状态。注册路径通过 <see cref="_migrationsLock" /> 串行化；
-    ///     加载路径会在同一把锁下复制一次快照，保证单次加载始终使用同一个迁移链视图。
-    /// </remarks>
-    public ISaveRepository<TSaveData> RegisterMigration(ISaveMigration<TSaveData> migration)
-    {
-        ArgumentNullException.ThrowIfNull(migration);
-        EnsureVersionedSaveType();
-
-        VersionedMigrationRunner.ValidateForwardOnlyRegistration(
-            typeof(TSaveData).Name,
-            "Save migration",
-            migration.FromVersion,
-            migration.ToVersion,
-            nameof(migration));
-
-        lock (_migrationsLock)
-        {
-            if (_migrations.ContainsKey(migration.FromVersion))
+            ArgumentNullException.ThrowIfNull(policy, nameof(options));
+            // Capture explicit paths as well as the collection: caller-owned lists cannot mutate a prepared policy.
+            var captured = new ModSavePolicy(policy.ModId, policy.CurrentVersion, policy.Migrations)
             {
-                throw new InvalidOperationException(
-                    $"Duplicate save migration registration for {typeof(TSaveData).Name} from version {migration.FromVersion}.");
-            }
-
-            _migrations.Add(migration.FromVersion, migration);
+                VersionPath = policy.VersionPath is null ? null : Array.AsReadOnly(policy.VersionPath.ToArray())
+            };
+            if (!policies.TryAdd(policy.ModId, captured)) throw new ArgumentException("Duplicate active mod save policy.", nameof(options));
         }
-
-        return this;
+        _modPolicies = policies;
     }
 
-    /// <summary>
-    ///     检查指定槽位是否存在存档
-    /// </summary>
-    /// <param name="slot">存档槽位编号</param>
-    /// <returns>如果存档存在返回true，否则返回false</returns>
-    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    /// <inheritdoc />
     public async Task<bool> ExistsAsync(int slot, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var storage = GetSlotStorage(slot);
-        return await storage.ExistsAsync(_config.SaveFileName).ConfigureAwait(false);
+        return await GetSlotStorage(slot).ExistsAsync(_configuration.SaveFileName).ConfigureAwait(false);
     }
 
-    /// <summary>
-    ///     加载指定槽位的存档
-    /// </summary>
-    /// <param name="slot">存档槽位编号</param>
-    /// <returns>存档数据对象，如果不存在则返回新实例</returns>
-    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    /// <inheritdoc />
     public async Task<TSaveData> LoadAsync(int slot, CancellationToken cancellationToken = default)
     {
-        var gate = GetSlotGate(slot);
-        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            var storage = GetSlotStorage(slot);
-            if (!await storage.ExistsAsync(_config.SaveFileName).ConfigureAwait(false))
-            {
-                var fresh = new TSaveData();
-                if (_contentOptions is not null)
-                {
-                    ((IContentAwareSaveData)fresh).Content = GetCurrentCatalog().Snapshot;
-                }
-                return fresh;
-            }
-
-            var loaded = await ReadForLoadAsync(slot, storage, cancellationToken).ConfigureAwait(false);
-            return await MigrateIfNeededAsync(slot, storage, loaded, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            gate.Release();
-        }
+        if (!await ExistsAsync(slot, cancellationToken).ConfigureAwait(false)) return new TSaveData();
+        var prepared = await PrepareLoadAsync(slot, cancellationToken).ConfigureAwait(false);
+        if (prepared.RequiresCommit) throw new SavePreparationRequiredException<TSaveData>(prepared);
+        return prepared.Data;
     }
 
-    /// <summary>
-    ///     保存存档到指定槽位
-    /// </summary>
-    /// <param name="slot">存档槽位编号</param>
-    /// <param name="data">要保存的存档数据</param>
-    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
-    public async Task SaveAsync(int slot, TSaveData data, CancellationToken cancellationToken = default)
+    /// <summary>Creates a new run's empty mod snapshot, independent of any existing slot or prior run.</summary>
+    /// <returns>A game-owned draft for a new session.</returns>
+    public ModSaveSession CreateModState() => new(_owner, new Dictionary<string, SaveDataBlock>(StringComparer.Ordinal), _modPolicies, _codec);
+
+    /// <inheritdoc />
+    public Task SaveAsync(int slot, TSaveData data, CancellationToken cancellationToken = default) =>
+        SaveCoreAsync(slot, data, null, cancellationToken);
+
+    /// <summary>Atomically writes game state and an explicitly captured mod draft together.</summary>
+    /// <param name="slot">Target slot.</param>
+    /// <param name="data">Current validated game DTO.</param>
+    /// <param name="modState">Complete run snapshot issued by this repository; loaded sessions retain their own unavailable mod blocks.</param>
+    /// <param name="cancellationToken">Cancels admission; accepted atomic writes are joined.</param>
+    /// <returns>Completion after the whole document is committed.</returns>
+    public Task SaveDocumentAsync(int slot, TSaveData data, ModSaveSession modState, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(modState);
+        if (modState.Owner != _owner) throw new ArgumentException("The mod draft belongs to another repository.", nameof(modState));
+        return SaveCoreAsync(slot, data, modState.Snapshot(), cancellationToken);
+    }
+
+    /// <summary>Writes one run snapshot, or preserves slot mod blocks only for the game-only convenience API.</summary>
+    private async Task SaveCoreAsync(int slot, TSaveData data, Dictionary<string, SaveDataBlock>? modState,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(data);
         var gate = GetSlotGate(slot);
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var slotPath = $"{_config.SaveSlotPrefix}{slot}";
-            if (!await _rootStorage.DirectoryExistsAsync(slotPath).ConfigureAwait(false))
-            {
-                await _rootStorage.CreateDirectoryAsync(slotPath).ConfigureAwait(false);
-            }
             var storage = GetSlotStorage(slot);
-            if (_contentOptions is not null)
+            var backups = (IStorageBackup)storage;
+            var document = new SaveDocument
             {
-                var catalog = GetCurrentCatalog();
-                ValidatePreparedSave(data, catalog);
-                await WriteWithContentAsync(storage, data, catalog.Snapshot, cancellationToken).ConfigureAwait(false);
-            }
-            else
+                GameId = _options.GameId,
+                Game = new SaveDataBlock { Version = _options.CurrentVersion, Data = _codec.SerializeData(data) },
+                Content = GetCurrentCatalog()?.Snapshot
+            };
+            if (modState is not null)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                await storage.WriteAsync(_config.SaveFileName, data).ConfigureAwait(false);
+                // A session owns one run's entire mod snapshot, including its unavailable owners. The target slot may
+                // contain another run, so merging any of its blocks would resurrect unrelated world progress.
+                document.Mods = modState.ToDictionary(static pair => pair.Key, static pair => pair.Value.Clone(), StringComparer.Ordinal);
             }
+            else if (await storage.ExistsAsync(_configuration.SaveFileName).ConfigureAwait(false))
+            {
+                // The game-only convenience API retains this slot's mod blocks. New runs use an explicit fresh session.
+                var previous = ReadDocument(await backups.ReadSnapshotAsync(_configuration.SaveFileName, cancellationToken).ConfigureAwait(false));
+                document.Mods = previous.Mods;
+            }
+            ValidateDocumentForCurrentGame(document);
+            var encoded = _codec.Encode(document);
+            cancellationToken.ThrowIfCancellationRequested();
+            await backups.WriteSnapshotAsync(_configuration.SaveFileName, encoded, cancellationToken).ConfigureAwait(false);
         }
-        finally
-        {
-            gate.Release();
-        }
+        finally { gate.Release(); }
     }
 
-    /// <summary>
-    ///     删除指定槽位的存档
-    /// </summary>
-    /// <param name="slot">存档槽位编号</param>
-    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    /// <inheritdoc />
     public async Task DeleteAsync(int slot, CancellationToken cancellationToken = default)
     {
         var gate = GetSlotGate(slot);
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            await GetSlotStorage(slot).DeleteAsync(_config.SaveFileName).ConfigureAwait(false);
-        }
-        finally
-        {
-            gate.Release();
-        }
+        try { await GetSlotStorage(slot).DeleteAsync(_configuration.SaveFileName).ConfigureAwait(false); }
+        finally { gate.Release(); }
     }
 
-    /// <summary>
-    ///     列出所有有效的存档槽位
-    /// </summary>
-    /// <returns>包含所有有效存档槽位编号的只读列表，按升序排列</returns>
-    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    /// <inheritdoc />
     public async Task<IReadOnlyList<int>> ListSlotsAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        // 列举所有槽位目录
         var directories = await _rootStorage.ListDirectoriesAsync().ConfigureAwait(false);
-
         var slots = new List<int>();
-
-        foreach (var dirName in directories)
+        foreach (var directory in directories)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            // 检查目录名是否符合槽位前缀
-            if (!dirName.StartsWith(_config.SaveSlotPrefix, StringComparison.Ordinal))
-                continue;
-
-            // 提取槽位编号
-            var slotStr = dirName[_config.SaveSlotPrefix.Length..];
-            if (!int.TryParse(slotStr, CultureInfo.InvariantCulture, out var slot))
-                continue;
-
-            // 直接检查存档文件是否存在，避免重复创建 ScopedStorage
-            var saveFilePath = $"{dirName}/{_config.SaveFileName}";
-            if (await _rootStorage.ExistsAsync(saveFilePath).ConfigureAwait(false))
-                slots.Add(slot);
+            if (directory.StartsWith(_configuration.SaveSlotPrefix, StringComparison.Ordinal) &&
+                int.TryParse(directory[_configuration.SaveSlotPrefix.Length..], NumberStyles.None, CultureInfo.InvariantCulture, out var slot) &&
+                await ExistsAsync(slot, cancellationToken).ConfigureAwait(false)) slots.Add(slot);
         }
-
-        return slots.OrderBy(x => x).ToList();
+        return slots.OrderBy(static slot => slot).ToArray();
     }
 
-    /// <summary>
-    ///     获取指定槽位的存储对象
-    /// </summary>
-    /// <param name="slot">存档槽位编号</param>
-    /// <returns>对应槽位的存储对象</returns>
+    /// <summary>Decodes outer metadata before any DTO or conversion callback can execute.</summary>
+    private SaveDocument ReadDocument(StorageSnapshot snapshot)
+    {
+        var document = _codec.Decode(snapshot);
+        if (!string.Equals(document.GameId, _options.GameId, StringComparison.Ordinal))
+            throw new InvalidOperationException("This save belongs to another game.");
+        if (document.Content is not null && _options.Content is null)
+            throw new InvalidOperationException("A content-aware document requires an explicit current content policy.");
+        return document;
+    }
+
+    /// <summary>Validates plain references first and current business data only after every document transformation.</summary>
+    private TSaveData ValidateDocumentForCurrentGame(SaveDocument document)
+    {
+        if (document.FormatVersion != 1 || !string.Equals(document.GameId, _options.GameId, StringComparison.Ordinal))
+            throw new InvalidOperationException("Recovery cannot change the envelope format or game identity.");
+        if (document.Game.Version != _options.CurrentVersion) throw new InvalidOperationException("Wrong current game schema.");
+        foreach (var policy in _modPolicies.Values)
+            if (document.Mods.TryGetValue(policy.ModId, out var block) && block.Version != policy.CurrentVersion)
+                throw new InvalidOperationException("Mod data must be prepared before saving: " + policy.ModId);
+        var catalog = GetCurrentCatalog();
+        if (catalog is not null)
+            foreach (var reference in EnumerateReferences(document))
+                if (!catalog.Contains(reference)) throw new InvalidOperationException("Prepared save references missing content: " + reference.Id);
+        var data = _codec.DeserializeData<TSaveData>(document.Game.Data);
+        _options.Validate?.Invoke(data);
+        return data;
+    }
+
+    /// <summary>Gets the immutable startup catalog; changing the session invalidates preparation.</summary>
+    private ContentCatalog? GetCurrentCatalog() => _options.Content is null ? null :
+        _options.Content.CurrentCatalog() ?? throw new InvalidOperationException("The current content catalog is unavailable.");
+
+    /// <summary>Creates a slot scope after rejecting negative or malformed layouts at the storage boundary.</summary>
     private IStorage GetSlotStorage(int slot)
     {
-        return new ScopedStorage(_rootStorage, $"{_config.SaveSlotPrefix}{slot}");
+        if (slot < 0) throw new ArgumentOutOfRangeException(nameof(slot));
+        return new ScopedStorage(_rootStorage, _configuration.SaveSlotPrefix + slot.ToString(CultureInfo.InvariantCulture));
     }
 
-    /// <summary>
-    ///     在加载旧版本存档时按注册顺序执行迁移，并在成功后自动回写升级结果。
-    /// </summary>
-    /// <param name="slot">当前加载的存档槽位。</param>
-    /// <param name="storage">对应槽位的存储对象。</param>
-    /// <param name="data">原始加载出来的存档数据。</param>
-    /// <param name="cancellationToken">Cancels before the migrated snapshot is committed.</param>
-    /// <returns>迁移后的最新存档；如果无需迁移则返回原始对象。</returns>
-    /// <exception cref="InvalidOperationException">
-    ///     当前运行时缺少必要的迁移链、读取到更高版本的存档，或迁移器返回了非法版本。
-    /// </exception>
-    private async Task<TSaveData> MigrateIfNeededAsync(int slot, IStorage storage, TSaveData data,
-        CancellationToken cancellationToken)
+    /// <summary>Gets the repository-lifetime operation gate for one slot.</summary>
+    private SemaphoreSlim GetSlotGate(int slot)
     {
-        var beforeVersion = data is IVersionedData versioned ? versioned.Version : (int?)null;
-        var migrated = MigrateInMemory(slot, data);
-        if (_contentOptions is not null)
-        {
-            ValidatePreparedSave(migrated, GetCurrentCatalog());
-        }
-        var afterVersion = migrated is IVersionedData latest ? latest.Version : (int?)null;
-        if (beforeVersion != afterVersion)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (_contentOptions is not null)
-            {
-                await WriteWithContentAsync(storage, migrated, GetCurrentCatalog().Snapshot, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                await storage.WriteAsync(_config.SaveFileName, migrated).ConfigureAwait(false);
-            }
-        }
-        return migrated;
+        if (slot < 0) throw new ArgumentOutOfRangeException(nameof(slot));
+        return _slotGates.GetOrAdd(slot, static _ => new SemaphoreSlim(1, 1));
     }
-
-    /// <summary>Prepares a migration without writes, allowing content recovery to commit only after full validation.</summary>
-    private TSaveData MigrateInMemory(int slot, TSaveData data)
-    {
-        if (data is not IVersionedData || new TSaveData() is not IVersionedData template)
-        {
-            return data;
-        }
-        Dictionary<int, ISaveMigration<TSaveData>> migrations;
-        lock (_migrationsLock)
-        {
-            migrations = new Dictionary<int, ISaveMigration<TSaveData>>(_migrations);
-        }
-        return VersionedMigrationRunner.MigrateToTargetVersion(
-            data, template.Version,
-            static value => ((IVersionedData)value).Version,
-            version => migrations.TryGetValue(version, out var migration) ? migration : null,
-            static migration => migration.ToVersion,
-            static (migration, current) => migration.Migrate(current),
-            $"{typeof(TSaveData).Name} in slot {slot}", "save migration");
-    }
-
-    /// <summary>Gets a repository-lifetime slot gate; unrelated slots may perform independent operations.</summary>
-    private SemaphoreSlim GetSlotGate(int slot) => _slotGates.GetOrAdd(slot, static _ => new SemaphoreSlim(1, 1));
-
-    /// <summary>
-    ///     验证当前存档类型支持基于版本号的迁移流程。
-    /// </summary>
-    /// <exception cref="InvalidOperationException">
-    ///     <typeparamref name="TSaveData" /> 未实现 <see cref="IVersionedData" />。
-    /// </exception>
-    private static void EnsureVersionedSaveType()
-    {
-        if (!typeof(IVersionedData).IsAssignableFrom(typeof(TSaveData)))
-        {
-            throw new InvalidOperationException(
-                $"{typeof(TSaveData).Name} must implement {nameof(IVersionedData)} to use save migrations.");
-        }
-    }
-
 }

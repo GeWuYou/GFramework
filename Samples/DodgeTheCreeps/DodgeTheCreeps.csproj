@@ -15,5 +15,7 @@
     <ProjectReference Include="../../GFramework.Godot/GFramework.Godot.csproj"/>
     <ProjectReference Include="../../GFramework.Game.Abstractions/GFramework.Game.Abstractions.csproj"/>
     <ProjectReference Include="../../GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj"/>
+    <ProjectReference Include="../../GFramework.Game.Harmony/GFramework.Game.Harmony.csproj"/>
+    <ProjectReference Include="../DodgeTheCreeps.ModApi/DodgeTheCreeps.ModApi.csproj"/>
   </ItemGroup>
 </Project>

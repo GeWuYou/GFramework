@@ -76,12 +76,15 @@ internal sealed partial class DodgeMenus
             };
             _app.Text.Bind(toggle, () =>
             {
-                toggle.Text = (enabled ? "[x] " : "[ ] ") + _app.Text.PackageName(id, pack.Manifest.Name);
+                toggle.Text = (enabled ? "[x] " : "[ ] ") + _app.Text.PackageName(id, pack.Manifest.Name) +
+                    (pack.Manifest.Code is null ? string.Empty : _app.Text.Get("package_code"));
                 toggle.TooltipText = _app.Text.PackageName(id, pack.Manifest.Name);
             });
             toggle.AddThemeFontSizeOverride("font_size", 15);
             row.AddChild(toggle);
             ConnectContentAction(toggle, context, () => _app.ToggleContentAsync(id));
+            if (enabled && pack.Manifest.Code is not null && !_app.Content.IsCodeApproved(new ContentPackStamp(id, pack.Manifest.Version, pack.Fingerprint)))
+                Button(column, "Approve_" + id, "approve_code", () => ReopenContentAsync(context, () => _app.ReapproveCodeAsync(id)));
             if (!string.Equals(id, "base", StringComparison.Ordinal))
             {
                 ContentOrderButton(row, "Up_" + id, "↑", context, () => _app.MoveContentAsync(id, -1));
@@ -149,6 +152,17 @@ internal sealed partial class DodgeMenus
         column.AddChild(scroll);
         Button(column, "RecoveryCancel", "cancel", () => context.CompleteAsync(false));
         Button(column, "RecoveryProceed", "back_up_continue", () => context.CompleteAsync(true));
+        return root;
+    }
+
+    /// <summary>Uses action labels that describe code execution rather than unrelated gameplay actions.</summary>
+    private Control CodePermission(Func<string> message, UiDialogContext<bool> context)
+    {
+        var root = Page("CodePermission", out var column, false);
+        Title(column, "code_permission_title", 26);
+        Caption(column, message);
+        Button(column, "DenyCode", "cancel", () => context.CompleteAsync(false));
+        Button(column, "AllowCode", "approve_code", () => context.CompleteAsync(true));
         return root;
     }
 }

@@ -161,7 +161,7 @@ public partial class DemoRoot
             string.Equals(binding.Code, expected, StringComparison.Ordinal)), "fresh process did not restore the P binding");
         await ClickAsync("Continue slot 1").ConfigureAwait(true);
         Require(Scenes.Current?.Original is DemoWorld, "fresh process could not continue the saved slot");
-        Require(Save.Version == 1 && float.IsFinite(Save.X) && Save.X > 480,
+        Require(float.IsFinite(Save.X) && Save.X > 480,
             "fresh process loaded default or invalid gameplay state");
         Require(!GetTree().Paused && Ui.Snapshot.Views.Count(view => view.Options.Kind == UiRouteKind.Window) == 0, "continued world inherited a stale pause owner");
     }

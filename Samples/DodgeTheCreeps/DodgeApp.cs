@@ -91,6 +91,7 @@ public partial class DodgeApp : Node, ISceneRoot
         AddChild(root);
         var context = SynchronizationContext.Current ?? throw new InvalidOperationException("Godot synchronization context is unavailable.");
         var dispatcher = new SynchronizationContextGameDispatcher(context);
+        _gameDispatcher = dispatcher;
         _pause.RegisterHandler(new GodotPauseHandler(GetTree()));
         _scenes = new SceneRouter(new WorldFactory(this), this, dispatcher);
         var registry = new UiRegistry();
@@ -112,11 +113,11 @@ public partial class DodgeApp : Node, ISceneRoot
         {
             // #region tutorial-load-data
             _storage = new GodotFileStorage(new JsonSerializer());
-            _content = new DodgeContent(_storage, _dataRoot);
+            _content = new DodgeContent(_storage, _dataRoot, CreateModOptions());
             await _content.InitializeAsync(_lifetime.Token).ConfigureAwait(true);
             _saves = new SaveRepository<DodgeProgress>(_storage, new SaveConfiguration { SaveRoot = _dataRoot + "/saves" },
-                CreateContentSaveOptions());
-            _saves.RegisterMigration(new DodgeProgressMigration());
+                CreateSaveOptions());
+            _modState = _saves.CreateModState();
             if (await _storage.ExistsAsync(_dataRoot + "/preferences.json").ConfigureAwait(true))
                 Preferences = await _storage.ReadAsync<DodgePreferences>(_dataRoot + "/preferences.json").ConfigureAwait(true);
             ApplyPreferences();
@@ -170,6 +171,7 @@ public partial class DodgeApp : Node, ISceneRoot
         if (restore && _saveRetired) throw new InvalidOperationException("This run has ended and cannot be continued.");
         var saved = restore ? await LoadContentSaveAsync().ConfigureAwait(true) : null;
         if (restore && saved is null) return;
+        if (!restore) _modState = _saves.CreateModState();
         _arenaId = saved?.ArenaId ?? _content.ArenaId;
         _world?.StopRun();
         await _ui.ClearAsync(_lifetime.Token).ConfigureAwait(true);
@@ -186,7 +188,7 @@ public partial class DodgeApp : Node, ISceneRoot
     internal async Task SaveGameAsync()
     {
         if (_world is null) return;
-        await _saves.SaveAsync(1, _world.CaptureProgress(), _lifetime.Token).ConfigureAwait(true);
+        await _saves.SaveDocumentAsync(1, _world.CaptureProgress(), _modState, _lifetime.Token).ConfigureAwait(true);
         _saveRetired = false;
         _dirty = false;
         _menus.SetStatus(() => Text.Get("run_saved"));
@@ -316,6 +318,7 @@ public partial class DodgeApp : Node, ISceneRoot
             await CaptureStopAsync(() => Task.WhenAll(_actions.ToArray()), errors).ConfigureAwait(true);
             await CaptureStopAsync(() => _startup, errors).ConfigureAwait(true);
             await CaptureStopAsync(_scenes.StopAsync, errors).ConfigureAwait(true);
+            if (_content is not null) await CaptureStopAsync(_content.StopModsAsync, errors).ConfigureAwait(true);
             await CaptureStopAsync(() => _pause.DisposeAsync().AsTask(), errors).ConfigureAwait(true);
             // QueueFree is frame-deferred. Let owned views leave the tree before disposing their shared theme.
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -367,6 +370,7 @@ public partial class DodgeApp : Node, ISceneRoot
             if (!string.Equals(sceneKey, "play", StringComparison.Ordinal)) throw new InvalidOperationException("Unknown scene: " + sceneKey);
             app._world = new DodgeWorld { Name = "World" };
             app._world.ConfigureContent(app._content, app._content.Catalog.GetTable<DodgeArenaDefinition>("arenas").Get(new ContentId(app._arenaId)));
+            app._world.ConfigureScoring(app.ModifyScore);
             app._world.ScoreChanged += (_, score) => { app._menus.SetScore(score.Score); app._dirty = true; };
             app._world.RunEnded += (_, _) => app.RunAction(app.GameOverAsync);
             return SceneBehaviorFactory.Create(app._world, sceneKey);

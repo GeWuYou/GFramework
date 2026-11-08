@@ -106,18 +106,24 @@ public partial class SystemBootstrapper : IController
 
 ### 服务排序
 
+项目自定义的启动检查可以使用普通服务契约和优先级：
+
 ```csharp
+public interface IStartupCheck
+{
+}
+
 [Priority(PriorityGroup.High)]
-public partial class PremiumSaveMigration : ISaveMigration
+public partial class PremiumStartupCheck : IStartupCheck
 {
 }
 
 [Priority(PriorityGroup.Low)]
-public partial class MetricsSaveMigration : ISaveMigration
+public partial class MetricsStartupCheck : IStartupCheck
 {
 }
 
-var migrations = architecture.Context.GetServicesByPriority<ISaveMigration>();
+var checks = architecture.Context.GetServicesByPriority<IStartupCheck>();
 ```
 
 ## `PriorityGroup` 的角色

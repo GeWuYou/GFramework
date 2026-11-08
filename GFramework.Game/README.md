@@ -1,12 +1,13 @@
 # GFramework.Game
 
-游戏通用运行时，提供强类型 UI、场景导航、输入绑定、配置、设置、存档、序列化和存储。采用构造注入，可直接创建或使用标准 DI；Architecture 为可选模块编排。
+游戏通用运行时，提供强类型 UI、场景导航、输入绑定、配置、设置、文档存档、代码模组、序列化和存储。采用构造注入，可直接创建或使用标准 DI；Architecture 为可选模块编排。
 
 ## 包与相邻模块
 
 - 依赖 `Core` 与 `Game.Abstractions`，使用标准 DI、日志和 Core 基础能力。
 - `Game.Abstractions` 定义业务和宿主契约，业务程序集可只引用契约。
 - `Godot` 提供原生 UI root、视图租约、场景适配、输入、暂停和存储。
+- `Game.Harmony` 提供可选的方法补丁集成，Game 本身不引用 Harmony。
 - `Game.SourceGenerators` 按 schema 生成配置类型；普通 UI 和场景采用无需生成器。
 
 ## 子系统
@@ -19,7 +20,8 @@
 | `Input/` | `InputBindingStore`、`UiInputDispatcher` | 绑定快照和异步 UI 动作分发 |
 | `Config/` | `GameConfigBootstrap`、`YamlConfigLoader`、`ConfigRegistry` | 只读内容配置与热重载 |
 | `Content/` | `ContentPackDiscovery`、`ContentPackResolver`、`ContentCatalogLoader` | DLC／资料模组发现、依赖排序、字段补丁与来源追踪 |
-| `Data/` | `SaveRepository<T>`、`DataRepository`、`UnifiedSettingsDataRepository` | 槽位存档与业务持久化 |
+| `Data/` | `SaveRepository<T>`、`SaveDocument`、`SaveMigrationGraph`、`ModSaveSession` | 文档优先的双向迁移、内容修复、模组状态与槽位持久化 |
+| `Modding/` | `GameModHost`、`GameModHostOptions` | 显式授权的 DLL 加载、共享契约和生命周期 |
 | `Setting/` | `SettingsModel<TRepository>`、`SettingsSystem` | 数据迁移、应用和保存 |
 | `Serializer/`、`Storage/` | `JsonSerializer`、`FileStorage`、`ScopedStorage` | 序列化、原子文件写入和键空间 |
 
@@ -43,7 +45,7 @@ services.AddGameScenes(sceneFactory, sceneRoot, dispatcher);
 
 所有异步调用遵循 `Async` 后缀和末尾 `CancellationToken`。UI 与 Scene 的操作结果区分应用、拒绝和无变化，异常向调用方传播。停止先关闭接纳、等待在途工作，再完成清理；宿主必须保持原生 root 和调度器存活。
 
-设置加载先准备完整迁移结果，再更新现有数据；失败保留当前数据并报告错误。保存失败向调用方传播，已接纳的底层写入等待到完成。现有数据文件和存档布局继续使用。
+设置加载先准备完整迁移结果，再更新现有数据；失败保留当前数据并报告错误。保存失败向调用方传播，已接纳的底层写入等待到完成。数据仓库与设置沿用各自格式；槽位存档统一使用 `SaveDocument`，版本和内容元数据不再依赖业务 DTO。`PrepareLoadAsync` 准备独立候选结果，`CommitPreparedAsync` 备份并提交，普通读取不自动回写。
 
 ## 文档和可运行工程
 
@@ -54,4 +56,5 @@ services.AddGameScenes(sceneFactory, sceneRoot, dispatcher);
 - [数据与存档](../docs/zh-CN/game/data.md)
 - [内容配置](../docs/zh-CN/game/config-system.md)
 - [DLC 与资料型模组](../docs/zh-CN/game/content-packs.md)
+- [代码模组与 Harmony](../docs/zh-CN/game/code-mods.md)
 - [官方素材小游戏](../Samples/DodgeTheCreeps/README.md)

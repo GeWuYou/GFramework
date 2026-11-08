@@ -70,11 +70,15 @@ using var storage = new GodotFileStorage(new JsonSerializer());
 var saves = new SaveRepository<GameSaveData>(storage, new SaveConfiguration
 {
     SaveRoot = "user://saves"
+}, new SaveRepositoryOptions<GameSaveData>
+{
+    GameId = "my-game",
+    CurrentVersion = 1
 });
 await saves.SaveAsync(1, progress, cancellationToken);
 ```
 
-`GameSaveData` 是实现 `IData` 的项目 DTO，`progress` 为当前快照。存储和仓库可直接构造或登记为标准服务。宿主保存实例，在启动和业务流程中复用，并在所有保存任务完成后释放存储。
+`GameSaveData` 是实现 `IData` 的项目 DTO，`progress` 为当前快照。结构版本和游戏标识显式配置，存档以独立 `SaveDocument` 保存。需要版本转换或缺失内容修复时，先准备结果，再确认并提交，详见[数据与存档](../game/data.md)。存储和仓库可直接构造或登记为标准服务。宿主保存实例，在启动和业务流程中复用，并在所有保存任务完成后释放存储。
 
 写入使用同目录临时文件替换；可变数据使用 `user://`。底层写入被接纳后，调用方等待到完成，再开始宿主清理。
 

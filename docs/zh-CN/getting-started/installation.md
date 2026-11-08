@@ -19,7 +19,8 @@ GFramework 采用模块化设计，不同包提供不同的功能：
 | `GeWuYou.GFramework.Cqrs` | CQRS runtime | request / notification / stream 分发与处理器注册，按需安装 |
 | `GeWuYou.GFramework.Cqrs.Abstractions` | CQRS 抽象契约 | 共享 request、handler 与 pipeline 契约 |
 | `GeWuYou.GFramework.Game` | Game 运行时 | 配置、存储、设置、Scene、UI 等游戏层能力 |
-| `GeWuYou.GFramework.Game.Abstractions` | Game 抽象契约 | 共享 `IConfigRegistry`、`ISceneRouter`、`IUiService` 等接口 |
+| `GeWuYou.GFramework.Game.Abstractions` | Game 抽象契约 | 共享 `IConfigRegistry`、`ISceneRouter`、`IUiService`、`IGameMod` 等接口 |
+| `GeWuYou.GFramework.Game.Harmony` | 可选方法补丁 | 桌面代码模组的 Harmony 补丁登记、诊断及 owner 撤销 |
 | `GeWuYou.GFramework.Godot` | Godot 集成 | Godot 项目的运行时接线、节点扩展与宿主适配 |
 | `GeWuYou.GFramework.Ecs.Arch` | Arch ECS 运行时 | 需要 `UseArch(...)`、默认 `World` 注册与系统桥接 |
 | `GeWuYou.GFramework.Ecs.Arch.Abstractions` | Arch ECS 抽象契约 | 只共享 ECS 模块接口、配置对象与宿主循环边界 |
@@ -34,6 +35,8 @@ GFramework 采用模块化设计，不同包提供不同的功能：
 
 - `GFramework.Core`
 - `GFramework.Game`
+
+Game、Godot 和聚合元包均不自动安装 Harmony；需要方法补丁时显式添加 `GeWuYou.GFramework.Game.Harmony`。DLL 模组通过公开 API 扩展游戏时，只需要 Game 的模组宿主，接入见[代码模组与 Harmony](../game/code-mods.md)。
 
 Core 不依赖 CQRS。需要 request / notification / stream 消息模型的项目显式安装 `GeWuYou.GFramework.Cqrs`，并在架构中安装 runtime 模块（见 [CQRS 运行时](../core/cqrs.md)）。CQRS-only 应用也可以只使用 `GeWuYou.GFramework.Cqrs` 在标准 DI 上运行，不引入 Architecture。
 

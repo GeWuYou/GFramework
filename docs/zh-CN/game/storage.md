@@ -180,7 +180,7 @@ await storage.WriteAsync("user://saves/player.json", new Dictionary<string, int>
 - `UnifiedSettingsDataRepository`
   - 把多个设置 section 聚合到同一个统一文件里保存
 - `SaveRepository<TSaveData>`
-  - 负责存档槽位、文件名和迁移链
+  - 负责槽位文档、版本转换的独立准备、原始备份与显式提交
 
 也就是说：
 

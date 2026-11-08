@@ -33,3 +33,7 @@ Noto Sans SC 可变字体来自 Google Fonts 官方仓库，固定修订为 `86a
 - [字体原文件](https://raw.githubusercontent.com/google/fonts/86aced91de05cd4f96a06838124cca45be337b2b/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf)。
 - SHA-256：`a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da`。
 - 分发游戏时随附[字体许可证](fonts/NotoSansSC-OFL.txt)。
+
+## 代码模组补丁运行时
+
+示例通过可选的 GFramework Harmony 适配包使用 Lib.Harmony 2.4.3（Andreas Pardeike，MIT）。导出时包含其[许可证原文](third-party-licenses/Harmony-MIT.txt)。框架库的依赖关系以 NuGet 包元数据为准。

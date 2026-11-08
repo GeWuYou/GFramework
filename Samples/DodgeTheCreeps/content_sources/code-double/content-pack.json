@@ -1,0 +1,26 @@
+{
+  "formatVersion": 2,
+  "id": "code-double",
+  "name": "Double Score (Harmony)",
+  "version": "1.0.0",
+  "gameId": "dodge-the-creeps",
+  "dependencies": [
+    {
+      "id": "base",
+      "versions": {
+        "minimumInclusive": "1.0.0"
+      }
+    }
+  ],
+  "code": {
+    "assemblyPath": "DodgeTheCreeps.HarmonyMod.dll",
+    "entryType": "DodgeTheCreeps.HarmonyMod.DoubleScoreMod",
+    "apiVersions": {
+      "minimumInclusive": "1.0.0",
+      "maximumExclusive": "2.0.0"
+    },
+    "requiredCapabilities": [
+      "harmony"
+    ]
+  }
+}

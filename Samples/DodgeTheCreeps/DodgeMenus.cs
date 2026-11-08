@@ -64,6 +64,7 @@ internal sealed partial class DodgeMenus : IDisposable
         registry.RegisterGodotDialog(DodgeRoutes.Confirm, (message, context) => Confirm(message, context));
         registry.RegisterGodot(DodgeRoutes.Content, (_, context) => ContentManager(context));
         registry.RegisterGodotDialog(DodgeRoutes.Recover, (message, context) => Recover(message, context));
+        registry.RegisterGodotDialog(DodgeRoutes.CodePermission, (message, context) => CodePermission(message, context));
         registry.RegisterGodotDialog(DodgeRoutes.SettingsUnsaved, (_, context) => SettingsUnsaved(context));
     }
     // #endregion tutorial-register

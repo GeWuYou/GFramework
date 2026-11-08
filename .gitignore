@@ -25,3 +25,5 @@ BenchmarkDotNet.Artifacts/
 # Local task evidence and retired private notes
 .local/
 ai-plan/
+# Independently built example mods are staged for Godot exports, not committed as binaries.
+Samples/DodgeTheCreeps/content_sources/code-*/*.source

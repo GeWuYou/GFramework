@@ -18,6 +18,12 @@ class ImpactTests(unittest.TestCase):
         snapshot = Snapshot(ROOT, "HEAD")
         cls.project_files = {p: snapshot.text(p) for p in snapshot.projects}
         cls.project_files["GFramework.sln"] = snapshot.text("GFramework.sln")
+        # Own the cross-module edge in this isolated fixture. Production test wiring can
+        # evolve without removing coverage for transitive and deleted-reference selection.
+        consumer = "GFramework.Game.Tests/GFramework.Game.Tests.csproj"
+        if "GFramework.Godot.csproj" not in cls.project_files[consumer]:
+            cls.project_files[consumer] = cls.project_files[consumer].replace("</Project>",
+                '<ItemGroup>\n<ProjectReference Include="../GFramework.Godot/GFramework.Godot.csproj"/>\n</ItemGroup>\n</Project>')
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -74,7 +80,7 @@ class ImpactTests(unittest.TestCase):
         self.assertEqual(plan["package_ids"], ["GeWuYou.GFramework.Ecs.Arch"])
         self.assertFalse(plan["tool"] or plan["docs"] or plan["full"])
 
-    def test_godot_includes_real_cross_module_test_consumer(self):
+    def test_godot_includes_declared_cross_module_test_consumer(self):
         plan = self.change("GFramework.Godot/Example.cs")
         self.assertEqual(set(plan["test_projects"]), {
             "GFramework.Game.Tests/GFramework.Game.Tests.csproj", "GFramework.Godot.Tests/GFramework.Godot.Tests.csproj"})

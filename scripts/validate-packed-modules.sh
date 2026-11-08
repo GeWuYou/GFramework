@@ -31,6 +31,7 @@ expected_packages=(
   "GeWuYou.GFramework.Ecs.Arch"
   "GeWuYou.GFramework.Ecs.Arch.Abstractions"
   "GeWuYou.GFramework.Game"
+  "GeWuYou.GFramework.Game.Harmony"
   "GeWuYou.GFramework.Game.Abstractions"
   "GeWuYou.GFramework.Game.SourceGenerators"
   "GeWuYou.GFramework.Godot"

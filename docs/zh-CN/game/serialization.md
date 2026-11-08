@@ -153,7 +153,7 @@ var restored = serializer.Deserialize(json, data.GetType());
 ## 当前边界
 
 - 当前公开默认实现只有 JSON，没有内建 MessagePack、Binary 或 ProtoBuf 实现
-- `JsonSerializer` 负责序列化，不负责对象版本迁移；版本迁移属于 `SettingsModel<TRepository>` 或 `SaveRepository<TSaveData>`
+- `JsonSerializer` 负责 DTO 序列化；设置迁移由 `SettingsModel<TRepository>` 组织，槽位存档由 `SaveRepository<TSaveData>` 通过独立的文档 codec 和迁移图先转换历史负载，再创建当前 DTO
 - 序列化器共享后应视为只读配置对象，避免在运行期继续修改 settings / converters
 - 如果配置设计依赖 `oneOf`、`anyOf`、非 `false` 的 `additionalProperties`（例如省略或 `true`），或其他需要开放对象形状与联合分支的复杂约束，请直接按配置系统主文档回到 raw YAML / schema 方案处理，而不是把这些场景归到序列化层
 

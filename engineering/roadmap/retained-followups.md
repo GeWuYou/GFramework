@@ -1,6 +1,6 @@
 # 保留的后续事项
 
-核对日期：2026-11-07。依据当前基线源码与旧主题的目标、风险和未勾选项筛选；不继承旧分支、恢复点、PR 状态或历史测试通过数。各项范围与当前验收状态分别在条目中维护。
+核对日期：2026-11-08。依据当前基线源码与旧主题的目标、风险和未勾选项筛选；不继承旧分支、恢复点、PR 状态或历史测试通过数。各项范围与当前验收状态分别在条目中维护。
 
 ## 配置系统与编辑工具
 
@@ -25,18 +25,19 @@
 
 依据：[原生样例](../../Samples/GodotIntegration/README.md)、[Timing](../../GFramework.Godot/Coroutine/Timing.cs)、[输入契约](../../GFramework.Game.Abstractions/Input)、[Godot 后端](../../GFramework.Godot/Input/GodotInputMapBackend.cs)。
 
-## 设置、序列化与持久化
+## 文档存档、双向迁移与代码模组
 
-状态：deferred。启动条件：真实存档/设置出现压缩、加密、备份或元数据需求。
+状态：done。采用范围：桌面 .NET 与 Godot 的可信 DLL 扩展、可选 Harmony 和可检查的存档转换。
 
-- 迁移链已由 VersionedMigrationRunner 共享；继续复用现有校验，不重新创建同类统一抽象。
-- 评估 Serializer、Storage、Repository 与 codec 的职责，只有现有接线无法满足实际需求时才新增 pipeline。
-- 保留迁移失败不污染当前设置/持久化数据、加载使用迁移快照的约束；不向不可信存档开放无限制多态反序列化。
-- 验收：有效迁移、缺链、错误版本、失败保留数据及并发注册快照均有行为证据。
+实现边界：文档信封独立保存游戏身份、schema、内容快照与模组块，迁移及内容修复先于当前 DTO；纯准备和带原始备份的显式提交分离。游戏提供正反向转换和损失策略，框架不推测降级。同一局的缺失模组数据保持纯数据，新局不继承上一局状态，活跃模组按 ID 接收作用域。
 
-依据：[迁移执行器](../../GFramework.Game/Internal/VersionedMigrationRunner.cs)、[设置模型](../../GFramework.Game/Setting/SettingsModel.cs)、[存档仓库](../../GFramework.Game/Data/SaveRepository.cs)。
+代码扩展复用内容包发现、依赖与排序，执行前校验精确指纹授权及 API／能力；每包私有依赖隔离，契约与宿主扩展明确共享。Harmony 是独立可选包，由默认加载上下文持有单一引擎，通过中立调用边界登记并按 owner 清理补丁。启停和更新需要重启。
 
-下一步：先给出真实数据读写流程和现有重叠点；不以旧计划一句“评估 pipeline”启动新框架。
+验收：结构改变导致无法直接转换为当前 DTO 的历史文档仍能先迁移；升降级、歧义、缺链、错误输出、过期确认及备份／提交失败保留原档；缺失模组数据可以保留并在重新启用后恢复；真实 DLL、多个补丁共存和独立撤销通过宿主验证。Godot 源工程与桌面导出分别验证跨进程结果。
+
+依据：[存档仓库](../../GFramework.Game/Data/SaveRepository.cs)、[文档准备](../../GFramework.Game/Data/SaveRepository.Preparation.cs)、[模组宿主](../../GFramework.Game/Modding/GameModHost.cs)、[补丁扩展](../../GFramework.Game.Harmony/HarmonyModExtension.cs)、[当前架构](../architecture/current-architecture.md)。
+
+设置模型的迁移与应用保持独立；压缩、加密与其他 codec 扩展仍在出现具体需要时评估，不因已有文档边界而默认增加处理层。
 
 ## 已落地约束与不再续作的旧事务
 

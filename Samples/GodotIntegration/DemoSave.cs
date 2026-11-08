@@ -7,11 +7,8 @@ using GFramework.Game.Abstractions.Data;
 namespace GodotIntegration;
 
 /// <summary>Slot data uses primitive coordinates so the save format has no Godot object dependency.</summary>
-public sealed class DemoSave : IVersionedData
+public sealed class DemoSave : IData
 {
-    /// <summary>Gets or sets the persisted format version.</summary>
-    public int Version { get; set; } = 1;
-
     /// <summary>Gets or sets the most recent explicit save time.</summary>
     public DateTime LastModified { get; set; } = DateTime.UtcNow;
 

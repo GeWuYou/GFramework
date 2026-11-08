@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Abstractions.Content;
+using GFramework.Game.Modding;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -41,9 +42,23 @@ public sealed partial class ContentCatalogLoader
     /// <param name="plan">Dependency-resolved package sequence.</param>
     /// <param name="cancellationToken">Cancels preparation; no catalog is published on cancellation.</param>
     /// <returns>A fully validated content session.</returns>
-    public async Task<ContentCatalog> LoadAsync(ContentLoadPlan plan, CancellationToken cancellationToken = default)
+    public Task<ContentCatalog> LoadAsync(ContentLoadPlan plan, CancellationToken cancellationToken = default)
+        => LoadAsync(plan, null, cancellationToken);
+
+    /// <summary>Loads a plan whose code was approved and loaded before native resource preparation.</summary>
+    /// <param name="plan">The exact plan used to prepare the mod host.</param>
+    /// <param name="admission">Live mod-host admission; required whenever the plan contains code.</param>
+    /// <param name="cancellationToken">Cancels data preparation.</param>
+    /// <returns>A validated catalog. Start the mod host before publishing gameplay.</returns>
+    public async Task<ContentCatalog> LoadAsync(ContentLoadPlan plan, CodeModAdmission? admission,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(plan);
+        if (plan.Packages.Any(static pack => pack.Manifest.Code is not null))
+        {
+            if (admission is null) throw new InvalidOperationException("Code packages require explicit GameModHost admission.");
+            admission.Validate(plan);
+        }
         _started = true;
         var rows = new Dictionary<ContentReference, JObject>();
         var sources = new Dictionary<ContentReference, List<ContentSource>>();

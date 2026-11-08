@@ -2,36 +2,46 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
-using System.Collections.Generic;
-using DodgeTheCreeps.Gameplay;
-using GFramework.Game.Abstractions.Data;
-using Godot;
+using System.Threading.Tasks;
+using GFramework.Game.Data;
+using Newtonsoft.Json.Linq;
 
 namespace DodgeTheCreeps;
 
-/// <summary>
-/// Upgrades early score-and-position saves with valid defaults for newly persisted board fields.
-/// </summary>
-public sealed class DodgeProgressMigration : ISaveMigration<DodgeProgress>
+/// <summary>Game-owned pure document conversions; no current DTO or native object is constructed by an edge.</summary>
+public static class DodgeProgressMigration
 {
-    /// <inheritdoc />
-    public int FromVersion => 1;
-    /// <inheritdoc />
-    public int ToVersion => DodgeProgress.CurrentVersion;
-
-    /// <inheritdoc />
-    public DodgeProgress Migrate(DodgeProgress oldData)
+    /// <summary>Creates conversions for sparse v1 and a nested-coordinate v3 demonstration format.</summary>
+    /// <param name="initialRandomState">State captured by the host for the known seed before conversion runs.</param>
+    /// <returns>The immutable graph targeting this game's v2 complete-board schema.</returns>
+    public static SaveMigrationGraph CreateGraph(ulong initialRandomState) => new(new[]
     {
-        DodgeProgress.ValidateLegacyValues(oldData);
-        using var random = new RandomNumberGenerator { Seed = 0xD0D63 };
-        return new DodgeProgress
+        new SaveMigrationStep(1, 2, "Initialize board state absent from sparse saves", (block, cancellationToken) =>
         {
-            Version = ToVersion, LastModified = oldData.LastModified, Score = oldData.Score,
-            X = Math.Clamp(oldData.X, 26, 454), Y = Math.Clamp(oldData.Y, 82, 686),
-            ArenaId = oldData.ArenaId, Content = oldData.Content,
-            PlayerFacing = 0, ScoreElapsed = 0, SpawnRemaining = 1.5, GraceRemaining = 1.5,
-            RandomSeed = random.Seed, RandomState = random.State,
-            Enemies = new List<DodgeMobProgress>()
-        };
-    }
+            cancellationToken.ThrowIfCancellationRequested();
+            var data = (JObject)block.Data.DeepClone();
+            data["X"] = Math.Clamp((float?)data["X"] ?? 240, 26, 454);
+            data["Y"] = Math.Clamp((float?)data["Y"] ?? 580, 82, 686);
+            data["ArenaId"] ??= "base:yard";
+            data["PlayerFacing"] = 0;
+            data["ScoreElapsed"] = 0;
+            data["SpawnRemaining"] = 1.5;
+            data["GraceRemaining"] = 1.5;
+            data["RandomSeed"] = 0xD0D63UL;
+            data["RandomState"] = initialRandomState;
+            data["Enemies"] = new JArray();
+            return Task.FromResult(new SaveDataBlock { Version = 2, Data = data });
+        }),
+        new SaveMigrationStep(3, 2, "Convert nested coordinates; discard unsupported future mode", (block, cancellationToken) =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var data = (JObject)block.Data.DeepClone();
+            var position = data["Position"] as JObject ?? throw new InvalidOperationException("Version 3 requires Position.");
+            data["X"] = position["X"]?.DeepClone() ?? throw new InvalidOperationException("Position.X is missing.");
+            data["Y"] = position["Y"]?.DeepClone() ?? throw new InvalidOperationException("Position.Y is missing.");
+            data.Remove("Position");
+            data.Remove("FutureMode");
+            return Task.FromResult(new SaveDataBlock { Version = 2, Data = data });
+        }, isLossy: true)
+    });
 }

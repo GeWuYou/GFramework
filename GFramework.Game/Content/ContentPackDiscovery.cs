@@ -78,7 +78,7 @@ public sealed class ContentPackDiscovery : IContentPackSource
             ValidateManifest(manifest);
             var fingerprint = await ComputeFingerprintAsync(root, cancellationToken).ConfigureAwait(false);
             var package = new ContentPack(root, manifest, fingerprint);
-            foreach (var path in manifest.ContentFiles.Concat(manifest.ResourcePacks))
+            foreach (var path in manifest.ContentFiles.Concat(manifest.ResourcePacks).Concat(manifest.Code is null ? Array.Empty<string>() : new[] { manifest.Code.AssemblyPath }))
             {
                 if (!File.Exists(package.GetFilePath(path)))
                     throw new FileNotFoundException("A declared content file was not found.", path);
@@ -101,9 +101,9 @@ public sealed class ContentPackDiscovery : IContentPackSource
     /// <param name="manifest">Manifest to check.</param>
     internal static void ValidateManifest(ContentPackManifest manifest)
     {
-        if (manifest.FormatVersion != 1 || !ContentId.IsCanonicalSegment(manifest.Id) ||
+        if (manifest.FormatVersion != 2 || !ContentId.IsCanonicalSegment(manifest.Id) ||
             string.IsNullOrWhiteSpace(manifest.Name) || string.IsNullOrWhiteSpace(manifest.GameId))
-            throw new ArgumentException("A package needs formatVersion 1, canonical id, name and gameId.", nameof(manifest));
+            throw new ArgumentException("A package needs formatVersion 2, canonical id, name and gameId.", nameof(manifest));
         _ = ContentVersionRules.Parse(manifest.Version);
         ContentVersionRules.Validate(manifest.GameVersions);
         ContentVersionRules.Validate(manifest.ContentApiVersions);
@@ -113,6 +113,19 @@ public sealed class ContentPackDiscovery : IContentPackSource
         ArgumentNullException.ThrowIfNull(manifest.IncompatiblePackages, nameof(manifest));
         ArgumentNullException.ThrowIfNull(manifest.ContentFiles, nameof(manifest));
         ArgumentNullException.ThrowIfNull(manifest.ResourcePacks, nameof(manifest));
+        if (manifest.Code is { } code)
+        {
+            ContentPack.ValidateRelativePath(code.AssemblyPath);
+            if (!code.AssemblyPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ||
+                string.IsNullOrWhiteSpace(code.EntryType) || code.EntryType.Length > 512 ||
+                code.EntryType.Any(static character => !(char.IsLetterOrDigit(character) || character is '.' or '_' or '+')))
+                throw new ArgumentException("Code requires a managed DLL and an exact entry type name.", nameof(manifest));
+            ContentVersionRules.Validate(code.ApiVersions);
+            ArgumentNullException.ThrowIfNull(code.RequiredCapabilities, nameof(manifest));
+            if (code.RequiredCapabilities.Any(static name => !ContentId.IsCanonicalSegment(name)) ||
+                code.RequiredCapabilities.Distinct(StringComparer.Ordinal).Count() != code.RequiredCapabilities.Count)
+                throw new ArgumentException("Code capabilities must have unique canonical names.", nameof(manifest));
+        }
         var dependencyIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var dependency in manifest.Dependencies)
         {

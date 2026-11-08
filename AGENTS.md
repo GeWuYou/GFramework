@@ -338,6 +338,10 @@ bash scripts/validate-csharp-naming.sh
 - Treat existing `README.md` files and `docs/zh-CN/` pages as editable outputs, not authoritative truth.
 - If existing documentation conflicts with code or tests, update the documentation to match the implementation instead
   of preserving outdated wording.
+- When code changes public behavior, APIs, dependencies, lifecycle, ownership or adoption paths, contributors MUST
+  inspect affected references and examples in both `docs/**` and `engineering/**`, and update affected explanations
+  and links in the same change. This requires no new document when existing documentation remains accurate, and does
+  not authorize task plans, execution logs or recovery records.
 - Do not publish example code, setup steps, or package guidance that cannot be traced back to code, tests, or a
   verified consumer project.
 

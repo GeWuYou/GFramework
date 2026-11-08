@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Game.Abstractions.Content;
+using System.Collections.Generic;
 
 namespace DodgeTheCreeps.Content;
 
@@ -12,4 +13,6 @@ public sealed class DodgeContentPreferences
     public ContentPackProfile Profile { get; set; } = new();
     /// <summary>Gets or sets the chosen arena among currently active definitions.</summary>
     public string ArenaId { get; set; } = "base:yard";
+    /// <summary>Gets or sets exact code package stamps explicitly approved by the player.</summary>
+    public IReadOnlyList<ContentPackStamp> CodeApprovals { get; set; } = new List<ContentPackStamp>();
 }
