@@ -51,7 +51,7 @@ public sealed class EventListenerScope<TEvent> : IDisposable
     /// </summary>
     public void Dispose()
     {
-        Interlocked.Exchange(ref _unRegister, null)?.Dispose();
+        Interlocked.Exchange(ref _unRegister, value: null)?.Dispose();
     }
 
     /// <summary>

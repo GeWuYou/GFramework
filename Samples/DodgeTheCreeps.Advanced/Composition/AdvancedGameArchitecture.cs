@@ -17,7 +17,13 @@ using GFramework.Godot.UI;
 using JsonSerializer = GFramework.Game.Serializer.JsonSerializer;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace DodgeTheCreeps.Advanced;
+using DodgeTheCreeps.Advanced.Gameplay;
+using DodgeTheCreeps.Advanced.Modding;
+using DodgeTheCreeps.Advanced.Presentation;
+using DodgeTheCreeps.Advanced.Progress;
+using DodgeTheCreeps.Advanced.Settings;
+
+namespace DodgeTheCreeps.Advanced.Composition;
 
 /// <summary>
 /// Composition root for the complete example. All container access is confined to
@@ -115,7 +121,7 @@ internal sealed class AdvancedGameArchitecture(AdvancedGameRoot host, GameLaunch
                 Service = Services.GetRequiredService<UiService>(),
                 RunAction = _application.RunAction,
                 UnhandledCancelAsync = () => _application.World is { IsRunning: true } world
-                    ? _application.Ui.ShowAsync(DodgeRoutes.Pause, world.Score) : Task.CompletedTask,
+                    ? _application.Ui.ShowAsync(DodgeRoutes.Pause, world.Score, CancellationToken.None) : Task.CompletedTask,
             });
             await _application.InitializeAsync().ConfigureAwait(true);
         }, cancellationToken));

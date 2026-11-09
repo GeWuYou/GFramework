@@ -67,7 +67,7 @@ public sealed class PriorityEvent<T> : IEvent
     }
 
     /// <summary>Give the wrapper its own identity without changing the underlying delivery registration.</summary>
-    private IDisposable Track(Delegate handler, Func<IDisposable> subscribe)
+    private Subscription Track(Delegate handler, Func<IDisposable> subscribe)
     {
         IDisposable subscription;
         Registration registration;
@@ -92,7 +92,7 @@ public sealed class PriorityEvent<T> : IEvent
         Registration[] removed;
         lock (_gate)
         {
-            removed = _registrations.Where(item => item.Handler.Equals(handler)).ToArray();
+            removed = [.. _registrations.Where(item => item.Handler.Equals(handler))];
             foreach (var registration in removed)
                 _registrations.Remove(registration);
         }

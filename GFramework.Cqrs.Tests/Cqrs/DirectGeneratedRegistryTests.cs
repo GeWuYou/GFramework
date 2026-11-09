@@ -1,11 +1,13 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Moq;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -51,6 +53,84 @@ public sealed class DirectGeneratedRegistryTests
             }
         }
         Assert.That(previous!.Disposed, Is.True);
+    }
+
+    /// <summary>Both registration routes share identity while assembly registration still supplies fallback handlers.</summary>
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task MixedRegistrationPublishesEachHandlerOnce(bool assemblyFirst)
+    {
+        var assembly = new Mock<Assembly>();
+        assembly.SetupGet(static item => item.FullName).Returns(typeof(FallbackHandler).Assembly.FullName);
+        assembly.Setup(static item => item.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false))
+            .Returns([new CqrsHandlerRegistryAttribute(typeof(MixedRegistry))]);
+        assembly.Setup(static item => item.GetCustomAttributes(typeof(CqrsReflectionFallbackAttribute), inherit: false))
+            .Returns([new CqrsReflectionFallbackAttribute(typeof(FallbackHandler))]);
+        var services = new ServiceCollection();
+        services.AddCqrsRuntime();
+        services.AddSingleton<NotificationProbe>();
+        if (assemblyFirst)
+            services.AddCqrsHandlersFromAssembly(assembly.Object);
+        services.AddCqrsHandlers(new MixedRegistry());
+        services.AddCqrsHandlersFromAssembly(assembly.Object);
+        services.AddCqrsHandlers(new MixedRegistry());
+        await using var provider = services.BuildServiceProvider();
+        await provider.GetRequiredService<ICqrsRuntime>()
+            .PublishAsync(new ObservedNotification(), CancellationToken.None).ConfigureAwait(false);
+        var probe = provider.GetRequiredService<NotificationProbe>();
+        Assert.Multiple(() =>
+        {
+            Assert.That(probe.GeneratedCount, Is.EqualTo(1));
+            Assert.That(probe.FallbackCount, Is.EqualTo(1));
+        });
+    }
+
+    /// <summary>Registers one notification handler through unconditional generated-style DI calls.</summary>
+    private sealed class MixedRegistry : ICqrsHandlerRegistry
+    {
+        /// <inheritdoc />
+        public void Register(IServiceCollection services, ILogger logger) =>
+            services.AddTransient<INotificationHandler<ObservedNotification>, GeneratedHandler>();
+    }
+
+    /// <summary>A notification whose handlers expose duplicate side effects.</summary>
+    private sealed record ObservedNotification : INotification;
+
+    /// <summary>Counts executions across the generated and explicit fallback paths.</summary>
+    private sealed class NotificationProbe
+    {
+        /// <summary>Generated handler side effects.</summary>
+        public int GeneratedCount
+        {
+            get; set;
+        }
+        /// <summary>Fallback handler side effects.</summary>
+        public int FallbackCount
+        {
+            get; set;
+        }
+    }
+
+    /// <summary>A generated notification handler.</summary>
+    private sealed class GeneratedHandler(NotificationProbe probe) : INotificationHandler<ObservedNotification>
+    {
+        /// <inheritdoc />
+        public ValueTask Handle(ObservedNotification notification, CancellationToken cancellationToken)
+        {
+            probe.GeneratedCount++;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    /// <summary>A handler reached only by targeted assembly fallback metadata.</summary>
+    private sealed class FallbackHandler(NotificationProbe probe) : INotificationHandler<ObservedNotification>
+    {
+        /// <inheritdoc />
+        public ValueTask Handle(ObservedNotification notification, CancellationToken cancellationToken)
+        {
+            probe.FallbackCount++;
+            return ValueTask.CompletedTask;
+        }
     }
 
     /// <summary>Generated metadata cannot capture a consumer scope inside the process-wide invocation cache.</summary>

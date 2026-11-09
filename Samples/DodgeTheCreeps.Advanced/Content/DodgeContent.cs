@@ -263,7 +263,10 @@ internal sealed class DodgeContent : IDisposable, IAsyncDisposable
     internal Node? CreateOfficialScene(string reference) => string.IsNullOrEmpty(reference) ? null : _scenes[reference].Instantiate();
 
     /// <summary>Releases native media after gameplay nodes have stopped and left the tree.</summary>
-    public void Dispose()
+    public void Dispose() => DisposeNativeResources();
+
+    /// <summary>Releases engine-owned resources on the caller-verified Godot thread.</summary>
+    private void DisposeNativeResources()
     {
         if (_disposed)
             return;
@@ -287,7 +290,7 @@ internal sealed class DodgeContent : IDisposable, IAsyncDisposable
     /// <summary>Releases textures, audio and scenes on their owning native thread during asynchronous DI disposal.</summary>
     public ValueTask DisposeAsync() => new(_dispatcher.InvokeAsync(() =>
     {
-        Dispose();
+        DisposeNativeResources();
         return Task.CompletedTask;
     }));
 

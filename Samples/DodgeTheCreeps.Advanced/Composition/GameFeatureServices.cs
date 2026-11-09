@@ -7,7 +7,13 @@ using GFramework.Game.Scene;
 using GFramework.Game.UI;
 using GFramework.Godot.Storage;
 
-namespace DodgeTheCreeps.Advanced;
+using DodgeTheCreeps.Advanced.Content;
+using DodgeTheCreeps.Advanced.Modding;
+using DodgeTheCreeps.Advanced.Presentation;
+using DodgeTheCreeps.Advanced.Progress;
+using DodgeTheCreeps.Advanced.Settings;
+
+namespace DodgeTheCreeps.Advanced.Composition;
 
 /// <summary>Groups feature services by the application responsibilities they own.</summary>
 /// <param name="Content">Content discovery and loading.</param>

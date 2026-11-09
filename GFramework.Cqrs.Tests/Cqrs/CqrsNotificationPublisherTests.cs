@@ -298,6 +298,7 @@ internal sealed class CqrsNotificationPublisherTests
     /// <summary>
     ///     按传入顺序直接执行处理器的测试发布器。
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class PassthroughNotificationPublisher : INotificationPublisher
     {
         /// <summary>

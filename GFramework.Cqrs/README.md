@@ -124,3 +124,5 @@ request/stream 的生成调用元数据可用于缓存分发绑定；通知继�
 - [生成处理器注册表](../docs/zh-CN/source-generators/cqrs-handler-registry-generator.md)
 
 完整开放泛型与 Scoped 依赖示例见 [CQRS 管道工程](../Samples/CqrsPipelineDemo/README.md)。
+
+直接注册与程序集注册在同一 `IServiceCollection` 中按注册器类型共同去重，混用两种入口或改变调用顺序不会重复执行生成注册。程序集入口仍会补齐该程序集声明的 fallback handlers；不同 service collection 分别维护注册状态。

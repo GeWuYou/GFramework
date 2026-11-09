@@ -145,7 +145,10 @@ internal sealed partial class DodgeLocalization : IDisposable, IAsyncDisposable
         => Manager.TryGetText("ui", "arena_" + id.Replace(':', '_'), out var translated) ? translated : fallback;
 
     /// <summary>Releases framework subscriptions after application views have stopped.</summary>
-    public void Dispose()
+    public void Dispose() => DisposeNativeResources();
+
+    /// <summary>Releases engine-owned resources on the caller-verified Godot thread.</summary>
+    private void DisposeNativeResources()
     {
         if (_disposed)
             return;
@@ -156,7 +159,7 @@ internal sealed partial class DodgeLocalization : IDisposable, IAsyncDisposable
     /// <summary>Releases localization watchers on the host thread under standard asynchronous DI disposal.</summary>
     public ValueTask DisposeAsync() => new(_dispatcher.InvokeAsync(() =>
     {
-        Dispose();
+        DisposeNativeResources();
         return Task.CompletedTask;
     }));
 

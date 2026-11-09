@@ -186,7 +186,7 @@ public sealed class ResourceManager : IResourceManager
     /// <exception cref="InvalidOperationException">A load, release or asynchronous shutdown is still pending.</exception>
     public void Dispose()
     {
-        StartShutdown(synchronous: true).GetAwaiter().GetResult();
+        StartShutdown(synchronous: true).AsTask().GetAwaiter().GetResult();
         GC.SuppressFinalize(this);
     }
 
@@ -218,7 +218,7 @@ public sealed class ResourceManager : IResourceManager
             _closed = true;
             completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             _shutdownTask = completion.Task;
-            pending = _entries.Values.Select(operation => operation.Completion.Task).ToArray();
+            pending = [.. _entries.Values.Select(operation => operation.Completion.Task)];
             released = DetachUnleasedEntries();
             _loaders.Clear();
         }
@@ -268,9 +268,7 @@ public sealed class ResourceManager : IResourceManager
         {
             if (!loader.CanLoad(key.Path))
                 throw new InvalidOperationException($"Loader does not support '{key.Path}'.");
-            var resource = loader.Load(key.Path);
-            if (resource == null)
-                throw new InvalidOperationException($"Loader returned null for '{key.Path}'.");
+            var resource = loader.Load(key.Path) ?? throw new InvalidOperationException($"Loader returned null for '{key.Path}'.");
             PublishLoad(key, operation, new ResourceCacheEntry(resource, () => loader.Unload(resource)));
         }
         catch (Exception error)
@@ -287,9 +285,7 @@ public sealed class ResourceManager : IResourceManager
         {
             if (!loader.CanLoad(key.Path))
                 throw new InvalidOperationException($"Loader does not support '{key.Path}'.");
-            var resource = await loader.LoadAsync(key.Path, CancellationToken.None).ConfigureAwait(false);
-            if (resource == null)
-                throw new InvalidOperationException($"Loader returned null for '{key.Path}'.");
+            var resource = await loader.LoadAsync(key.Path, CancellationToken.None).ConfigureAwait(false) ?? throw new InvalidOperationException($"Loader returned null for '{key.Path}'.");
             PublishLoad(key, operation, new ResourceCacheEntry(resource, () => loader.Unload(resource)));
         }
         catch (Exception error)
@@ -323,7 +319,7 @@ public sealed class ResourceManager : IResourceManager
     }
 
     /// <summary>Converts an acquisition reservation into an independently owned lease under the same lock.</summary>
-    private IResourceHandle<T> CreateLease<T>((Type Type, string Path) key, LoadOperation operation, ResourceCacheEntry entry)
+    private ResourceHandle<T> CreateLease<T>((Type Type, string Path) key, LoadOperation operation, ResourceCacheEntry entry)
         where T : class
     {
         lock (_gate)

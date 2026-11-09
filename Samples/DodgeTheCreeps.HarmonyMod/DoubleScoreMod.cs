@@ -36,7 +36,9 @@ public sealed class DoubleScoreMod : IGameMod
     internal static class ScorePatch
     {
         /// <summary>Locates one exact game-owned method without requiring the game implementation as a build dependency.</summary>
-        private static MethodInfo TargetMethod() => AccessTools.Method("DodgeTheCreeps.Modding.DodgeScoreRules:Calculate")
+        private static MethodInfo TargetMethod() =>
+            AccessTools.Method("DodgeTheCreeps.Advanced.Modding.DodgeScoreRules:Calculate")
+            ?? AccessTools.Method("DodgeTheCreeps.Modding.DodgeScoreRules:Calculate")
             ?? throw new MissingMethodException("The game no longer contains DodgeScoreRules.Calculate.");
 
         /// <summary>Doubles the method's result after the ordinary game's calculation.</summary>

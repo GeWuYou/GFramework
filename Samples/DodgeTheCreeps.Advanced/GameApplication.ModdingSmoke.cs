@@ -4,9 +4,10 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using DodgeTheCreeps.Modding;
+using DodgeTheCreeps.Advanced.Modding;
 using Newtonsoft.Json.Linq;
 using Godot;
+
 
 namespace DodgeTheCreeps.Advanced;
 
@@ -17,7 +18,7 @@ public partial class GameApplication
     private async Task RunModdingSmokeAsync(bool continuation)
     {
         using var paused = _pause.PauseScope("External DLL adoption acceptance");
-        Require(CanStart, "Mod session did not prepare: " + _content.Error);
+        Require(CanStart, "Mod session did not prepare: " + ActiveContent.Error);
         var key = _dataRoot + "/modding-stage.json";
         var stage = continuation ? await _storage.ReadAsync<int>(key).ConfigureAwait(true) : 0;
         if (stage == 0)
@@ -29,26 +30,26 @@ public partial class GameApplication
             Require(ScoreModifierCount == 1 && DodgeScoreRules.Calculate() == 2, "External API or Harmony mod did not start.");
             await StartGameAsync(restore: false).ConfigureAwait(true);
             AdvanceModScore();
-            Require(_world!.Score == 3 && ReadBonusAwards() == 1, "The two external DLLs did not affect gameplay or mod state.");
+            Require(CurrentWorld!.Score == 3 && ReadBonusAwards() == 1, "The two external DLLs did not affect gameplay or mod state.");
             await SaveGameAsync().ConfigureAwait(true);
-            await _content.ToggleAsync("code-bonus", _lifetime.Token).ConfigureAwait(true);
-            await _content.ToggleAsync("code-double", _lifetime.Token).ConfigureAwait(true);
+            await ActiveContent.ToggleAsync("code-bonus", _lifetime.Token).ConfigureAwait(true);
+            await ActiveContent.ToggleAsync("code-double", _lifetime.Token).ConfigureAwait(true);
         }
         else if (stage == 2)
         {
             Require(ScoreModifierCount == 0 && DodgeScoreRules.Calculate() == 1, "Disabled mods remained loaded after restart.");
-            var prepared = await _saves.PrepareLoadAsync(1, _lifetime.Token).ConfigureAwait(true);
+            var prepared = await Saves.PrepareLoadAsync(1, _lifetime.Token).ConfigureAwait(true);
             Require(prepared.RequiresConfirmation && prepared.Document.Mods.ContainsKey("code-bonus"),
                 "Missing mod state was erased before explicit content recovery.");
             await ContinueModSaveAsync().ConfigureAwait(true);
-            Require(_world!.Score == 3, "Missing-code recovery lost the game score.");
+            Require(CurrentWorld!.Score == 3, "Missing-code recovery lost the game score.");
             AdvanceModScore();
             await SaveGameAsync().ConfigureAwait(true);
-            var saved = await _saves.PrepareLoadAsync(1, _lifetime.Token).ConfigureAwait(true);
+            var saved = await Saves.PrepareLoadAsync(1, _lifetime.Token).ConfigureAwait(true);
             Require((int?)saved.Document.Mods["code-bonus"].Data["score"]?["Awards"] == 1,
                 "Saving without the mod erased its opaque state.");
-            await _content.ToggleAsync("code-bonus", _lifetime.Token).ConfigureAwait(true);
-            await _content.ToggleAsync("code-double", _lifetime.Token).ConfigureAwait(true);
+            await ActiveContent.ToggleAsync("code-bonus", _lifetime.Token).ConfigureAwait(true);
+            await ActiveContent.ToggleAsync("code-double", _lifetime.Token).ConfigureAwait(true);
         }
         else if (stage == 3)
         {
@@ -67,12 +68,12 @@ public partial class GameApplication
     private async Task RestoreModStateSmokeAsync()
     {
         await ContinueModSaveAsync().ConfigureAwait(true);
-        Require(_world!.Score == 4 && ReadBonusAwards() == 1, "Reinstalled mods did not recover their previous state.");
+        Require(CurrentWorld!.Score == 4 && ReadBonusAwards() == 1, "Reinstalled mods did not recover their previous state.");
         AdvanceModScore();
-        Require(_world.Score == 7 && ReadBonusAwards() == 2, "Recovered mod state or score behavior did not continue.");
+        Require(CurrentWorld.Score == 7 && ReadBonusAwards() == 2, "Recovered mod state or score behavior did not continue.");
         await SaveGameAsync().ConfigureAwait(true);
-        _world.StopRun();
-        await _content.StopModsAsync().ConfigureAwait(true);
+        CurrentWorld.StopRun();
+        await ActiveContent.StopModsAsync().ConfigureAwait(true);
         Require(ScoreModifierCount == 0 && DodgeScoreRules.Calculate() == 1, "Mod shutdown left an API registration or patch behind.");
     }
 
@@ -80,7 +81,7 @@ public partial class GameApplication
     private async Task PrepareCodeSelectionSmokeAsync()
     {
         CheckRunStateAdmission();
-        Require(_content.Packages.Where(pack => pack.Manifest.Code is not null).Take(3).Count() == 2,
+        Require(ActiveContent.Packages.Where(pack => pack.Manifest.Code is not null).Take(3).Count() == 2,
             "Build the two external mod examples before native acceptance.");
         await OpenContentAsync().ConfigureAwait(true);
         // First reject one execution request through the same dialog as normal installation.
@@ -88,7 +89,7 @@ public partial class GameApplication
         await UntilAsync(() => HasView("code-permission")).ConfigureAwait(true);
         Click("DenyCode");
         await UntilAsync(() => _actions.TrueForAll(static task => task.IsCompleted)).ConfigureAwait(true);
-        Require(!_content.RequestedProfile.EnabledPackages.Contains("code-bonus", StringComparer.Ordinal), "Denied code was enabled.");
+        Require(!ActiveContent.RequestedProfile.EnabledPackages.Contains("code-bonus", StringComparer.Ordinal), "Denied code was enabled.");
         foreach (var id in new[] { "code-bonus", "code-double" })
         {
             Click("Toggle_" + id);
@@ -126,16 +127,16 @@ public partial class GameApplication
     }
 
     /// <summary>Inspects the sample mod's plain JSON through its active owner scope.</summary>
-    private int ReadBonusAwards() => (int?)_modState.ForMod("code-bonus").Read<JObject>()?["score"]?["Awards"] ?? 0;
+    private int ReadBonusAwards() => (int?)ModState.ForMod("code-bonus").Read<JObject>()?["score"]?["Awards"] ?? 0;
 
     /// <summary>Crosses one score boundary on a deterministic protected board rather than racing random collisions.</summary>
     private void AdvanceModScore()
     {
-        var board = _world!.CaptureProgress();
+        var board = CurrentWorld!.CaptureProgress();
         board.GraceRemaining = 1.5;
         board.SpawnRemaining = 10;
         board.ScoreElapsed = 0;
-        _world.RestoreProgress(board);
-        _world._PhysicsProcess(1);
+        CurrentWorld.RestoreProgress(board);
+        CurrentWorld._PhysicsProcess(1);
     }
 }

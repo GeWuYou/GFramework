@@ -3,7 +3,7 @@
 
 using System.Runtime.CompilerServices;
 
-namespace DodgeTheCreeps.Modding;
+namespace DodgeTheCreeps.Advanced.Modding;
 
 /// <summary>Internal game implementation used to demonstrate method patching separately from the published mod API.</summary>
 internal static class DodgeScoreRules

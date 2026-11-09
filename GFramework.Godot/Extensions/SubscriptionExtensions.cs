@@ -18,7 +18,7 @@ public static class SubscriptionExtensions
     {
         ArgumentNullException.ThrowIfNull(subscription);
         ArgumentNullException.ThrowIfNull(node);
-        IDisposable? lifetime = null;
+        Subscription? lifetime = null;
         void Detach() => lifetime!.Dispose();
         lifetime = new Subscription(() =>
         {

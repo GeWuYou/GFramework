@@ -47,6 +47,8 @@ ENABLE_LINTERS:
 # C# 代码格式化检查配置
 # 设置 C# 代码风格检查的参数和验证级别
 # ========================
+# dotnet-format defaults to non-blocking findings in the linter implementation.
+CSHARP_DOTNET_FORMAT_DISABLE_ERRORS: false
 CSHARP_DOTNET_FORMAT_ARGUMENTS:
   # 仓库根目录同时存在 GFramework.sln 与 GFramework.csproj；
   # 显式指定 workspace，避免 dotnet format 在 CI 中因自动探测歧义直接异常退出。

@@ -24,6 +24,9 @@ $env:DOTNET_ROLL_FORWARD = "LatestMajor"
 godot --path Samples/DodgeTheCreeps.Advanced
 ```
 
+功能目录使用对应命名空间：组合根位于 `DodgeTheCreeps.Advanced.Composition`，内容、玩法、Mod、展示、存档和设置分别位于 `Content`、`Gameplay`、`Modding`、`Presentation`、`Progress`、`Settings`。共享 Harmony 示例显式支持基础示例与高级示例各自的计分方法。
+
+
 ## 项目与职责
 
 | 项目或边界 | 职责 |

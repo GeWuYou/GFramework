@@ -38,5 +38,6 @@ public class BindablePropertyUnRegister<T>(BindableProperty<T> bindableProperty,
         BindableProperty = null;
         // 清理回调函数引用
         OnValueChanged = null;
+        GC.SuppressFinalize(this);
     }
 }

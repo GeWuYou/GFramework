@@ -17,6 +17,12 @@ using GFramework.Game.UI;
 using GFramework.Godot.Storage;
 using Godot;
 
+using DodgeTheCreeps.Advanced.Composition;
+using DodgeTheCreeps.Advanced.Modding;
+using DodgeTheCreeps.Advanced.Presentation;
+using DodgeTheCreeps.Advanced.Progress;
+using DodgeTheCreeps.Advanced.Settings;
+
 namespace DodgeTheCreeps.Advanced;
 
 /// <summary>
@@ -69,22 +75,22 @@ public partial class GameApplication : IDisposable
         _session = features.Runs.Session;
         _runs = features.Runs.UseCases;
         _worldState = features.Runs.World;
-        _content = features.Content;
+        ActiveContent = features.Content;
         _menus = features.Presentation;
         Text = features.Presentation.Text;
         ConfigureSmoke(launch.Arguments);
     }
 
-    private DodgeWorld? _world
+    private DodgeWorld? CurrentWorld
     {
         get => _worldState.World; set => _worldState.World = value;
     }
-    private string _arenaId
+    private string ArenaId
     {
         get => _worldState.ArenaId; set => _worldState.ArenaId = value;
     }
     private DodgeContent _contentInstance = null!;
-    private DodgeContent _content
+    private DodgeContent ActiveContent
     {
         get => _contentInstance;
         set
@@ -93,14 +99,14 @@ public partial class GameApplication : IDisposable
             _selection.SetContent(value);
         }
     }
-    private SaveRepository<DodgeProgress> _saves => _saveService.Repository;
-    private string? _latestBackup
+    private SaveRepository<DodgeProgress> Saves => _saveService.Repository;
+    private string? LatestBackup
     {
         get => _saveService.LatestBackup; set => _saveService.LatestBackup = value;
     }
-    private ModSaveSession _modState => _mods.State;
+    private ModSaveSession ModState => _mods.State;
     private int ScoreModifierCount => _mods.RegistrationCount;
-    private bool _dirty
+    private bool IsDirty
     {
         get => _session.HasChanges;
         set
@@ -124,13 +130,13 @@ public partial class GameApplication : IDisposable
     /// <summary>The UI service supplied by the composition root.</summary>
     internal IUiService Ui => _ui;
     /// <summary>The current board, used only by presentation and native acceptance.</summary>
-    internal DodgeWorld? World => _world;
+    internal DodgeWorld? World => CurrentWorld;
     /// <summary>The current validated content authority.</summary>
-    internal DodgeContent Content => _content;
+    internal DodgeContent Content => ActiveContent;
     /// <summary>Whether starting a board is allowed by the content session.</summary>
-    internal bool CanStart => _content.IsReady;
+    internal bool CanStart => ActiveContent.IsReady;
     /// <summary>Whether backup recovery is permitted independently of a newly started retry.</summary>
-    internal bool HasBackup => CanRestoreSave && _latestBackup is not null;
+    internal bool HasBackup => CanRestoreSave && LatestBackup is not null;
     /// <summary>Whether the persistent checkpoint is safe to continue, including after a failed death-save deletion.</summary>
     internal bool CanRestoreSave => !_session.IsRetired && !_session.IsCheckpointRetired;
 
@@ -152,9 +158,9 @@ public partial class GameApplication : IDisposable
     internal void BeginPostStartupActions()
     {
         if (_capturePath is not null)
-            _acceptance = _gameDispatcher.InvokeAsync(() => ObserveAcceptanceAsync(CaptureMenuAsync));
+            _acceptance = _gameDispatcher.InvokeAsync(() => ObserveAcceptanceAsync(CaptureMenuAsync), CancellationToken.None);
         else if (_smokeMode)
-            _acceptance = _gameDispatcher.InvokeAsync(() => ObserveAcceptanceAsync(RunSmokeAsync));
+            _acceptance = _gameDispatcher.InvokeAsync(() => ObserveAcceptanceAsync(RunSmokeAsync), CancellationToken.None);
     }
 
     /// <summary>Observes isolated native acceptance separately from user actions so shutdown cannot await itself.</summary>
@@ -175,7 +181,7 @@ public partial class GameApplication : IDisposable
     /// <summary>Captures the ended board before queuing its retirement, preserving identity across later navigation.</summary>
     private void OnRunEnded(object? sender, EventArgs eventArgs)
     {
-        var endedWorld = _world;
+        var endedWorld = CurrentWorld;
         if (endedWorld is not null)
             RunAction(() => GameOverAsync(endedWorld));
     }
@@ -190,10 +196,10 @@ public partial class GameApplication : IDisposable
             await _settings.LoadAsync().ConfigureAwait(true);
             if (_captureLanguage is not null)
                 Text.SetLanguage(_captureLanguage);
-            var canContinue = await _saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true);
+            var canContinue = await Saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true);
             await _ui.ReplaceAsync(DodgeRoutes.Menu, canContinue, _lifetime.Token).ConfigureAwait(true);
             if (!CanStart)
-                _menus.SetStatus(() => Text.Get("content_start_failed", ("error", _content.Error ?? string.Empty)));
+                _menus.SetStatus(() => Text.Get("content_start_failed", ("error", ActiveContent.Error ?? string.Empty)));
             // #endregion tutorial-load-data
             IsStarted = true;
         }
@@ -236,10 +242,10 @@ public partial class GameApplication : IDisposable
         {
             if (_stopping)
                 return;
-            if (!await _runs.StartAsync(restore, CanStart, _content.ArenaId, _lifetime.Token).ConfigureAwait(true))
+            if (!await _runs.StartAsync(restore, CanStart, ActiveContent.ArenaId, _lifetime.Token).ConfigureAwait(true))
                 return;
             if (!_stopping)
-                await _ui.ShowAsync(DodgeRoutes.Hud, _world!.Score, _lifetime.Token).ConfigureAwait(true);
+                await _ui.ShowAsync(DodgeRoutes.Hud, CurrentWorld!.Score, _lifetime.Token).ConfigureAwait(true);
 
         }
         finally { _navigation.Release(); }
@@ -248,7 +254,7 @@ public partial class GameApplication : IDisposable
     /// <summary>Commits a board through the use case, then publishes success feedback.</summary>
     internal async Task SaveGameAsync()
     {
-        if (_world is not { IsRunning: true })
+        if (CurrentWorld is not { IsRunning: true })
             return;
         await _runs.SaveAsync(_lifetime.Token).ConfigureAwait(true);
         _menus.SetStatus(() => Text.Get("run_saved"));
@@ -267,15 +273,15 @@ public partial class GameApplication : IDisposable
         {
             if (_stopping)
                 return;
-            if (_session.NeedsDiscardConfirmation(_world is { IsRunning: true },
-                    _world?.PlayerPosition.X ?? 0, _world?.PlayerPosition.Y ?? 0))
+            if (_session.NeedsDiscardConfirmation(CurrentWorld is { IsRunning: true },
+                    CurrentWorld?.PlayerPosition.X ?? 0, CurrentWorld?.PlayerPosition.Y ?? 0))
             {
                 var decision = await _ui.ShowDialogAsync(DodgeRoutes.Confirm, () => Text.Get("leave_question"), _lifetime.Token).ConfigureAwait(true);
                 if (!decision.Accepted || !decision.Value || _stopping)
                     return;
             }
             await _runs.LeaveAsync(_lifetime.Token).ConfigureAwait(true);
-            await _ui.ReplaceAsync(DodgeRoutes.Menu, await _saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true), _lifetime.Token).ConfigureAwait(true);
+            await _ui.ReplaceAsync(DodgeRoutes.Menu, await Saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true), _lifetime.Token).ConfigureAwait(true);
 
         }
         finally { _navigation.Release(); }
@@ -288,12 +294,12 @@ public partial class GameApplication : IDisposable
         await _navigation.WaitAsync(_lifetime.Token).ConfigureAwait(true);
         try
         {
-            if (_stopping || !ReferenceEquals(_world, endedWorld))
+            if (_stopping || !ReferenceEquals(CurrentWorld, endedWorld))
                 return;
-            if (_world is null)
+            if (CurrentWorld is null)
                 return;
-            _dirty = false;
-            var score = _world.Score;
+            IsDirty = false;
+            var score = CurrentWorld.Score;
             var status = await RetireRunSaveAsync().ConfigureAwait(true);
             if (score > Preferences.BestScore)
             {
@@ -387,14 +393,14 @@ public partial class GameApplication : IDisposable
             _lifetime.Cancel();
         }
         catch (Exception exception) { errors.Add(exception); }
-        _world?.StopRun();
+        CurrentWorld?.StopRun();
         await CaptureStopAsync(_ui.StopAsync, errors).ConfigureAwait(true);
         await CaptureStopAsync(() => Task.WhenAll([.. _actions]), errors).ConfigureAwait(true);
         await CaptureStopAsync(() => _acceptance, errors).ConfigureAwait(true);
         if (!_startup.IsCompleted)
             await CaptureStopAsync(() => _startup, errors).ConfigureAwait(true);
         await CaptureStopAsync(_scenes.StopAsync, errors).ConfigureAwait(true);
-        await CaptureStopAsync(_content.StopModsAsync, errors).ConfigureAwait(true);
+        await CaptureStopAsync(ActiveContent.StopModsAsync, errors).ConfigureAwait(true);
         await CaptureStopAsync(() => _pause.DisposeAsync().AsTask(), errors).ConfigureAwait(true);
         _menus.RunEnded -= OnRunEnded;
         if (errors.Count > 0)

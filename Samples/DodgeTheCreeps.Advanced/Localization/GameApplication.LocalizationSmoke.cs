@@ -67,8 +67,8 @@ public partial class GameApplication
     {
         await SetLanguageAsync("en").ConfigureAwait(true);
         Click("Start");
-        await UntilAsync(() => _world is { IsRunning: true } && HasView("hud")).ConfigureAwait(true);
-        var world = _world;
+        await UntilAsync(() => CurrentWorld is { IsRunning: true } && HasView("hud")).ConfigureAwait(true);
+        var world = CurrentWorld;
         Click("Pause");
         await UntilAsync(() => HasView("pause") && GetTree().Paused).ConfigureAwait(true);
         Click("Settings");
@@ -81,7 +81,7 @@ public partial class GameApplication
         await UntilAsync(() => Text.IsChinese && string.Equals(Preferences.Language, "zh-CN", StringComparison.Ordinal))
             .ConfigureAwait(true);
         Require(_ui.Snapshot.Views.Select(static view => view.Handle).SequenceEqual(handles), "Language switching replaced UI instances.");
-        Require(ReferenceEquals(world, _world) && world.PlayerPosition == position && _pause.GetPauseDepth(PauseGroup.Global) == 2,
+        Require(ReferenceEquals(world, CurrentWorld) && world.PlayerPosition == position && _pause.GetPauseDepth(PauseGroup.Global) == 2,
             "Language switching changed the active world or nested pause state.");
         Require(string.Equals(((Button)FindNative("SaveSettings", "Button")).Text, Text.Get("apply_settings"), StringComparison.Ordinal),
             "Settings buttons did not refresh live.");
@@ -94,7 +94,7 @@ public partial class GameApplication
     /// <summary>Updates open dialogs in place and keeps long Chinese recovery decisions visible.</summary>
     private async Task CheckLocalizedDialogsAsync()
     {
-        var world = _world;
+        var world = CurrentWorld;
         var confirm = _ui.ShowDialogAsync(DodgeRoutes.Confirm, () => Text.Get("leave_question"), _lifetime.Token);
         await UntilAsync(() => HasView("confirm")).ConfigureAwait(true);
         var handles = _ui.Snapshot.Views.Select(static view => view.Handle).ToArray();
@@ -124,7 +124,7 @@ public partial class GameApplication
         Require(string.Equals(proceed.Text, Text.Get("back_up_continue"), StringComparison.Ordinal), "Recovery decision was not translated.");
         Click("RecoveryCancel");
         await recover.ConfigureAwait(true);
-        Require(_pause.GetPauseDepth(PauseGroup.Global) == 1 && ReferenceEquals(world, _world),
+        Require(_pause.GetPauseDepth(PauseGroup.Global) == 1 && ReferenceEquals(world, CurrentWorld),
             "Closing translated dialogs released the underlying gameplay pause.");
     }
 }

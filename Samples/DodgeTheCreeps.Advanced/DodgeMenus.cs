@@ -12,6 +12,8 @@ using GFramework.Game.UI;
 using GFramework.Godot.UI;
 using Godot;
 
+using DodgeTheCreeps.Advanced.Presentation;
+
 namespace DodgeTheCreeps.Advanced;
 
 /// <summary>Builds ordinary native views; typed registration supplies arguments and instance actions.</summary>
@@ -54,7 +56,10 @@ internal sealed partial class DodgeMenus : IDisposable, IAsyncDisposable
     }
 
     /// <summary>Releases owned theme/font variations after native views stop; shared GD-loaded font files remain borrowed.</summary>
-    public void Dispose()
+    public void Dispose() => DisposeNativeResources();
+
+    /// <summary>Releases engine-owned resources on the caller-verified Godot thread.</summary>
+    private void DisposeNativeResources()
     {
         if (_disposed)
             return;
@@ -69,7 +74,7 @@ internal sealed partial class DodgeMenus : IDisposable, IAsyncDisposable
     /// <summary>Returns native theme/font ownership to the Godot thread even when DI cleanup resumes elsewhere.</summary>
     public ValueTask DisposeAsync() => new(_dispatcher.InvokeAsync(() =>
     {
-        Dispose();
+        DisposeNativeResources();
         return Task.CompletedTask;
     }));
 

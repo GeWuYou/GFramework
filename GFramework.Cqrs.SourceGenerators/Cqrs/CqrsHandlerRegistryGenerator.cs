@@ -114,7 +114,11 @@ isEnabledByDefault: true);
             supportsDirectReflectionFallbackTypes,
             supportsMultipleReflectionFallbackAttributes,
             supportsRequestInvokerProvider,
-            supportsStreamInvokerProvider);
+            supportsStreamInvokerProvider,
+            (!supportsRequestInvokerProvider ||
+             HasTypedInvokerFactory(compilation, CqrsRequestInvokerDescriptorMetadataName, stream: false)) &&
+            (!supportsStreamInvokerProvider ||
+             HasTypedInvokerFactory(compilation, CqrsStreamInvokerDescriptorMetadataName, stream: true)));
     }
 
     private static bool IsHandlerCandidate(SyntaxNode node)
@@ -377,6 +381,14 @@ isEnabledByDefault: true);
 
         if (registrations.Count == 0)
             return;
+
+        if (!generationEnvironment.TypedInvokerFactoriesAvailable)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                IncompatibleRuntimeContractDiagnostic,
+                Location.None));
+            return;
+        }
 
         var reflectionFallbackEmission = CreateReflectionFallbackEmissionSpec(generationEnvironment, registrations);
 

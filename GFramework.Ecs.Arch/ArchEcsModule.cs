@@ -28,14 +28,7 @@ public sealed class ArchEcsModule(ArchOptions? options = null, bool enabled = tr
         if (services.Any(descriptor => descriptor.ServiceType == typeof(World) ||
             descriptor.ServiceType == typeof(IArchRuntime)))
             throw new InvalidOperationException("This composition already contains an Arch World or runtime.");
-        var captured = new ArchOptions
-        {
-            WorldCapacity = options?.WorldCapacity ?? 1000,
-            EnableStatistics = options?.EnableStatistics ?? false,
-            Priority = options?.Priority ?? 50,
-        };
-        if (captured.WorldCapacity <= 0)
-            throw new ArgumentOutOfRangeException(nameof(options), "World capacity must be positive.");
+        var captured = CaptureOptions(options);
         services.AddSingleton(_ => World.Create(captured.WorldCapacity));
         services.AddSingleton<IArchRuntime>(provider => new ArchRuntime(
             provider.GetRequiredService<World>(), provider.GetServices<ArchSystem>(), captured));
@@ -44,6 +37,23 @@ public sealed class ArchEcsModule(ArchOptions? options = null, bool enabled = tr
         else
             services.AddComponent(provider => new ContextRuntimeLifetime(
                 () => provider.GetRequiredService<IArchRuntime>(), hostContext), captured.Priority);
+    }
+
+    /// <summary>Copies and validates caller options before adding any service descriptions.</summary>
+    /// <param name="options">Caller-owned options, or defaults.</param>
+    /// <returns>The validated composition-local snapshot.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">World capacity is not positive.</exception>
+    private static ArchOptions CaptureOptions(ArchOptions? options)
+    {
+        var captured = new ArchOptions
+        {
+            WorldCapacity = options?.WorldCapacity ?? 1000,
+            EnableStatistics = options?.EnableStatistics ?? false,
+            Priority = options?.Priority ?? 50,
+        };
+        if (captured.WorldCapacity <= 0)
+            throw new ArgumentOutOfRangeException(nameof(options), "World capacity must be positive.");
+        return captured;
     }
 
     /// <summary>Owns business start/stop only; the provider owns systems and World final disposal.</summary>
@@ -100,7 +110,7 @@ public sealed class ArchEcsModule(ArchOptions? options = null, bool enabled = tr
                 {
                     completion.SetException(error);
                 }
-            }, null);
+            }, state: null);
             return completion.Task;
         }
     }

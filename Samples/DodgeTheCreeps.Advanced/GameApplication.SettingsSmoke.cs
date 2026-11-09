@@ -9,6 +9,8 @@ using GFramework.Core.Abstractions.Pause;
 using GFramework.Game.Abstractions.UI;
 using Godot;
 
+using DodgeTheCreeps.Advanced.Settings;
+
 namespace DodgeTheCreeps.Advanced;
 
 /// <summary>Checks complete settings, explicit draft decisions and fresh-process persistence in native Godot.</summary>
@@ -26,8 +28,8 @@ public partial class GameApplication
         }
         CheckResolutionParity();
         await StartGameAsync(restore: false).ConfigureAwait(true);
-        Require(_world!.GetNode<AudioStreamPlayer>("Music").Bus.ToString().Equals("BGM", StringComparison.Ordinal) &&
-            _world.GetNode<AudioStreamPlayer>("GameOverSound").Bus.ToString().Equals("SFX", StringComparison.Ordinal),
+        Require(CurrentWorld!.GetNode<AudioStreamPlayer>("Music").Bus.ToString().Equals("BGM", StringComparison.Ordinal) &&
+            CurrentWorld.GetNode<AudioStreamPlayer>("GameOverSound").Bus.ToString().Equals("SFX", StringComparison.Ordinal),
             "Gameplay audio is not routed through independent music/effects buses.");
         await SaveGameAsync().ConfigureAwait(true);
         var progressPath = ProjectSettings.GlobalizePath(_dataRoot + "/saves/slot_1/save.json");
@@ -158,7 +160,7 @@ public partial class GameApplication
         using var unwritable = new SettingsService(_host, _storage,
             _launch with
             {
-                DataRoot = "res://settings-write-failure"
+                DataRoot = "res://settings-write-failure",
             }, Text, _menus, _lifetime);
         var candidate = Preferences.Copy();
         candidate.Volume = 0.75f;

@@ -74,7 +74,7 @@ public sealed class WeakEvent<T>(EventStatistics? statistics = null)
                 alive.Add(callback);
                 return false;
             });
-            callbacks = alive.ToArray();
+            callbacks = [.. alive];
             UpdateStatistics();
         }
         statistics?.RecordPublish(typeof(T).Name);

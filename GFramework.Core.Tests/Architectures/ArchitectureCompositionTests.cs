@@ -73,7 +73,7 @@ public sealed class ArchitectureCompositionTests
         });
         await architecture.InitializeAsync();
         await architecture.DestroyAsync();
-        Assert.That(calls, Is.EqualTo(new[] { "start-second", "start-first", "start-third", "stop-third", "stop-first", "stop-second" }));
+        Assert.That(calls, Is.EqualTo(["start-second", "start-first", "start-third", "stop-third", "stop-first", "stop-second"]));
     }
 
     /// <summary>A borrowed participant is stopped but its final resource remains caller-owned.</summary>
@@ -196,8 +196,8 @@ public sealed class ArchitectureCompositionTests
     {
         await using var architecture = new TestArchitecture(services => services.AddScoped<Dependency>());
         await architecture.InitializeAsync();
-        using var first = architecture.Services.CreateScope();
-        using var second = architecture.Services.CreateScope();
+        await using var first = architecture.Services.CreateAsyncScope();
+        await using var second = architecture.Services.CreateAsyncScope();
         Assert.That(first.ServiceProvider.GetRequiredService<Dependency>(), Is.SameAs(first.ServiceProvider.GetRequiredService<Dependency>()));
         Assert.That(first.ServiceProvider.GetRequiredService<Dependency>(), Is.Not.SameAs(second.ServiceProvider.GetRequiredService<Dependency>()));
         Assert.Throws<InvalidOperationException>(() => architecture.Services.GetRequiredService<Dependency>());
@@ -235,7 +235,7 @@ public sealed class ArchitectureCompositionTests
         var architecture = new TestArchitecture(services => services.AddComponent(probe));
         var start = architecture.InitializeAsync(cancellation.Token);
         await probe.Entered.Task;
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         await Assert.CatchAsync<OperationCanceledException>(() => start);
         Assert.That(probe.Stops, Is.EqualTo(1));
         await Assert.CatchAsync<OperationCanceledException>(() => architecture.WaitUntilReadyAsync());
@@ -336,6 +336,8 @@ public sealed class ArchitectureCompositionTests
 
     /// <summary>Simple synchronous participants remain supported.</summary>
     [Test]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "This regression tests synchronous Initialize and its single-use admission; replacing it with InitializeAsync loses that contract.")]
     public async Task SynchronousStartupAndSingleUseAreExplicit()
     {
         var probe = new SyncParticipant();
@@ -355,7 +357,7 @@ public sealed class ArchitectureCompositionTests
         var rejected = false;
         var participant = new Participant(() =>
         {
-            rejected = Assert.Throws<InvalidOperationException>(() => { _ = architecture!.DestroyAsync(); }) is not null;
+            rejected = Assert.Throws<InvalidOperationException>(() => { _ = architecture!.DestroyAsync().AsTask(); }) is not null;
         });
         architecture = new TestArchitecture(services => services.AddComponent(participant));
         await architecture.InitializeAsync();
@@ -392,13 +394,13 @@ public sealed class ArchitectureCompositionTests
         {
             Assert.That(sender, Is.SameAs(architecture));
             if (args.Phase == ArchitecturePhase.Stopped)
-                Assert.Throws<InvalidOperationException>(() => { _ = architecture.DestroyAsync(); });
+                Assert.Throws<InvalidOperationException>(() => { _ = architecture.DestroyAsync().AsTask(); });
             phases.Add(args.Phase);
         };
         await architecture.InitializeAsync();
         await architecture.DestroyAsync();
-        Assert.That(phases, Is.EqualTo(new[] { ArchitecturePhase.Configuring, ArchitecturePhase.Initializing,
-            ArchitecturePhase.Ready, ArchitecturePhase.Stopping, ArchitecturePhase.Stopped }));
+        Assert.That(phases, Is.EqualTo([ ArchitecturePhase.Configuring, ArchitecturePhase.Initializing,
+            ArchitecturePhase.Ready, ArchitecturePhase.Stopping, ArchitecturePhase.Stopped ]));
     }
 
     /// <summary>Host shutdown retains dependency access internally and orders detachment after business stop.</summary>
@@ -410,7 +412,7 @@ public sealed class ArchitectureCompositionTests
         var architecture = new TestArchitecture(services => { services.AddSingleton<Dependency>(); services.AddComponent(participant); }, calls);
         await architecture.InitializeAsync();
         await architecture.DestroyAsync();
-        Assert.That(calls, Is.EqualTo(new[] { "stopping", "component", "stopped" }));
+        Assert.That(calls, Is.EqualTo(["stopping", "component", "stopped"]));
     }
 
     /// <summary>Records fixture descriptions while letting production Architecture own all runtime behavior.</summary>

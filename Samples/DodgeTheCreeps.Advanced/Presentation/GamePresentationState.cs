@@ -4,7 +4,7 @@
 using System;
 using DodgeTheCreeps.Advanced.Gameplay;
 
-namespace DodgeTheCreeps.Advanced;
+namespace DodgeTheCreeps.Advanced.Presentation;
 
 /// <summary>Typed presentation notifications; it exposes no service lookup or mutable game objects.</summary>
 internal sealed class GamePresentationState

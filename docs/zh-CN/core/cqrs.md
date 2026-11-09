@@ -41,3 +41,5 @@ runtime 使用所属标准 provider 解析处理器与管线。Scoped 处理器�
 请求分发不要求数据库读写分离，也不要求将每帧移动包装成请求。独立包及其 XML 契约给出完整的处理器、管线和流生命周期说明。
 
 相关主题：[应用服务](./system.md)、[读请求](./query.md)、[写请求](./command.md)、[生成处理器注册表](../source-generators/cqrs-handler-registry-generator.md)。
+
+直接注册与程序集注册在同一 `IServiceCollection` 中按注册器类型共同去重，混用两种入口或改变调用顺序不会重复执行生成注册。程序集入口仍会补齐该程序集声明的 fallback handlers；不同 service collection 分别维护注册状态。

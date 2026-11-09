@@ -7,7 +7,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Godot;
 
-namespace DodgeTheCreeps.Advanced;
+using DodgeTheCreeps.Advanced.Composition;
+using DodgeTheCreeps.Advanced.Presentation;
+
+namespace DodgeTheCreeps.Advanced.Settings;
 
 /// <summary>
 /// Owns serialized preference updates and the native audio/window application boundary.

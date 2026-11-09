@@ -12,7 +12,7 @@ namespace GFramework.Cqrs.Internal;
 ///     运行时会优先尝试使用源码生成的程序集级注册器，以减少冷启动阶段的反射开销；
 ///     当目标程序集没有生成注册器，或注册器不可用时，再回退到运行时反射扫描。
 /// </summary>
-internal static class CqrsHandlerRegistrar
+internal static partial class CqrsHandlerRegistrar
 {
     /// <summary>
     ///     描述 generated invoker descriptor 在 registrar 预热阶段使用的 request/response 类型对键。
@@ -283,31 +283,6 @@ internal static class CqrsHandlerRegistrar
 
         registry = activationMetadata.Factory();
         return true;
-    }
-
-    /// <summary>
-    ///     调用所有已激活的 generated registry 完成 CQRS handler 注册，并保留稳定的调试日志顺序。
-    /// </summary>
-    /// <param name="services">目标服务集合。</param>
-    /// <param name="registries">已通过契约校验的 registry 实例。</param>
-    /// <param name="assemblyName">当前程序集的稳定名称。</param>
-    /// <param name="logger">日志记录器。</param>
-    private static void RegisterGeneratedRegistries(
-        IServiceCollection services,
-        IReadOnlyList<ICqrsHandlerRegistry> registries,
-        string assemblyName,
-        ILogger logger)
-    {
-        foreach (var registry in registries)
-        {
-            if (logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Debug))
-            {
-                logger.LogDebug("Registering CQRS handlers for assembly {AssemblyName} via generated registry {RegistryType}.", assemblyName, registry.GetType().FullName);
-            }
-            registry.Register(services, logger);
-            RegisterGeneratedRequestInvokerProvider(services, registry, assemblyName, logger);
-            RegisterGeneratedStreamInvokerProvider(services, registry, assemblyName, logger);
-        }
     }
 
     /// <summary>

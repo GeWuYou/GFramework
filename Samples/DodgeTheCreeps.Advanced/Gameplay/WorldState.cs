@@ -3,7 +3,7 @@
 
 using DodgeTheCreeps.Advanced.Gameplay;
 
-namespace DodgeTheCreeps.Advanced;
+namespace DodgeTheCreeps.Advanced.Gameplay;
 
 /// <summary>The explicit native board reference shared by scene, mod and run adapters.</summary>
 internal sealed class WorldState

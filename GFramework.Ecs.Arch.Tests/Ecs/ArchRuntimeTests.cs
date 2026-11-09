@@ -29,11 +29,11 @@ public sealed class ArchRuntimeTests
         runtime.Initialize();
         calls.Clear();
         runtime.Update(1);
-        Assert.That(calls, Is.EqualTo(new[] { "second:before", "child:before", "first:before",
-            "second:update", "child:update", "first:update", "second:after", "child:after", "first:after" }));
+        Assert.That(calls, Is.EqualTo([ "second:before", "child:before", "first:before",
+            "second:update", "child:update", "first:update", "second:after", "child:after", "first:after" ]));
         runtime.Stop();
         Assert.That(first.Disposals, Is.Zero, "The caller, not the runtime, owns native resources.");
-        Assert.That(calls.TakeLast(2), Is.EqualTo(new[] { "first:stop", "second:stop" }));
+        Assert.That(calls.TakeLast(2), Is.EqualTo(["first:stop", "second:stop"]));
     }
 
     /// <summary>Each possible failing phase retains partial timing and closes the update boundary.</summary>

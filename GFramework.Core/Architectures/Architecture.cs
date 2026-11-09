@@ -96,8 +96,7 @@ public abstract class Architecture : IArchitecture
     /// <returns>The registered service, or null for an unknown key.</returns>
     internal object? ResolveService(Type serviceType)
     {
-        if (_stopping && _cleanupAccess.Value == 0)
-            throw new ObjectDisposedException(nameof(Architecture));
+        ObjectDisposedException.ThrowIf(_stopping && _cleanupAccess.Value == 0, nameof(Architecture));
         var provider = _provider ?? throw new InvalidOperationException("Services are unavailable during configuration. Inject dependencies into components.");
         // Keep root-provider resolution behind this same guard. Standard scopes/factories remain caller-owned.
         return serviceType == typeof(IServiceProvider) ? _serviceAccess : provider.GetService(serviceType);
@@ -109,8 +108,7 @@ public abstract class Architecture : IArchitecture
     /// <returns>The service, or null when no binding exists.</returns>
     internal object? ResolveKeyedService(Type serviceType, object? serviceKey)
     {
-        if (_stopping && _cleanupAccess.Value == 0)
-            throw new ObjectDisposedException(nameof(Architecture));
+        ObjectDisposedException.ThrowIf(_stopping && _cleanupAccess.Value == 0, nameof(Architecture));
         var provider = _provider ?? throw new InvalidOperationException("Services are unavailable during configuration.");
         return serviceKey is null ? ResolveService(serviceType) : provider.GetKeyedService(serviceType, serviceKey);
     }
@@ -303,6 +301,7 @@ public abstract class Architecture : IArchitecture
     }
 
     /// <summary>Waits for startup's own failure cleanup, then reuses that result instead of running stop twice.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1816", Justification = "Business shutdown and DisposeAsync share one cached terminal task; suppress finalization only after that shared cleanup succeeds.")]
     private async Task CompleteDestructionAsync(TaskCompletionSource completion, Task? startup, CancellationTokenSource? cancellation)
     {
         var errors = new List<Exception>();
@@ -348,6 +347,7 @@ public abstract class Architecture : IArchitecture
 
     /// <summary>Shares standard async disposal with business shutdown.</summary>
     /// <returns>The same terminal task as DestroyAsync.</returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1816", Justification = "Finalization is suppressed by successful shared shutdown completion; returning that task preserves concurrent disposal identity.")]
     public ValueTask DisposeAsync() => DestroyAsync();
 
     /// <summary>Publishes one cleanup task without executing user code while holding the publication lock.</summary>

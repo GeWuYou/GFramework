@@ -159,7 +159,7 @@ public sealed class HostContextTests
                     completion.SetResult();
                 }
                 catch (Exception error) { completion.SetException(error); }
-            }, null);
+            }, state: null);
             return completion.Task;
         }
 

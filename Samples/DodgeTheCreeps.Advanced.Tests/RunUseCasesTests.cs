@@ -27,7 +27,7 @@ public sealed class RunUseCasesTests
         var session = new GameSession();
         using var runs = new RunUseCases(session, board, store);
         Assert.That(await runs.StartAsync(restore: true, contentReady: true, "base:yard").ConfigureAwait(false), Is.False);
-        Assert.That(trace, Is.EqualTo(new[] { "load" }));
+        Assert.That(trace, Is.EqualTo(["load"]));
     }
 
     /// <summary>Continuation uses the checkpoint arena and restores rather than starting a fresh random board.</summary>
@@ -41,7 +41,7 @@ public sealed class RunUseCasesTests
         var session = new GameSession();
         using var runs = new RunUseCases(session, board, new Store(trace) { Loaded = saved });
         Assert.That(await runs.StartAsync(restore: true, contentReady: true, "base:yard").ConfigureAwait(false), Is.True);
-        Assert.That(trace, Is.EqualTo(new[] { "load", "prepare:moon:crater", "restore" }));
+        Assert.That(trace, Is.EqualTo(["load", "prepare:moon:crater", "restore"]));
         Assert.That(session.HasChanges, Is.False);
         Assert.That(session.NeedsDiscardConfirmation(isRunning: true, saved.X, saved.Y), Is.False);
         Assert.That(session.NeedsDiscardConfirmation(isRunning: true, saved.X + 1, saved.Y), Is.True);
@@ -56,7 +56,7 @@ public sealed class RunUseCasesTests
         var session = new GameSession();
         using var runs = new RunUseCases(session, board, new Store(trace));
         await runs.StartAsync(restore: false, contentReady: true, "base:yard").ConfigureAwait(false);
-        Assert.That(trace, Is.EqualTo(new[] { "new-state", "prepare:base:yard", "new-board" }));
+        Assert.That(trace, Is.EqualTo(["new-state", "prepare:base:yard", "new-board"]));
         Assert.That(session.NeedsDiscardConfirmation(isRunning: true, 240, 580), Is.True);
         await runs.SaveAsync().ConfigureAwait(false);
         Assert.That(session.NeedsDiscardConfirmation(isRunning: true, 240, 580), Is.False);
@@ -159,7 +159,7 @@ public sealed class RunUseCasesTests
         var trace = new List<string>();
         using var runs = new RunUseCases(new GameSession(), new Board(trace), new Store(trace));
         using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         await Assert.ThrowsAsync(Is.InstanceOf<OperationCanceledException>(), async () =>
             await runs.StartAsync(restore: false, contentReady: true, "base:yard", cancellation.Token).ConfigureAwait(false)).ConfigureAwait(false);
         Assert.That(trace, Is.Empty);

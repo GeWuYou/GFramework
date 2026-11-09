@@ -43,6 +43,6 @@ public sealed class DodgeProgress : RunSnapshot, IData
         GraceRemaining = snapshot.GraceRemaining,
         RandomSeed = snapshot.RandomSeed,
         RandomState = snapshot.RandomState,
-        Enemies = new List<EnemySnapshot>(snapshot.Enemies),
+        Enemies = [.. snapshot.Enemies],
     };
 }

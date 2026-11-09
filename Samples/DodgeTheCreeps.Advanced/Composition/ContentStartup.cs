@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Lifecycle;
 using GFramework.Game.Abstractions.Runtime;
 
-namespace DodgeTheCreeps.Advanced;
+namespace DodgeTheCreeps.Advanced.Composition;
 
 /// <summary>Explicit lifecycle participant for content IO; ordinary services are not initialized by role or naming.</summary>
 /// <param name="content">Content service whose resource ownership remains with DI.</param>

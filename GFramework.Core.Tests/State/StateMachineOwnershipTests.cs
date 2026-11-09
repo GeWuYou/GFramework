@@ -61,6 +61,7 @@ public sealed class StateMachineOwnershipTests
         var firstStop = machine.StopAsync().AsTask();
         var secondStop = machine.StopAsync().AsTask();
         Assert.That(firstStop, Is.SameAs(secondStop));
+        Assert.That(machine.DisposeAsync().AsTask(), Is.SameAs(firstStop));
         Assert.That(firstStop.IsCompleted, Is.False);
         Assert.That(state.Exits, Is.EqualTo(0));
         state.Release.SetResult();
@@ -108,7 +109,7 @@ public sealed class StateMachineOwnershipTests
         await state.Entered.Task;
         using var cancellation = new CancellationTokenSource();
         var waiter = machine.ChangeToAsync<First>(cancellation.Token);
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         await Assert.CatchAsync<OperationCanceledException>(async () => await waiter.ConfigureAwait(false));
         state.Release.SetResult();
         await active;
@@ -140,12 +141,12 @@ public sealed class StateMachineOwnershipTests
         using var cancellation = new CancellationTokenSource();
         var transition = machine.ChangeToAsync<First>(cancellation.Token);
         await guarded.Checking.Task;
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         await Assert.CatchAsync<OperationCanceledException>(async () => await transition.ConfigureAwait(false));
         Assert.That(machine.Fault, Is.Null);
         Assert.That(machine.Current, Is.SameAs(guarded));
         guarded.Block = false;
-        Assert.That(await machine.ChangeToAsync<First>(), Is.True);
+        Assert.That(await machine.ChangeToAsync<First>(CancellationToken.None), Is.True);
     }
 
     /// <summary>Captures entry execution context without waiting for the child while inside entry.</summary>

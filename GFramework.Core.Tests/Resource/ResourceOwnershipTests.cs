@@ -74,6 +74,8 @@ public sealed class ResourceOwnershipTests
 
     /// <summary>Shutdown never invalidates active leases, but prevents them from creating new leases.</summary>
     [Test]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "This mixed sync/async resource regression intentionally calls Acquire to retain synchronous lease and loader coverage.")]
     public async Task DisposeAsync_DefersLeasedReleaseUntilLeaseDisposal()
     {
         var manager = new ResourceManager();
@@ -134,6 +136,8 @@ public sealed class ResourceOwnershipTests
 
     /// <summary>All current waiters observe the original failure, and a later acquisition starts a fresh attempt.</summary>
     [Test]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "This mixed sync/async resource regression intentionally calls Acquire to retain synchronous lease and loader coverage.")]
     public async Task LoadFailure_PropagatesAndAllowsRetry()
     {
         var failure = new InvalidOperationException("backend failed");
@@ -200,6 +204,8 @@ public sealed class ResourceOwnershipTests
 
     /// <summary>Manager shutdown reports release failures while still attempting every resource exactly once.</summary>
     [Test]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "This mixed sync/async resource regression intentionally calls Acquire to retain synchronous lease and loader coverage.")]
     public async Task DisposeAsync_ReportsCleanupFailuresAndSharesItsResult()
     {
         var manager = new ResourceManager();
@@ -250,6 +256,8 @@ public sealed class ResourceOwnershipTests
     [TestCase("single", true)]
     [TestCase("bulk", true)]
     [TestCase("lease", true)]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "This mixed sync/async resource regression intentionally calls Acquire to retain synchronous lease and loader coverage.")]
     public async Task ShutdownWaitsForAlreadyDetachedRelease(string releaseMode, bool failRelease)
     {
         using var entered = new ManualResetEventSlim();

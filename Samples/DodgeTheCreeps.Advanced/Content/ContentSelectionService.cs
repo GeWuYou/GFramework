@@ -8,7 +8,9 @@ using System.Threading.Tasks;
 using GFramework.Game.Abstractions.Content;
 using GFramework.Game.Abstractions.UI;
 
-namespace DodgeTheCreeps.Advanced;
+using DodgeTheCreeps.Advanced.Composition;
+
+namespace DodgeTheCreeps.Advanced.Content;
 
 /// <summary>Coordinates content selection and explicit executable-code approval without owning game flow or saves.</summary>
 internal sealed class ContentSelectionService

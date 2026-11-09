@@ -7,7 +7,9 @@ using GFramework.Game.Scene;
 using GFramework.Game.UI;
 using GFramework.Godot.Storage;
 
-namespace DodgeTheCreeps.Advanced;
+using DodgeTheCreeps.Advanced.Gameplay;
+
+namespace DodgeTheCreeps.Advanced.Composition;
 
 /// <summary>Groups run-specific application services and the native board boundary.</summary>
 /// <param name="Session">Pure policy state.</param>

@@ -15,7 +15,11 @@ using GFramework.Game.Data;
 using Godot;
 using Newtonsoft.Json.Linq;
 
-namespace DodgeTheCreeps.Advanced;
+using DodgeTheCreeps.Advanced.Composition;
+using DodgeTheCreeps.Advanced.Modding;
+using DodgeTheCreeps.Advanced.Presentation;
+
+namespace DodgeTheCreeps.Advanced.Progress;
 
 /// <summary>Owns document persistence, recovery confirmation, backup metadata and the host's mod-state envelope.</summary>
 internal sealed class SaveService : IRunStore

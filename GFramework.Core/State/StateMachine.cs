@@ -21,7 +21,7 @@ public class StateMachine : IStateMachine, IAsyncDestroyable
 #endif
     private readonly SemaphoreSlim _operation = new(1, 1);
     private readonly AsyncLocal<CallbackScope?> _callbackScope = new();
-    private readonly Dictionary<Type, IState> _states = new();
+    private readonly Dictionary<Type, IState> _states = [];
     private readonly List<IState> _history = [];
     private readonly List<IState> _started = [];
     private readonly int _maxHistorySize;
@@ -105,7 +105,7 @@ public class StateMachine : IStateMachine, IAsyncDestroyable
     public IEnumerable<Type> GetRegisteredStateTypes()
     {
         lock (_gate)
-            return _states.Keys.ToArray();
+            return [.. _states.Keys];
     }
 
     /// <inheritdoc />
@@ -119,7 +119,7 @@ public class StateMachine : IStateMachine, IAsyncDestroyable
     public IReadOnlyList<IState> GetStateHistory()
     {
         lock (_gate)
-            return _history.AsEnumerable().Reverse().ToArray();
+            return [.. _history.AsEnumerable().Reverse()];
     }
 
     /// <inheritdoc />
@@ -216,7 +216,7 @@ public class StateMachine : IStateMachine, IAsyncDestroyable
             {
                 _current = next;
                 // Entry can partially acquire resources; terminal cleanup includes the attempted state.
-                if (!_started.Any(state => ReferenceEquals(state, next)))
+                if (!_started.Exists(state => ReferenceEquals(state, next)))
                     _started.Add(next);
             }
             await EnterAsync(next, old, token).ConfigureAwait(true);
@@ -314,6 +314,8 @@ public class StateMachine : IStateMachine, IAsyncDestroyable
     }
 
     /// <summary>Wait for the active operation, then attempt every started state's business cleanup.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1816",
+        Justification = "Business stop and DisposeAsync share one terminal task; finalization is suppressed only after the shared cleanup succeeds.")]
     private async Task CompleteStopAsync(TaskCompletionSource completion)
     {
         await _operation.WaitAsync().ConfigureAwait(true);
@@ -354,7 +356,10 @@ public class StateMachine : IStateMachine, IAsyncDestroyable
             _operation.Release();
         }
         if (errors.Count == 0)
+        {
+            GC.SuppressFinalize(this);
             completion.TrySetResult();
+        }
         else
             completion.TrySetException(new AggregateException("State cleanup failed.", errors));
     }
@@ -363,6 +368,8 @@ public class StateMachine : IStateMachine, IAsyncDestroyable
     public ValueTask DestroyAsync() => StopAsync();
 
     /// <inheritdoc />
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1816",
+        Justification = "Successful shared stop completion suppresses finalization while this entrypoint preserves cached terminal task identity.")]
     public ValueTask DisposeAsync() => StopAsync();
 
     /// <summary>Reject registration changes once an operation has fixed the machine's topology.</summary>
@@ -376,8 +383,7 @@ public class StateMachine : IStateMachine, IAsyncDestroyable
     /// <summary>Reject operations after stop starts or a callback has failed.</summary>
     private void EnsureRunning()
     {
-        if (_stopTask is not null)
-            throw new ObjectDisposedException(nameof(StateMachine));
+        ObjectDisposedException.ThrowIf(_stopTask is not null, nameof(StateMachine));
         if (_fault is not null)
             throw new InvalidOperationException("The state machine has faulted; stop it before creating another.", _fault);
     }

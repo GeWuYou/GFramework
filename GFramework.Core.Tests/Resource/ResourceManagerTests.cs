@@ -17,13 +17,15 @@ public sealed class ResourceManagerTests
 {
     /// <summary>Each acquisition gets an independent lease while the cache loads one resource ownership.</summary>
     [Test]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "This mixed sync/async resource regression intentionally calls Acquire to retain synchronous lease and loader coverage.")]
     public async Task Acquire_SharesCacheAcrossSyncAndAsyncLeases()
     {
         await using var manager = new ResourceManager();
         var loader = CreateLoader();
         manager.RegisterLoader(loader);
         using var first = manager.Acquire<TestResource>("asset");
-        using var second = await manager.AcquireAsync<TestResource>("asset");
+        using var second = await manager.AcquireAsync<TestResource>("asset", CancellationToken.None);
         Assert.Multiple(() =>
         {
             Assert.That(first.Resource, Is.SameAs(second.Resource));
@@ -82,6 +84,8 @@ public sealed class ResourceManagerTests
 
     /// <summary>A preload intentionally pins a cache entry even under automatic release.</summary>
     [Test]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "MA0042",
+        Justification = "This mixed sync/async resource regression intentionally calls Acquire to retain synchronous lease and loader coverage.")]
     public async Task Preload_PinsUntilExplicitUnload()
     {
         await using var manager = new ResourceManager();
@@ -104,7 +108,7 @@ public sealed class ResourceManagerTests
         await using var manager = new ResourceManager();
         var loader = new ControlledLoader();
         manager.RegisterLoader(loader);
-        var requests = Enumerable.Range(0, 32).Select(_ => manager.AcquireAsync<TestResource>("asset")).ToArray();
+        var requests = Enumerable.Range(0, 32).Select(_ => manager.AcquireAsync<TestResource>("asset", CancellationToken.None)).ToArray();
         Assert.That(loader.LoadCount, Is.EqualTo(1));
         loader.Completion.SetResult(new TestResource());
         var leases = await Task.WhenAll(requests);
@@ -125,8 +129,8 @@ public sealed class ResourceManagerTests
         var loader = new ControlledLoader();
         manager.RegisterLoader(loader);
         var canceled = manager.AcquireAsync<TestResource>("asset", cancellation.Token);
-        var successful = manager.AcquireAsync<TestResource>("asset");
-        cancellation.Cancel();
+        var successful = manager.AcquireAsync<TestResource>("asset", CancellationToken.None);
+        await cancellation.CancelAsync();
         await Assert.ThrowsAsync<TaskCanceledException>(() => canceled);
         Assert.That(successful.IsCompleted, Is.False);
         Assert.That(loader.Token.CanBeCanceled, Is.False);
@@ -146,7 +150,7 @@ public sealed class ResourceManagerTests
         manager.RegisterLoader(loader);
         using var cancellation = new CancellationTokenSource();
         var request = manager.AcquireAsync<TestResource>("asset", cancellation.Token);
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         await Assert.ThrowsAsync<TaskCanceledException>(() => request);
         var shutdown = manager.DisposeAsync();
         loader.Completion.SetResult(new TestResource());
@@ -162,7 +166,7 @@ public sealed class ResourceManagerTests
         var manager = new ResourceManager();
         var loader = new ControlledLoader();
         manager.RegisterLoader(loader);
-        var request = manager.AcquireAsync<TestResource>("asset");
+        var request = manager.AcquireAsync<TestResource>("asset", CancellationToken.None);
         var first = manager.DisposeAsync().AsTask();
         var second = manager.DisposeAsync().AsTask();
         Assert.That(first, Is.SameAs(second));
@@ -181,7 +185,7 @@ public sealed class ResourceManagerTests
         var manager = new ResourceManager();
         var loader = new ControlledLoader();
         manager.RegisterLoader(loader);
-        var pending = manager.AcquireAsync<TestResource>("asset");
+        var pending = manager.AcquireAsync<TestResource>("asset", CancellationToken.None);
         Assert.Throws<InvalidOperationException>(() => manager.Acquire<TestResource>("asset"));
         Assert.Throws<InvalidOperationException>(() => manager.Dispose());
         loader.Completion.SetResult(new TestResource());
@@ -233,9 +237,9 @@ public sealed class ResourceManagerTests
     public async Task ClosedManager_RejectsNewOperations()
     {
         var manager = new ResourceManager();
-        manager.Dispose();
+        await manager.DisposeAsync();
         Assert.Throws<ObjectDisposedException>(() => manager.Acquire<TestResource>("asset"));
-        await Assert.ThrowsAsync<ObjectDisposedException>(() => manager.AcquireAsync<TestResource>("asset"));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => manager.AcquireAsync<TestResource>("asset", CancellationToken.None));
         await Assert.ThrowsAsync<ObjectDisposedException>(() => manager.PreloadAsync<TestResource>("asset"));
         Assert.Throws<ObjectDisposedException>(() => manager.RegisterLoader(CreateLoader()));
         Assert.Throws<ObjectDisposedException>(() => manager.UnregisterLoader<TestResource>());
