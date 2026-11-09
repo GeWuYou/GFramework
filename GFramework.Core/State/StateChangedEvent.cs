@@ -8,6 +8,8 @@ namespace GFramework.Core.State;
 /// <summary>
 ///     表示状态变更事件的数据类
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "MA0059",
+    Justification = "StateChangedEvent is the established public IStateMachine event payload; a CI-only naming cleanup preserves this API.")]
 public sealed class StateChangedEvent : EventArgs
 {
     /// <summary>

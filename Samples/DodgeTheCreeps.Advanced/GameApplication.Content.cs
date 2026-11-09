@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace DodgeTheCreeps.Advanced;
 
 /// <summary>Routes menu content commands to dedicated selection and persistence services.</summary>
-public partial class GameApplication
+public sealed partial class GameApplication
 {
     /// <summary>Opens the content manager.</summary>
     internal Task OpenContentAsync() => _selection.OpenContentAsync();

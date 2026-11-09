@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using GFramework.Game.Scene;
 using GFramework.Game.UI;
 
-namespace DodgeTheCreeps.Advanced;
+namespace DodgeTheCreeps.Advanced.Gameplay;
 
 /// <summary>Adapts engine scene operations to the independent run application's board port.</summary>
 /// <param name="state">Explicit current-world state.</param>

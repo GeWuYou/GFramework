@@ -13,5 +13,5 @@ public sealed class Subscription(Action unsubscribe) : IDisposable
     private Action? _unsubscribe = unsubscribe ?? throw new ArgumentNullException(nameof(unsubscribe));
 
     /// <summary>Detach this registration. Repeated calls have no effect.</summary>
-    public void Dispose() => Interlocked.Exchange(ref _unsubscribe, null)?.Invoke();
+    public void Dispose() => Interlocked.Exchange(ref _unsubscribe, value: null)?.Invoke();
 }

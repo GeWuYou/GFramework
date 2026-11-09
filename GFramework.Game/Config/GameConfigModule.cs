@@ -13,14 +13,12 @@ namespace GFramework.Game.Config;
 
 /// <summary>Describes a game configuration registry and one asynchronous initial-load participant.</summary>
 /// <remarks>The module is instance-bound. Initial load precedes normal components through explicit order -100.</remarks>
-public sealed class GameConfigModule : IArchitectureModule
+/// <remarks>Creates descriptions without reading files.</remarks>
+/// <param name="options">The game-owned loader and table configuration.</param>
+public sealed class GameConfigModule(GameConfigBootstrapOptions options) : IArchitectureModule
 {
-    private readonly GameConfigBootstrap _bootstrap;
+    private readonly GameConfigBootstrap _bootstrap = new(options);
     private int _installed;
-
-    /// <summary>Creates descriptions without reading files.</summary>
-    /// <param name="options">The game-owned loader and table configuration.</param>
-    public GameConfigModule(GameConfigBootstrapOptions options) => _bootstrap = new GameConfigBootstrap(options);
 
     /// <summary>The configured registry, populated before dependent participants start.</summary>
     public IConfigRegistry Registry => _bootstrap.Registry;
@@ -57,7 +55,7 @@ public sealed class GameConfigModule : IArchitectureModule
     /// <param name="entries">All explicit configuration roots in module registration order.</param>
     private sealed class ConfigLifetime(IEnumerable<BootstrapEntry> entries) : IAsyncInitializable, IDestroyable, IDisposable
     {
-        private readonly GameConfigBootstrap[] _bootstraps = entries.Select(entry => entry.Bootstrap).ToArray();
+        private readonly GameConfigBootstrap[] _bootstraps = [.. entries.Select(entry => entry.Bootstrap)];
         /// <inheritdoc />
         public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {

@@ -3,7 +3,7 @@
 
 using System;
 
-namespace DodgeTheCreeps.Advanced;
+namespace DodgeTheCreeps.Advanced.Presentation;
 
 /// <summary>Supplies a deferred localized message without retaining a native view.</summary>
 /// <param name="message">The message evaluated in the active language when a view refreshes.</param>

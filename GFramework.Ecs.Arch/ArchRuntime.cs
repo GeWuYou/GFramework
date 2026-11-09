@@ -41,9 +41,8 @@ public sealed class ArchRuntime : IArchRuntime
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(systems);
         _world = world;
-        _systems = systems.Select(system => system ?? throw new ArgumentException("Null system.", nameof(systems)))
-            .OrderBy(system => system is IPrioritized priority ? priority.Priority : 0).ToArray();
-        if (_systems.Distinct(ReferenceEqualityComparer.Instance).Count() != _systems.Length)
+        _systems = [.. systems.Select(system => system ?? throw new ArgumentException("Null system.", nameof(systems))).OrderBy(system => system is IPrioritized priority ? priority.Priority : 0)];
+        if (_systems.Distinct(ReferenceEqualityComparer.Instance).Take(_systems.Length + 1).Count() != _systems.Length)
             throw new ArgumentException("Each top-level system instance must be registered once.", nameof(systems));
         _measurements = options?.EnableStatistics == true ? new Measurement[_systems.Length] : null;
     }
@@ -202,8 +201,8 @@ public sealed class ArchRuntime : IArchRuntime
             }
             catch
             {
-                if (_measurements is not null)
-                    _measurements[index].FailedPhase = phase;
+                if (_measurements is { } measurements)
+                    measurements[index].FailedPhase = phase;
                 throw;
             }
             finally
@@ -238,7 +237,7 @@ public sealed class ArchRuntime : IArchRuntime
     /// <summary>The one-way business lifetime; final resource ownership is external.</summary>
     private enum RuntimeState
     {
-        Created, Ready, Failed, Stopped
+        Created, Ready, Failed, Stopped,
     }
 
     /// <summary>Reusable mutable storage; immutable public objects are allocated only when a snapshot is requested.</summary>

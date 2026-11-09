@@ -13,11 +13,10 @@ namespace GFramework.Godot.Architectures;
 ///     抽象架构类，为特定类型的架构提供基础实现框架。
 ///     此类负责管理架构的初始化、生命周期绑定以及扩展模块的安装与销毁。
 /// </summary>
-public abstract class AbstractArchitecture : Architecture, IAsyncArchitectureHost
+/// <remarks>Creates an isolated architecture whose node attachment and detachment use the Godot thread.</remarks>
+/// <param name="configuration">Instance logging options.</param>
+public abstract class AbstractArchitecture(IArchitectureConfiguration? configuration = null) : Architecture(configuration), IAsyncArchitectureHost
 {
-    /// <summary>Creates an isolated architecture whose node attachment and detachment use the Godot thread.</summary>
-    /// <param name="configuration">Instance logging options.</param>
-    protected AbstractArchitecture(IArchitectureConfiguration? configuration = null) : base(configuration) { }
 
     /// <summary>
     ///     存储所有已安装的Godot架构扩展组件列表

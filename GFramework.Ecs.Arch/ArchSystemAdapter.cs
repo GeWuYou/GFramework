@@ -12,7 +12,9 @@ namespace GFramework.Ecs.Arch;
 ///     Arch 系统适配器 - 通过显式 World 依赖桥接 Arch.System.ISystem&lt;T&gt;
 /// </summary>
 /// <typeparam name="T">系统数据类型（通常是 float 表示 deltaTime）</typeparam>
-public abstract class ArchSystemAdapter<T> : ILifecycle, IArchSystemAdapter<T>, ArchSys.ISystem<T>
+/// <remarks>Receives the owning world's explicit dependency; the adapter never resolves a container.</remarks>
+/// <param name="world">The world owned by the composition root.</param>
+public abstract class ArchSystemAdapter<T>(World world) : ILifecycle, IArchSystemAdapter<T>, ArchSys.ISystem<T>
 {
     private int _disposed;
     private bool _isInitialized;
@@ -23,11 +25,7 @@ public abstract class ArchSystemAdapter<T> : ILifecycle, IArchSystemAdapter<T>, 
     public World World
     {
         get;
-    }
-
-    /// <summary>Receives the owning world's explicit dependency; the adapter never resolves a container.</summary>
-    /// <param name="world">The world owned by the composition root.</param>
-    protected ArchSystemAdapter(World world) => World = world ?? throw new ArgumentNullException(nameof(world));
+    } = world ?? throw new ArgumentNullException(nameof(world));
 
     /// <summary>
     ///     显式实现 Arch.System.ISystem&lt;T&gt; 的主更新方法

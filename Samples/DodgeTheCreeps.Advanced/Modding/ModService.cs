@@ -10,7 +10,9 @@ using GFramework.Game.Modding;
 using GFramework.Game.Abstractions.Runtime;
 using Newtonsoft.Json.Linq;
 
-namespace DodgeTheCreeps.Advanced;
+using DodgeTheCreeps.Advanced.Gameplay;
+
+namespace DodgeTheCreeps.Advanced.Modding;
 
 /// <summary>Explicit game APIs and per-run data scopes for independently compiled desktop mods.</summary>
 internal sealed class ModService

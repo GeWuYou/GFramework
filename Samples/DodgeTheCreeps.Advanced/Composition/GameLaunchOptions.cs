@@ -4,7 +4,7 @@
 using System;
 using System.Linq;
 
-namespace DodgeTheCreeps.Advanced;
+namespace DodgeTheCreeps.Advanced.Composition;
 
 /// <summary>Immutable launch inputs determine data isolation before any feature service is constructed.</summary>
 /// <param name="Arguments">Native user arguments.</param>

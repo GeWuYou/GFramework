@@ -40,8 +40,9 @@ public partial class GameApplication
     {
         var dataRoot = _dataRoot + "/review-" + table;
         await WriteRequiredRemovalFixtureAsync(dataRoot, table, row).ConfigureAwait(true);
-        var original = _content;
-        using var candidate = new DodgeContent(_storage, dataRoot);
+        var original = ActiveContent;
+        var candidate = new DodgeContent(_storage, dataRoot);
+        await using var candidateLifetime = candidate.ConfigureAwait(true);
         await candidate.InitializeAsync(_lifetime.Token).ConfigureAwait(true);
         Require(!candidate.IsReady && candidate.Error is not null &&
             candidate.Error.StartsWith("Required sample content is missing:", StringComparison.Ordinal) &&
@@ -49,7 +50,7 @@ public partial class GameApplication
             "A catalog missing required sample content was published as ready: " + row);
         try
         {
-            _content = candidate;
+            ActiveContent = candidate;
             await OpenContentAsync().ConfigureAwait(true);
             Require(FindNative("ResetContent", "Button") is Button { Disabled: false },
                 "Required-row removal made the content repair action inaccessible");
@@ -59,7 +60,7 @@ public partial class GameApplication
         finally
         {
             await _ui.ClearAsync(_lifetime.Token).ConfigureAwait(true);
-            _content = original;
+            ActiveContent = original;
             await candidate.StopModsAsync().ConfigureAwait(true);
             await _ui.ReplaceAsync(DodgeRoutes.Menu, args: false, _lifetime.Token).ConfigureAwait(true);
         }
@@ -93,14 +94,14 @@ public partial class GameApplication
     /// <summary>Moves the native player after a save without advancing score, then observes the real discard dialog.</summary>
     private async Task CheckMovementOnlyDiscardAsync()
     {
-        var score = _world!.Score;
-        var player = _world.GetNode<Node2D>("Player");
+        var score = CurrentWorld!.Score;
+        var player = CurrentWorld.GetNode<Node2D>("Player");
         player.Position += Vector2.Right;
-        Require(!_dirty && _world.Score == score, "Movement-only probe unexpectedly changed the score dirty flag");
+        Require(!IsDirty && CurrentWorld.Score == score, "Movement-only probe unexpectedly changed the score dirty flag");
         var leaving = ReturnToMenuAsync();
         await UntilAsync(() => HasView("confirm")).ConfigureAwait(true);
         Click("KeepPlaying");
         await leaving.ConfigureAwait(true);
-        Require(_world is { IsRunning: true } && HasView("pause"), "Discard cancellation did not preserve the live run");
+        Require(CurrentWorld is { IsRunning: true } && HasView("pause"), "Discard cancellation did not preserve the live run");
     }
 }

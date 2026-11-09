@@ -74,7 +74,7 @@ public sealed class DirectGeneratedRegistryTests
         services.AddCqrsHandlers(new MixedRegistry());
         services.AddCqrsHandlersFromAssembly(assembly.Object);
         services.AddCqrsHandlers(new MixedRegistry());
-        using var provider = services.BuildServiceProvider();
+        await using var provider = services.BuildServiceProvider();
         await provider.GetRequiredService<ICqrsRuntime>()
             .PublishAsync(new ObservedNotification(), CancellationToken.None).ConfigureAwait(false);
         var probe = provider.GetRequiredService<NotificationProbe>();

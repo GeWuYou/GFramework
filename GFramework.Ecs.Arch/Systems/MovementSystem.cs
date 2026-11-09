@@ -10,12 +10,10 @@ namespace GFramework.Ecs.Arch.Systems;
 /// 移动系统 - 继承 ArchSystemAdapter
 /// 负责更新具有位置和速度组件的实体的位置
 /// </summary>
-public sealed class MovementSystem : ArchSystemAdapter<float>
+/// <remarks>Receives the world that this system updates.</remarks>
+/// <param name="world">The composition-root owned world.</param>
+public sealed class MovementSystem(global::Arch.Core.World world) : ArchSystemAdapter<float>(world)
 {
-    /// <summary>Receives the world that this system updates.</summary>
-    /// <param name="world">The composition-root owned world.</param>
-    public MovementSystem(global::Arch.Core.World world) : base(world) { }
-
     private QueryDescription _query;
 
     /// <summary>

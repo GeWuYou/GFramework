@@ -26,29 +26,29 @@ public partial class GameApplication
         {
             var expected = await _storage.ReadAsync<DodgeProgress>(_dataRoot + "/persistence-expected.json").ConfigureAwait(true);
             await StartGameAsync(restore: true).ConfigureAwait(true);
-            Require(_world is { IsRunning: true }, "Fresh-process continue did not create a live board.");
-            RequireSameProgress(expected, _world!.CaptureProgress(), "Fresh-process board");
+            Require(CurrentWorld is { IsRunning: true }, "Fresh-process continue did not create a live board.");
+            RequireSameProgress(expected, CurrentWorld!.CaptureProgress(), "Fresh-process board");
             CheckFutureSpawnContinuation(expected);
         }
         else
         {
             await StartGameAsync(restore: false).ConfigureAwait(true);
-            var expected = CreatePersistenceFixture(_world!.CaptureProgress());
-            _world.RestoreProgress(expected);
-            Require(_world.EnemyCount >= 2, "The persistence fixture must contain a nonempty enemy board.");
-            RequireSameProgress(expected, _world.CaptureProgress(), "Prepared board");
+            var expected = CreatePersistenceFixture(CurrentWorld!.CaptureProgress());
+            CurrentWorld.RestoreProgress(expected);
+            Require(CurrentWorld.EnemyCount >= 2, "The persistence fixture must contain a nonempty enemy board.");
+            RequireSameProgress(expected, CurrentWorld.CaptureProgress(), "Prepared board");
             await SaveGameAsync().ConfigureAwait(true);
-            var saved = await _saves.LoadAsync(1, _lifetime.Token).ConfigureAwait(true);
+            var saved = await Saves.LoadAsync(1, _lifetime.Token).ConfigureAwait(true);
             RequireSameProgress(expected, saved, "Persisted file");
-            _world.StartRun(seed: 77);
-            Require(_world.EnemyCount == 0, "A new run did not clear the old board.");
-            _world.RestoreProgress(saved);
-            RequireSameProgress(expected, _world.CaptureProgress(), "Restored board");
+            CurrentWorld.StartRun(seed: 77);
+            Require(CurrentWorld.EnemyCount == 0, "A new run did not clear the old board.");
+            CurrentWorld.RestoreProgress(saved);
+            RequireSameProgress(expected, CurrentWorld.CaptureProgress(), "Restored board");
             CheckInvalidSnapshotsLeaveBoardIntact(expected);
             CheckFutureSpawnContinuation(expected);
             await CheckDocumentMigrationsAsync().ConfigureAwait(true);
             await CheckMissingEnemyRecoveryAsync(expected).ConfigureAwait(true);
-            _world.RestoreProgress(expected);
+            CurrentWorld.RestoreProgress(expected);
             await SaveGameAsync().ConfigureAwait(true);
             await _storage.WriteAsync(_dataRoot + "/persistence-expected.json", expected).ConfigureAwait(true);
             GD.Print("DODGE_PERSISTENCE_NEXT " + _smokeId);
@@ -91,14 +91,14 @@ public partial class GameApplication
     /// <summary>The next spawn after restoring consumes exactly the same random sequence and timers.</summary>
     private void CheckFutureSpawnContinuation(DodgeProgress snapshot)
     {
-        _world!.RestoreProgress(snapshot);
-        _world._PhysicsProcess(0.125);
-        var expected = _world.CaptureProgress();
+        CurrentWorld!.RestoreProgress(snapshot);
+        CurrentWorld._PhysicsProcess(0.125);
+        var expected = CurrentWorld.CaptureProgress();
         Require(expected.Enemies.Count == snapshot.Enemies.Count + 1, "The RNG regression did not cross a spawn boundary.");
-        _world.RestoreProgress(snapshot);
-        _world._PhysicsProcess(0.125);
-        RequireSameProgress(expected, _world.CaptureProgress(), "Future spawn continuation");
-        _world.RestoreProgress(snapshot);
+        CurrentWorld.RestoreProgress(snapshot);
+        CurrentWorld._PhysicsProcess(0.125);
+        RequireSameProgress(expected, CurrentWorld.CaptureProgress(), "Future spawn continuation");
+        CurrentWorld.RestoreProgress(snapshot);
     }
 
     /// <summary>Rejects malformed DTOs and unresolved definitions before replacing any current native enemy.</summary>
@@ -119,14 +119,14 @@ public partial class GameApplication
             var rejected = false;
             try
             {
-                _world!.RestoreProgress(invalid);
+                CurrentWorld!.RestoreProgress(invalid);
             }
             catch (Exception exception) when (exception is InvalidOperationException or ArgumentException or System.Collections.Generic.KeyNotFoundException)
             {
                 rejected = true;
             }
             Require(rejected, "Invalid complete-board state was accepted.");
-            RequireSameProgress(snapshot, _world!.CaptureProgress(), "Board after rejected restore");
+            RequireSameProgress(snapshot, CurrentWorld!.CaptureProgress(), "Board after rejected restore");
         }
     }
 
@@ -139,7 +139,7 @@ public partial class GameApplication
         var sparse = new SaveDocument
         {
             GameId = "dodge-the-creeps-advanced",
-            Content = _content.Catalog.Snapshot,
+            Content = ActiveContent.Catalog.Snapshot,
             Game = new SaveDataBlock
             {
                 Version = 1,
@@ -148,18 +148,18 @@ public partial class GameApplication
                     ["Score"] = 21,
                     ["X"] = 140,
                     ["Y"] = 500,
-                    ["ArenaId"] = "base:yard",
+                    [nameof(DodgeProgress.ArenaId)] = "base:yard",
                 },
             },
         };
         await _storage.WriteSnapshotAsync(key, codec.Encode(sparse), _lifetime.Token).ConfigureAwait(true);
         var original = await _storage.ReadSnapshotAsync(key, _lifetime.Token).ConfigureAwait(true);
-        var prepared = await _saves.PrepareLoadAsync(slot, _lifetime.Token).ConfigureAwait(true);
+        var prepared = await Saves.PrepareLoadAsync(slot, _lifetime.Token).ConfigureAwait(true);
         Require(prepared.RequiresCommit && prepared.Data.Enemies.Count == 0 && prepared.Data.Score == 21 &&
             prepared.Data.RandomState is not null, "Sparse document did not migrate before DTO validation.");
         Require(string.Equals((await _storage.ReadSnapshotAsync(key, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true)).Fingerprint, original.Fingerprint, StringComparison.Ordinal),
             "Preparing an upgrade rewrote the source.");
-        var committed = await _saves.CommitPreparedAsync(slot, prepared, _lifetime.Token).ConfigureAwait(true);
+        var committed = await Saves.CommitPreparedAsync(slot, prepared, _lifetime.Token).ConfigureAwait(true);
         var backup = await _storage.ReadSnapshotAsync(_dataRoot + "/saves/slot_88/" + committed.BackupKey, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
         Require(string.Equals(backup.Fingerprint, original.Fingerprint, StringComparison.Ordinal), "Upgrade backup changed original bytes.");
 
@@ -171,13 +171,13 @@ public partial class GameApplication
         future.Game.Data["FutureMode"] = true;
         await _storage.WriteSnapshotAsync(key, codec.Encode(future), _lifetime.Token).ConfigureAwait(true);
         var newer = await _storage.ReadSnapshotAsync(key, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true);
-        var downgrade = await _saves.PrepareLoadAsync(slot, _lifetime.Token).ConfigureAwait(true);
+        var downgrade = await Saves.PrepareLoadAsync(slot, _lifetime.Token).ConfigureAwait(true);
         Require(downgrade.RequiresConfirmation && downgrade.Data.X == 140 && downgrade.Data.Y == 500,
             "A future document could not be downgraded before current DTO deserialization.");
         Require(string.Equals((await _storage.ReadSnapshotAsync(key, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true)).Fingerprint, newer.Fingerprint, StringComparison.Ordinal),
             "Preparing or cancelling a downgrade changed the source.");
-        await _saves.CommitPreparedAsync(slot, downgrade, _lifetime.Token).ConfigureAwait(true);
-        Require((await _saves.LoadAsync(slot, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true)).Score == 21, "Committed downgrade was not ordinarily loadable.");
+        await Saves.CommitPreparedAsync(slot, downgrade, _lifetime.Token).ConfigureAwait(true);
+        Require((await Saves.LoadAsync(slot, cancellationToken: global::System.Threading.CancellationToken.None).ConfigureAwait(true)).Score == 21, "Committed downgrade was not ordinarily loadable.");
     }
 
     /// <summary>Game-owned recovery removes only unavailable enemy definitions and retains valid board values.</summary>
@@ -200,15 +200,15 @@ public partial class GameApplication
         {
             GameId = "dodge-the-creeps-advanced",
             Game = new SaveDataBlock { Version = 2, Data = codec.SerializeData(missing) },
-            Content = new ContentSnapshot([.. _content.Catalog.Snapshot.Packs, new ContentPackStamp("removed", "1.0.0", "previously-installed-mod")]),
+            Content = new ContentSnapshot([.. ActiveContent.Catalog.Snapshot.Packs, new ContentPackStamp("removed", "1.0.0", "previously-installed-mod")]),
         };
         await _storage.WriteSnapshotAsync(key, codec.Encode(document), _lifetime.Token).ConfigureAwait(true);
         var original = await _storage.ReadSnapshotAsync(key, _lifetime.Token).ConfigureAwait(true);
-        var prepared = await _saves.PrepareLoadAsync(slot, _lifetime.Token).ConfigureAwait(true);
+        var prepared = await Saves.PrepareLoadAsync(slot, _lifetime.Token).ConfigureAwait(true);
         Require(prepared.RequiresConfirmation && prepared.Issues.Any(static issue => issue.Kind == ContentSaveIssueKind.MissingContent),
             "A removed enemy mod did not require explicit confirmation.");
         CheckRecoveryLocalization(prepared);
-        var repaired = await _saves.CommitPreparedAsync(slot, prepared, _lifetime.Token).ConfigureAwait(true);
+        var repaired = await Saves.CommitPreparedAsync(slot, prepared, _lifetime.Token).ConfigureAwait(true);
         RequireSameProgress(expected, repaired.Data, "Missing-enemy recovery");
         var backup = await _storage.ReadSnapshotAsync(_dataRoot + "/saves/slot_89/" + repaired.BackupKey, _lifetime.Token).ConfigureAwait(true);
         Require(string.Equals(original.Fingerprint, backup.Fingerprint, StringComparison.Ordinal), "Enemy recovery backup changed original bytes.");

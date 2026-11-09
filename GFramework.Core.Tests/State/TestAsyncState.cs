@@ -77,7 +77,7 @@ public sealed class TestAsyncState : IState, IAsyncState
     /// <param name="from">触发进入的来源状态。</param>
     public async Task OnEnterAsync(IState? from, CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1).ConfigureAwait(false);
+        await Task.Delay(1, cancellationToken).ConfigureAwait(false);
         EnterCalled = true;
         EnterCallCount++;
         EnterFrom = from;
@@ -89,7 +89,7 @@ public sealed class TestAsyncState : IState, IAsyncState
     /// <param name="to">即将切换到的目标状态。</param>
     public async Task OnExitAsync(IState? to, CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1).ConfigureAwait(false);
+        await Task.Delay(1, cancellationToken).ConfigureAwait(false);
         ExitCalled = true;
         ExitCallCount++;
         ExitTo = to;
@@ -102,7 +102,7 @@ public sealed class TestAsyncState : IState, IAsyncState
     /// <returns>允许切换时返回 <see langword="true" />，否则返回 <see langword="false" />。</returns>
     public async Task<bool> CanTransitionToAsync(IState target, CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1).ConfigureAwait(false);
+        await Task.Delay(1, cancellationToken).ConfigureAwait(false);
         CanTransitionToCallCount++;
         return AllowTransitions;
     }

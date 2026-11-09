@@ -4,7 +4,7 @@
 using System;
 using System.Threading;
 
-namespace DodgeTheCreeps.Advanced;
+namespace DodgeTheCreeps.Advanced.Composition;
 
 /// <summary>Owns one application's cancellation source; the provider disposes it after actions stop.</summary>
 internal sealed class GameLifetime : IDisposable

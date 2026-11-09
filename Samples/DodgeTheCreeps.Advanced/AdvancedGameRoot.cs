@@ -8,6 +8,8 @@ using GFramework.Game.Abstractions.Scene;
 using GFramework.Game.Runtime;
 using Godot;
 
+using DodgeTheCreeps.Advanced.Composition;
+
 namespace DodgeTheCreeps.Advanced;
 
 /// <summary>

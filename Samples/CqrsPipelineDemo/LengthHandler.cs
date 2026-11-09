@@ -16,8 +16,7 @@ public sealed class LengthHandler(RequestScope scope) : IRequestHandler<GetLengt
     public ValueTask<int> Handle(GetLength request, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (scope.Disposed)
-            throw new ObjectDisposedException(nameof(RequestScope));
+        ObjectDisposedException.ThrowIf(scope.Disposed, nameof(RequestScope));
         return ValueTask.FromResult(request.Value.Length);
     }
 }

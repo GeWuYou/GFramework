@@ -101,7 +101,7 @@ public partial class GameApplication
             }
             if (_smokeContinue)
             {
-                Require(!await _saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true) &&
+                Require(!await Saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true) &&
                     ((Button)FindNative("Continue", "Button")).Disabled && !HasBackup,
                     "An ended run became loadable again after restarting.");
                 Require(Preferences.BestScore >= 37 && Math.Abs(Preferences.Volume - 0.35f) < 0.01,
@@ -110,23 +110,23 @@ public partial class GameApplication
                 return;
             }
             Click("Start");
-            await UntilAsync(() => _world is { IsRunning: true } && HasView("hud")).ConfigureAwait(true);
-            var before = _world!.PlayerPosition;
+            await UntilAsync(() => CurrentWorld is { IsRunning: true } && HasView("hud")).ConfigureAwait(true);
+            var before = CurrentWorld!.PlayerPosition;
             Input.ParseInputEvent(new InputEventKey { PhysicalKeycode = Key.D, Pressed = true });
             for (var frame = 0; frame < 15; frame++)
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
             Input.ParseInputEvent(new InputEventKey { PhysicalKeycode = Key.D, Pressed = false });
-            Require(_world.PlayerPosition.X > before.X, "Native keyboard movement failed.");
+            Require(CurrentWorld.PlayerPosition.X > before.X, "Native keyboard movement failed.");
             Click("Pause");
             await UntilAsync(() => HasView("pause") && GetTree().Paused).ConfigureAwait(true);
-            var frozen = _world.PlayerPosition;
-            var score = _world.Score;
+            var frozen = CurrentWorld.PlayerPosition;
+            var score = CurrentWorld.Score;
             await ToSignal(GetTree().CreateTimer(0.12), SceneTreeTimer.SignalName.Timeout);
-            Require(_world.PlayerPosition == frozen && _world.Score == score, "Gameplay advanced during pause.");
+            Require(CurrentWorld.PlayerPosition == frozen && CurrentWorld.Score == score, "Gameplay advanced during pause.");
             await CheckNestedSettingsAsync().ConfigureAwait(true);
-            _world.RestoreRun(37, new Vector2(140, 500));
+            CurrentWorld.RestoreRun(37, new Vector2(140, 500));
             Click("Save");
-            await UntilAsync(() => !_dirty).ConfigureAwait(true);
+            await UntilAsync(() => !IsDirty).ConfigureAwait(true);
             Click("Resume");
             await UntilAsync(() => !HasView("pause") && !GetTree().Paused).ConfigureAwait(true);
             await CheckConfirmationAndGameOverAsync().ConfigureAwait(true);
@@ -205,17 +205,17 @@ public partial class GameApplication
         Click("Leave");
         await UntilAsync(() => HasView("menu") && !GetTree().Paused).ConfigureAwait(true);
         Click("Continue");
-        await UntilAsync(() => _world is { IsRunning: true } && HasView("hud")).ConfigureAwait(true);
-        Require(_world!.Score >= 37, "Explicit save did not restore the expected score.");
-        _latestBackup = "backups/death-probe";
-        await _storage.WriteAsync(_dataRoot + "/saves/slot_1/" + _latestBackup, _world.CaptureProgress()).ConfigureAwait(true);
+        await UntilAsync(() => CurrentWorld is { IsRunning: true } && HasView("hud")).ConfigureAwait(true);
+        Require(CurrentWorld!.Score >= 37, "Explicit save did not restore the expected score.");
+        LatestBackup = "backups/death-probe";
+        await _storage.WriteAsync(_dataRoot + "/saves/slot_1/" + LatestBackup, CurrentWorld.CaptureProgress()).ConfigureAwait(true);
         await _saveService.StoreBackupKeyAsync().ConfigureAwait(true);
         await ToSignal(GetTree().CreateTimer(1.8), SceneTreeTimer.SignalName.Timeout);
         foreach (var enemy in GetTree().GetNodesInGroup("dodge_creeps"))
             if (enemy is Node2D creep)
-                creep.Position = _world.PlayerPosition;
+                creep.Position = CurrentWorld.PlayerPosition;
         await UntilAsync(() => HasView("game-over")).ConfigureAwait(true);
-        Require(!await _saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true) && !HasBackup &&
+        Require(!await Saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true) && !HasBackup &&
             !await _storage.ExistsAsync(_dataRoot + "/last-content-backup.json").ConfigureAwait(true),
             "Death did not retire the run slot and its restore shortcut.");
         Click("MainMenu");
@@ -252,7 +252,7 @@ public partial class GameApplication
         {
             await StartGameAsync(restore: false).ConfigureAwait(true);
             PressMovementDirection(new Vector2(1, -1));
-            _world!._PhysicsProcess(0);
+            CurrentWorld!._PhysicsProcess(0);
             ReleaseMovementActions();
         }
         else if (string.Equals(_captureKind, "recovery", StringComparison.Ordinal))

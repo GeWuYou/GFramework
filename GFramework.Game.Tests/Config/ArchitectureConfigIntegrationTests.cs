@@ -576,6 +576,7 @@ public class ArchitectureConfigIntegrationTests
     /// <summary>
     ///     仅用于把架构推进到 Ready 阶段的空壳架构。
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
     private sealed class ReadyOnlyArchitecture : Architecture
     {
         /// <summary>

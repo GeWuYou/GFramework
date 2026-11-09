@@ -7,7 +7,7 @@ using GFramework.Game.Scene;
 using GFramework.Game.UI;
 using GFramework.Godot.Storage;
 
-namespace DodgeTheCreeps.Advanced;
+namespace DodgeTheCreeps.Advanced.Composition;
 
 /// <summary>Groups the already composed host services without exposing a service locator.</summary>
 /// <param name="Pause">Native pause ownership.</param>

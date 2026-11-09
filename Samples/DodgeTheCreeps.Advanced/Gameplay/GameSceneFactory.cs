@@ -8,7 +8,10 @@ using GFramework.Game.Abstractions.Content;
 using GFramework.Game.Abstractions.Scene;
 using GFramework.Godot.Scene;
 
-namespace DodgeTheCreeps.Advanced;
+using DodgeTheCreeps.Advanced.Modding;
+using DodgeTheCreeps.Advanced.Presentation;
+
+namespace DodgeTheCreeps.Advanced.Gameplay;
 
 /// <summary>Creates native board presentation from explicit content, scoring and feedback dependencies.</summary>
 /// <param name="state">The host's world reference.</param>

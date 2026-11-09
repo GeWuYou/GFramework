@@ -25,9 +25,9 @@ public sealed class ServiceTestHost : IServiceProvider, IDisposable, IAsyncDispo
     /// <summary>Retrieves a required test service.</summary>
     public T GetRequired<T>() where T : class => this.GetRequiredService<T>();
     /// <summary>Resolves all standard registrations in order.</summary>
-    public IReadOnlyList<T> GetAll<T>() where T : class => this.GetServices<T>().ToArray();
+    public IReadOnlyList<T> GetAll<T>() where T : class => [.. this.GetServices<T>()];
     /// <summary>Resolves all runtime-typed registrations in order.</summary>
-    public IReadOnlyList<object> GetAll(Type type) => this.GetServices(type).OfType<object>().ToArray();
+    public IReadOnlyList<object> GetAll(Type type) => [.. this.GetServices(type).OfType<object>()];
     /// <summary>Registers a caller-owned test fixture instance.</summary>
     public void Register<T>(T instance) where T : class => Services.AddSingleton(instance);
     /// <summary>Registers a set of borrowed fixtures under one contract.</summary>

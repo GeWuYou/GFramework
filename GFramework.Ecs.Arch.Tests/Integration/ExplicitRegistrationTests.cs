@@ -90,8 +90,8 @@ public sealed class ExplicitRegistrationTests
         }
         finally
         {
-            first.DestroyAsync().GetAwaiter().GetResult();
-            second.DestroyAsync().GetAwaiter().GetResult();
+            first.DestroyAsync().AsTask().GetAwaiter().GetResult();
+            second.DestroyAsync().AsTask().GetAwaiter().GetResult();
         }
     }
 
@@ -107,8 +107,8 @@ public sealed class ExplicitRegistrationTests
                 native = new OwnedNativeSystem(provider.GetRequiredService<World>()));
         });
         architecture.Initialize();
-        architecture.DestroyAsync().GetAwaiter().GetResult();
-        architecture.DestroyAsync().GetAwaiter().GetResult();
+        architecture.DestroyAsync().AsTask().GetAwaiter().GetResult();
+        architecture.DestroyAsync().AsTask().GetAwaiter().GetResult();
         Assert.That(native!.DisposeCalls, Is.EqualTo(1));
         Assert.That(native.Stopped, Is.True);
         Assert.That(native.WorldWasAliveAtDispose, Is.True);

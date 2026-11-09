@@ -21,7 +21,7 @@ public sealed class EventOwnershipTests
         using var high = bus.Subscribe<int>(_ => seen.Add(2), 10);
         using var last = bus.Subscribe<int>(_ => seen.Add(3));
         bus.Publish(0);
-        Assert.That(seen, Is.EqualTo(new[] { 2, 1, 3 }));
+        Assert.That(seen, Is.EqualTo([2, 1, 3]));
     }
 
     /// <summary>Disposing one of two equal callbacks leaves the other subscription active.</summary>
@@ -56,7 +56,7 @@ public sealed class EventOwnershipTests
         }, 10);
         using var low = bus.Subscribe<int>(value => seen.Add(value * 10));
         bus.Publish(1, EventPropagation.UntilHandled);
-        Assert.That(seen, Is.EqualTo(new[] { 1, 2, 20 }));
+        Assert.That(seen, Is.EqualTo([1, 2, 20]));
     }
 
     /// <summary>Membership changes while publishing apply to the next snapshot.</summary>
@@ -76,10 +76,10 @@ public sealed class EventOwnershipTests
         second = bus.Subscribe<int>(_ => seen.Add(2));
         scope.Add(second);
         bus.Publish(0);
-        Assert.That(seen, Is.EqualTo(new[] { 1, 2 }));
+        Assert.That(seen, Is.EqualTo([1, 2]));
         seen.Clear();
         bus.Publish(0);
-        Assert.That(seen, Is.EqualTo(new[] { 1, 3 }));
+        Assert.That(seen, Is.EqualTo([1, 3]));
     }
 
     /// <summary>Failures stop delivery and retain the original exception identity.</summary>
@@ -179,8 +179,8 @@ public sealed class EventOwnershipTests
             get; private set;
         }
         /// <summary>Receive a notification.</summary>
-        /// <param name="value">Ignored notification value.</param>
-        public void Receive(int value) => Calls++;
+        /// <param name="_">Ignored notification value required by the delegate signature.</param>
+        public void Receive(int _) => Calls++;
     }
 
 }

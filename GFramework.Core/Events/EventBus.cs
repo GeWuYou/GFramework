@@ -58,7 +58,7 @@ public sealed class EventBus(bool enableStatistics = false) : IEventBus
     public IDisposable SubscribeWithContext<T>(Action<EventContext<T>> handler, int priority = 0)
     {
         ArgumentNullException.ThrowIfNull(handler);
-        var channel = (Channel<T>)_channels.GetOrAdd(typeof(T), _ => new Channel<T>(count => _statistics?.UpdateListenerCount(typeof(T).FullName ?? typeof(T).Name, count)));
+        var channel = (Channel<T>)_channels.GetOrAdd(typeof(T), static (_, owner) => new Channel<T>(count => owner._statistics?.UpdateListenerCount(typeof(T).FullName ?? typeof(T).Name, count)), this);
         var registration = new Registration<T>(handler, priority);
         channel.Add(registration);
         return new Subscription(() =>
@@ -116,7 +116,7 @@ public sealed class EventBus(bool enableStatistics = false) : IEventBus
         public Registration<T>[] Snapshot()
         {
             lock (_gate)
-                return _registrations.OrderByDescending(item => item.Priority).ToArray();
+                return [.. _registrations.OrderByDescending(item => item.Priority)];
         }
     }
 }

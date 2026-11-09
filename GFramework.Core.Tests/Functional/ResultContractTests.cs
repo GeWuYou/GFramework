@@ -84,7 +84,7 @@ public sealed class ResultContractTests
     {
         var ordinary = new InvalidOperationException("IO failed");
         using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         var canceled = new OperationCanceledException(cancellation.Token);
         Assert.That(Result.Try(() => throw ordinary).Error, Is.SameAs(ordinary));
         Assert.That(Result<int>.Try(() => throw ordinary).Error, Is.SameAs(ordinary));
