@@ -12,6 +12,7 @@
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <EnableGFrameworkPackageTransitiveGlobalUsings>true</EnableGFrameworkPackageTransitiveGlobalUsings>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -27,4 +28,8 @@
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14"/>
     </ItemGroup>
 
+    <!-- Package the module guide named by PackageReadmeFile. -->
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath=""/>
+    </ItemGroup>
 </Project>

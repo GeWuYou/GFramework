@@ -16,6 +16,8 @@ Core 依赖 Core.Abstractions 及标准 DI/日志包，不传递依赖 CQRS、Go
 | Logging / Localization | 标准日志输出适配与本地化 |
 | Functional / Utility / Extensions | Option、Result、数值显示与通用辅助 |
 
+对象池只接受引用类型，按借出身份与原键拒绝重复或错误归还；ScopedStringBuilder 使用共享的引用令牌保证只归还一次，释放后 Value 不可访问。采用与线程约定见[对象池指南](../docs/zh-CN/core/pool.md)。
+
 ## 最小采用
 
 安装 GeWuYou.GFramework.Core 后，可直接构造独立能力或通过 IServiceCollection 注册。普通对象不要求框架角色标记。需要生命周期时使用 Architecture.ConfigureServices、services.AddComponent 和 InitializeAsync；完成后等待 DisposeAsync。

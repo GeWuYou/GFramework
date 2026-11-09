@@ -11,6 +11,8 @@
 - Data / Serializer / Storage / Versioning：数据装载、序列化、存储、版本。
 - Utility / Bases / Registries / Enums / Properties：数值格式、优先级、注册表及架构参数。
 
+IObjectPoolSystem 的对象类型限定为引用类型；归还必须属于同一池及原始键且尚未归还。实现应在拒绝归还时保留对象、回调与池统计不变，见[对象池契约](../docs/zh-CN/core/pool.md)。
+
 ## 采用
 
 适配器或独立契约层可以只引用本包，为实际需要的能力提供实现。普通领域类不需要标记接口；应用服务通过构造函数接收所需能力。

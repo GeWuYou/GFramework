@@ -7,9 +7,9 @@ namespace GFramework.Core.Abstractions.Pool;
 ///     对象池系统接口，定义了对象池的基本操作
 /// </summary>
 /// <typeparam name="TKey">池键的类型</typeparam>
-/// <typeparam name="TObject">池中对象的类型，必须实现IPoolableObject接口</typeparam>
+/// <typeparam name="TObject">按引用身份跟踪的池对象类型，必须实现 IPoolableObject。</typeparam>
 public interface IObjectPoolSystem<in TKey, TObject>
-    where TObject : IPoolableObject
+    where TObject : class, IPoolableObject
     where TKey : notnull
 {
     /// <summary>
@@ -24,6 +24,8 @@ public interface IObjectPoolSystem<in TKey, TObject>
     /// </summary>
     /// <param name="key">对象池的键</param>
     /// <param name="obj">要释放的对象</param>
+    /// <exception cref="InvalidOperationException">对象未从此池借出、已归还，或键与借出时不同。</exception>
+    /// <remarks>拒绝的归还不得触发对象回调或修改池状态；调用者必须在原拥有者线程操作。</remarks>
     void Release(TKey key, TObject obj);
 
     /// <summary>

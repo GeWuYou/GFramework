@@ -11,6 +11,11 @@
         <MeziantouPolyfill_IncludedPolyfills>T:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute</MeziantouPolyfill_IncludedPolyfills>
         <Nullable>enable</Nullable>
         <EnableGFrameworkPackageTransitiveGlobalUsings>true</EnableGFrameworkPackageTransitiveGlobalUsings>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
+    <!-- Package the module guide named by PackageReadmeFile. -->
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath=""/>
+    </ItemGroup>
 </Project>

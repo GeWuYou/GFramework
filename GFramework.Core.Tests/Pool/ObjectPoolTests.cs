@@ -253,24 +253,27 @@ public class ObjectPoolTests
     }
 
     /// <summary>
-    ///     验证双重释放不会导致 ActiveCount 变为负数
+    ///     验证双重归还在触发回调和修改池状态之前被拒绝。
     /// </summary>
     [Test]
-    public void Release_Should_Not_Make_ActiveCount_Negative_On_Double_Release()
+    public void Release_Should_Reject_Double_Return_Without_Duplicating_Instances()
     {
         // Arrange
         var obj = _pool.Acquire("test");
         _pool.Release("test", obj);
+        obj.OnReleaseCalled = false;
 
-        // Act - 双重释放
-        _pool.Release("test", obj);
+        Assert.Throws<InvalidOperationException>(() => _pool.Release("test", obj));
 
-        // Assert
+        Assert.That(obj.OnReleaseCalled, Is.False);
         Assert.That(_pool.GetActiveCount("test"), Is.EqualTo(0));
+        Assert.That(_pool.GetPoolSize("test"), Is.EqualTo(1));
+        Assert.That(_pool.GetStatistics("test").TotalReleased, Is.EqualTo(1));
+        Assert.That(_pool.Acquire("test"), Is.Not.SameAs(_pool.Acquire("test")));
     }
 
     /// <summary>
-    ///     验证使用错误的 key 释放不会影响原 key 的 ActiveCount
+    ///     验证错误键不会触发对象回调、创建目标池或消耗原借用。
     /// </summary>
     [Test]
     public void Release_With_Wrong_Key_Should_Not_Affect_Original_Key_ActiveCount()
@@ -278,11 +281,14 @@ public class ObjectPoolTests
         // Arrange
         var obj = _pool.Acquire("key1");
 
-        // Act - 使用错误的 key 释放
-        _pool.Release("key2", obj);
+        Assert.Throws<InvalidOperationException>(() => _pool.Release("key2", obj));
 
-        // Assert
+        Assert.That(obj.OnReleaseCalled, Is.False);
         Assert.That(_pool.GetActiveCount("key1"), Is.EqualTo(1));
         Assert.That(_pool.GetActiveCount("key2"), Is.EqualTo(0));
+        Assert.That(_pool.GetPoolSize("key2"), Is.EqualTo(0));
+        Assert.That(_pool.GetStatistics("key2").TotalReleased, Is.EqualTo(0));
+        _pool.Release("key1", obj);
+        Assert.That(_pool.Acquire("key1"), Is.SameAs(obj));
     }
 }

@@ -115,8 +115,19 @@ class ImpactTests(unittest.TestCase):
         self.assertFalse(plan["codeql"])
 
     def test_unpacked_module_readme_does_not_match_root_package_readme(self):
-        plan = self.change("GFramework.Ecs.Arch/README.md")
+        # The shared generator helper is not published; its guide must not inherit the root package's README input.
+        plan = self.change("GFramework.SourceGenerators.Common/README.md")
         self.assertFalse(plan["dotnet"] or plan["codeql"])
+        self.assertEqual(plan["pack_projects"], [])
+
+    def test_packed_module_readme_selects_only_its_package(self):
+        plan = self.change("GFramework.Ecs.Arch/README.md")
+        self.assertTrue(plan["dotnet"])
+        self.assertEqual(plan["pack_projects"], ["GFramework.Ecs.Arch/GFramework.Ecs.Arch.csproj"])
+        self.assertEqual(plan["package_ids"], ["GeWuYou.GFramework.Ecs.Arch"])
+        self.assertEqual(plan["build_projects"], [])
+        self.assertEqual(plan["test_projects"], [])
+        self.assertFalse(plan["full"] or plan["codeql"] or plan["docs"] or plan["tool"])
 
     def test_analyzer_releases_markdown_is_compile_input(self):
         plan = self.change("GFramework.SourceGenerators.Common/AnalyzerReleases.Unshipped.md")

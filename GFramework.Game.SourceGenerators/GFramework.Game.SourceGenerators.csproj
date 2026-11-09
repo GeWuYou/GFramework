@@ -16,6 +16,7 @@
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
         <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -58,4 +59,8 @@
         <None Include="GeWuYou.GFramework.Game.SourceGenerators.targets" Pack="true" PackagePath="build" Visible="false"/>
     </ItemGroup>
 
+    <!-- Package the module guide named by PackageReadmeFile. -->
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath=""/>
+    </ItemGroup>
 </Project>

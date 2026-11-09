@@ -4,6 +4,8 @@
 
 Godot 不传递引用 CQRS。需要消息分发时，在消费工程显式安装 `GFramework.Cqrs`；协程与普通宿主接入无需该依赖。
 
+节点池沿用 Core 的引用身份校验，重复归还、错误键和外部节点会被拒绝；池操作与节点回调需在 Godot 主线程执行。见[节点池指南](../docs/zh-CN/godot/pool.md)。
+
 ## 相邻模块
 
 - `Game` 提供 `UiService`、`SceneRouter`、设置、存档和配置运行时。
