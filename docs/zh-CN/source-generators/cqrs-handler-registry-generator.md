@@ -23,10 +23,11 @@ runtime 在注册 handlers 时优先走静态注册表；当运行时合同允�
 - `INotificationHandler<>`
 - `IStreamRequestHandler<,>`
 
-然后输出两类结果：
+然后输出以下结果：
 
 1. 一个实现 `ICqrsHandlerRegistry` 的内部注册器类型
-2. 程序集级 `CqrsHandlerRegistryAttribute`
+2. `CqrsRegistration.CreateRegistry()` 直接创建入口
+3. 程序集级 `CqrsHandlerRegistryAttribute`，供显式程序集注册使用
 
 当运行时暴露对应合同、且当前 handler 可被安全静态表达时，生成注册器还可以继续暴露：
 
@@ -57,7 +58,7 @@ descriptor。只有当前类型对没有 generated metadata，或 registry / fal
 </ItemGroup>
 ```
 
-运行时侧通过 CQRS 的注册入口登记程序集：
+同一消费程序集中的组合根优先使用直接生成入口：
 
 ```csharp
 using GFramework.Cqrs;
@@ -65,11 +66,13 @@ using GFramework.Cqrs;
 protected override void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
 {
     services.AddCqrsRuntime();
-    services.AddCqrsHandlersFromAssembly(typeof(GameArchitecture).Assembly);
+    services.AddCqrsHandlers(GFramework.Generated.Cqrs.CqrsRegistration.CreateRegistry());
 }
 ```
 
-如果你的 handlers 分布在多个业务程序集里，则改用：
+直接入口用普通构造创建注册器，request／stream 描述符携带编译好的强类型委托，不需要 `GetMethod`、`DynamicMethod` 或反射激活。相同注册器类型重复登记会被去重。
+
+每个消费程序集只创建自己的注册器。handlers 分布在多个程序集时，各程序集可通过自己的普通公共配置方法向组合根提供注册器；运行时程序集选择或需要 fallback 时，显式使用：
 
 ```csharp
 services.AddCqrsHandlersFromAssemblies(
@@ -89,7 +92,9 @@ handler 通过构造函数取得实际依赖，生成注册器和 invoker 使用
 
 ## 运行时如何消费生成结果
 
-`Cqrs` runtime 当前的注册顺序是：
+`AddCqrsHandlers(registry)` 直接执行传入实例的注册及 invoker 元数据登记，不扫描程序集、不激活未知类型。注册器和调用委托必须保持无状态，不捕获 scoped 业务服务。
+
+以下顺序仅适用于显式 `AddCqrsHandlersFromAssembly` / `AddCqrsHandlersFromAssemblies`：
 
 1. 先读取程序集上的 `CqrsHandlerRegistryAttribute`
 2. 优先激活生成的 `ICqrsHandlerRegistry`
@@ -124,7 +129,9 @@ handler 通过构造函数取得实际依赖，生成注册器和 invoker 使用
 
 ## fallback 边界
 
-生成器并不会承诺“所有 handler 都能被静态表达”。
+生成器并不会承诺“所有 handler 都能被静态表达”。当仍有未覆盖 handler 需要程序集 fallback 时，`CqrsRegistration.CreateRegistry()` 明确抛出异常，要求调用方选择 `AddCqrsHandlersFromAssembly`，避免静默漏注册。
+
+生成描述符的 `Create<TResponse>` 使用静态方法组；`MethodInfo` 构造函数仅保留给显式运行时元数据场景。生成路径减少反射不等于整个 runtime 已满足 NativeAOT；动态类型、管道绑定和第三方依赖仍需独立验证。
 
 当前实现遵循一个保守原则：
 

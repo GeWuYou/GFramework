@@ -6,8 +6,8 @@ using System.Globalization;
 using System.Threading;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Game.Abstractions.Config;
-using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
+using YamlDotNet.Serialization;
 
 namespace GFramework.Game.Config;
 
@@ -113,7 +113,7 @@ public sealed class YamlConfigLoader : IConfigLoader
         // 仅当本轮所有配置表都成功加载后才写入注册表，避免暴露部分成功的中间状态。
         foreach (var loadedTable in loadedTables)
         {
-            RegistrationDispatcher.Register(registry, loadedTable.Name, loadedTable.Table);
+            loadedTable.Register(registry);
         }
 
         UpdateLastSuccessfulDependencies(loadedTables);
@@ -339,36 +339,6 @@ public sealed class YamlConfigLoader : IConfigLoader
                 keySelector,
                 comparer));
         return this;
-    }
-
-    /// <summary>
-    ///     负责在非泛型配置表与泛型注册表方法之间做分派。
-    ///     该静态助手将运行时反射局部封装在加载器内部，避免向外暴露弱类型注册 API。
-    /// </summary>
-    private static class RegistrationDispatcher
-    {
-        /// <summary>
-        ///     将强类型配置表写入注册表。
-        /// </summary>
-        /// <param name="registry">目标配置注册表。</param>
-        /// <param name="name">配置表名称。</param>
-        /// <param name="table">已加载的配置表实例。</param>
-        /// <exception cref="InvalidOperationException">当传入表未实现强类型配置表契约时抛出。</exception>
-        public static void Register(IConfigRegistry registry, string name, IConfigTable table)
-        {
-            var tableInterface = table.GetType()
-                .GetInterfaces()
-                .FirstOrDefault(static type =>
-                    type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IConfigTable<,>)) ?? throw new InvalidOperationException(
-                    $"Loaded config table '{name}' does not implement '{typeof(IConfigTable<,>).Name}'.");
-
-            var genericArguments = tableInterface.GetGenericArguments();
-            var method = typeof(IConfigRegistry)
-                .GetMethod(nameof(IConfigRegistry.RegisterTable))!
-                .MakeGenericMethod(genericArguments[0], genericArguments[1]);
-
-            method.Invoke(registry, [name, table]);
-        }
     }
 
     /// <summary>
@@ -655,7 +625,8 @@ public sealed class YamlConfigLoader : IConfigLoader
                     Name,
                     table,
                     schema?.ReferencedTableNames ?? [],
-                    referenceUsages);
+                    referenceUsages,
+                    registry => registry.RegisterTable(Name, table));
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -688,11 +659,13 @@ public sealed class YamlConfigLoader : IConfigLoader
         /// <param name="table">已构建好的配置表。</param>
         /// <param name="referencedTableNames">schema 声明的依赖表名称集合。</param>
         /// <param name="referenceUsages">YAML 中提取出的实际引用集合。</param>
+        /// <param name="register">The typed commit captured while key/value types are still known.</param>
         public YamlTableLoadResult(
             string name,
             IConfigTable table,
             IReadOnlyCollection<string> referencedTableNames,
-            IReadOnlyCollection<YamlConfigReferenceUsage> referenceUsages)
+            IReadOnlyCollection<YamlConfigReferenceUsage> referenceUsages,
+            Action<IConfigRegistry> register)
         {
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(table);
@@ -703,7 +676,14 @@ public sealed class YamlConfigLoader : IConfigLoader
             Table = table;
             ReferencedTableNames = referencedTableNames;
             ReferenceUsages = referenceUsages;
+            _register = register;
         }
+
+        private readonly Action<IConfigRegistry> _register;
+
+        /// <summary>Commits the typed table only after the complete load batch has passed validation.</summary>
+        /// <param name="registry">The destination registry.</param>
+        public void Register(IConfigRegistry registry) => _register(registry);
 
         /// <summary>
         ///     获取配置表名称。
@@ -910,18 +890,8 @@ public sealed class YamlConfigLoader : IConfigLoader
             return true;
         }
 
-        private static bool ContainsKey(IConfigTable table, object key)
-        {
-            var tableInterface = table.GetType()
-                .GetInterfaces()
-                .First(static type =>
-                    type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IConfigTable<,>));
-            // Constructed nameof keeps the net8/net9 C# 12/13 targets compatible.
-#pragma warning disable IDE0340
-            var containsKeyMethod = tableInterface.GetMethod(nameof(IConfigTable<int, int>.ContainsKey))!;
-#pragma warning restore IDE0340
-            return (bool)containsKeyMethod.Invoke(table, [key])!;
-        }
+        private static bool ContainsKey(IConfigTable table, object key) => table.ContainsKey(key);
+
     }
 
     /// <summary>
@@ -1184,7 +1154,7 @@ public sealed class YamlConfigLoader : IConfigLoader
 
                 foreach (var loadedTable in loadedTables)
                 {
-                    RegistrationDispatcher.Register(_registry, loadedTable.Name, loadedTable.Table);
+                    loadedTable.Register(_registry);
                     _dependenciesByTable[loadedTable.Name] = loadedTable.ReferencedTableNames;
                 }
 

@@ -1,7 +1,6 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Reflection;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Events;
@@ -32,6 +31,7 @@ public abstract class Architecture : IArchitecture
     private readonly ILoggerFactory? _loggerFactory;
     private readonly IServiceProvider _serviceAccess;
     private ServiceProvider? _provider;
+    private ILogger? _observerLogger;
     private Task? _startupTask;
     private Task? _shutdownTask;
     private Task? _cleanupTask;
@@ -47,7 +47,8 @@ public abstract class Architecture : IArchitecture
         _serviceAccess = new ArchitectureServiceAccess(this);
     }
 
-    /// <summary>Standard service access for the composition root; unavailable before build or during external stop.</summary>
+    /// <summary>Guarded root access, including keyed services; unavailable before build or during external stop.</summary>
+    /// <remarks>Existing scopes and cached scope factories retain standard DI semantics and are not revoked.</remarks>
     public IServiceProvider Services => _serviceAccess;
 
     /// <summary>The current operation state; observation does not grant permission to add registrations.</summary>
@@ -56,7 +57,7 @@ public abstract class Architecture : IArchitecture
     /// <summary>Whether startup completed and new work is still accepted.</summary>
     public bool IsReady => CurrentPhase == ArchitecturePhase.Ready && !_stopping;
 
-    /// <summary>Observes state changes with this architecture as sender.</summary>
+    /// <summary>Observes state changes; subscriber failures are diagnosed and never change lifecycle results.</summary>
     public event EventHandler<ArchitecturePhaseChangedEventArgs>? PhaseChanged;
 
     /// <summary>Records application descriptions; this hook must not perform IO or resolve services.</summary>
@@ -68,18 +69,6 @@ public abstract class Architecture : IArchitecture
     /// <summary>Connects a synchronous host after participants have started.</summary>
     protected virtual void OnStarted()
     {
-    }
-
-    /// <summary>Connects an asynchronous host after participants have started.</summary>
-    /// <param name="cancellationToken">The startup lifetime.</param>
-    /// <returns>Completion of host attachment.</returns>
-    protected virtual ValueTask OnStartedAsync(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-#pragma warning disable MA0042 // This adapter invokes the synchronous hook rather than recursively invoking itself.
-        OnStarted();
-#pragma warning restore MA0042
-        return ValueTask.CompletedTask;
     }
 
     /// <summary>Stops host admission before participant cleanup, preserving dependencies needed to stop them.</summary>
@@ -110,7 +99,20 @@ public abstract class Architecture : IArchitecture
         if (_stopping && _cleanupAccess.Value == 0)
             throw new ObjectDisposedException(nameof(Architecture));
         var provider = _provider ?? throw new InvalidOperationException("Services are unavailable during configuration. Inject dependencies into components.");
-        return provider.GetService(serviceType);
+        // Keep root-provider resolution behind this same guard. Standard scopes/factories remain caller-owned.
+        return serviceType == typeof(IServiceProvider) ? _serviceAccess : provider.GetService(serviceType);
+    }
+
+    /// <summary>Resolves a standard keyed service through the same root admission window.</summary>
+    /// <param name="serviceType">The registered service contract.</param>
+    /// <param name="serviceKey">The standard DI key.</param>
+    /// <returns>The service, or null when no binding exists.</returns>
+    internal object? ResolveKeyedService(Type serviceType, object? serviceKey)
+    {
+        if (_stopping && _cleanupAccess.Value == 0)
+            throw new ObjectDisposedException(nameof(Architecture));
+        var provider = _provider ?? throw new InvalidOperationException("Services are unavailable during configuration.");
+        return serviceKey is null ? ResolveService(serviceType) : provider.GetKeyedService(serviceType, serviceKey);
     }
 
     /// <summary>Publishes the startup operation before executing any user callbacks.</summary>
@@ -151,8 +153,7 @@ public abstract class Architecture : IArchitecture
                 await EnsureCleanupAsync().ConfigureAwait(false);
             }
             catch (Exception cleanupError) { failure = new AggregateException("Startup and cleanup failed.", error, cleanupError); }
-            if (PublishTerminalPhase(ArchitecturePhase.Faulted) is { } phaseError)
-                failure = new AggregateException("Startup failed and a terminal observer also failed.", failure, phaseError);
+            PublishTerminalPhase(ArchitecturePhase.Faulted);
             if (failure is OperationCanceledException && callerToken.IsCancellationRequested)
             {
                 _ready.TrySetCanceled(callerToken);
@@ -186,6 +187,8 @@ public abstract class Architecture : IArchitecture
     private async Task ConfigureAndStartAsync(bool asyncMode, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
+        if (!asyncMode && this is IAsyncArchitectureHost)
+            throw new InvalidOperationException("An asynchronous host requires InitializeAsync().");
         SetPhase(ArchitecturePhase.Configuring);
         var descriptions = new ServiceCollection();
         if (_loggerFactory is null)
@@ -204,6 +207,7 @@ public abstract class Architecture : IArchitecture
         token.ThrowIfCancellationRequested();
         ValidateComponentRegistrations(descriptions);
         _provider = descriptions.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+        PrepareObserverDiagnostics(_provider);
         SetPhase(ArchitecturePhase.Initializing);
         var participants = _provider.GetServices<ComponentRegistration>().OrderBy(item => item.Order).ToArray();
         var seen = new HashSet<object>(ReferenceEqualityComparer.Instance);
@@ -223,20 +227,32 @@ public abstract class Architecture : IArchitecture
                 synchronous.Initialize();
             token.ThrowIfCancellationRequested();
         }
-        if (asyncMode)
-            await OnStartedAsync(token).ConfigureAwait(false);
+        if (this is IAsyncArchitectureHost asynchronousHost)
+            await asynchronousHost.StartHostAsync(token).ConfigureAwait(false);
         else
         {
-            var hook = GetType().GetMethod(nameof(OnStartedAsync), BindingFlags.Instance | BindingFlags.NonPublic);
-            if (hook?.DeclaringType != typeof(Architecture))
-                throw new InvalidOperationException("An asynchronous host requires InitializeAsync().");
-#pragma warning disable MA0042 // The synchronous entry deliberately rejects overridden async host hooks.
+#pragma warning disable MA0042 // Synchronous host setup is the explicit contract when no async capability is present.
             OnStarted();
 #pragma warning restore MA0042
         }
         token.ThrowIfCancellationRequested();
         SetPhase(ArchitecturePhase.Ready);
         token.ThrowIfCancellationRequested();
+    }
+
+    /// <summary>Prepares optional diagnostics separately from required provider and component activation.</summary>
+    /// <param name="provider">The already-built provider; no nullable lifecycle field escapes into diagnostics.</param>
+    private void PrepareObserverDiagnostics(IServiceProvider provider)
+    {
+        try
+        {
+            _observerLogger = provider.GetService<ILogger<Architecture>>();
+        }
+        catch (Exception error)
+        {
+            // Even constructing the optional diagnostics channel must not veto lifecycle work.
+            ObserverNotification.Report(error, logger: null, reportError: null);
+        }
     }
 
     /// <summary>
@@ -254,8 +270,9 @@ public abstract class Architecture : IArchitecture
                 throw new InvalidOperationException("Lifecycle metadata must be registered through AddComponent().");
             var bindings = descriptions.Where(description => !description.IsKeyedService &&
                 description.ServiceType == participant.ServiceType).ToArray();
-            if (bindings.Length != 1 || bindings[0].Lifetime != ServiceLifetime.Singleton)
-                throw new InvalidOperationException($"Component service {participant.ServiceType} must have exactly one unkeyed singleton registration.");
+            if (bindings.Length != 1 || bindings[0].Lifetime != ServiceLifetime.Singleton ||
+                !ReferenceEquals(bindings[0], participant.Descriptor))
+                throw new InvalidOperationException($"Component service {participant.ServiceType} must have exactly one unkeyed singleton registration and retain its original descriptor.");
         }
     }
 
@@ -315,9 +332,8 @@ public abstract class Architecture : IArchitecture
                 _ready.TrySetException(new ObjectDisposedException(nameof(Architecture)));
         }
         finally { cancellation?.Dispose(); }
-        if (errors.Count == 0 && CurrentPhase != ArchitecturePhase.Faulted &&
-            PublishTerminalPhase(ArchitecturePhase.Stopped) is { } stoppedObserverError)
-            errors.Add(stoppedObserverError);
+        if (errors.Count == 0 && CurrentPhase != ArchitecturePhase.Faulted)
+            PublishTerminalPhase(ArchitecturePhase.Stopped);
         if (errors.Count == 0)
         {
             GC.SuppressFinalize(this);
@@ -325,8 +341,7 @@ public abstract class Architecture : IArchitecture
         }
         else
         {
-            if (PublishTerminalPhase(ArchitecturePhase.Faulted) is { } failedObserverError)
-                errors.Add(failedObserverError);
+            PublishTerminalPhase(ArchitecturePhase.Faulted);
             completion.TrySetException(new AggregateException("Architecture shutdown failed.", errors));
         }
     }
@@ -405,7 +420,7 @@ public abstract class Architecture : IArchitecture
         catch (Exception error) { errors.Add(error); }
     }
 
-    /// <summary>Publishes a state before notifying observers; observer failure belongs to the current operation.</summary>
+    /// <summary>Publishes state before isolated observer delivery; required lifecycle work lives in hooks.</summary>
     private void SetPhase(ArchitecturePhase phase)
     {
         Volatile.Write(ref _phase, (int)phase);
@@ -413,21 +428,15 @@ public abstract class Architecture : IArchitecture
         _insideCallback.Value = true;
         try
         {
-            PhaseChanged?.Invoke(this, new ArchitecturePhaseChangedEventArgs(phase));
+            ObserverNotification.Notify(PhaseChanged, this, new ArchitecturePhaseChangedEventArgs(phase), _observerLogger);
         }
         finally { _insideCallback.Value = previous; }
     }
 
-    /// <summary>Notifies terminal observers once, returning their failure so completion barriers can still be published.</summary>
-    private Exception? PublishTerminalPhase(ArchitecturePhase phase)
+    /// <summary>Publishes each terminal phase once without introducing a second lifecycle failure source.</summary>
+    private void PublishTerminalPhase(ArchitecturePhase phase)
     {
-        if (CurrentPhase == phase)
-            return null;
-        try
-        {
+        if (CurrentPhase != phase)
             SetPhase(phase);
-            return null;
-        }
-        catch (Exception error) { return error; }
     }
 }

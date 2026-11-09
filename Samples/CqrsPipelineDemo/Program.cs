@@ -1,20 +1,20 @@
 // Copyright (c) 2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using CqrsPipelineDemo;
-using System;
-using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Cqrs;
+using System.Threading;
+using System;
+using CqrsPipelineDemo;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Cqrs.Behaviors;
+using GFramework.Cqrs;
 using Microsoft.Extensions.DependencyInjection;
 
 // #region scoped-pipeline
 var services = new ServiceCollection();
 services.AddScopedCqrsRuntime();
 services.AddScoped<RequestScope>();
-services.AddCqrsHandlersFromAssembly(typeof(LengthHandler).Assembly);
+services.AddCqrsHandlers(GFramework.Generated.Cqrs.CqrsRegistration.CreateRegistry());
 // Open generic behavior mapping follows the request/response parameter order.
 services.AddCqrsPipelineBehavior(typeof(LoggingBehavior<,>));
 services.AddCqrsPipelineBehavior(typeof(ScopeBehavior<,>), ServiceLifetime.Scoped);

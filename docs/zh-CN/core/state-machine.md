@@ -36,3 +36,7 @@ public sealed class PlayingState : StateBase;
 StopAsync 等待当前切换完成，退出当前状态，逆序尝试已开始状态的业务清理。并发和重复停止等待同一结果，异常聚合报告。状态实例属于调用者或 DI，状态机不调用其 Dispose。
 
 历史最多保留 maxHistorySize 条成功切换记录，读取顺序为最近优先；0 关闭历史，负值拒绝。
+
+## 状态观察异常
+
+`StateChanged` 在状态进入和历史提交成功后发布。直接订阅者异常仅记录诊断，并继续通知其他订阅者，不设置 `Fault`，不阻止后续切换或回退。可向构造函数的 `observerLogger` 传入宿主日志；未指定时使用 Trace。状态守卫、进入、退出和业务清理仍保留原来的失败语义。

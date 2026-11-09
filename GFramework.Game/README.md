@@ -47,6 +47,8 @@ services.AddGameScenes(sceneFactory, sceneRoot, dispatcher);
 
 设置加载先准备完整迁移结果，再更新现有数据；失败保留当前数据并报告错误。保存失败向调用方传播，已接纳的底层写入等待到完成。数据仓库与设置沿用各自格式；槽位存档统一使用 `SaveDocument`，版本和内容元数据不再依赖业务 DTO。`PrepareLoadAsync` 准备独立候选结果，`CommitPreparedAsync` 备份并提交，普通读取不自动回写。
 
+独立 `DataRepository` 的异构批次需在组合根调用 `RegisterDataType<T>()`，未知类型在整批写入前拒绝；单项泛型保存无需登记。设置和数据仓库的观察通知不会改变已完成操作的结果。YAML 初次加载及热重载保留强类型注册委托，跨表引用通过 `IConfigTable.ContainsKey(object?)` 检查。
+
 ## 文档和可运行工程
 
 - [Game 概览](../docs/zh-CN/game/index.md)

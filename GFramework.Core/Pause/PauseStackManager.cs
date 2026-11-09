@@ -1,13 +1,14 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Lifecycle;
 using System.Diagnostics.CodeAnalysis;
+using GFramework.Core.Abstractions.Lifecycle;
 using GFramework.Core.Abstractions.Logging;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Abstractions.Pause;
+using GFramework.Core.Events;
 using GFramework.Core.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Core.Pause;
 
@@ -58,7 +59,7 @@ public class PauseStackManager(ILogger? logger = null) : IPauseStackManager, IAs
     }
 
     /// <summary>
-    /// 暂停状态变化事件，当暂停状态发生改变时触发。
+    /// 暂停状态变化事件；订阅者异常仅记录诊断，不影响令牌归还或阻断其他订阅者。
     /// </summary>
     public event EventHandler<PauseStateChangedEventArgs>? OnPauseStateChanged;
 
@@ -607,7 +608,7 @@ public class PauseStackManager(ILogger? logger = null) : IPauseStackManager, IAs
     /// <param name="isPaused">暂停组变化后的新状态。</param>
     private void RaisePauseStateChanged(PauseGroup group, bool isPaused)
     {
-        OnPauseStateChanged?.Invoke(this, new PauseStateChangedEventArgs(group, isPaused));
+        ObserverNotification.Notify(OnPauseStateChanged, this, new PauseStateChangedEventArgs(group, isPaused), _logger);
     }
 
 

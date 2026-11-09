@@ -9,7 +9,7 @@ CQRS runtime 提供异步 request、notification 和 stream 分发，独立于 C
 
 ## 接入
 
-在组合根调用 services.AddCqrsRuntime()，通过 AddCqrsHandlersFromAssembly 等入口登记处理器。普通 DI 消费者通过构造函数接收 ICqrsRuntime。Architecture 使用同一 IServiceCollection，不需要额外上下文。
+在组合根调用 services.AddCqrsRuntime()，使用消费端生成器时，通过 `services.AddCqrsHandlers(GFramework.Generated.Cqrs.CqrsRegistration.CreateRegistry())` 直接登记处理器。动态程序集或需要 fallback 的项目显式使用 `AddCqrsHandlersFromAssembly`。普通 DI 消费者通过构造函数接收 ICqrsRuntime。Architecture 使用同一 IServiceCollection，不需要额外上下文。
 
 IRequestHandler&lt;TRequest, TResponse&gt; 的 Handle 方法接收请求和取消令牌。处理器通过构造函数接收领域对象与基础设施能力。调用 runtime.SendAsync、PublishAsync 或 CreateStream，并传递取消令牌。
 

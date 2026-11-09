@@ -7,8 +7,8 @@ using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Storage;
 using GFramework.Core.Architectures;
 using GFramework.Core.Events;
-using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Abstractions.Data.Events;
+using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Data;
 using GFramework.Game.Serializer;
 using GFramework.Game.Storage;
@@ -162,7 +162,7 @@ public class PersistenceTests
             {
                 AutoBackup = false,
                 EnableEvents = true,
-            }, publishEvent: context.Publish);
+            }, publishEvent: context.Publish).RegisterDataType<TestSimpleData>();
 
         var location1 = new TestDataLocation("graphics", namespaceValue: "settings");
         var location2 = new TestDataLocation("audio", namespaceValue: "settings");
@@ -200,7 +200,7 @@ public class PersistenceTests
             {
                 AutoBackup = true,
                 EnableEvents = false,
-            });
+            }).RegisterDataType<TestSimpleData>().RegisterDataType<TestNamedData>();
         var numberLocation = new TestDataLocation("graphics", namespaceValue: "settings");
         var textLocation = new TestDataLocation("profile", namespaceValue: "settings");
 

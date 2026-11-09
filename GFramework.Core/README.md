@@ -31,3 +31,7 @@ Core 依赖 Core.Abstractions 及标准 DI/日志包，不传递依赖 CQRS、Go
 - [Godot 接入](../Samples/GodotIntegration/README.md)
 - [完整游戏](../Samples/DodgeTheCreeps/README.md)
 - [进阶游戏](../Samples/DodgeTheCreeps.Advanced/README.md)
+
+## 通知与异步宿主
+
+生命周期、状态、暂停、Store 和属性的完成／变化通知隔离直接订阅者异常，并保留诊断；通用 EventBus 维持原来的异常传播。异步组合根实现 `IAsyncArchitectureHost.StartHostAsync`，同步组合根覆盖 `OnStarted`。Services 支持 keyed 解析；已有作用域仍由宿主自行结束。具体契约见[装配与生命周期](../docs/zh-CN/core/architecture.md)。

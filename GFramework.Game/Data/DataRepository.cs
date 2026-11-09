@@ -11,11 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Reflection;
 using GFramework.Core.Abstractions.Storage;
-using GFramework.Game.Abstractions.Data;
+using GFramework.Core.Events;
 using GFramework.Game.Abstractions.Data.Events;
+using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Game.Data;
 
@@ -24,13 +25,23 @@ namespace GFramework.Game.Data;
 /// </summary>
 /// <param name="storage">存储接口实例</param>
 /// <param name="options">数据仓库配置选项</param>
-/// <param name="publishEvent">Optional explicit notification callback.</param>
-public class DataRepository(IStorage storage, DataRepositoryOptions? options = null, Action<object>? publishEvent = null)
+/// <param name="publishEvent">Optional observation callback; its failures do not reverse completed operations.</param>
+/// <param name="observerLogger">Notification diagnostics; defaults to Trace.</param>
+public class DataRepository(IStorage storage, DataRepositoryOptions? options = null, Action<object>? publishEvent = null, ILogger? observerLogger = null)
     : IDataRepository
 {
-    private static readonly MethodInfo SaveCoreGenericMethod =
-        typeof(DataRepository).GetMethod(nameof(SaveCoreAsync), BindingFlags.Instance | BindingFlags.NonPublic)
-        ?? throw new InvalidOperationException($"Method {nameof(SaveCoreAsync)} not found.");
+    private readonly ConcurrentDictionary<Type, Func<IDataLocation, IData, CancellationToken, Task>> _batchWriters = new();
+
+    /// <summary>Registers an exact runtime data type for heterogeneous batches using a compiled generic writer.</summary>
+    /// <typeparam name="T">A concrete persisted data type.</typeparam>
+    /// <returns>This repository for composition-time chaining.</returns>
+    /// <remarks>Register every batch type explicitly. Generic single-item SaveAsync does not require registration.</remarks>
+    public DataRepository RegisterDataType<T>() where T : class, IData
+    {
+        _batchWriters.TryAdd(typeof(T), (location, data, token) =>
+            SaveCoreAsync(location, (T)data, emitSavedEvent: false, token));
+        return this;
+    }
 
     private readonly DataRepositoryOptions _options = options ?? new DataRepositoryOptions();
     private readonly IStorage _storage = storage ?? throw new ArgumentNullException(nameof(storage));
@@ -58,7 +69,7 @@ public class DataRepository(IStorage storage, DataRepositoryOptions? options = n
         cancellationToken.ThrowIfCancellationRequested();
         // 如果启用事件功能，则发送数据加载完成事件
         if (_options.EnableEvents)
-            publishEvent?.Invoke(new DataLoadedEvent<T>(result));
+            ObserverNotification.Notify(publishEvent, (object)new DataLoadedEvent<T>(result), observerLogger);
 
         return result;
     }
@@ -107,7 +118,7 @@ public class DataRepository(IStorage storage, DataRepositoryOptions? options = n
         cancellationToken.ThrowIfCancellationRequested();
         await Storage.DeleteAsync(key).ConfigureAwait(false);
         if (_options.EnableEvents)
-            publishEvent?.Invoke(new DataDeletedEvent(location));
+            ObserverNotification.Notify(publishEvent, (object)new DataDeletedEvent(location), observerLogger);
     }
 
     /// <summary>
@@ -115,20 +126,36 @@ public class DataRepository(IStorage storage, DataRepositoryOptions? options = n
     /// </summary>
     /// <param name="dataList">包含数据位置和数据对象的枚举集合</param>
     /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    /// <remarks>Register exact batch runtime types with RegisterDataType before use. Admission validates every
+    /// item before the first write; subsequent real storage failures are not a cross-file transaction.</remarks>
+    /// <exception cref="InvalidOperationException">A runtime data type has no registered typed writer.</exception>
     public async Task SaveAllAsync(IEnumerable<(IDataLocation location, IData data)> dataList, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(dataList);
         var valueTuples = dataList.ToList();
+        // Validate the whole batch before the first write: an unknown later type cannot cause a partial commit.
+        var writers = valueTuples.Select(item =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ArgumentNullException.ThrowIfNull(item.location, nameof(dataList));
+            ArgumentNullException.ThrowIfNull(item.data, nameof(dataList));
+            return _batchWriters.TryGetValue(item.data.GetType(), out var writer)
+                ? writer
+                : throw new InvalidOperationException(
+                    $"Batch data type '{item.data.GetType()}' must be registered through RegisterDataType<T>().");
+        }).ToArray();
 
         // 批量保存对订阅者而言应视为一次显式提交，因此这里复用底层保存逻辑，
         // 但抑制逐项 DataSavedEvent，避免监听器对同一批次收到重复语义的事件。
-        foreach (var (location, data) in valueTuples)
+        for (var index = 0; index < valueTuples.Count; index++)
         {
-            await SaveCoreUntypedAsync(location, data, emitSavedEvent: false, cancellationToken).ConfigureAwait(false);
+            var (location, data) = valueTuples[index];
+            await writers[index](location, data, cancellationToken).ConfigureAwait(false);
         }
 
         if (_options.EnableEvents)
-            publishEvent?.Invoke(new DataBatchSavedEvent(valueTuples));
+            ObserverNotification.Notify(publishEvent, (object)new DataBatchSavedEvent(valueTuples), observerLogger);
     }
 
 
@@ -152,7 +179,7 @@ public class DataRepository(IStorage storage, DataRepositoryOptions? options = n
 
         if (emitSavedEvent && _options.EnableEvents)
         {
-            publishEvent?.Invoke(new DataSavedEvent<T>(data));
+            ObserverNotification.Notify(publishEvent, (object)new DataSavedEvent<T>(data), observerLogger);
         }
     }
 
@@ -173,18 +200,4 @@ public class DataRepository(IStorage storage, DataRepositoryOptions? options = n
         await Storage.WriteAsync(backupKey, existing).ConfigureAwait(false);
     }
 
-    /// <summary>
-    ///     使用数据对象的运行时类型执行保存流程，避免批量保存时因为编译期类型退化为 <see cref="IData" /> 而破坏备份反序列化。
-    /// </summary>
-    /// <param name="location">目标数据位置。</param>
-    /// <param name="data">要保存的数据对象。</param>
-    /// <param name="emitSavedEvent">是否发送单项保存事件。</param>
-    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
-    private Task SaveCoreUntypedAsync(IDataLocation location, IData data, bool emitSavedEvent, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(data);
-
-        var closedMethod = SaveCoreGenericMethod.MakeGenericMethod(data.GetType());
-        return (Task)closedMethod.Invoke(this, [location, data, emitSavedEvent, cancellationToken])!;
-    }
 }

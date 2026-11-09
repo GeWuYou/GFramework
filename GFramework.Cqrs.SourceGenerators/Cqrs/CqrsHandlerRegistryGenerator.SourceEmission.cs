@@ -36,6 +36,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
         var builder = new StringBuilder();
         AppendGeneratedSourcePreamble(builder, reflectionFallbackEmission);
         AppendGeneratedRegistryType(builder, registrations, sourceShape);
+        AppendDirectRegistryFactory(builder, reflectionFallbackEmission.HasFallbackHandlers);
         return builder.ToString();
     }
 
@@ -420,28 +421,22 @@ public sealed partial class CqrsHandlerRegistryGenerator
     {
         builder.AppendLine("    private static readonly global::GFramework.Cqrs.CqrsRequestInvokerDescriptorEntry[] RequestInvokerDescriptors =");
         builder.AppendLine("    [");
-
         for (var index = 0; index < requestInvokerEmissions.Length; index++)
         {
             var emission = requestInvokerEmissions[index];
-            builder.Append("        new global::");
-            builder.Append(CqrsRuntimeNamespace);
-            builder.Append(".CqrsRequestInvokerDescriptorEntry(typeof(");
+            builder.Append("        new global::GFramework.Cqrs.CqrsRequestInvokerDescriptorEntry(typeof(");
             builder.Append(emission.RequestTypeDisplayName);
             builder.Append("), typeof(");
             builder.Append(emission.ResponseTypeDisplayName);
-            builder.Append("), new global::");
-            builder.Append(CqrsRuntimeNamespace);
-            builder.Append(".CqrsRequestInvokerDescriptor(typeof(");
+            builder.Append("), global::GFramework.Cqrs.CqrsRequestInvokerDescriptor.Create<");
+            builder.Append(emission.ResponseTypeDisplayName);
+            builder.Append(">(typeof(");
             builder.Append(emission.HandlerInterfaceDisplayName);
-            builder.Append("), typeof(");
-            builder.Append(GeneratedTypeName);
-            builder.Append(").GetMethod(nameof(InvokeRequestHandler");
+            builder.Append("), InvokeRequestHandler");
             builder.Append(emission.MethodIndex);
-            builder.Append("), global::System.Reflection.BindingFlags.NonPublic | global::System.Reflection.BindingFlags.Static)!))");
+            builder.Append("))");
             builder.AppendLine(index == requestInvokerEmissions.Length - 1 ? string.Empty : ",");
         }
-
         builder.AppendLine("    ];");
     }
 
@@ -494,7 +489,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
     /// <param name="emission">当前要输出的 invoker 发射计划。</param>
     /// <remarks>
     ///     这些方法的编号与 <see cref="RequestInvokerEmissionSpec.MethodIndex" /> 一一对应，
-    ///     dispatcher 通过描述符里的 <see cref="MethodInfo" /> 把 object 形参桥接回强类型 handler 与 request。
+    ///     dispatcher 直接调用编译期绑定的委托，把 object 形参桥接回强类型 handler 与 request。
     /// </remarks>
     private static void AppendRequestInvokerMethod(StringBuilder builder, RequestInvokerEmissionSpec emission)
     {
@@ -544,28 +539,22 @@ public sealed partial class CqrsHandlerRegistryGenerator
     {
         builder.AppendLine("    private static readonly global::GFramework.Cqrs.CqrsStreamInvokerDescriptorEntry[] StreamInvokerDescriptors =");
         builder.AppendLine("    [");
-
         for (var index = 0; index < streamInvokerEmissions.Length; index++)
         {
             var emission = streamInvokerEmissions[index];
-            builder.Append("        new global::");
-            builder.Append(CqrsRuntimeNamespace);
-            builder.Append(".CqrsStreamInvokerDescriptorEntry(typeof(");
+            builder.Append("        new global::GFramework.Cqrs.CqrsStreamInvokerDescriptorEntry(typeof(");
             builder.Append(emission.RequestTypeDisplayName);
             builder.Append("), typeof(");
             builder.Append(emission.ResponseTypeDisplayName);
-            builder.Append("), new global::");
-            builder.Append(CqrsRuntimeNamespace);
-            builder.Append(".CqrsStreamInvokerDescriptor(typeof(");
+            builder.Append("), global::GFramework.Cqrs.CqrsStreamInvokerDescriptor.Create<");
+            builder.Append(emission.ResponseTypeDisplayName);
+            builder.Append(">(typeof(");
             builder.Append(emission.HandlerInterfaceDisplayName);
-            builder.Append("), typeof(");
-            builder.Append(GeneratedTypeName);
-            builder.Append(").GetMethod(nameof(InvokeStreamHandler");
+            builder.Append("), InvokeStreamHandler");
             builder.Append(emission.MethodIndex);
-            builder.Append("), global::System.Reflection.BindingFlags.NonPublic | global::System.Reflection.BindingFlags.Static)!))");
+            builder.Append("))");
             builder.AppendLine(index == streamInvokerEmissions.Length - 1 ? string.Empty : ",");
         }
-
         builder.AppendLine("    ];");
     }
 
@@ -611,7 +600,9 @@ public sealed partial class CqrsHandlerRegistryGenerator
     /// </summary>
     private static void AppendStreamInvokerMethod(StringBuilder builder, StreamInvokerEmissionSpec emission)
     {
-        builder.Append("    private static object InvokeStreamHandler");
+        builder.Append("    private static global::System.Collections.Generic.IAsyncEnumerable<");
+        builder.Append(emission.ResponseTypeDisplayName);
+        builder.Append("> InvokeStreamHandler");
         builder.Append(emission.MethodIndex);
         builder.Append("(object handler, object request, global::System.Threading.CancellationToken cancellationToken)");
         builder.AppendLine();

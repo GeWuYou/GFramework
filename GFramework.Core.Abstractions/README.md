@@ -17,6 +17,8 @@
 
 生命周期与资源所有权分开：Architecture 停止显式登记的业务组件，DI 释放它创建的资源，外部实例由调用者释放。事件与属性订阅返回标准 IDisposable。
 
+异步组合根通过 `IAsyncArchitectureHost.StartHostAsync` 声明必要宿主接线；该能力只面向宿主，不要求普通业务对象实现。Services 的停止检查仅约束根访问入口，已有标准 DI Scope 仍由调用方管理。
+
 ## 文档
 
 - [抽象层指南](../docs/zh-CN/abstractions/core-abstractions.md)

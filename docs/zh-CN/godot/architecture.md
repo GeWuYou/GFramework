@@ -135,3 +135,9 @@ ArchitectureAnchor 的退出树回调会观察异步销毁任务。Godot 的同�
 - [Godot 进阶项目](../tutorials/godot-advanced-project.md)
 - [Godot 场景系统](./scene.md)
 - [Godot UI 系统](./ui.md)
+
+## 异步宿主契约
+
+`AbstractArchitecture` 显式实现 Core 的 `IAsyncArchitectureHost`；派生类仍通过 Godot 适配层的 `OnStartedAsync` 扩展接线。同步 `Initialize` 会在配置和组件激活前拒绝该宿主，使用 `await InitializeAsync()`。
+
+自行直接继承 Core `Architecture` 的异步 Godot 组合根，应将旧的 Core `OnStartedAsync` 覆写改为显式 `IAsyncArchitectureHost.StartHostAsync` 实现。该契约不自动切换线程：需要场景树或引擎对象的操作继续通过宿主 dispatcher 执行，依赖已挂载节点的工作放在宿主附加阶段。

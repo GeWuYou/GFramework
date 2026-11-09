@@ -33,6 +33,18 @@ public sealed class AbstractArchitectureModuleInstallationTests
         Assert.That(module.Configured, Is.False);
     }
 
+    /// <summary>Synchronous startup rejects the async Godot host before modules or nodes can be touched.</summary>
+    [Test]
+    public async Task SynchronousStartupRejectsGodotBeforeConfiguration()
+    {
+        var module = new RecordingModule();
+        var architecture = new ManagedArchitecture(module);
+        Assert.Throws<InvalidOperationException>(architecture.Initialize);
+        Assert.That(module.Configured, Is.False);
+        Assert.That(module.NodeReads, Is.Zero);
+        await architecture.DestroyAsync();
+    }
+
     /// <summary>A host fixture that excludes native attachment from this managed contract test.</summary>
     private sealed class ManagedArchitecture(RecordingModule module) : AbstractArchitecture
     {

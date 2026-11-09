@@ -1,10 +1,11 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using System;
-using System.Threading;
 using System.Threading.Tasks;
+using System.Threading;
+using System;
 using DodgeTheCreeps.Advanced.Content;
+using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Architectures;
 using GFramework.Core.Pause;
 using GFramework.Game.Abstractions.Runtime;
@@ -13,8 +14,8 @@ using GFramework.Game.UI;
 using GFramework.Godot.Pause;
 using GFramework.Godot.Storage;
 using GFramework.Godot.UI;
-using Microsoft.Extensions.DependencyInjection;
 using JsonSerializer = GFramework.Game.Serializer.JsonSerializer;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DodgeTheCreeps.Advanced;
 
@@ -26,7 +27,7 @@ namespace DodgeTheCreeps.Advanced;
 /// <param name="launch">Validated immutable launch inputs.</param>
 /// <param name="dispatcher">Native thread ownership.</param>
 internal sealed class AdvancedGameArchitecture(AdvancedGameRoot host, GameLaunchOptions launch,
-    IGameDispatcher dispatcher) : Architecture
+    IGameDispatcher dispatcher) : Architecture, IAsyncArchitectureHost
 {
     private GameApplication? _application;
 
@@ -96,7 +97,7 @@ internal sealed class AdvancedGameArchitecture(AdvancedGameRoot host, GameLaunch
     // #endregion advanced-composition
 
     /// <inheritdoc />
-    protected override ValueTask OnStartedAsync(CancellationToken cancellationToken) =>
+    ValueTask IAsyncArchitectureHost.StartHostAsync(CancellationToken cancellationToken) =>
         new(dispatcher.InvokeAsync(async () =>
         {
             var text = Services.GetRequiredService<DodgeLocalization>();

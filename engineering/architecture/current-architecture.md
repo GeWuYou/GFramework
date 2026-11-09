@@ -10,9 +10,9 @@ Core.Abstractions 定义能力契约，Core 提供实现。Core 不引用 CQRS�
 
 ## 组合根与生命周期
 
-普通业务对象使用构造注入，Model/System/Utility 是职责约定。容器仅在组合根和宿主接线访问。标准 IServiceCollection 描述依赖；Architecture 构建并拥有唯一 provider，通过受阶段检查的 Services 暴露标准解析接口。
+普通业务对象使用构造注入，Model/System/Utility 是职责约定。容器仅在组合根和宿主接线访问。标准 IServiceCollection 描述依赖；异步宿主通过 IAsyncArchitectureHost 声明接线能力，Core 不反射探测覆写；Architecture 构建并拥有唯一 provider，通过受阶段检查的 Services 暴露标准解析接口。
 
-普通服务不自动启动。AddComponent 登记服务键与生命周期元数据，按 order 升序、同值登记顺序启动，逆实际开始顺序停止；失败的初始化尝试也参与清理。组件键在最终配置完成后检查唯一的非 keyed Singleton 绑定，再构建 provider；后续模块不能悄然覆盖该约束。配置型模块只组织 IServiceCollection，不拥有第二套容器或进程级注册表。
+普通服务不自动启动。AddComponent 登记服务键与生命周期元数据，按 order 升序、同值登记顺序启动，逆实际开始顺序停止；失败的初始化尝试也参与清理。组件键在最终配置完成后检查唯一且未被替换的原始非 keyed Singleton 描述符，再构建 provider；后续模块不能悄然覆盖该约束。配置型模块只组织 IServiceCollection，不拥有第二套容器或进程级注册表。
 
 启动失败、取消和正常停止均闭合业务停止、宿主分离与 provider 释放。停止调用共享同一结果；单个清理失败不跳过其余清理。外部实例由调用者拥有，DI 创建的资源由 provider 拥有。避免工厂别名将同一资源重复登记为拥有对象。
 
@@ -49,3 +49,9 @@ ArchEcsModule 只配置服务，ArchRuntime 管理借用 World／系统的业务
 ECS 的统计策略在构造时固定，默认关闭。启用后复用帧测量存储，读取时生成不可变快照；未执行阶段与失败阶段明确区分。runtime 限定宿主拥有线程，快照可跨线程分享。采用和关闭的可执行路径见[Arch ECS 接入](../../docs/zh-CN/ecs/arch.md)。
 
 Godot 等具有线程约束的宿主应显式提供 `AddArch(..., hostContext: SynchronizationContext.Current)`，并用异步 Architecture 启动／停止。该路径把 World、系统和 runtime 的激活、初始化及业务停止派发回拥有上下文，避免前置异步组件导致线程切换；普通同步宿主省略此参数。最终资源释放仍由对象拥有者负责，持有原生对象的系统应在自己的释放边界进行宿主调度。
+
+## 观察与动态边界
+
+完成／状态变化通知在提交后逐个隔离直接订阅者及诊断通道异常，业务 hook、guard、reducer 和 EventBus 保留原异常契约。根服务入口覆盖 keyed 解析和自身 provider 身份，不追踪全部作用域；宿主先停止工作并结束其作用域。
+
+YAML 保留泛型提交委托，配置表提供非泛型键存在能力；独立数据仓库用显式类型登记处理异构批次。消费端 CQRS 生成入口直接创建注册器并提供编译委托；程序集扫描及其构造反射只在调用方明确选择的动态路径执行。Mod 激活、Harmony 加载上下文桥接和任意委托弱订阅继续使用局部必要反射。

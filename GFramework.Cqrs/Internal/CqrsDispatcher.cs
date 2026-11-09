@@ -352,6 +352,14 @@ internal sealed class CqrsDispatcher(
         Type requestType,
         GeneratedRequestInvokerMetadata descriptor)
     {
+        if (descriptor.Invoker is { } compiled)
+        {
+            if (compiled is not Func<object, object, CancellationToken, ValueTask<TResponse>> typedInvoker)
+                throw new InvalidOperationException(
+                    $"Generated CQRS request invoker has an incompatible response type for {requestType.FullName}.");
+            return new RequestInvokerDescriptor<TResponse>(descriptor.HandlerType, typedInvoker.Invoke);
+        }
+
         if (!descriptor.InvokerMethod.IsStatic)
         {
             throw new InvalidOperationException(
@@ -472,6 +480,14 @@ internal sealed class CqrsDispatcher(
         Type requestType,
         GeneratedStreamInvokerMetadata descriptor)
     {
+        if (descriptor.Invoker is { } compiled)
+        {
+            if (compiled is not Func<object, object, CancellationToken, IAsyncEnumerable<TResponse>> typedInvoker)
+                throw new InvalidOperationException(
+                    $"Generated CQRS stream invoker has an incompatible response type for {requestType.FullName}.");
+            return new StreamInvokerDescriptor<TResponse>(descriptor.HandlerType, typedInvoker.Invoke);
+        }
+
         if (!descriptor.InvokerMethod.IsStatic)
         {
             throw new InvalidOperationException(
@@ -995,18 +1011,22 @@ internal sealed class CqrsDispatcher(
     /// </summary>
     /// <param name="HandlerType">请求处理器在容器中的服务类型。</param>
     /// <param name="InvokerMethod">执行请求处理器的开放静态方法。</param>
+    /// <param name="Invoker">Compiled generated delegate; null only for explicit runtime reflection metadata.</param>
     private sealed record GeneratedRequestInvokerMetadata(
         Type HandlerType,
-        MethodInfo InvokerMethod);
+        MethodInfo InvokerMethod,
+        Delegate? Invoker);
 
     /// <summary>
     ///     记录 registrar 写入的 generated stream invoker 元数据。
     /// </summary>
     /// <param name="HandlerType">流式请求处理器在容器中的服务类型。</param>
     /// <param name="InvokerMethod">执行流式请求处理器的开放静态方法。</param>
+    /// <param name="Invoker">Compiled generated delegate; null only for explicit runtime reflection metadata.</param>
     private sealed record GeneratedStreamInvokerMetadata(
         Type HandlerType,
-        MethodInfo InvokerMethod);
+        MethodInfo InvokerMethod,
+        Delegate? Invoker);
 
     /// <summary>
     ///     保存 provider 返回的请求处理器服务类型与强类型 request invoker。
@@ -1108,7 +1128,8 @@ internal sealed class CqrsDispatcher(
             responseType,
             (_, _) => new GeneratedRequestInvokerMetadata(
                 descriptor.HandlerType,
-                descriptor.InvokerMethod));
+                descriptor.InvokerMethod,
+                descriptor.Invoker));
     }
 
     /// <summary>
@@ -1131,7 +1152,8 @@ internal sealed class CqrsDispatcher(
             responseType,
             (_, _) => new GeneratedStreamInvokerMetadata(
                 descriptor.HandlerType,
-                descriptor.InvokerMethod));
+                descriptor.InvokerMethod,
+                descriptor.Invoker));
     }
 
     /// <summary>

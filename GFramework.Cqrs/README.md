@@ -111,6 +111,8 @@ var length = await runtime.SendAsync(new GetLength("Alice"));
 
 ## 生成注册与反射回退
 
+安装消费端生成器后，优先调用 `services.AddCqrsHandlers(GFramework.Generated.Cqrs.CqrsRegistration.CreateRegistry())`。注册器直接构造，调用描述符通过 `Create<TResponse>` 接收静态强类型委托；相同注册器类型重复登记会去重。需要 fallback 的生成结果会在创建入口明确拒绝，要求选择显式程序集路径。
+
 `AddCqrsHandlersFromAssembly` / `AddCqrsHandlersFromAssemblies` 优先使用消费程序集提供的 `ICqrsHandlerRegistry`，没有可用注册表时执行反射回退；处理器默认注册为 transient。同一程序集按稳定键去重。
 
 request/stream 的生成调用元数据可用于缓存分发绑定；通知继续使用实际解析的处理器集合和通知发布策略。`CqrsReflectionFallbackAttribute` 的类型与名称清单用于补齐未覆盖处理器，不改变其依赖或生命周期。生成器只安装到消费项目。

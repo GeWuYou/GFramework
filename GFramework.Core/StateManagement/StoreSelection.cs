@@ -5,6 +5,7 @@ using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Property;
 using GFramework.Core.Abstractions.StateManagement;
 using GFramework.Core.Events;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Core.StateManagement;
 
@@ -21,13 +22,15 @@ namespace GFramework.Core.StateManagement;
 /// <param name="store">源 Store。</param>
 /// <param name="selector">状态选择器。</param>
 /// <param name="comparer">选择结果比较器；未提供时使用 <see cref="EqualityComparer{T}.Default"/>。</param>
+/// <param name="observerLogger">Diagnostics for committed selection notifications; defaults to Trace.</param>
 /// <exception cref="ArgumentNullException">
 ///     当 <paramref name="store"/> 或 <paramref name="selector"/> 为 <see langword="null"/> 时抛出。
 /// </exception>
 public sealed class StoreSelection<TState, TSelected>(
     IReadonlyStore<TState> store,
     Func<TState, TSelected> selector,
-    IEqualityComparer<TSelected>? comparer = null) : IReadonlyBindableProperty<TSelected>
+    IEqualityComparer<TSelected>? comparer = null,
+    ILogger? observerLogger = null) : IReadonlyBindableProperty<TSelected>
 {
     /// <summary>
     ///     用于判断选择结果是否真正变化的比较器。
@@ -310,7 +313,7 @@ public sealed class StoreSelection<TState, TSelected>(
 
         foreach (var listener in listenersSnapshot)
         {
-            listener(latestValue);
+            ObserverNotification.Notify(listener, latestValue, observerLogger);
         }
     }
 
@@ -354,7 +357,7 @@ public sealed class StoreSelection<TState, TSelected>(
 
         foreach (var listener in listenersSnapshot)
         {
-            listener(selectedValue);
+            ObserverNotification.Notify(listener, selectedValue, observerLogger);
         }
     }
 

@@ -27,8 +27,9 @@ public static class ArchitectureServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         EnsureKeyAvailable<TService>(services);
-        services.AddSingleton<TService, TImplementation>();
-        services.AddSingleton(new ComponentRegistration(typeof(TService), order));
+        var descriptor = ServiceDescriptor.Singleton<TService, TImplementation>();
+        services.Add(descriptor);
+        services.AddSingleton(new ComponentRegistration(descriptor, order));
         return services;
     }
 
@@ -44,8 +45,9 @@ public static class ArchitectureServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(instance);
         EnsureKeyAvailable<TService>(services);
-        services.AddSingleton(instance);
-        services.AddSingleton(new ComponentRegistration(typeof(TService), order));
+        var descriptor = ServiceDescriptor.Singleton(instance);
+        services.Add(descriptor);
+        services.AddSingleton(new ComponentRegistration(descriptor, order));
         return services;
     }
 
@@ -61,8 +63,9 @@ public static class ArchitectureServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(factory);
         EnsureKeyAvailable<TService>(services);
-        services.AddSingleton(factory);
-        services.AddSingleton(new ComponentRegistration(typeof(TService), order));
+        var descriptor = ServiceDescriptor.Singleton(factory);
+        services.Add(descriptor);
+        services.AddSingleton(new ComponentRegistration(descriptor, order));
         return services;
     }
 
