@@ -6,7 +6,6 @@
 import argparse
 import os
 import re
-import subprocess
 
 NUMBER = r"(?:0|[1-9][0-9]*)"
 IDENTIFIER = r"(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)"
@@ -19,38 +18,16 @@ def version(tag: str) -> str | None:
     return match[1] if match else None
 
 
-def tag_commit(tag: str) -> str:
-    """Resolve only an existing framework tag, never a similarly named branch."""
-    if version(tag) is None:
-        raise ValueError("Expected a framework SemVer tag (e.g. v1.2.3)")
-    result = subprocess.run(["git", "rev-parse", "--verify", f"refs/tags/{tag}^{{commit}}"],
-                            capture_output=True, text=True)
-    if result.returncode:
-        raise ValueError(f"Framework version tag does not exist or does not point to a commit: {tag}")
-    return result.stdout.strip()
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("tag", nargs="?", default=os.environ.get("GITHUB_REF_NAME", ""))
-    parser.add_argument("--require-existing-tag", action="store_true",
-                        help="Fail before publishing unless the framework tag resolves to a commit")
     args = parser.parse_args()
     value = version(args.tag)
-    commit = None
-    if args.require_existing_tag:
-        try:
-            commit = tag_commit(args.tag)
-        except ValueError as error:
-            parser.error(str(error))
     print(value or "Not a framework version tag")
     if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
             output.write("framework=" + str(value is not None).lower() + "\n")
             output.write("version=" + (value or "") + "\n")
-            if commit:
-                output.write("tag=" + args.tag + "\n")
-                output.write("commit=" + commit + "\n")
             stable_docs = bool(value and args.tag.startswith("v") and "-" not in value.split("+", 1)[0])
             output.write("docs=" + str(stable_docs).lower() + "\n")
 

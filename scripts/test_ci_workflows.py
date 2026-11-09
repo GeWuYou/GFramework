@@ -26,48 +26,6 @@ class ReleaseTests(unittest.TestCase):
             with self.subTest(tag=tag):
                 self.assertIsNone(version(tag))
 
-    def test_manual_publish_resolves_existing_tag_instead_of_dispatch_branch(self):
-        script = ROOT / "scripts/ci_release_tag.py"
-        with tempfile.TemporaryDirectory() as folder:
-            repository = Path(folder)
-
-            def git(*args):
-                return subprocess.check_output(["git", *args], cwd=repository, text=True).strip()
-
-            git("init", "-q")
-            git("-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--allow-empty", "-qm", "tag source")
-            tagged_commit = git("rev-parse", "HEAD")
-            git("tag", "v1.2.3")
-            git("-c", "user.name=Test", "-c", "user.email=test@example.com", "tag", "-am", "annotated", "V1.2.4")
-            git("-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--allow-empty", "-qm", "later main")
-            git("branch", "v1.2.5")
-            self.assertNotEqual(tagged_commit, git("rev-parse", "HEAD"))
-            for tag in ("v1.2.3", "V1.2.4", "v1.2.5", "v1.2.99", "main", "gframework-config-tool-v1.2.3", "v1.2.3;echo bad"):
-                with self.subTest(tag=tag):
-                    output = repository / "outputs"
-                    output.unlink(missing_ok=True)
-                    result = subprocess.run(["python3", str(script), "--require-existing-tag"], cwd=repository,
-                                            env={**os.environ, "GITHUB_REF_NAME": tag, "GITHUB_OUTPUT": str(output)},
-                                            text=True, capture_output=True)
-                    if tag in ("v1.2.3", "V1.2.4"):
-                        self.assertEqual(result.returncode, 0, result.stderr)
-                        self.assertIn(f"commit={tagged_commit}\n", output.read_text())
-                        self.assertIn(f"tag={tag}\n", output.read_text())
-                    else:
-                        self.assertNotEqual(result.returncode, 0)
-                        self.assertFalse(output.exists())
-
-    def test_manual_publish_binds_artifacts_and_release_to_validated_tag(self):
-        workflow = (ROOT / ".github/workflows/publish.yml").read_text()
-        self.assertIn("  workflow_dispatch:\n    inputs:\n      tag:", workflow)
-        self.assertIn("GITHUB_REF_NAME: ${{ inputs.tag || github.ref_name }}", workflow)
-        self.assertIn("run: python3 scripts/ci_release_tag.py --require-existing-tag", workflow)
-        self.assertEqual(workflow.count("ref: ${{ needs.version.outputs.commit }}"), 2)
-        release = workflow.split("\n  create-release:\n", 1)[1]
-        self.assertIn("      - version\n", release)
-        self.assertIn("tag_name: ${{ needs.version.outputs.tag }}", release)
-        self.assertIn("group: ${{ github.workflow }}-refs/tags/${{ inputs.tag || github.ref_name }}", workflow)
-
     def test_actual_tag_filters_isolate_workflow_domains(self):
         expected = {
             "v1.2.3": {"publish", "license-compliance", "publish-docs"},
