@@ -7,6 +7,21 @@
 APPLY_FIXES: none
 FAIL_ON_ERROR: true
 
+# The pinned image includes an older SDK. Install the repository SDK into its existing
+# dotnet root only when resolution fails; formatter errors remain blocking.
+PRE_COMMANDS:
+  - command: >-
+      dotnet --version ||
+      (sdk_installer="$(mktemp)" && trap 'rm -f "$sdk_installer"' EXIT &&
+      curl --fail --silent --show-error --location --retry 3
+      https://dot.net/v1/dotnet-install.sh -o "$sdk_installer" &&
+      bash "$sdk_installer" --jsonfile global.json
+      --install-dir "$(dirname "$(readlink -f "$(command -v dotnet)")")" --no-path &&
+      dotnet --version)
+    cwd: workspace
+    run_before_linters: true
+    continue_if_failed: false
+
 # ========================
 # 全局排除目录配置
 # 定义不需要进行代码检查的目录列表

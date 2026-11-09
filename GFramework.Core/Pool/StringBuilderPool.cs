@@ -114,21 +114,24 @@ public static class StringBuilderPool
     }
 
     /// <summary>
-    ///     可自动释放的 StringBuilder 包装器
+    ///     拥有一次 StringBuilder 借用的引用令牌，重复或并发释放只归还一次。
     /// </summary>
-    public readonly struct ScopedStringBuilder : IDisposable
+    /// <remarks>引用别名共享同一次释放。StringBuilder 本身不支持并发使用，访问者不得与释放并发。</remarks>
+    public sealed class ScopedStringBuilder : IDisposable
     {
-        /// <summary>
-        ///     获取 StringBuilder 实例
-        /// </summary>
-        public StringBuilder Value
-        {
-            get;
-        }
+        private StringBuilder? _value;
 
+        /// <summary>
+        ///     获取仍由此令牌拥有的 StringBuilder 实例。
+        /// </summary>
+        /// <exception cref="ObjectDisposedException">此借用已经归还。</exception>
+        public StringBuilder Value => Volatile.Read(ref _value) ?? throw new ObjectDisposedException(nameof(ScopedStringBuilder));
+
+        /// <summary>Transfers one rented builder into this scope's ownership.</summary>
+        /// <param name="value">Builder that must be returned exclusively through this token.</param>
         internal ScopedStringBuilder(StringBuilder value)
         {
-            Value = value;
+            _value = value;
         }
 
         /// <summary>
@@ -136,7 +139,10 @@ public static class StringBuilderPool
         /// </summary>
         public void Dispose()
         {
-            Return(Value);
+            // Publish disposal before returning the builder: aliases must never clear a subsequent borrow.
+            var value = Interlocked.Exchange(ref _value, value: null);
+            if (value is not null)
+                Return(value);
         }
     }
 }

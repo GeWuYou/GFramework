@@ -91,6 +91,8 @@
 
 ## 最小安装组合
 
+NuGet 包按目标框架和 Godot 宿主选择运行时；从仓库源码构建则需要 `global.json` 指定的 .NET SDK 10.0.403 或同一功能带内更新的补丁版本。两者的环境要求见[安装配置](docs/zh-CN/getting-started/installation.md)。
+
 ```bash
 # 最小起步
 dotnet add package GeWuYou.GFramework.Core

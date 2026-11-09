@@ -1,5 +1,6 @@
 ---
 title: 安装
+description: 按模块选择 NuGet 包，并配置源码构建 SDK 与 Godot 宿主环境。
 ---
 
 # 安装
@@ -32,6 +33,8 @@ dotnet add package GeWuYou.GFramework.Godot
 框架 runtime 和 abstractions 不引用生成器或使用生成器特性。普通业务依赖使用构造函数，标准 DI 注册集中在组合根。
 
 ## 仓库示例
+
+从源码构建需要根目录指定的 .NET SDK 10.0.403 或同一 10.0.4xx 功能带内更新的补丁版本，不使用预览 SDK。此要求用于编译框架源码，并不把所有消费项目的目标运行时改为 .NET 10；安装 NuGet 包时按包的目标框架、生成器编译器要求及 Godot 宿主版本选择环境。
 
 ```bash
 dotnet run --project Samples/MinimalApp -c Release

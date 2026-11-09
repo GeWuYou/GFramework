@@ -12,6 +12,10 @@
 
 从仓库根目录运行；先读取 .ai/environment/tools.ai.yaml，实际工具与库存不一致时报告差异。用户级 SDK 只通过当前进程环境选择，不把机器路径写入文档或项目。
 
+源码构建由根目录 `global.json` 选择 .NET SDK 10.0.403，允许同一 10.0.4xx 功能带内的更新补丁，不使用预览 SDK。SDK 要求来自源码语言特性，与包的 `net8.0`、`net9.0`、`net10.0` 目标运行时不同；安装较早的 .NET 10 SDK 不一定能编译当前源码。独立包消费仍按实际包目标框架及 Godot 宿主版本选择运行时，使用生成器时还需满足对应编译器要求。
+
+CI、CodeQL、Benchmark 和发布打包从 `global.json` 安装 SDK。MegaLinter 在容器内检查 SDK 解析，缺失时通过官方安装脚本补齐到既有 dotnet 目录；安装失败会阻断检查，不回退到镜像自带的旧编译器。
+
 构建会启用仓库 Git hooks；提交环境需提供 `bash`、`git` 与 `python3`。换行规范化脚本兼容 macOS 自带 Bash 3.2，无需 GNU sed 或新版 Bash；它只读取暂存区的属性与 blob，保留工作区内容、文件模式、二进制文件和自定义 clean filter 的已有结果。
 
 | 目的 | 命令 |

@@ -1,20 +1,24 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Diagnostics;
 using GFramework.Core.Abstractions.Pool;
 using GFramework.Core.Abstractions.Lifecycle;
 
 namespace GFramework.Core.Pool;
 
 /// <summary>
-///     抽象对象池系统，提供基于键值的对象池管理功能
+///     按键复用引用对象，记录借出身份，防止错误归还污染空闲对象栈。
 /// </summary>
+/// <remarks>所有操作集中在拥有者线程。Clear/Destroy 只清理空闲对象，活动对象仍由借用者归还。</remarks>
 /// <typeparam name="TKey">对象池的键类型，必须不为null</typeparam>
-/// <typeparam name="TObject">池化对象类型，必须实现IPoolableObject接口</typeparam>
+/// <typeparam name="TObject">按引用身份跟踪的池化对象类型。</typeparam>
 public abstract class AbstractObjectPoolSystem<TKey, TObject>
-    : ILifecycle, IObjectPoolSystem<TKey, TObject> where TObject : IPoolableObject where TKey : notnull
+    : ILifecycle, IObjectPoolSystem<TKey, TObject> where TObject : class, IPoolableObject where TKey : notnull
 {
+    // Value equality is not ownership: distinct game objects may compare equal.
+    // Keep outstanding borrows across Clear so a late return is still checked against its original key.
+    private readonly Dictionary<TObject, TKey> _borrowed = new(ReferenceEqualityComparer.Instance);
+
     /// <summary>Starts the optional object-pool participant.</summary>
     public void Initialize() => OnInit();
 
@@ -52,9 +56,32 @@ public abstract class AbstractObjectPoolSystem<TKey, TObject>
             poolInfo.TotalCreated++;
         }
 
+        if (_borrowed.ContainsKey(obj))
+            throw new InvalidOperationException("Create must return a new object that is not already borrowed.");
+
         poolInfo.TotalAcquired++;
         poolInfo.ActiveCount++;
-        obj.OnAcquire();
+        try
+        {
+            obj.OnAcquire();
+            // Only a successful reset publishes a borrow; OnAcquire cannot return an object still being prepared.
+            _borrowed.Add(obj, key);
+        }
+        catch (Exception acquireError)
+        {
+            // A failed acquisition has no caller to return it. Retire it rather than retain a phantom borrow.
+            poolInfo.ActiveCount--;
+            try
+            {
+                obj.OnPoolDestroy();
+                poolInfo.TotalDestroyed++;
+            }
+            catch (Exception cleanupError)
+            {
+                throw new AggregateException("Pool acquisition and cleanup failed.", acquireError, cleanupError);
+            }
+            throw;
+        }
         return obj;
     }
 
@@ -63,9 +90,25 @@ public abstract class AbstractObjectPoolSystem<TKey, TObject>
     /// </summary>
     /// <param name="key">对象池的键值</param>
     /// <param name="obj">需要释放的对象</param>
+    /// <exception cref="InvalidOperationException">对象不是此池在该键下尚未归还的借出对象。</exception>
     public void Release(TKey key, TObject obj)
     {
-        obj.OnRelease();
+        ArgumentNullException.ThrowIfNull(obj);
+        if (!_borrowed.TryGetValue(obj, out var borrowedKey) || !EqualityComparer<TKey>.Default.Equals(key, borrowedKey))
+            throw new InvalidOperationException("Return an object exactly once to the pool and key it was borrowed from.");
+
+        // Remove admission before invoking user code so a reentrant return cannot enqueue the same object twice.
+        _borrowed.Remove(obj);
+        try
+        {
+            obj.OnRelease();
+        }
+        catch
+        {
+            // A failed reset leaves the object with its caller, who may correct the failure and retry.
+            _borrowed.Add(obj, borrowedKey);
+            throw;
+        }
 
         if (!Pools.TryGetValue(key, out var poolInfo))
         {
@@ -75,16 +118,10 @@ public abstract class AbstractObjectPoolSystem<TKey, TObject>
 
         poolInfo.TotalReleased++;
 
-        // 防止 ActiveCount 变为负数
+        // Clear resets pool statistics but deliberately leaves outstanding borrows with their callers.
         if (poolInfo.ActiveCount > 0)
         {
             poolInfo.ActiveCount--;
-        }
-        else
-        {
-            // 记录警告：检测到可能的双重释放或错误释放
-            Debug.WriteLine(
-                $"[ObjectPool] Warning: Release called with key '{key}', but ActiveCount is already 0. Possible double release.");
         }
 
         // 检查容量限制
@@ -212,7 +249,7 @@ public abstract class AbstractObjectPoolSystem<TKey, TObject>
     ///     创建一个新的对象实例（由子类决定怎么创建）
     /// </summary>
     /// <param name="key">用于创建对象的键值</param>
-    /// <returns>新创建的对象实例</returns>
+    /// <returns>新创建且未被此池或其他调用方使用的独立对象实例。</returns>
     protected abstract TObject Create(TKey key);
 
     /// <summary>
