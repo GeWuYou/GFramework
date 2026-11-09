@@ -178,3 +178,7 @@ var factory = LoggerFactory.Create(builder =>
 - 普通服务和组件：直接构造注入 `ILogger<T>`，把输出落地交给宿主选择。
 - 需要文件、rolling file、异步缓冲、采样过滤或 JSON 格式输出时：用 `LoggingConfigurationLoader` 或手动 `AddProvider(new AppenderLoggerProvider(...))` 组装工厂，再交给 `LoggerProperties.LoggerFactory`。
 - 需要 Godot 控制台输出时：见 [Godot 日志系统](../godot/logging.md)。
+
+## 刷新结果通知
+
+`AsyncLogAppender.OnFlushCompleted` 逐个通知直接订阅者。完成回调或错误诊断回调抛异常时，不改变已得到的 Flush 成功／超时结果。观察错误优先交给构造时的 `processingErrorHandler`，未配置时使用 Trace；底层日志写入和刷新失败仍遵循输出器本身的错误契约。

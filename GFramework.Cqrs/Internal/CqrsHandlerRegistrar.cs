@@ -2,9 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 
-using GFramework.Cqrs.Abstractions.Cqrs;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection.Emit;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Cqrs.Internal;
 
@@ -102,6 +101,18 @@ internal static class CqrsHandlerRegistrar
         }
 
         RegisterGeneratedRegistries(services, [registry], assemblyName, logger);
+    }
+
+    /// <summary>Registers an explicitly created registry without assembly discovery or reflective activation.</summary>
+    /// <param name="services">The composition root.</param>
+    /// <param name="registry">A consumer-created generated registry instance.</param>
+    /// <param name="logger">Registration diagnostics.</param>
+    internal static void RegisterGeneratedRegistry(IServiceCollection services, ICqrsHandlerRegistry registry, ILogger logger)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(logger);
+        RegisterGeneratedRegistries(services, [registry], GetAssemblySortKey(registry.GetType().Assembly), logger);
     }
 
     /// <summary>
@@ -902,52 +913,14 @@ internal static class CqrsHandlerRegistrar
             : new RegistryActivationMetadata(
 implementsRegistryContract: true,
 isAbstract: false,
-                CreateRegistryFactory(registryType, constructor));
+                CreateRegistryFactory(constructor));
     }
 
-    /// <summary>
-    ///     为生成注册器创建可复用的激活工厂，优先使用一次性编译的动态方法，
-    ///     避免后续每次命中缓存时仍走 <see cref="ConstructorInfo" /> 的反射激活路径。
-    /// </summary>
-    /// <param name="registryType">生成注册器类型。</param>
-    /// <param name="constructor">已解析的无参构造函数。</param>
-    /// <returns>可直接实例化注册器的工厂委托。</returns>
-    private static Func<ICqrsHandlerRegistry> CreateRegistryFactory(
-        Type registryType,
-        ConstructorInfo constructor)
-    {
-        ArgumentNullException.ThrowIfNull(registryType);
-        ArgumentNullException.ThrowIfNull(constructor);
-
-        try
-        {
-            // 生成器产物通常是稳定的无参 registry；这里把构造反射收敛为一次性 IL 工厂，
-            // 这样同一 registry 类型在多个容器间复用缓存时不会重复付出 ConstructorInfo.Invoke 成本。
-            var dynamicMethod = new DynamicMethod(
-                $"Create_{registryType.Name}_CqrsHandlerRegistry",
-                typeof(ICqrsHandlerRegistry),
-                Type.EmptyTypes,
-                registryType.Module,
-                skipVisibility: true);
-            var il = dynamicMethod.GetILGenerator();
-            il.Emit(OpCodes.Newobj, constructor);
-
-            if (registryType.IsValueType)
-            {
-                il.Emit(OpCodes.Box, registryType);
-            }
-
-            il.Emit(OpCodes.Castclass, typeof(ICqrsHandlerRegistry));
-            il.Emit(OpCodes.Ret);
-
-            return (Func<ICqrsHandlerRegistry>)dynamicMethod.CreateDelegate(typeof(Func<ICqrsHandlerRegistry>));
-        }
-        catch
-        {
-            // 某些受限运行环境若不允许动态方法，仍保留原有的反射激活语义，避免阻塞 generated registry 路径。
-            return () => (ICqrsHandlerRegistry)constructor.Invoke(parameters: null);
-        }
-    }
+    /// <summary>Activates metadata only for explicitly selected assembly/type registration paths.</summary>
+    /// <param name="constructor">The validated runtime-discovered constructor.</param>
+    /// <returns>A cached factory; generated consumers pass an instance and never enter this path.</returns>
+    private static Func<ICqrsHandlerRegistry> CreateRegistryFactory(ConstructorInfo constructor) =>
+        () => (ICqrsHandlerRegistry)constructor.Invoke(parameters: null);
 
     /// <summary>
     ///     首次命中未生成 registry 的程序集时加载并排序全部可扫描类型，后续复用缓存结果。

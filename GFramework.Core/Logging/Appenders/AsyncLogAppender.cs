@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Events;
 
 namespace GFramework.Core.Logging.Appenders;
 
@@ -128,7 +129,7 @@ public sealed class AsyncLogAppender : ILogAppender
     }
 
     /// <summary>
-    ///     Flush 操作完成事件。
+    ///     Flush 操作完成事件；观察者与诊断回调失败不会改变刷新结果。
     ///     事件数据通过 <see cref="AsyncLogFlushCompletedEventArgs" /> 提供。
     /// </summary>
     public event EventHandler<AsyncLogFlushCompletedEventArgs>? OnFlushCompleted;
@@ -154,7 +155,8 @@ public sealed class AsyncLogAppender : ILogAppender
         {
             // 等待处理任务发出完成信号
             var success = _flushSemaphore.Wait(actualTimeout, _cts.Token);
-            OnFlushCompleted?.Invoke(this, new AsyncLogFlushCompletedEventArgs(success));
+            ObserverNotification.Notify(OnFlushCompleted, this, new AsyncLogFlushCompletedEventArgs(success),
+                reportError: _processingErrorHandler);
             return success;
         }
         finally

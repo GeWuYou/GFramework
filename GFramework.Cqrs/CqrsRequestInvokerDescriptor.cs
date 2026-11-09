@@ -2,53 +2,65 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Reflection;
-using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Cqrs;
 
-/// <summary>
-///     描述单个 request/response 类型对在运行时分发时需要复用的元数据。
-/// </summary>
-/// <param name="handlerType">当前请求处理器在容器中的服务类型。</param>
-/// <param name="invokerMethod">
-///     执行单个请求处理器的开放静态方法。
-///     dispatcher 会在首次创建 request binding 时，把该方法绑定成内部使用的强类型委托。
-/// </param>
-/// <remarks>
-///     dispatcher 会继续自行构造 pipeline behavior 服务类型并按当前 provider 解析行为与处理器；
-///     该描述符只前移请求处理器服务类型与直接调用方法元数据。
-/// </remarks>
-public sealed class CqrsRequestInvokerDescriptor(
-    Type handlerType,
-    MethodInfo invokerMethod)
+/// <summary>Describes a request handler invocation without requiring generated method lookup.</summary>
+/// <remarks>Generated consumers use Create with a typed static delegate. The MethodInfo constructor is reserved
+/// for explicitly discovered runtime metadata; it is not used by the generated registration path.</remarks>
+public sealed class CqrsRequestInvokerDescriptor
 {
-    private static readonly string NonStaticInvokerMessage =
-        "CQRS request invoker descriptors require an open static invoker method so generated metadata can be bound deterministically.";
-
-    /// <summary>
-    ///     获取请求处理器在容器中的服务类型。
-    /// </summary>
-    public Type HandlerType { get; } = handlerType ?? throw new ArgumentNullException(nameof(handlerType));
-
-    /// <summary>
-    ///     获取执行请求处理器的开放静态方法。
-    /// </summary>
-    public MethodInfo InvokerMethod { get; } = ValidateInvokerMethod(invokerMethod);
-
-    /// <summary>
-    ///     在描述符构造阶段拒绝实例方法，避免非法 generated metadata 延迟到首次分发时才暴露。
-    /// </summary>
-    /// <param name="invokerMethod">待验证的 generated invoker 方法。</param>
-    /// <returns>通过校验的静态方法。</returns>
-    /// <exception cref="ArgumentNullException">当 <paramref name="invokerMethod" /> 为 <see langword="null" /> 时抛出。</exception>
-    /// <exception cref="ArgumentException">当 <paramref name="invokerMethod" /> 不是静态方法时抛出。</exception>
-    private static MethodInfo ValidateInvokerMethod(MethodInfo invokerMethod)
+    /// <summary>Describes a runtime-discovered static method for the explicit reflection path.</summary>
+    /// <param name="handlerType">The canonical handler service type.</param>
+    /// <param name="invokerMethod">The runtime-discovered open static method.</param>
+    /// <exception cref="ArgumentNullException">A required argument is null.</exception>
+    /// <exception cref="ArgumentException">The method is not static.</exception>
+    public CqrsRequestInvokerDescriptor(Type handlerType, MethodInfo invokerMethod)
     {
+        ArgumentNullException.ThrowIfNull(handlerType);
         ArgumentNullException.ThrowIfNull(invokerMethod);
-
         if (!invokerMethod.IsStatic)
-            throw new ArgumentException(NonStaticInvokerMessage, nameof(invokerMethod));
-
-        return invokerMethod;
+            throw new ArgumentException("CQRS invoker metadata requires an open static method.", nameof(invokerMethod));
+        HandlerType = handlerType;
+        InvokerMethod = invokerMethod;
     }
+
+    /// <summary>Captures a single stateless delegate; process-wide metadata must never retain scoped services.</summary>
+    private CqrsRequestInvokerDescriptor(Type handlerType, Delegate invoker)
+    {
+        ArgumentNullException.ThrowIfNull(handlerType);
+        ArgumentNullException.ThrowIfNull(invoker);
+        if (invoker.Target is not null || invoker.GetInvocationList().Length != 1)
+            throw new ArgumentException("CQRS generated invokers require a single static method group.", nameof(invoker));
+        HandlerType = handlerType;
+        Invoker = invoker;
+        // This is the delegate's existing metadata, not a reflective name lookup or dynamic activation.
+        InvokerMethod = invoker.Method;
+    }
+
+    /// <summary>The handler service type resolved from the current provider for every invocation.</summary>
+    public Type HandlerType
+    {
+        get;
+    }
+
+    /// <summary>The original static method metadata, retained for explicit dynamic consumers and diagnostics.</summary>
+    public MethodInfo InvokerMethod
+    {
+        get;
+    }
+
+    /// <summary>The compiled invocation delegate, or null for explicitly reflected metadata.</summary>
+    public Delegate? Invoker
+    {
+        get;
+    }
+
+    /// <summary>Creates generated metadata from a typed method group without reflective binding.</summary>
+    /// <typeparam name="TResponse">The response type.</typeparam>
+    /// <param name="handlerType">The canonical handler service type.</param>
+    /// <param name="invoker">A static method group; it must not capture application services.</param>
+    /// <returns>Immutable invocation metadata.</returns>
+    public static CqrsRequestInvokerDescriptor Create<TResponse>(Type handlerType,
+        Func<object, object, CancellationToken, ValueTask<TResponse>> invoker) => new(handlerType, invoker);
 }

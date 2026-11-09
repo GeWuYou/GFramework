@@ -1,10 +1,12 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Game.Abstractions.Setting;
+using GFramework.Core.Events;
 using GFramework.Game.Abstractions.Runtime;
+using GFramework.Game.Abstractions.Setting;
 using GFramework.Game.Runtime;
 using GFramework.Game.Setting.Events;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Game.Setting;
 
@@ -17,15 +19,19 @@ public sealed class SettingsSystem : ISettingsSystem
     private readonly ISettingsModel _model;
     private readonly Action<object>? _publishEvent;
     private readonly IGameDispatcher _dispatcher;
+    private readonly ILogger? _observerLogger;
 
     /// <summary>Creates the coordinator without starting I/O or applying settings.</summary>
     /// <param name="model">Settings data and applicator registry.</param>
     /// <param name="publishEvent">Optional notification callback, invoked after the corresponding operation.</param>
     /// <param name="dispatcher">Host callback dispatcher; defaults to direct execution for thread-neutral settings.</param>
-    public SettingsSystem(ISettingsModel model, Action<object>? publishEvent = null, IGameDispatcher? dispatcher = null)
+    /// <param name="observerLogger">Notification diagnostics; defaults to Trace.</param>
+    public SettingsSystem(ISettingsModel model, Action<object>? publishEvent = null, IGameDispatcher? dispatcher = null,
+        ILogger? observerLogger = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         _model = model;
+        _observerLogger = observerLogger;
         _publishEvent = publishEvent;
         _dispatcher = dispatcher ?? new InlineGameDispatcher();
     }
@@ -85,11 +91,11 @@ public sealed class SettingsSystem : ISettingsSystem
         cancellationToken.ThrowIfCancellationRequested();
         if (section is not IApplyAbleSettings applicator)
             return null;
-        _publishEvent?.Invoke(new SettingsApplyingEvent<ISettingsSection>(section));
+        ObserverNotification.Notify(_publishEvent, (object)new SettingsApplyingEvent<ISettingsSection>(section), _observerLogger);
         try
         {
             await _dispatcher.InvokeAsync(() => applicator.ApplyAsync(cancellationToken), cancellationToken).ConfigureAwait(false);
-            _publishEvent?.Invoke(new SettingsAppliedEvent<ISettingsSection>(section, success: true));
+            ObserverNotification.Notify(_publishEvent, (object)new SettingsAppliedEvent<ISettingsSection>(section, success: true), _observerLogger);
             return null;
         }
         catch (OperationCanceledException)
@@ -98,7 +104,7 @@ public sealed class SettingsSystem : ISettingsSystem
         }
         catch (Exception exception)
         {
-            _publishEvent?.Invoke(new SettingsAppliedEvent<ISettingsSection>(section, success: false, exception));
+            ObserverNotification.Notify(_publishEvent, (object)new SettingsAppliedEvent<ISettingsSection>(section, success: false, exception), _observerLogger);
             return exception;
         }
     }

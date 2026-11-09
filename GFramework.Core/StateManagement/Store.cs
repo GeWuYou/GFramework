@@ -5,6 +5,7 @@ using System.Diagnostics;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.StateManagement;
 using GFramework.Core.Events;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Core.StateManagement;
 
@@ -14,7 +15,7 @@ namespace GFramework.Core.StateManagement;
 ///     支持调试历史或需要中间件/诊断能力的状态场景，而不是替代所有简单字段级响应式属性。
 /// </summary>
 /// <typeparam name="TState">状态树的根状态类型。</typeparam>
-public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
+public sealed partial class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
 {
     /// <summary>
     ///     当前 Store 使用的 action 匹配策略。
@@ -137,12 +138,14 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     /// <param name="comparer">状态比较器；未提供时使用 <see cref="EqualityComparer{T}.Default"/>。</param>
     /// <param name="historyCapacity">历史缓冲区容量；0 表示不启用历史记录。</param>
     /// <param name="actionMatchingMode">reducer 的 action 匹配策略。</param>
+    /// <param name="observerLogger">Diagnostics for committed-state observers; defaults to Trace.</param>
     /// <exception cref="ArgumentOutOfRangeException">当 <paramref name="historyCapacity"/> 小于 0 时抛出。</exception>
     public Store(
         TState initialState,
         IEqualityComparer<TState>? comparer = null,
         int historyCapacity = 0,
-        StoreActionMatchingMode actionMatchingMode = StoreActionMatchingMode.ExactTypeOnly)
+        StoreActionMatchingMode actionMatchingMode = StoreActionMatchingMode.ExactTypeOnly,
+        ILogger? observerLogger = null)
     {
         if (historyCapacity < 0)
         {
@@ -150,6 +153,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
                 "History capacity cannot be negative.");
         }
 
+        _observerLogger = observerLogger;
         _state = initialState;
         _stateComparer = comparer ?? EqualityComparer<TState>.Default;
         _historyCapacity = historyCapacity;
@@ -729,7 +733,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
                     $"A cached selection with key '{key}' already exists with a different selected type.");
             }
 
-            var selection = new StoreSelection<TState, TSelected>(this, selector, comparer);
+            var selection = new StoreSelection<TState, TSelected>(this, selector, comparer, _observerLogger);
             _selectionCache[key] = selection;
             return selection;
         }
@@ -1299,20 +1303,6 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
         if (_historyCapacity == 0)
         {
             throw new InvalidOperationException("History is not enabled for this store.");
-        }
-    }
-
-    /// <summary>
-    ///     在锁外顺序通知监听器。
-    ///     始终在锁外通知可避免监听器内部读取 Store 或执行额外逻辑时产生死锁。
-    /// </summary>
-    /// <param name="listenersSnapshot">监听器快照。</param>
-    /// <param name="state">要回放给监听器的状态。</param>
-    private static void NotifyListeners(Action<TState>[] listenersSnapshot, TState state)
-    {
-        foreach (var listener in listenersSnapshot)
-        {
-            listener(state);
         }
     }
 

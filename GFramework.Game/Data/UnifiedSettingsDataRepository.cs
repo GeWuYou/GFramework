@@ -13,8 +13,10 @@
 
 using GFramework.Core.Abstractions.Serializer;
 using GFramework.Core.Abstractions.Storage;
-using GFramework.Game.Abstractions.Data;
+using GFramework.Core.Events;
 using GFramework.Game.Abstractions.Data.Events;
+using GFramework.Game.Abstractions.Data;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Game.Data;
 
@@ -26,12 +28,18 @@ namespace GFramework.Game.Data;
 ///     虽然底层不是“一项一个文件”，但它仍遵循 <see cref="DataRepositoryOptions" /> 定义的统一契约：
 ///     启用自动备份时，覆盖写入前会为整个统一文件创建单份备份；批量保存只发出批量事件，不重复发出单项保存事件。
 /// </remarks>
+/// <param name="storage">The host-owned backing store.</param>
+/// <param name="serializer">Explicit runtime type serialization for registered sections.</param>
+/// <param name="options">Backup and notification policy.</param>
+/// <param name="fileName">The unified settings file name.</param>
+/// <param name="publishEvent">Observation callback; failures never change completed persistence.</param>
+/// <param name="observerLogger">Notification diagnostics; defaults to Trace.</param>
 public class UnifiedSettingsDataRepository(
     IStorage storage,
     IRuntimeTypeSerializer serializer,
     DataRepositoryOptions? options = null,
     string fileName = "settings.json",
-    Action<object>? publishEvent = null)
+    Action<object>? publishEvent = null, ILogger? observerLogger = null)
     : ISettingsDataRepository
 {
     private readonly SemaphoreSlim _lock = new(1, 1);
@@ -70,7 +78,7 @@ public class UnifiedSettingsDataRepository(
         var key = location.Key;
         var result = _file!.Sections.TryGetValue(key, out var raw) ? Serializer.Deserialize<T>(raw) : new T();
         if (_options.EnableEvents)
-            publishEvent?.Invoke(new DataLoadedEvent<T>(result));
+            ObserverNotification.Notify(publishEvent, (object)new DataLoadedEvent<T>(result), observerLogger);
         return result;
     }
 
@@ -92,7 +100,7 @@ public class UnifiedSettingsDataRepository(
 
         if (_options.EnableEvents)
         {
-            publishEvent?.Invoke(new DataSavedEvent<T>(data));
+            ObserverNotification.Notify(publishEvent, (object)new DataSavedEvent<T>(data), observerLogger);
         }
     }
 
@@ -143,7 +151,7 @@ public class UnifiedSettingsDataRepository(
 
         if (removed && _options.EnableEvents)
         {
-            publishEvent?.Invoke(new DataDeletedEvent(location));
+            ObserverNotification.Notify(publishEvent, (object)new DataDeletedEvent(location), observerLogger);
         }
     }
 
@@ -171,7 +179,7 @@ public class UnifiedSettingsDataRepository(
             .ConfigureAwait(false);
 
         if (_options.EnableEvents)
-            publishEvent?.Invoke(new DataBatchSavedEvent(valueTuples));
+            ObserverNotification.Notify(publishEvent, (object)new DataBatchSavedEvent(valueTuples), observerLogger);
     }
 
     /// <summary>

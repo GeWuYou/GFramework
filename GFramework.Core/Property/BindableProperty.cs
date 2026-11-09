@@ -3,6 +3,8 @@
 
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Property;
+using GFramework.Core.Events;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Core.Property;
 
@@ -12,7 +14,8 @@ namespace GFramework.Core.Property;
 /// </summary>
 /// <typeparam name="T">属性值的类型</typeparam>
 /// <param name="defaultValue">属性的默认值</param>
-public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<T>
+/// <param name="observerLogger">Diagnostics for committed-value observers; failures are isolated and default to Trace.</param>
+public class BindableProperty<T>(T defaultValue = default!, ILogger? observerLogger = null) : IBindableProperty<T>
 {
     /// <summary>
     ///     用于保护委托链和值访问的同步原语
@@ -68,7 +71,7 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
             }
 
             // 在锁外调用回调，避免死锁
-            callback?.Invoke(value);
+            ObserverNotification.Notify(callback, value, observerLogger);
         }
     }
 

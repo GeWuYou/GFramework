@@ -24,6 +24,31 @@ namespace GFramework.Cqrs;
 /// </remarks>
 public static class CqrsServiceCollectionExtensions
 {
+    /// <summary>Registers a generated instance without scanning assemblies or activating types reflectively.</summary>
+    /// <param name="services">The composition root.</param>
+    /// <param name="registry">The result of the consumer-generated CqrsRegistration.CreateRegistry entrypoint.</param>
+    /// <param name="logger">Optional registration diagnostics.</param>
+    /// <returns>The same service collection; repeating the same registry type is idempotent.</returns>
+    /// <remarks>Dynamic assemblies and generation fallback handlers use AddCqrsHandlersFromAssembly explicitly.</remarks>
+    public static IServiceCollection AddCqrsHandlers(this IServiceCollection services, ICqrsHandlerRegistry registry,
+        ILogger? logger = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(registry);
+        var registryType = registry.GetType();
+        if (services.Any(item => item.ServiceType == typeof(DirectRegistryRegistration) &&
+                                 !item.IsKeyedService && item.ImplementationInstance is DirectRegistryRegistration registered &&
+                                 registered.RegistryType == registryType))
+            return services;
+        Internal.CqrsHandlerRegistrar.RegisterGeneratedRegistry(services, registry, logger ?? NullLogger.Instance);
+        services.AddSingleton(new DirectRegistryRegistration(registryType));
+        return services;
+    }
+
+    /// <summary>Tracks only explicit registry registration within this service collection.</summary>
+    /// <param name="RegistryType">The stateless generated registry type.</param>
+    private sealed record DirectRegistryRegistration(Type RegistryType);
+
     /// <summary>
     ///     安装默认 CQRS runtime。
     ///     日志由宿主决定：CQRS 不创建也不拥有进程级日志工厂，

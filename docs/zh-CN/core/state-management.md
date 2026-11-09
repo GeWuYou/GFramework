@@ -89,3 +89,7 @@ BridgeToEventBus 可分别启用分发记录与状态变化通知，返回 IDisp
 IStoreDiagnostics 提供订阅数量、最近 action、分发记录、历史位置与快照等信息，便于应用调试。历史不是持久化存档，也不是通用事件溯源机制。
 
 相关主题：[可绑定属性](./property.md)、[状态机](./state-machine.md)、[错误处理](../best-practices/error-handling.md)。
+
+## 提交后的通知
+
+Store 与 StoreSelection 对已提交的状态、历史跳转和选择值逐个通知直接订阅者。观察者异常不会撤销状态、破坏历史或阻断其他订阅者，可通过可选的 `observerLogger` 记录到宿主日志，默认使用 Trace；Store 创建的选择视图沿用该日志。Reducer 与 middleware 的业务失败继续传播。直接读取选择值时，选择函数的求值异常仍向调用方报告；提交后由订阅通知触发的选择求值失败在该通知边界隔离。初始化订阅回放失败仍拒绝该次订阅并清理它。

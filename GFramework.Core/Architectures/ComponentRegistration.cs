@@ -4,6 +4,10 @@
 namespace GFramework.Core.Architectures;
 
 /// <summary>References the one owning DI key; it never creates a second alias or resource owner.</summary>
-/// <param name="ServiceType">Canonical registered key.</param>
+/// <param name="Descriptor">The original owning binding; later replacement is rejected.</param>
 /// <param name="Order">Startup order; equal values preserve registration order.</param>
-internal sealed record ComponentRegistration(Type ServiceType, int Order);
+internal sealed record ComponentRegistration(ServiceDescriptor Descriptor, int Order)
+{
+    /// <summary>The original canonical DI service key.</summary>
+    internal Type ServiceType => Descriptor.ServiceType;
+}

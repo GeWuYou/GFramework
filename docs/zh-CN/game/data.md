@@ -125,3 +125,19 @@ else
 - [代码模组与 Harmony](./code-mods.md)
 - [设置系统](./setting.md)
 - [存储系统](./storage.md)
+
+## 异构批量保存的类型登记
+
+`DataRepository.SaveAllAsync` 在写入前检查整批数据，每种实际数据类型须通过 `RegisterDataType<T>()` 显式登记：
+
+```csharp
+var data = new DataRepository(storage)
+    .RegisterDataType<PlayerSave>();
+await data.SaveAllAsync([(playerLocation, new PlayerSave { Score = 12 })]);
+```
+
+这里的 `storage` 与 `PlayerSave` 沿用前文定义；`playerLocation` 是游戏提供的 `IDataLocation`。异构批次为每个具体类型分别登记，不用基类登记替代派生类型。单项 `SaveAsync<T>` 无需登记。重复登记同一类型无副作用；空批次无需类型登记。未知类型或空条目在任何写入前拒绝，逐项写入开始后仍可能因真实存储失败留下部分成功项，批处理不是跨文件事务。
+
+升级已有独立数据仓库时，在组合根补齐批次类型登记；统一设置仓库继续使用自己的运行时序列化类型登记，不受这项要求影响。
+
+仓库的完成通知及其诊断失败不会改变已经完成的读写结果；直接挂在 `publishEvent` 上的各个回调独立尝试。可通过 `observerLogger` 接入宿主日志，未指定时写入 Trace。回调内部调用 EventBus 时，其下游投递仍由 EventBus 自己的异常策略决定。

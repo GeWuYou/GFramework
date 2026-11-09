@@ -14,7 +14,7 @@
 
 并生成：
 
-- `ICqrsHandlerRegistry` 实现
+- `ICqrsHandlerRegistry` 实现及直接创建入口 `CqrsRegistration.CreateRegistry()`
 - 在运行时合同允许时，额外生成 request / stream invoker provider 与 descriptor 元数据
 - 程序集级 `CqrsHandlerRegistryAttribute`
 - 必要时的 `CqrsReflectionFallbackAttribute` 元数据
@@ -51,13 +51,13 @@
 </ItemGroup>
 ```
 
-运行时侧仍按正常方式注册程序集：
+同一业务程序集中的组合根直接登记生成实例：
 
 ```csharp
-RegisterCqrsHandlersFromAssembly(typeof(GameArchitecture).Assembly);
+services.AddCqrsHandlers(GFramework.Generated.Cqrs.CqrsRegistration.CreateRegistry());
 ```
 
-安装生成器后，运行时会优先走生成的 registry；无法静态表达的部分再走定向回退。
+直接入口使用普通构造和编译好的强类型 invoker 委托，不进行生成注册器反射激活。若仍有 handler 需要 fallback，该入口明确拒绝；调用方显式选择 `AddCqrsHandlersFromAssembly` 进行定向回退。
 如果当前 runtime 合同已经包含 request / stream invoker provider seam，generated registry 还会把这两类 invoker 元数据一并前移到编译期。
 
 ## 什么时候值得安装

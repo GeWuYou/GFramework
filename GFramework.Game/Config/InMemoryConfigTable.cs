@@ -110,6 +110,9 @@ public sealed class InMemoryConfigTable<TKey, TValue> : IConfigTable<TKey, TValu
         return _entries.ContainsKey(key);
     }
 
+    /// <inheritdoc />
+    bool IConfigTable.ContainsKey(object? key) => key is TKey typedKey && ContainsKey(typedKey);
+
     /// <summary>
     ///     获取配置表中所有配置项的集合。
     /// </summary>

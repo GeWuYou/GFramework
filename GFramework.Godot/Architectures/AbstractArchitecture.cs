@@ -13,7 +13,7 @@ namespace GFramework.Godot.Architectures;
 ///     抽象架构类，为特定类型的架构提供基础实现框架。
 ///     此类负责管理架构的初始化、生命周期绑定以及扩展模块的安装与销毁。
 /// </summary>
-public abstract class AbstractArchitecture : Architecture
+public abstract class AbstractArchitecture : Architecture, IAsyncArchitectureHost
 {
     /// <summary>Creates an isolated architecture whose node attachment and detachment use the Godot thread.</summary>
     /// <param name="configuration">Instance logging options.</param>
@@ -62,7 +62,7 @@ public abstract class AbstractArchitecture : Architecture
     /// </summary>
     /// <param name="cancellationToken">架构启动取消令牌。</param>
     /// <returns>宿主锚点与模块附加完成的值任务。</returns>
-    protected override async ValueTask OnStartedAsync(CancellationToken cancellationToken)
+    protected virtual async ValueTask OnStartedAsync(CancellationToken cancellationToken)
     {
         await _dispatcher.InvokeAsync(AttachToGodotLifecycle, cancellationToken).ConfigureAwait(false);
         var anchor = _anchor;
@@ -94,16 +94,15 @@ public abstract class AbstractArchitecture : Architecture
         await InvokeInheritedStartupAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
+    ValueTask IAsyncArchitectureHost.StartHostAsync(CancellationToken cancellationToken) =>
+        OnStartedAsync(cancellationToken);
+
     /// <summary>Runs the inherited startup hook on the Godot thread after all host attachments exist.</summary>
     /// <param name="cancellationToken">The startup lifetime.</param>
     /// <returns>Completion of the inherited host setup.</returns>
-    private async ValueTask InvokeInheritedStartupAsync(CancellationToken cancellationToken)
-    {
-        var started = ValueTask.CompletedTask;
-        await _dispatcher.InvokeAsync(() => started = base.OnStartedAsync(cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        await started.ConfigureAwait(false);
-    }
+    private ValueTask InvokeInheritedStartupAsync(CancellationToken cancellationToken) =>
+        new(_dispatcher.InvokeAsync(OnStarted, cancellationToken));
 
     /// <summary>
     ///     安装模块抽象方法，由子类实现具体的模块注册逻辑。

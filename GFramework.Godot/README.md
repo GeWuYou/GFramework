@@ -39,6 +39,8 @@ Godot 不传递引用 CQRS。需要消息分发时，在消费工程显式安装
 
 观察按钮、输入和启动任务的错误。退出时关闭新的业务入口、等待在途操作，停止玩法、UI 和场景服务，再停止代码模组及其补丁和订阅，最后释放暂停、存储与原生 root。使用 Architecture 时，`GameRuntimeModule(dispatcher, configure)` 将普通服务停止接入宿主分离之前的阶段。
 
+`AbstractArchitecture` 已实现 Core 的显式异步宿主契约，使用 `InitializeAsync`；派生类继续覆盖适配层的 `OnStartedAsync`。直接继承 Core `Architecture` 的异步组合根改为实现 `IAsyncArchitectureHost.StartHostAsync`，并自行通过 dispatcher 接线原生对象。
+
 ## 可运行工程与文档
 
 - [官方素材小游戏](../Samples/DodgeTheCreeps/README.md)：实际玩法、强类型菜单、暂停、设置和保存继续。

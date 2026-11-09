@@ -31,6 +31,7 @@ public class SchemaConfigGeneratorTests
                                                        Type KeyType { get; }
                                                        Type ValueType { get; }
                                                        int Count { get; }
+                                                       bool ContainsKey(object? key);
                                                    }
 
                                                    public interface IConfigTable<TKey, TValue> : IConfigTable

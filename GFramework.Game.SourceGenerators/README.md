@@ -87,6 +87,8 @@ GameProject/
 
 遇到这些情况时，建议先回到 [配置系统文档](../docs/zh-CN/game/config-system.md) 和原始 schema / YAML 设计本体，确认是否需要调整配置建模方式，而不是默认期待生成器直接支持完整 `JSON Schema` 语义。
 
+生成的配置表包装器同时提供泛型查询和非泛型 `IConfigTable.ContainsKey(object?)` 转发；它用于跨表引用验证，不依赖运行时反射。自定义运行时契约与本生成器应使用对齐版本。
+
 ## 对应文档
 
 - 配置系统：[配置系统文档](../docs/zh-CN/game/config-system.md)

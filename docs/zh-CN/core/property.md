@@ -43,3 +43,7 @@ public sealed class ScoreViewState
 WithComparer 设置的是同一个闭合 T 类型共享的比较策略，会影响该 T 的其他 BindableProperty 实例。只需要局部比较规则时，可使用有独立 comparer 的 Store 选择器。
 
 参见[事件订阅](./events.md)和[架构组织](../best-practices/architecture-patterns.md)。
+
+## 观察回调失败
+
+`BindableProperty.Value` 提交新值后，逐个通知直接订阅者。回调异常会记录诊断并继续投递，不从 setter 抛回，也不撤销已提交的值。构造函数的可选 `observerLogger` 接入宿主日志，默认使用 Trace。`RegisterWithInitValue` 的初始回放属于订阅建立过程，仍向调用方报告失败。

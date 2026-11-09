@@ -33,6 +33,11 @@ public interface IConfigTable
     {
         get;
     }
+
+    /// <summary>Checks a heterogeneous key without reflection or numeric/string coercion.</summary>
+    /// <param name="key">A key whose runtime type must match this table's key contract.</param>
+    /// <returns>False for null, incompatible types or missing keys; otherwise uses the table's comparer.</returns>
+    bool ContainsKey(object? key);
 }
 
 /// <summary>

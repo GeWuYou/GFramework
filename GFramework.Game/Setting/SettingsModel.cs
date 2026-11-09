@@ -2,15 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Logging;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
+using GFramework.Core.Events;
 using GFramework.Core.Logging;
 using GFramework.Game.Abstractions.Data;
-using GFramework.Game.Abstractions.Setting;
 using GFramework.Game.Abstractions.Runtime;
-using GFramework.Game.Runtime;
+using GFramework.Game.Abstractions.Setting;
 using GFramework.Game.Internal;
+using GFramework.Game.Runtime;
 using GFramework.Game.Setting.Events;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Game.Setting;
 
@@ -226,7 +227,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider locationProvider, 
         foreach (var (target, source) in pending)
             target.LoadFrom(source);
         _initialized = true;
-        publishEvent?.Invoke(new SettingsInitializedEvent());
+        ObserverNotification.Notify(publishEvent, (object)new SettingsInitializedEvent(), _logger);
     }
 
     /// <summary>
@@ -238,7 +239,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider locationProvider, 
         cancellationToken.ThrowIfCancellationRequested();
         var items = _data.Values.Select(data => (LocationProvider.GetLocation(data.GetType()), (IData)data)).ToArray();
         await DataRepository.SaveAllAsync(items, cancellationToken).ConfigureAwait(false);
-        publishEvent?.Invoke(new SettingsSavedAllEvent());
+        ObserverNotification.Notify(publishEvent, (object)new SettingsSavedAllEvent(), _logger);
     }
 
     /// <summary>
@@ -268,7 +269,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider locationProvider, 
         }
         if (errors.Count != 0)
             throw new AggregateException("One or more settings applicators failed.", errors);
-        publishEvent?.Invoke(new SettingsAppliedAllEvent());
+        ObserverNotification.Notify(publishEvent, (object)new SettingsAppliedAllEvent(), _logger);
     }
 
     /// <summary>
@@ -279,7 +280,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider locationProvider, 
     {
         var data = GetData<T>();
         data.Reset();
-        publishEvent?.Invoke(new SettingsResetEvent<T>(data));
+        ObserverNotification.Notify(publishEvent, (object)new SettingsResetEvent<T>(data), _logger);
     }
 
     /// <summary>
@@ -292,7 +293,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider locationProvider, 
 
         foreach (var applicator in _applicators)
             applicator.Value.Reset();
-        publishEvent?.Invoke(new SettingsResetAllEvent(_data.Values));
+        ObserverNotification.Notify(publishEvent, (object)new SettingsResetAllEvent(_data.Values), _logger);
     }
 
     /// <summary>

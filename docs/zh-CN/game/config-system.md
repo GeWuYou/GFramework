@@ -993,3 +993,9 @@ var hotReload = loader.EnableHotReload(
 
 如果你要了解工作区约定、命令入口、表单与批量编辑边界、适用场景，以及何时应该回退到 raw YAML，
 完整说明见：[VS Code 配置工具](./config-tool.md)。
+
+## 无反射的表操作
+
+YAML 加载和热重载在泛型注册阶段保留提交委托，完成整批加载及跨表校验后直接注册强类型表，不按类型名称寻找泛型方法。非泛型 `IConfigTable.ContainsKey(object?)` 用于异构引用键检查；空键、不同 CLR 类型或不存在的键返回 false，不隐式转换字符串或数值类型，并沿用表自己的键比较器。
+
+自定义 `IConfigTable` 实现须补齐这一成员；生成表包装器已转发到原始表。已有调用方通过泛型表执行的 `ContainsKey(TKey)` 保持不变。运行时与配置生成器应使用对齐版本。

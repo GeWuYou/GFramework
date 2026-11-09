@@ -9,7 +9,9 @@ namespace GFramework.Core.Abstractions.Architectures;
 /// <remarks>Business objects receive their dependencies directly; only composition roots should resolve through Services.</remarks>
 public interface IArchitecture : IInitializable, IAsyncInitializable, IAsyncDestroyable, IAsyncDisposable
 {
-    /// <summary>Standard service access, available during initialization and Ready; rejected before build and during stop.</summary>
+    /// <summary>Root service access, including standard keyed resolution; rejected before build and during external stop.</summary>
+    /// <remarks>Already-created scopes, cached scope factories and injected standard providers remain caller-owned.
+    /// Stop application work and dispose its scopes before disposing this architecture.</remarks>
     IServiceProvider Services
     {
         get;

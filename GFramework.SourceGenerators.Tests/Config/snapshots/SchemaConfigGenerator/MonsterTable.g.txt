@@ -52,6 +52,10 @@ public sealed partial class MonsterTable : global::GFramework.Game.Abstractions.
     }
 
     /// <inheritdoc />
+    bool global::GFramework.Game.Abstractions.Config.IConfigTable.ContainsKey(object? key) =>
+        ((global::GFramework.Game.Abstractions.Config.IConfigTable)_inner).ContainsKey(key);
+
+    /// <inheritdoc />
     public global::System.Collections.Generic.IReadOnlyCollection<MonsterConfig> All()
     {
         return _inner.All();

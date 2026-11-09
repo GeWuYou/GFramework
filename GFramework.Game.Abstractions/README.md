@@ -23,6 +23,8 @@ Game 的引擎无关契约，包括强类型 UI、场景、输入、设置、文
 
 Scene、数据和设置服务不继承 System／Model／Utility 角色；宿主通过构造注入提供实现并决定启动与停止顺序。此包仍引用 Core 契约，使用暂停等公共值类型。
 
+自定义配置表实现须提供非泛型 `IConfigTable.ContainsKey(object?)`：空键、类型不匹配和缺失键返回 false，匹配键沿用表自身比较器。生成器提供的包装表已经实现该转发。
+
 ## 文档
 
 - [Game 抽象接口](../docs/zh-CN/abstractions/game-abstractions.md)

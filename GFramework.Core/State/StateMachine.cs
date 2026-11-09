@@ -3,6 +3,8 @@
 
 using GFramework.Core.Abstractions.Lifecycle;
 using GFramework.Core.Abstractions.State;
+using GFramework.Core.Events;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Core.State;
 
@@ -23,6 +25,7 @@ public class StateMachine : IStateMachine, IAsyncDestroyable
     private readonly List<IState> _history = [];
     private readonly List<IState> _started = [];
     private readonly int _maxHistorySize;
+    private readonly ILogger? _observerLogger;
     private IState? _current;
     private Exception? _fault;
     private bool _frozen;
@@ -30,10 +33,12 @@ public class StateMachine : IStateMachine, IAsyncDestroyable
 
     /// <summary>Create a machine retaining at most the requested number of successful previous states.</summary>
     /// <param name="maxHistorySize">Nonnegative history capacity; zero disables history.</param>
-    public StateMachine(int maxHistorySize = 10)
+    /// <param name="observerLogger">Optional diagnostics for isolated state observers; defaults to Trace.</param>
+    public StateMachine(int maxHistorySize = 10, ILogger? observerLogger = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(maxHistorySize);
         _maxHistorySize = maxHistorySize;
+        _observerLogger = observerLogger;
     }
 
     /// <inheritdoc />
@@ -56,7 +61,7 @@ public class StateMachine : IStateMachine, IAsyncDestroyable
         }
     }
 
-    /// <summary>Raised after a successful transition, including a successful history return.</summary>
+    /// <summary>Raised after a successful transition; observer failures never fault the machine.</summary>
     public event EventHandler<StateChangedEvent>? StateChanged;
 
     /// <inheritdoc />
@@ -226,7 +231,7 @@ public class StateMachine : IStateMachine, IAsyncDestroyable
                         _history.RemoveAt(0);
                 }
             }
-            StateChanged?.Invoke(this, new StateChangedEvent { OldState = old, NewState = next });
+            ObserverNotification.Notify(StateChanged, this, new StateChangedEvent { OldState = old, NewState = next }, _observerLogger);
             return true;
         }
         catch (Exception error)

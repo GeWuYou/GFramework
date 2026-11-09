@@ -57,3 +57,7 @@ Godot 接入见 [Godot 暂停](../godot/pause.md)。UI 可在路由定义中声�
 
 - [UI 系统](../game/ui.md)
 - [Godot 暂停](../godot/pause.md)
+
+## 暂停通知
+
+暂停变化事件是观察通知。某个 `OnPauseStateChanged` 订阅者抛异常时，会记录日志并继续通知其余订阅者；已接纳的 `Push` 仍返回令牌，`Pop` 仍返回实际操作结果。暂停处理器负责实际宿主操作，其原有异常处理策略不由此事件替代。

@@ -79,3 +79,7 @@ await settings.SaveAllAsync(cancellationToken);
 - [数据与存档系统](./data.md)
 - [存储系统](./storage.md)
 - [Godot 设置接入](../godot/setting.md)
+
+## 设置观察通知
+
+设置初始化、应用、保存和重置通知只观察操作结果。直接订阅者异常记录到日志后隔离，不撤销已应用的设置，不把成功结果重新发布为失败，也不阻止独立应用器继续执行。`SettingsSystem` 可接收 `observerLogger`，`SettingsModel` 使用其构造日志。应用器、迁移器和持久化本身的失败仍向调用方报告。
