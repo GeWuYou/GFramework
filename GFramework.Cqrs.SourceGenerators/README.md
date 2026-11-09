@@ -70,3 +70,5 @@ services.AddCqrsHandlers(GFramework.Generated.Cqrs.CqrsRegistration.CreateRegist
 
 - CQRS 栏目：[CQRS 文档](../docs/zh-CN/core/cqrs.md)
 - 源码生成器总览：[源码生成器文档首页](../docs/zh-CN/source-generators/index.md)
+
+runtime 与生成器应同时升级。生成 request / stream invoker 前会验证当前 `Create<TResponse>` 工厂契约；若选择的 runtime 缺少匹配工厂，生成器报告编译错误 `GF_Cqrs_002` 并停止生成注册器，不为旧包降级生成。

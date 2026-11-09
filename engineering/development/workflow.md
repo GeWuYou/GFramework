@@ -48,11 +48,11 @@ PR 先分析从共同祖先到源分支 head 的累计差异，再验证 GitHub 
 
 CodeQL 仅在 C# 或相关构建配置变化时响应 PR，触发后仍分析全部 C#，保留跨模块安全数据流。每日及手动扫描继续全量运行。秘密扫描覆盖文档；MegaLinter 的扫描、格式与报告上传错误均阻断合并。`CI Result` 要求分析、轻量治理和全部选中任务成功，失败、取消、缺失或意外跳过均不能通过汇总。
 
-MegaLinter 的共享工作流由 PR 按需调用，并在 `main` 更新时独立全量扫描，不重复启动 .NET 构建、测试或发布。C# 格式检查以 `dotnet format GFramework.sln --severity info --verify-no-changes` 遍历完整 solution；配置移除上游额外拼接的单层 shell include，深层目录与测试源码也参与验证。MegaLinter v10 使用 Betterleaks 代替已移除的 Gitleaks；聚合 SARIF 报告上传到代码扫描，缺失报告或上传失败会明确报错。手动运行 MegaLinter 也执行全量扫描。
+MegaLinter 的共享工作流由 PR 按需调用，并在 `main` 更新时独立全量扫描，不重复启动 .NET 构建、测试或发布。C# 格式检查以 `dotnet format GFramework.sln --severity info --verify-no-changes` 遍历完整 solution；配置移除上游额外拼接的单层 shell include，深层目录与测试源码也参与验证。MegaLinter 默认将 formatter 错误降为非阻断警告；配置显式设置 `CSHARP_DOTNET_FORMAT_DISABLE_ERRORS: false`，与 `FAIL_ON_ERROR: true` 一起保证格式错误会失败。MegaLinter v10 使用 Betterleaks 代替已移除的 Gitleaks；聚合 SARIF 报告上传到代码扫描，缺失报告或上传失败会明确报错。手动运行 MegaLinter 也执行全量扫描。
 
 框架包与合规工作流仅接受合法的 `v1.2.3`、`V1.2.3`、`1.2.3` 及 SemVer 预发布/构建后缀。配置工具继续使用 `gframework-config-tool-v*`；文档仅随正式小写 `v` 标签或手动操作发布。触发过滤后还会校验版本，格式错误的标签不会启动发布任务。版本审批、Benchmark 和许可证修复仍使用各自手动入口。
 
-GitHub 自动管理的 NuGet 依赖提交独立于主 CI。默认分支规则集要求来自 GitHub Actions 的 `CI Result` 与 `submit-nuget` 成功，并要求分支基于最新主分支验证；管理员及自动合并均没有绕过名单。按影响范围明确不适用的任务允许跳过，已选中的任务必须成功。新增独立 PR 检查时，应将其接入汇总或显式加入必需状态检查，避免出现失败但不阻断合并的检查。标签发布、每日扫描等合并后任务保留各自触发和审批边界。
+GitHub 自动管理的 NuGet 依赖提交独立于主 CI。默认分支规则集要求来自 GitHub Actions 的 `CI Result` 与 `submit-nuget`，以及来自 Greptile App 的 `Greptile Review` 全部通过，并要求分支基于最新主分支验证；管理员及自动合并均没有绕过名单。按影响范围明确不适用的任务允许跳过，已选中的任务必须成功。Greptile 的置信度检查由其既有评分阈值决定；失败或尚未完成时均须等待。CodeRabbit 可能因外部服务策略跳过，不能将其跳过状态视作已完成人工或 AI 审查。新增独立 PR 检查时，应将其接入汇总或显式加入必需状态检查，避免出现失败但不阻断合并的检查。标签发布、每日扫描等合并后任务保留各自触发和审批边界。
 
 文档与配置工具任务固定使用官方 npm 发布的 Bun 1.4.4，避开重复失败的 GitHub Release 下载链路。下载服务的 HTTP 5xx 或工具下载损坏应保留失败证据，核对源码和工具版本后只重试失败任务；重试不免除必需检查。
 

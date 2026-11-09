@@ -52,7 +52,7 @@ public sealed class CqrsPipelineRegistrationTests
         var state = scope.ServiceProvider.GetRequiredService<ScopeState>();
         var runtime = scope.ServiceProvider.GetRequiredService<ICqrsRuntime>();
         Assert.That(await runtime.SendAsync(new Ping()), Is.EqualTo(7));
-        Assert.That(state.Calls, Is.EqualTo(new[] { "outer-in", "inner-in", "handler", "inner-out", "outer-out" }));
+        Assert.That(state.Calls, Is.EqualTo(["outer-in", "inner-in", "handler", "inner-out", "outer-out"]));
         await foreach (var item in runtime.CreateStream(new StreamPing()))
             Assert.That(item, Is.EqualTo(7));
         Assert.That(state.Disposed, Is.False);
@@ -102,7 +102,10 @@ public sealed class CqrsPipelineRegistrationTests
     private sealed class ActivationCount
     {
         /// <summary>Actual constructor calls.</summary>
-        public int Value { get; set; }
+        public int Value
+        {
+            get; set;
+        }
     }
 
     /// <summary>A default-lifetime behavior with an observable constructor.</summary>
@@ -134,7 +137,7 @@ public sealed class CqrsPipelineRegistrationTests
         public ValueTask<TResponse> Handle(TRequest message, MessageHandlerDelegate<TRequest, TResponse> next, CancellationToken cancellationToken) => next(message, cancellationToken);
     }
     /// <summary>A no-op generic stream behavior.</summary>
-    private class StreamBehavior<TRequest, TResponse> : IStreamPipelineBehavior<TRequest, TResponse> where TRequest : IStreamRequest<TResponse>
+    private sealed class StreamBehavior<TRequest, TResponse> : IStreamPipelineBehavior<TRequest, TResponse> where TRequest : IStreamRequest<TResponse>
     {
         /// <inheritdoc />
         public IAsyncEnumerable<TResponse> Handle(TRequest message, StreamMessageHandlerDelegate<TRequest, TResponse> next, CancellationToken cancellationToken) => next(message, cancellationToken);

@@ -202,3 +202,5 @@ handler 通过构造函数取得实际依赖，生成注册器和 invoker 使用
 
 - [CQRS 运行时](../core/cqrs.md)
 - [源码生成器总览](./index.md)
+
+runtime 与生成器应同时升级。生成 request / stream invoker 前会验证当前 `Create<TResponse>` 工厂契约；若选择的 runtime 缺少匹配工厂，生成器报告编译错误 `GF_Cqrs_002` 并停止生成注册器，不为旧包降级生成。

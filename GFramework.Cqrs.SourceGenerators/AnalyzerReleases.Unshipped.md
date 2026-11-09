@@ -6,3 +6,4 @@
  Rule ID     | Category                         | Severity | Notes                        
 -------------|----------------------------------|----------|------------------------------
  GF_Cqrs_001 | GFramework.Cqrs.SourceGenerators | Error    | CqrsHandlerRegistryGenerator 
+ GF_Cqrs_002 | GFramework.Cqrs.SourceGenerators | Error    | CqrsHandlerRegistryGenerator

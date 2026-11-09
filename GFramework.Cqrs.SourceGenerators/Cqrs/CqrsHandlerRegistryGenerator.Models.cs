@@ -337,5 +337,6 @@ ArrayElementTypeReference: null,
         bool SupportsDirectReflectionFallbackTypes,
         bool SupportsMultipleReflectionFallbackAttributes,
         bool SupportsRequestInvokerProvider,
-        bool SupportsStreamInvokerProvider);
+        bool SupportsStreamInvokerProvider,
+        bool TypedInvokerFactoriesAvailable);
 }

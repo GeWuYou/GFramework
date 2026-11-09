@@ -11,7 +11,7 @@ namespace GFramework.SourceGenerators.Tests.Cqrs;
 ///     验证 CQRS 处理器注册生成器的输出与回退边界。
 /// </summary>
 [TestFixture]
-public class CqrsHandlerRegistryGeneratorTests
+public partial class CqrsHandlerRegistryGeneratorTests
 {
     private const string HiddenNestedHandlerSelfRegistrationSource = """
                                                                     using System;
