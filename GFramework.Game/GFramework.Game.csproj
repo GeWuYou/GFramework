@@ -12,6 +12,7 @@
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <EnableGFrameworkPackageTransitiveGlobalUsings>true</EnableGFrameworkPackageTransitiveGlobalUsings>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj"/>
@@ -20,5 +21,9 @@
     <ItemGroup>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4"/>
         <PackageReference Include="YamlDotNet" Version="18.1.0"/>
+    </ItemGroup>
+    <!-- Package the module guide named by PackageReadmeFile. -->
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath=""/>
     </ItemGroup>
 </Project>

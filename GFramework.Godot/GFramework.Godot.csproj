@@ -15,6 +15,7 @@
         <!-- Godot.SourceGenerators expects this property from Godot.NET.Sdk.
              Provide a safe default so source generators can run in plain SDK-style builds as well. -->
         <GodotProjectDir Condition="'$(GodotProjectDir)' == ''">$(MSBuildProjectDirectory)</GodotProjectDir>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -31,4 +32,8 @@
         <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj" PrivateAssets="all"/>
     </ItemGroup>
 
+    <!-- Package the module guide named by PackageReadmeFile. -->
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath=""/>
+    </ItemGroup>
 </Project>

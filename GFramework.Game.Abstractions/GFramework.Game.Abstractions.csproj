@@ -16,6 +16,7 @@
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <EnableGFrameworkPackageTransitiveGlobalUsings>true</EnableGFrameworkPackageTransitiveGlobalUsings>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj"/>
@@ -23,5 +24,9 @@
     <!-- 引入必要的命名空间 -->
     <ItemGroup>
         <Using Include="GFramework.Game.Abstractions"/>
+    </ItemGroup>
+    <!-- Package the module guide named by PackageReadmeFile. -->
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath=""/>
     </ItemGroup>
 </Project>

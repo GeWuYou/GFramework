@@ -20,6 +20,7 @@
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
         <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <!-- Roslyn 依赖，只用于 Generator 自身 -->
@@ -66,5 +67,9 @@
     </ItemGroup>
     <ItemGroup>
         <Folder Include="Diagnostics\"/>
+    </ItemGroup>
+    <!-- Package the module guide named by PackageReadmeFile. -->
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath=""/>
     </ItemGroup>
 </Project>

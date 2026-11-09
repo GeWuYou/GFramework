@@ -10,9 +10,14 @@
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <EnableGFrameworkPackageTransitiveGlobalUsings>true</EnableGFrameworkPackageTransitiveGlobalUsings>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="../GFramework.Game/GFramework.Game.csproj"/>
         <PackageReference Include="Lib.Harmony" Version="2.4.3"/>
+    </ItemGroup>
+    <!-- Package the module guide named by PackageReadmeFile. -->
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath=""/>
     </ItemGroup>
 </Project>
