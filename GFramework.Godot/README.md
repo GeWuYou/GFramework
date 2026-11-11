@@ -31,6 +31,8 @@ Godot 不传递引用 CQRS。需要消息分发时，在消费工程显式安装
 
 ## 最小采用
 
+[Godot 接入教程](../docs/zh-CN/tutorials/godot-integration.md)直接引用精简运行入口，覆盖 Architecture、页面、确认窗口和按键资源登记。
+
 在 Godot 主线程挂载 `GodotUiRoot`，捕获宿主同步上下文创建 `SynchronizationContextGameDispatcher`，通过 `UiRegistry.RegisterGodot` 或 `RegisterGodotScene` 登记普通 `Control`。创建 `UiService` 后，即可通过共享强类型路由打开页面和窗口。
 
 场景使用显式注册表构造 `GodotSceneFactory`，再创建 `SceneRouter(factory, root, dispatcher)`。需要暂停的 UI 共享一个 `PauseStackManager`，通过 `GodotPauseHandler` 接到场景树。

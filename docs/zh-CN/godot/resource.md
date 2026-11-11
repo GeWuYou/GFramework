@@ -42,21 +42,12 @@ public interface IResourceRepository<in TKey, TResource> : IRepository<TKey, TRe
 
 `GodotResourceRepository<TKey, TResource>` 提供了完整的实现：
 
-```csharp
-public class GodotResourceRepository<TKey, TResource>
-    : IResourceRepository<TKey, TResource>
-    where TResource : Resource, IHasKey<TKey>
-    where TKey : notnull
-{
-    public void Add(TKey key, TResource value);
-    public TResource Get(TKey key);
-    public bool TryGet(TKey key, out TResource value);
-    public IReadOnlyCollection<TResource> GetAll();
-    public bool Contains(TKey key);
-    public void Remove(TKey key);
-    public void Clear();
-}
-```
+| 操作 | 结果与错误 |
+| --- | --- |
+| `Add(key, resource)` | 新增索引，重复键抛出 InvalidOperationException |
+| `Get(key)`、`TryGet(key, out value)` | Get 在缺失时抛出 KeyNotFoundException，TryGet 返回 false |
+| `Remove(key)`、`Clear()` | Remove 在缺失时抛出 KeyNotFoundException，Clear 清空索引 |
+| `Contains(key)`、`GetAll()` | 检查键或取得当前资源集合 |
 
 ### 资源键接口
 
@@ -68,6 +59,12 @@ public interface IHasKey<out TKey>
     TKey Key { get; }
 }
 ```
+
+## 显式资源登记
+
+固定资源可由宿主通过 `[Export]` 数组和场景引用提供，在主线程启动阶段逐项 Add，再把仓储传给消费节点。完整的可运行接入见[Godot 接入教程](../tutorials/godot-integration.md)。仓储提供按键索引，资源原生引用由场景或其他明确拥有者保持。
+
+显式登记可以在启动阶段集中处理重复键与缺失引用。目录扫描适合发现目录中的资源，扫描中的缺失目录、加载失败和重复键通过日志报告；需要完整内容集合的项目还应检查必需键。
 
 ## 基本用法
 
@@ -82,16 +79,16 @@ using GFramework.Core.Abstractions.Bases;
 public partial class ItemData : Resource, IHasKey<string>
 {
     [Export]
-    public string Id { get; set; }
+    public string Id { get; set; } = string.Empty;
 
     [Export]
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     [Export]
-    public string Description { get; set; }
+    public string Description { get; set; } = string.Empty;
 
     [Export]
-    public Texture2D Icon { get; set; }
+    public Texture2D? Icon { get; set; }
 
     [Export]
     public int MaxStack { get; set; } = 99;
@@ -350,10 +347,10 @@ public class CachedResourceRepository<TKey, TResource>
 public partial class VersionedItemData : Resource, IHasKey<string>
 {
     [Export]
-    public string Id { get; set; }
+    public string Id { get; set; } = string.Empty;
 
     [Export]
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     [Export]
     public int Version { get; set; } = 1;
@@ -390,8 +387,8 @@ public class VersionedItemRepository : GodotResourceRepository<string, Versioned
 [GlobalClass]
 public partial class WeaponData : Resource, IHasKey<string>
 {
-    [Export] public string Id { get; set; }
-    [Export] public string Name { get; set; }
+    [Export] public string Id { get; set; } = string.Empty;
+    [Export] public string Name { get; set; } = string.Empty;
     [Export] public int Damage { get; set; }
     public string Key => Id;
 }
@@ -400,8 +397,8 @@ public partial class WeaponData : Resource, IHasKey<string>
 [GlobalClass]
 public partial class ArmorData : Resource, IHasKey<string>
 {
-    [Export] public string Id { get; set; }
-    [Export] public string Name { get; set; }
+    [Export] public string Id { get; set; } = string.Empty;
+    [Export] public string Name { get; set; } = string.Empty;
     [Export] public int Defense { get; set; }
     public string Key => Id;
 }
@@ -475,59 +472,13 @@ public partial class HotReloadManager : Node
 }
 ```
 
-## 最佳实践
+## 采用约定
 
-1. **资源实现 IHasKey 接口**：确保资源可以被仓储管理
-   ```csharp
-   ✓ public partial class ItemData : Resource, `IHasKey<string>` { }
-   ✗ public partial class ItemData : Resource { } // 无法使用仓储
-   ```
-
-2. **使用有意义的键类型**：根据业务需求选择合适的键类型
-   ```csharp
-   ✓ `IResourceRepository<string, ItemData>`  // 字符串 ID
-   ✓ `IResourceRepository<int, LevelData>`    // 整数关卡号
-   ✓ `IResourceRepository<Guid, SaveData>`    // GUID 唯一标识
-   ```
-
-3. **在架构初始化时加载资源**：避免运行时加载卡顿
-   ```csharp
-   protected override void InstallModules(IServiceCollection services)
-   {
-       services.AddSingleton<`IResourceRepository<string, ItemData>`, ItemRepository>();
-   }
-   // 在主线程的启动/装配阶段首次解析仓储，并把它传给消费节点。
-   ```
-
-4. **使用递归加载组织资源**：保持目录结构清晰
-   ```csharp
-   // 推荐的目录结构
-   res://data/
-   ├── items/
-   │   ├── weapons/
-   │   ├── armors/
-   │   └── consumables/
-   └── enemies/
-       ├── bosses/
-       └── minions/
-   ```
-
-5. **处理资源不存在的情况**：使用 TryGet 避免异常
-   ```csharp
-   ✓ if (_itemRepo.TryGet(itemId, out var item)) { }
-   ✗ var item = _itemRepo.Get(itemId); // 可能抛出异常
-   ```
-
-6. **合理使用资源缓存**：平衡内存和性能
-   ```csharp
-   // 频繁访问的资源可以缓存
-   private ItemData _cachedPlayerWeapon;
-
-   public ItemData GetPlayerWeapon()
-   {
-       return _cachedPlayerWeapon ??= _itemRepo.Get("player_weapon");
-   }
-   ```
+- 使用业务稳定的键，并为资源实现 `IHasKey<TKey>`。场景、文件路径和业务键分别维护。
+- 在 Godot 主线程的启动阶段验证资源引用并建立索引，再通过构造函数或 Configure 提供给消费方。
+- 必需资源可在启动时使用 Get 并处理失败；可选资源通过 TryGet 分支处理缺失。
+- 显式 Add 拒绝重复键，目录扫描保留先加载的资源并报告重复项。完整内容集由宿主核对必需键。
+- 仓储管理索引和引用。原生资源的持有与释放由场景或明确的宿主拥有者负责，动态资源租约见[核心资源管理](../core/resource.md)。
 
 ## 常见问题
 
@@ -541,7 +492,7 @@ public partial class HotReloadManager : Node
 public partial class MyResource : Resource, IHasKey<string>
 {
     [Export]
-    public string Id { get; set; }
+    public string Id { get; set; } = string.Empty;
 
     public string Key => Id;
 }
@@ -588,11 +539,13 @@ public override void _Ready()
 ### 问题：如何处理重复的资源键？
 
 **解答**：
-仓储会记录警告但不会抛出异常：
+显式 `Add(key, resource)` 遇到重复键会抛出 `InvalidOperationException`，原有登记保留。启动时逐项登记可据此拒绝配置错误。
+
+目录扫描 `LoadFromPath`／`LoadFromPathRecursive` 遇到重复资源键时记录告警，保留先加载的资源，忽略后续重复项：
 
 ```csharp
 // 日志会显示: "Duplicate key detected: item_001"
-// 后加载的资源会被忽略
+// 目录扫描忽略后加载的重复资源
 ```
 
 ### 问题：可以动态添加和移除资源吗？
@@ -618,6 +571,7 @@ _itemRepo.Clear();
 
 ```csharp
 public class LazyResourceRepository<TKey, TResource>
+    where TKey : notnull
     where TResource : Resource, IHasKey<TKey>
     where TKey : notnull
 {

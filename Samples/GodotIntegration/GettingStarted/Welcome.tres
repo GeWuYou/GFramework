@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="QuickStartItem" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://GettingStarted/QuickStartItem.cs" id="script"]
+
+[resource]
+script = ExtResource("script")
+Id = "welcome"
+Title = "Resource registered. Open a confirmation."

@@ -1,0 +1,28 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://GettingStarted/QuickStartPage.cs" id="script"]
+
+[node name="QuickStartPage" type="CenterContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("script")
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 2
+custom_minimum_size = Vector2(440, 180)
+
+[node name="Content" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+alignment = 1
+
+[node name="Title" type="Label" parent="Panel/Content"]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="OpenConfirm" type="Button" parent="Panel/Content"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 48)
+text = "Open confirmation"

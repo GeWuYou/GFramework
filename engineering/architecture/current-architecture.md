@@ -34,6 +34,8 @@ Godot 保留其场景树和主循环，拥有者负责装配节点依赖。原�
 
 ## 示例与维护
 
+GodotIntegration 的 GettingStarted 场景提供资源登记、页面、确认窗口及 Architecture 生命周期的精简采用路径，教程直接引用其可编译源码。
+
 MinimalApp 展示普通 DI 和可选编排。GodotIntegration 展示宿主接线。DodgeTheCreeps 提供完整直接采用路径；DodgeTheCreeps.Advanced 用相同功能展示纯 C# 规则/用例与宿主适配，拥有独立数据目录。
 
 新增功能优先放在所属功能内，以实际依赖决定接口与程序集边界。行为测试验证规则、生命周期和错误语义；原生测试验证场景树、输入、资源、导出与跨进程数据。构建、托管测试和原生运行分别提供各自范围的证据。

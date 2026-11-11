@@ -28,6 +28,12 @@
     <ItemGroup>
         <ProjectReference Include="..\GFramework.Godot.SourceGenerators.Abstractions\GFramework.Godot.SourceGenerators.Abstractions.csproj"/>
         <ProjectReference Include="..\GFramework.Godot.SourceGenerators\GFramework.Godot.SourceGenerators.csproj"/>
+        <ProjectReference Include="..\GFramework.Godot\GFramework.Godot.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="../Godot/script_templates/**/*.cs" Link="ScriptTemplates/%(RecursiveDir)%(Filename)%(Extension)"
+              CopyToOutputDirectory="PreserveNewest"/>
     </ItemGroup>
 
 </Project>

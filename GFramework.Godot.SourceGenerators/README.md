@@ -126,7 +126,7 @@
   `__BindNodeSignals_Generated()` 与 `__UnbindNodeSignals_Generated()`
 - `[AutoScene]`、`[AutoRegisterExportedCollections]` 都只生成辅助入口，不会替你织入生命周期
 
-也就是说，本包负责生成辅助方法，但调用时机仍由项目侧决定。
+手写生命周期的遗漏调用通过既有 Warning 诊断报告。检查支持当前实例的直接调用、同类型实例辅助方法和直接调用的局部函数；其他实例调用及仅注册的回调体会继续提示接线。具体时序由项目侧决定。
 
 最小接法可以直接写成：
 

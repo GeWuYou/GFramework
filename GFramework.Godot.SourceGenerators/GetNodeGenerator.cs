@@ -4,6 +4,7 @@
 using System.Collections.Immutable;
 using System.Text;
 using GFramework.Godot.SourceGenerators.Diagnostics;
+using GFramework.Godot.SourceGenerators.Analysis;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
 using GFramework.SourceGenerators.Common.Extensions;
@@ -118,7 +119,7 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
             if (bindings.Count == 0)
                 continue;
 
-            ReportMissingReadyHookCall(context, group, typeSymbol);
+            ReportMissingReadyHookCall(context, compilation, group, typeSymbol);
 
             var source = GenerateSource(typeSymbol, bindings, FindReadyMethod(typeSymbol) is null);
             context.AddSource(GetHintName(typeSymbol), source);
@@ -212,11 +213,12 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
 
     private static void ReportMissingReadyHookCall(
         SourceProductionContext context,
+        Compilation compilation,
         TypeGroup group,
         INamedTypeSymbol typeSymbol)
     {
         var readyMethod = FindReadyMethod(typeSymbol);
-        if (readyMethod is null || CallsGeneratedInjection(readyMethod))
+        if (readyMethod is null || LifecycleHookCalls.Contains(compilation, readyMethod, InjectionMethodName, context.CancellationToken))
             return;
 
         context.ReportDiagnostic(Diagnostic.Create(
@@ -263,38 +265,6 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
         return typeSymbol.GetMembers()
             .OfType<IMethodSymbol>()
             .FirstOrDefault(static method => IsParameterlessInstanceMethod(method, "_Ready"));
-    }
-
-    private static bool CallsGeneratedInjection(IMethodSymbol readyMethod)
-    {
-        foreach (var syntaxReference in readyMethod.DeclaringSyntaxReferences)
-        {
-            if (syntaxReference.GetSyntax() is not MethodDeclarationSyntax methodSyntax)
-                continue;
-
-            if (methodSyntax.DescendantNodes()
-                .OfType<InvocationExpressionSyntax>()
-                .Any(IsGeneratedInjectionInvocation))
-                return true;
-        }
-
-        return false;
-    }
-
-    private static bool IsGeneratedInjectionInvocation(InvocationExpressionSyntax invocation)
-    {
-        return invocation.Expression switch
-        {
-            IdentifierNameSyntax identifierName => string.Equals(
-                                identifierName.Identifier.ValueText,
-                                InjectionMethodName,
-                                StringComparison.Ordinal),
-            MemberAccessExpressionSyntax memberAccess => string.Equals(
-                                memberAccess.Name.Identifier.ValueText,
-                                InjectionMethodName,
-                                StringComparison.Ordinal),
-            _ => false,
-        };
     }
 
     private static bool ResolveRequired(AttributeData attribute)
