@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -14,7 +15,8 @@ namespace GFramework.Godot.SourceGenerators.Analysis;
 /// <remarks>
 /// Generated methods are absent from the input compilation, so their receiver and name are checked syntactically.
 /// Existing helper symbols identify same-type instance methods and directly invoked local functions. Deferred bodies
-/// are visited only through such calls. This is structural call analysis, with execution order owned by the consumer.
+/// are visited only through such calls. Iterator bodies are excluded because invocation only creates an iterator.
+/// This is structural call analysis, with execution order owned by the consumer.
 /// </remarks>
 internal static class LifecycleHookCalls
 {
@@ -42,6 +44,11 @@ internal static class LifecycleHookCalls
             {
                 var body = GetBody(reference.GetSyntax(cancellationToken));
                 if (body is null)
+                    continue;
+
+                // A helper or local iterator runs on enumeration, which this call graph does not establish.
+                // Ignore yields in nested deferred bodies when classifying the enclosing method.
+                if (body.DescendantNodesAndSelf(DescendIntoExecutableBody).Any(node => node is YieldStatementSyntax))
                     continue;
 
                 var model = compilation.GetSemanticModel(body.SyntaxTree);

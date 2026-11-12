@@ -63,6 +63,9 @@ internal sealed class QuickStartResources(QuickStartRoot root, IGameDispatcher d
             if (node is not T)
                 throw new InvalidDataException($"The scene root must be {typeof(T).Name}.");
         }
-        finally { node.Free(); }
+        finally
+        {
+            node.Free();
+        }
     }
 }

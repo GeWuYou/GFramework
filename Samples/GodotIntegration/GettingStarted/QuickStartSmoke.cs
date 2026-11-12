@@ -55,10 +55,15 @@ internal static class QuickStartSmoke
                 await architecture.InitializeAsync().ConfigureAwait(true);
                 throw new InvalidOperationException("Missing scene reference was accepted.");
             }
-            catch (InvalidDataException) { }
+            catch (InvalidDataException)
+            {
+            }
             Require(!architecture.IsReady && invalid.GetChildCount() == 0, "Failed startup retained native children.");
         }
-        finally { invalid.Free(); }
+        finally
+        {
+            invalid.Free();
+        }
     }
 
     private static void ExpectRejected(Action action)
@@ -67,8 +72,14 @@ internal static class QuickStartSmoke
         {
             action();
         }
-        catch (InvalidDataException) { return; }
-        catch (InvalidOperationException) { return; }
+        catch (InvalidDataException)
+        {
+            return;
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
         throw new InvalidOperationException("Invalid resource registration was accepted.");
     }
 

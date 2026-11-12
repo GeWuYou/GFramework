@@ -165,7 +165,9 @@ public partial class QuickStartRoot : Control
         {
             await action().ConfigureAwait(true);
         }
-        catch (OperationCanceledException error) when (error.CancellationToken.IsCancellationRequested) { }
+        catch (OperationCanceledException error) when (error.CancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception error)
         {
             _exitCode = 1;

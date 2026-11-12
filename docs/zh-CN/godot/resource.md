@@ -573,7 +573,6 @@ _itemRepo.Clear();
 public class LazyResourceRepository<TKey, TResource>
     where TKey : notnull
     where TResource : Resource, IHasKey<TKey>
-    where TKey : notnull
 {
     private GodotResourceRepository<TKey, TResource> _repository;
     private readonly string[] _paths;

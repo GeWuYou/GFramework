@@ -48,7 +48,11 @@ internal sealed class QuickStartArchitecture(QuickStartRoot root, IGameDispatche
                 confirm.Configure(question, context, root.RunResponse);
                 return confirm;
             }
-            catch { node.Free(); throw; }
+            catch
+            {
+                node.Free();
+                throw;
+            }
         });
         return routes;
     }

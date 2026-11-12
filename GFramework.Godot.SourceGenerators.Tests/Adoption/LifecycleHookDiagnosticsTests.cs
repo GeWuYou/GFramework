@@ -24,6 +24,11 @@ public sealed class LifecycleHookDiagnosticsTests
     [TestCase("void Setup() { $HOOK(); }", "", true)]
     [TestCase("Action later = () => $HOOK();", "", true)]
     [TestCase("Action $HOOK = () => { }; $HOOK();", "", true)]
+    [TestCase("Setup();", "private IEnumerable<int> Setup() { $HOOK(); yield break; }", true)]
+    [TestCase("Setup();", "private IEnumerator<int> Setup() { $HOOK(); yield return 1; }", true)]
+    [TestCase("Setup();", "private async IAsyncEnumerable<int> Setup() { await Task.CompletedTask; $HOOK(); yield break; }", true)]
+    [TestCase("Setup(); IEnumerable<int> Setup() { $HOOK(); yield break; }", "", true)]
+    [TestCase("Setup();", "private void Setup() { IEnumerable<int> Later() { yield break; } $HOOK(); }", false)]
     [TestCase("Setup();", "", false)]
     public void RecognizesCurrentInstanceHook(string body, string helpers, bool warn)
     {
@@ -39,6 +44,15 @@ public sealed class LifecycleHookDiagnosticsTests
             "other.__UnbindNodeSignals_Generated();", expectedExitWarning: true);
     }
 
+    /// <summary>Creating an iterator during exit does not execute its unbinding body.</summary>
+    [Test]
+    public void IteratorUnbindDoesNotSatisfyExitHook()
+    {
+        Verify(signals: true, "$HOOK();",
+            "private IEnumerable<int> Cleanup() { __UnbindNodeSignals_Generated(); yield break; }", warn: false,
+            "Cleanup();", expectedExitWarning: true);
+    }
+
     private static void Verify(bool signals, string body, string helpers, bool warn,
         string exit = "__UnbindNodeSignals_Generated();", bool expectedExitWarning = false)
     {
@@ -49,6 +63,8 @@ public sealed class LifecycleHookDiagnosticsTests
         var attribute = signals ? string.Empty : "[GetNode(\"%Action\")]";
         var source = $$"""
             using System;
+            using System.Collections.Generic;
+            using System.Threading.Tasks;
             using Godot;
             using GFramework.Godot.SourceGenerators.Abstractions;
             namespace AdoptionProbe;
