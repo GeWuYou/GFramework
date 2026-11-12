@@ -21,7 +21,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14"/>
         <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.14"/>
         <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.14"/>
-        <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.14"/>
+        <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.15"/>
     </ItemGroup>
     <!-- Package the module guide named by PackageReadmeFile. -->
     <ItemGroup>
