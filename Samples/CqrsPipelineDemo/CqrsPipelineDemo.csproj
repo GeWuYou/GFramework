@@ -14,6 +14,6 @@ SPDX-License-Identifier: Apache-2.0 -->
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all"/>
     <ProjectReference Include="../../GFramework.SourceGenerators.Common/GFramework.SourceGenerators.Common.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all"/>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14"/>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.15"/>
   </ItemGroup>
 </Project>
