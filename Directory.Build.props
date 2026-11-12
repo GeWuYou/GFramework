@@ -10,7 +10,7 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
-        <PackageReference Update="Meziantou.Polyfill" Version="1.0.170">
+        <PackageReference Update="Meziantou.Polyfill" Version="1.0.171">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
