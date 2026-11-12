@@ -1,33 +1,17 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-// meta-name: 控制器类模板
-// meta-description: 负责管理场景的生命周期和架构关联
+// meta-name: 普通节点控制器
+// meta-description: 原生节点脚本，由父节点在入树前显式传入项目依赖。
 using Godot;
-using GFramework.Core.Abstractions.Controller;
-using GFramework.Godot.SourceGenerators.Abstractions;
-using GFramework.SourceGenerators.Abstractions.Logging;
-using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-
-[ContextAware]
-[Log]
-public partial class _CLASS_ :_BASE_,IController
+/// <summary>Receives project dependencies from its parent before entering the scene tree.</summary>
+public partial class _CLASS_ : _BASE_
 {
-    /// <summary>
-    /// 节点准备就绪时的回调方法
-    /// 在节点添加到场景树后调用
-    /// </summary>
+    /// <summary>Connects native behavior after the parent has supplied this node's dependencies.</summary>
     public override void _Ready()
     {
-        __InjectGetNodes_Generated();
-        OnReadyAfterGetNode();
-    }
-
-    /// <summary>
-    /// 节点注入完成后的初始化钩子。
-    /// </summary>
-    private void OnReadyAfterGetNode()
-    {
+        // Add a project-specific Configure method for dependencies, then consume them here.
+        // [GetNode] and [BindNodeSignal] adoption follows their explicit lifecycle hooks.
     }
 }

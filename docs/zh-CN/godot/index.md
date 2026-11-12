@@ -22,6 +22,8 @@ description: 将通用服务接入原生节点、场景树、InputMap、暂停�
 
 ## 采用路径
 
+从[Godot 接入教程](../tutorials/godot-integration.md)运行精简场景，再按功能查阅本页的能力入口。教程引用示例工程中的实际源码。
+
 安装 `GeWuYou.GFramework.Godot`，按项目需要选择 `Core`、`Game` 和契约包。普通 UI 登记 `Control` 场景，使用默认 root 和强类型 UI 服务；场景导航直接构造 `SceneRouter` 并传入工厂、root 和宿主调度器。
 
 节点注入、信号接线和 `project.godot` 常量按需安装 `GeWuYou.GFramework.Godot.SourceGenerators`。运行时包不生成这些辅助代码，普通 UI 接入无需生成器。

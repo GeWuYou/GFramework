@@ -2,6 +2,17 @@
 
 这是一个可由 Godot 打开的 2D 工程：移动蓝色圆点收集金色圆点，通过菜单操作设置和一个存档槽位。画面由代码绘制，无外部素材依赖。
 
+## 精简接入
+
+GettingStarted 场景展示 Architecture、原生页面、类型化确认和显式资源登记。步骤与源码见[Godot 接入教程](../../docs/zh-CN/tutorials/godot-integration.md)。完成下方构建后可直接运行：
+
+```bash
+godot --path Samples/GodotIntegration res://GettingStarted/QuickStart.tscn
+godot --headless --path Samples/GodotIntegration res://GettingStarted/QuickStart.tscn -- --quickstart-smoke
+```
+
+自检在完整关闭后输出 `GFRAMEWORK_QUICKSTART_RESULT PASS`，覆盖资源拒绝、启动清理、确认结果和待确认期间退出。
+
 ## 环境与启动
 
 - Godot **4.7.2 .NET** 版本，与项目的 `Godot.NET.Sdk` 和框架的 `GodotSharp` 版本一致。

@@ -82,8 +82,11 @@ class ImpactTests(unittest.TestCase):
 
     def test_godot_includes_declared_cross_module_test_consumer(self):
         plan = self.change("GFramework.Godot/Example.cs")
+        # Adoption compilation tests consume real Godot runtime metadata as well as generators.
         self.assertEqual(set(plan["test_projects"]), {
-            "GFramework.Game.Tests/GFramework.Game.Tests.csproj", "GFramework.Godot.Tests/GFramework.Godot.Tests.csproj"})
+            "GFramework.Game.Tests/GFramework.Game.Tests.csproj",
+            "GFramework.Godot.Tests/GFramework.Godot.Tests.csproj",
+            "GFramework.Godot.SourceGenerators.Tests/GFramework.Godot.SourceGenerators.Tests.csproj"})
         self.assertNotIn("GFramework.Ecs.Arch/GFramework.Ecs.Arch.csproj", plan["build_projects"])
 
     def test_test_only_change_does_not_pack_runtime(self):

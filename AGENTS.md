@@ -461,3 +461,19 @@ Before considering work complete, confirm:
 - Sensitive or unsafe behavior was not introduced
 - User-facing documentation is updated when needed
 - Feature adoption docs under `docs/zh-CN/` were added or updated when functionality was added, removed, or refactored
+
+### PR AI Review
+
+- Every PR implementation, CI repair and delivery continuation MUST inspect the available AI review content, including
+  review bodies, inline comments and threads, discussion summaries and summaries embedded in the PR description.
+  Retrieve all pages and bind the findings to the reviewed commit and current source head.
+- Evaluate each finding against the current source, contracts and relevant consumers. Fix valid findings within the
+  authorized scope and add or reuse regression coverage required by this repository. Explain findings that are already
+  fixed, duplicated or inapplicable with concrete evidence. Respect explicit task limits when a finding needs broader work.
+- Record each finding's disposition, supporting source or validation evidence and fixing commit in the existing PR
+  description or delivery response. Keep this record with the PR or conversation under the documentation rules.
+- Before delivery or handoff, reconcile the latest available review content with the source head. Report pending,
+  skipped or unavailable reviews and the last reviewed commit. Follow the applicable waiting and handoff policy, and
+  resume newly available findings on an authorized continuation.
+
+See [the PR AI review workflow](engineering/development/workflow.md#pr-ai-review) for the review sequence.

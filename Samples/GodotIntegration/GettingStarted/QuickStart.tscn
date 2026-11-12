@@ -1,0 +1,30 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://GettingStarted/QuickStartRoot.cs" id="root"]
+[ext_resource type="Script" path="res://GettingStarted/QuickStartItem.cs" id="item_type"]
+[ext_resource type="PackedScene" path="res://GettingStarted/Page.tscn" id="page"]
+[ext_resource type="PackedScene" path="res://GettingStarted/Confirm.tscn" id="confirm"]
+[ext_resource type="Resource" path="res://GettingStarted/Welcome.tres" id="welcome"]
+
+[node name="QuickStart" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("root")
+PageScene = ExtResource("page")
+ConfirmScene = ExtResource("confirm")
+Items = Array[ExtResource("item_type")]([ExtResource("welcome")])
+
+[node name="Status" type="Label" parent="."]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -60.0
+offset_right = -24.0
+offset_bottom = -24.0
+text = "Ready"

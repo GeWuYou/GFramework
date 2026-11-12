@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // meta-name: UI 视图生命周期
-// meta-description: 普通 Control 场景的可选业务订阅与清理，由 UiRegistry 注册后使用。
+// meta-description: 为 Control 根场景添加可选业务订阅与清理，由 UiRegistry 注册后使用。
 using System.Threading;
 using System.Threading.Tasks;
 using GFramework.Godot.UI;
 using Godot;
 
-/// <summary>Owns view-specific subscriptions; the UI service owns this node's lifetime.</summary>
+/// <summary>Owns view subscriptions on a Control scene root; the UI service owns the node lifetime.</summary>
 public partial class _CLASS_ : _BASE_, IGodotUiLifecycle
 {
     /// <summary>Prepares business state after mounting and before display.</summary>

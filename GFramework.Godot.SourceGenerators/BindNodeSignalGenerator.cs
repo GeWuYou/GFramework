@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Text;
 using GFramework.Godot.SourceGenerators.Diagnostics;
+using GFramework.Godot.SourceGenerators.Analysis;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
 using GFramework.SourceGenerators.Common.Extensions;
@@ -97,6 +98,7 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
 
             ReportMissingLifecycleHookCall(
                 context,
+                compilation,
                 group,
                 typeSymbol,
                 "_Ready",
@@ -105,6 +107,7 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
 
             ReportMissingLifecycleHookCall(
                 context,
+                compilation,
                 group,
                 typeSymbol,
                 "_ExitTree",
@@ -512,6 +515,7 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
 
     private static void ReportMissingLifecycleHookCall(
         SourceProductionContext context,
+        Compilation compilation,
         TypeGroup group,
         INamedTypeSymbol typeSymbol,
         string lifecycleMethodName,
@@ -519,7 +523,7 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
         DiagnosticDescriptor descriptor)
     {
         var lifecycleMethod = FindLifecycleMethod(typeSymbol, lifecycleMethodName);
-        if (lifecycleMethod is null || CallsGeneratedMethod(lifecycleMethod, generatedMethodName))
+        if (lifecycleMethod is null || LifecycleHookCalls.Contains(compilation, lifecycleMethod, generatedMethodName, context.CancellationToken))
             return;
 
         context.ReportDiagnostic(Diagnostic.Create(
@@ -535,42 +539,6 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
         return typeSymbol.GetMembers()
             .OfType<IMethodSymbol>()
             .FirstOrDefault(method => IsParameterlessInstanceMethod(method, methodName));
-    }
-
-    private static bool CallsGeneratedMethod(
-        IMethodSymbol methodSymbol,
-        string generatedMethodName)
-    {
-        foreach (var syntaxReference in methodSymbol.DeclaringSyntaxReferences)
-        {
-            if (syntaxReference.GetSyntax() is not MethodDeclarationSyntax methodSyntax)
-                continue;
-
-            if (methodSyntax.DescendantNodes()
-                .OfType<InvocationExpressionSyntax>()
-                .Any(invocation => IsGeneratedMethodInvocation(invocation, generatedMethodName)))
-                return true;
-        }
-
-        return false;
-    }
-
-    private static bool IsGeneratedMethodInvocation(
-        InvocationExpressionSyntax invocation,
-        string generatedMethodName)
-    {
-        return invocation.Expression switch
-        {
-            IdentifierNameSyntax identifierName => string.Equals(
-                identifierName.Identifier.ValueText,
-                generatedMethodName,
-                StringComparison.Ordinal),
-            MemberAccessExpressionSyntax memberAccess => string.Equals(
-                memberAccess.Name.Identifier.ValueText,
-                generatedMethodName,
-                StringComparison.Ordinal),
-            _ => false,
-        };
     }
 
     private static bool IsParameterlessInstanceMethod(IMethodSymbol method, string methodName)
