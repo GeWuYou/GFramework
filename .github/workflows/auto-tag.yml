@@ -44,7 +44,7 @@ jobs:
       # preview 始终先运行，用于给当前 SHA 生成待发布版本预览。
       - name: Semantic release preview
         id: semantic_release
-        uses: cycjimmy/semantic-release-action@v6
+        uses: cycjimmy/semantic-release-action@v8
         with:
           dry_run: true
           ci: false
@@ -130,7 +130,7 @@ jobs:
 
       - name: Semantic release
         id: semantic_release
-        uses: cycjimmy/semantic-release-action@v6
+        uses: cycjimmy/semantic-release-action@v8
         with:
           dry_run: false
           extra_plugins: |
