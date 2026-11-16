@@ -24,7 +24,7 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
         <PackageReference Include="MediatR" Version="14.3.0" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.15" />
         <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.14" />
     </ItemGroup>
 
