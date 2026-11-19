@@ -1,47 +1,35 @@
 ---
-title: 安装
-description: 按模块选择 NuGet 包，并配置源码构建 SDK 与 Godot 宿主环境。
+title: "安装与选包"
+description: "为项目选择 NuGet 包，配置源码构建和 Godot 环境。"
 ---
 
-# 安装
+# 安装与选包 {#overview}
 
-## 按需要选择包
+## 选择运行时 {#packages}
 
-| 包 | 用途 |
+| 需要 | 安装的 NuGet 包 |
 | --- | --- |
-| GeWuYou.GFramework.Core | 引擎无关能力与可选生命周期编排 |
-| GeWuYou.GFramework.Core.Abstractions | 独立契约层，由 Core 传递引用 |
-| GeWuYou.GFramework.Cqrs | 可选异步请求、通知与流处理 |
-| GeWuYou.GFramework.Game | 配置、内容、Mod、存档、场景与 UI |
-| GeWuYou.GFramework.Godot | Godot 宿主与原生适配 |
-| GeWuYou.GFramework.Ecs.Arch | 可选 Arch ECS 接入 |
-| GeWuYou.GFramework.Game.Harmony | 可选 Harmony Mod 支持 |
+| 生命周期、事件、状态、资源、协程 | `GeWuYou.GFramework.Core` |
+| 请求、通知和流式处理 | `GeWuYou.GFramework.Cqrs` |
+| 配置、内容包、模组、存档、场景和 UI | `GeWuYou.GFramework.Game` |
+| 在 Godot 中使用 Game 能力 | `GeWuYou.GFramework.Godot` |
+| 用 Arch 运行 ECS 系统 | `GeWuYou.GFramework.Ecs.Arch` |
+| 为代码模组接入 Harmony 方法补丁 | `GeWuYou.GFramework.Game.Harmony` |
 
 ```bash
 dotnet add package GeWuYou.GFramework.Core
-# 按需加入游戏及宿主
-dotnet add package GeWuYou.GFramework.Game
-dotnet add package GeWuYou.GFramework.Godot
 ```
 
-目标框架和依赖版本以对应项目与 NuGet 元数据为准。Godot 使用支持 C# 的 .NET 编辑器版本。普通 C# 应用无需安装 Godot、CQRS 或生成器。
+`Game` 会带入 `Core`，`Godot` 会带入 `Game`。独立的契约项目可直接引用相应 `.Abstractions`。聚合包 `GeWuYou.GFramework` 提供 Core、Game 和 CQRS 的常用运行时组合。
 
-## 编译期能力
+## 环境 {#requirements}
 
-枚举扩展与 Priority 使用 Core.SourceGenerators 及其随附特性源码。Game schema、CQRS handler registry、Godot 节点与场景生成器按实际功能分别选择，见 [生成器指南](../source-generators/index.md)。
+运行时包提供 `net8.0`、`net9.0` 和 `net10.0` 目标。安装时按选定 NuGet 版本核对目标框架和依赖。运行仓库样例或构建源码时，按 `global.json` 使用 .NET SDK 10.0.403 或同一功能带内较新的补丁。Godot 示例使用 Godot .NET 4.7.2。
 
-框架 runtime 和 abstractions 不引用生成器或使用生成器特性。普通业务依赖使用构造函数，标准 DI 注册集中在组合根。
+## 编译期生成 {#generators}
 
-## 仓库示例
+按功能在消费项目加入对应 `.SourceGenerators` 包。[生成器指南](../source-generators/index.md)列出了枚举、配置、CQRS 和 Godot 的生成入口。
 
-从源码构建需要根目录指定的 .NET SDK 10.0.403 或同一 10.0.4xx 功能带内更新的补丁版本，不使用预览 SDK。此要求用于编译框架源码，并不把所有消费项目的目标运行时改为 .NET 10；安装 NuGet 包时按包的目标框架、生成器编译器要求及 Godot 宿主版本选择环境。
+使用 NuGet 时可在项目属性中设置 `<EnableGFrameworkGlobalUsings>true</EnableGFrameworkGlobalUsings>`，开启包提供的全局导入。用 `GFrameworkExcludedUsing` 项排除单个命名空间。
 
-```bash
-dotnet run --project Samples/MinimalApp -c Release
-dotnet build Samples/GodotIntegration -c Release
-dotnet build Samples/DodgeTheCreeps.Advanced -c Release
-```
-
-示例以项目引用使用同一仓库源码；独立消费使用包引用。创建完整游戏的操作步骤见 [基础游戏](../tutorials/godot-complete-project.md) 与 [进阶游戏](../tutorials/godot-advanced-project.md)。
-
-包提供可选择的传递 global using 支持；需要显式控制导入时按包中的 buildTransitive 配置排除或关闭。C# 源码中的 using 必须与实际采用的命名空间一致。
+下一步：[运行最小示例](../getting-started/quick-start.md)。

@@ -1,11 +1,10 @@
 ---
-title: 读操作请求
+title: "处理读取请求"
+description: "从应用查询返回只读快照。"
 ---
 
-# 读操作请求
+# 处理读取请求 {#overview}
 
-读操作返回需要的只读数据或快照，不修改领域对象。简单查询可使用服务方法；需要统一管线时使用 IRequest&lt;TResponse&gt; 和对应处理器。
+从查询方法返回调用者需要的投影或快照。使用统一管线时定义 `IRequest<TResponse>`，向处理器注入读取依赖，再通过 `ICqrsRuntime.SendAsync` 取得结果。
 
-处理器直接注入所需数据访问能力，调用 ICqrsRuntime.SendAsync 取得结果。读取和写入可共享同一个领域模型，无需引入独立数据库或事件溯源。
-
-完整注册、取消与作用域说明见 [CQRS runtime](./cqrs.md)。
+读取与写入可共享同一领域模型。注册及作用域见[CQRS 接入](../core/cqrs.md)。

@@ -1,17 +1,13 @@
 ---
-title: 状态机教程
+title: "编排游戏状态切换"
+description: "用状态机组织菜单、游戏和返回。"
 ---
 
-# 状态机教程
+# 编排游戏状态切换 {#overview}
 
-使用普通状态对象表达菜单、运行和结束状态。依赖在构造时传入，Godot 节点由宿主适配器操作。
+1. 定义菜单和游玩状态，用构造函数传入对应依赖。
+2. 注册状态，先进入菜单，再在玩法入口请求切换。
+3. 离开状态前检查退出条件。切换成功后由观察者刷新界面。
+4. 验证退出被拒绝时仍处于原状态，退出游戏时等待 `StopAsync`。
 
-1. 创建 StateMachine，并配置需要保留的历史数量。
-2. 构造并注册全部状态，首次切换后拓扑冻结。
-3. 通过 ChangeToAsync 启动，监听实例 StateChanged 更新展示。
-4. 回退同样经过当前状态的退出条件。
-5. 调用 StopAsync 或 DisposeAsync 等待当前切换并完成清理。
-
-同步状态继承 StateBase，异步状态继承 AsyncStateBase。回调失败后观察 Fault、停止机器并创建新实例。不要在状态回调中等待同一机器的另一次操作。
-
-可运行边界回归见 Core.Tests 的 StateMachineOwnershipTests；完整接口与最小代码见 [状态机](../core/state-machine.md)。
+最小代码示例与异常处理见[异步状态机](../core/state-machine.md)。

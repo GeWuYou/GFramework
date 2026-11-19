@@ -1,13 +1,12 @@
 ---
-title: 异步初始化
+title: "异步初始化"
+description: "等待文件、内容或其他首载操作完成后开放应用。"
 ---
 
-# 异步初始化
+# 异步初始化 {#overview}
 
-有文件首载或异步资源准备的组件实现 IAsyncInitializable，并通过 AddComponent 登记。调用者等待 Architecture.InitializeAsync，成功后再开放用户操作。
+实现 `IAsyncInitializable` 并用 `AddComponent` 登记。将首载 I/O 放进 `InitializeAsync`，把取消令牌传给实际等待的操作。
 
-取消令牌必须传递到实际等待。启动失败、取消与正常退出共享资源清理规则；已开始但尚未完成初始化的组件也会尝试业务停止。创建资源的对象仍按 DI 所有权释放资源。
+在宿主调用并等待 `Architecture.InitializeAsync`。启动完成后再启用 UI 或请求入口。组件应能清理部分初始化完成的状态，启动失败或取消时架构会尝试停止已经开始的组件。将宿主停止请求放在初始化回调之外。
 
-不要把异步工作放进构造函数，不在初始化回调里等待本架构的销毁操作。同步 Initialize 不能用于异步组件。
-
-完整时序见 [装配与生命周期](./architecture.md)。
+继续阅读[启动和停止顺序](../core/architecture.md#lifecycle)。

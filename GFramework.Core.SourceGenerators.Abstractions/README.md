@@ -1,7 +1,15 @@
-# GFramework.Core.SourceGenerators.Abstractions
+# Core generator attributes
 
-此内部项目定义 GenerateEnumExtensions 和 Priority 等编译期输入特性，配合 Core.SourceGenerators 使用，不提供运行时能力。
+[简体中文](#简体中文) · [English](#english)
 
-Enums 定义枚举扩展输入；Bases 定义优先级输入。NuGet 消费项目安装生成器包，由该包携带所需特性源码；仓库内项目引用可显式引用本项目；框架运行时及其抽象项目不引用生成器或使用这些特性。
+## 简体中文
 
-采用方式见 [源码生成器](../docs/zh-CN/source-generators/index.md)、[枚举扩展](../docs/zh-CN/source-generators/enum-generator.md) 与 [优先级](../docs/zh-CN/source-generators/priority-generator.md)。
+定义 Core 生成器使用的枚举和优先级特性。通过 Core.SourceGenerators NuGet 包在消费项目使用。
+
+[查看使用说明](https://gewuyou.github.io/GFramework/zh-CN/source-generators/)
+
+## English
+
+Defines the enum and priority attributes used by the Core generators. Consume them through the Core.SourceGenerators NuGet package.
+
+[Read the guide](https://gewuyou.github.io/GFramework/source-generators/)

@@ -1,22 +1,12 @@
 ---
-title: 最佳实践
-description: 以显式依赖、职责边界和可观察行为组织 GFramework 应用。
+title: "项目设计实践"
+description: "组织游戏依赖，定位错误与性能问题。"
 ---
 
-# 最佳实践
+# 项目设计实践 {#overview}
 
-推荐以标准 DI 装配普通 C# 对象，按功能组织领域规则、应用用例与宿主适配。Architecture 按需提供启动和停止编排。Model、System、Utility 可以作为职责命名，但不决定依赖能力或生命周期。
-
-## 架构与可靠性
-
-- [架构组织](./architecture-patterns.md)：领域边界、功能模块、构造注入与装配入口。
-- [错误处理](./error-handling.md)：业务拒绝、异常、取消及恢复责任。
-- [单元测试](../tutorials/unit-testing.md)：测试可观察行为与跨边界协作。
-
-## 运行与扩展
-
-- [性能优化](./performance.md)：测量热点，再选择缓存、池化与调度策略。
-- [移动平台](./mobile-optimization.md)：按目标设备验证暂停、资源及持久化行为。
-- [多人游戏](./multiplayer.md)：区分进程内框架能力和需要单独实现的网络协议。
-
-简单业务直接调用显式服务方法。事件表达已发生的事实；异步消息管线、集中状态容器和状态机在各自确有收益的地方使用。接口用于真正的替换边界，不要求每个类都产生接口。
+- [组织项目依赖](../best-practices/architecture-patterns.md)
+- [处理失败与取消](../best-practices/error-handling.md)
+- [测量帧时间与分配](../best-practices/performance.md)
+- [验证移动端行为](../best-practices/mobile-optimization.md)
+- [在宿主中接入网络同步](../best-practices/multiplayer.md)

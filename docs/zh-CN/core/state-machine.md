@@ -1,10 +1,9 @@
 ---
-title: 状态机
+title: "异步状态机"
+description: "按顺序执行状态进入、退出、回退和清理。"
 ---
 
-# 状态机
-
-StateMachine 是可独立构造的异步状态机，不要求 Architecture、Context 或事件总线。
+# 异步状态机 {#overview}
 
 ```csharp
 using GFramework.Core.State;
@@ -18,25 +17,10 @@ public sealed class MenuState : StateBase;
 public sealed class PlayingState : StateBase;
 ```
 
-状态通过构造函数接收依赖。同步回调可实现 IState 或继承 StateBase；异步回调可实现 IAsyncState 或继承 AsyncStateBase，并传递取消令牌。
+## 切换 {#transitions}
 
-## 切换契约
+先注册所有状态，再开始切换。切换依次检查退出条件、退出旧状态、进入新状态，成功后更新历史。`GoBackAsync` 同样检查退出条件。把后续切换的触发放到状态回调之外。
 
-- 具体状态类型只注册一次，首次切换后冻结注册。Unregister 仅用于配置阶段。
-- ChangeToAsync、GoBackAsync 和 StopAsync 共用串行操作边界。等待可取消，取消一个等待者不取消其他操作。
-- 切换先检查当前状态的退出条件，再退出旧状态、进入新状态；成功后提交历史并发出实例 StateChanged。
-- 相同状态返回 false，不重复回调。回退同样经过退出条件，拒绝时保留历史。
-- 回调失败后 Fault 保存原异常，后续切换被拒绝。无法自动撤销已产生的副作用；停止完成后创建新机器。
-- 回调不得等待本机器的另一次操作，重入会明确报错。
+## 故障与停止 {#shutdown}
 
-## 线程与清理
-
-机器保留操作调用者的同步上下文；Godot 接入须将所有操作调度到宿主线程。注册表安全不意味着状态对象可跨线程使用。
-
-StopAsync 等待当前切换完成，退出当前状态，逆序尝试已开始状态的业务清理。并发和重复停止等待同一结果，异常聚合报告。状态实例属于调用者或 DI，状态机不调用其 Dispose。
-
-历史最多保留 maxHistorySize 条成功切换记录，读取顺序为最近优先；0 关闭历史，负值拒绝。
-
-## 状态观察异常
-
-`StateChanged` 在状态进入和历史提交成功后发布。直接订阅者异常仅记录诊断，并继续通知其他订阅者，不设置 `Fault`，不阻止后续切换或回退。可向构造函数的 `observerLogger` 传入宿主日志；未指定时使用 Trace。状态守卫、进入、退出和业务清理仍保留原来的失败语义。
+状态回调故障可从 `Fault` 查看。等待 `StopAsync` 完成退出及业务清理后，再创建替代机器。状态对象由创建者或 DI 容器释放。涉及 Godot 节点的操作在引擎线程发起。

@@ -1,9 +1,8 @@
 ---
-title: 后续学习
+title: "继续学习"
+description: "按项目需要选择入门后的实践任务。"
 ---
 
-# 后续学习
+# 继续学习 {#overview}
 
-简单项目可使用标准 DI 和直接调用；需要首载、停止与宿主接线时采用 Architecture。按功能组织代码，保持规则与宿主分离，并用实际用例测试保护边界。
-
-继续学习 [Godot 完整项目](../godot-complete-project.md) 和 [进阶游戏](../godot-advanced-project.md)。
+接入原生场景时从[Godot 接入](../../tutorials/godot-integration.md)开始。需要统一消息管线时可以[运行 CQRS 示例](../../core/cqrs.md#pipeline)。对游戏循环的实体系统感兴趣时，[运行 Arch ECS 示例](../../ecs/arch.md)。

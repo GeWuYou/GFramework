@@ -1,10 +1,9 @@
 ---
-title: Priority 生成器
+title: "生成优先级属性"
+description: "用特性为普通类型实现 IPrioritized。"
 ---
 
-# Priority 生成器
-
-Priority 为普通 partial 类型实现 IPrioritized。该值的含义由使用它的排序器决定；Architecture 组件启动顺序通过 AddComponent 的 order 显式配置，事件优先级通过 Subscribe 的 priority 配置。
+# 生成优先级属性 {#overview}
 
 ```csharp
 using GFramework.Core.SourceGenerators.Abstractions.Bases;
@@ -13,4 +12,4 @@ using GFramework.Core.SourceGenerators.Abstractions.Bases;
 public partial class ScheduledWork;
 ```
 
-生成器输入与诊断以特性契约和测试为准。运行时项目不使用生成器特性。
+安装 `GeWuYou.GFramework.Core.SourceGenerators` 并将类型声明为 `partial`。生成的 `IPrioritized` 值由消费它的排序器解释。架构启动顺序使用 `AddComponent(order: ...)`，事件顺序使用订阅优先级。
