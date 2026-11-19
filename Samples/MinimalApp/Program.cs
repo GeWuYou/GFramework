@@ -21,7 +21,9 @@ var greeter = provider.GetRequiredService<Greeter>();
 greeter.Greet("standalone");
 
 // 2) Architecture 编排路径：实例日志工厂属于当前架构，销毁时释放。
+// #region minimal-architecture
 var architecture = new OrderArchitecture();
 await architecture.InitializeAsync().ConfigureAwait(false);
 architecture.PlaceDemoOrder("demo-0001");
 await architecture.DestroyAsync().ConfigureAwait(false);
+// #endregion minimal-architecture

@@ -1,19 +1,17 @@
 ---
-title: 生命周期
+title: "生命周期组件"
+description: "为服务声明初始化与业务停止。"
 ---
 
-# 生命周期
+# 生命周期组件 {#overview}
 
-生命周期表达显式的业务启动与停止，与 Model、System、Utility 命名无关。
+通过 `AddComponent` 登记生命周期组件，并在服务中实现所需能力。
 
-| 能力 | 入口 |
+| 能力 | 接口 |
 | --- | --- |
-| 同步初始化 | IInitializable.Initialize |
-| 异步初始化 | IAsyncInitializable.InitializeAsync |
-| 同步业务停止 | IDestroyable.Destroy |
-| 异步业务停止 | IAsyncDestroyable.DestroyAsync |
-| 资源释放 | IDisposable / IAsyncDisposable，由创建对象的拥有者执行 |
+| 同步初始化 | `IInitializable` |
+| 异步初始化 | `IAsyncInitializable` |
+| 同步停止 | `IDestroyable` |
+| 异步停止 | `IAsyncDestroyable` |
 
-组件通过 AddComponent 登记，普通 AddSingleton 等注册不自动参与。异步能力优先，按 order 和登记顺序启动，逆实际启动顺序停止。业务停止与依赖资源释放分开；不要在组件里释放容器拥有的注入依赖。
-
-启动失败与停止错误的完整规则见 [架构生命周期](./architecture.md)。
+把资源释放放在 `IDisposable` 或 `IAsyncDisposable`，由实例的拥有者执行。启动时等待组件就绪，停止时先结束业务工作。顺序和所有权见[应用装配](../core/architecture.md)。

@@ -1,11 +1,10 @@
 ---
-title: 写操作请求
+title: "处理写入请求"
+description: "在用例中维护业务约束，通过 CQRS 按需统一分发。"
 ---
 
-# 写操作请求
+# 处理写入请求 {#overview}
 
-写操作可直接调用应用服务方法。当需要统一分发与管线时，定义 IRequest&lt;TResponse&gt;，在 IRequestHandler 中执行用例并返回结果。
+让服务方法或 CQRS 处理器执行写入。在需要管道时定义 `IRequest<TResponse>`，通过对应 `IRequestHandler<TRequest, TResponse>` 组织用例，并将取消令牌传给持久化或其他异步操作。
 
-处理器通过构造函数取得依赖，调用 ICqrsRuntime.SendAsync 时传递取消令牌。验证失败、取消和意外错误应由接口契约分别表达，不能把失败转换成正常成功。
-
-写操作在所属领域对象中维护约束；完成后可发布事实通知。采用和注册入口见 [CQRS runtime](./cqrs.md)。
+写入成功后返回操作结果，再按需要通知观察者。登记方式见[CQRS 接入](../core/cqrs.md)。

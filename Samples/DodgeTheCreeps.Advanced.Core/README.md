@@ -1,5 +1,15 @@
-# Dodge the Creeps 领域与应用
+# Dodge the Creeps Gameplay Core
 
-此项目只引用 .NET 基础库。GameSession 维护存档资格与未保存状态，RunRules 验证完整棋盘，RunUseCases 通过 IRunBoard、IRunStore 组织开始、保存和死亡清档。设置规则也在本项目，Godot 音频、窗口、文件、内容包和菜单由宿主适配。
+[简体中文](#简体中文) · [English](#english)
 
-它不使用容器、全局 Context、引擎类型或框架角色基类。主程序集在 [Godot 进阶示例](../DodgeTheCreeps.Advanced/README.md) 装配这些对象。
+## 简体中文
+
+使用 GameSession 和 RunRules 管理纯 C# 状态和规则。RunUseCases 通过 IRunBoard、IRunStore 处理开始、保存和退役存档。Godot 工程提供实现。
+
+[查看教程](https://gewuyou.github.io/GFramework/zh-CN/tutorials/godot-advanced-project.html)
+
+## English
+
+Use GameSession and RunRules for plain C# state and rules. RunUseCases handles starting, saving, and retiring a run through IRunBoard and IRunStore. The Godot project provides the implementations.
+
+[Read the walkthrough](https://gewuyou.github.io/GFramework/tutorials/godot-advanced-project.html)

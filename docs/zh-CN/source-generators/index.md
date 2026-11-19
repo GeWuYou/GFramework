@@ -1,24 +1,15 @@
 ---
-title: 源码生成器
+title: "源码生成器"
+description: "按编译期任务选择 GFramework 生成器。"
 ---
 
-# 源码生成器
+# 源码生成器 {#overview}
 
-生成器用于消费项目编译期产生确定性代码。按需要安装对应包，框架 runtime 和 abstractions 保持不依赖生成器。
+在消费项目添加对应的 `GeWuYou.GFramework.*.SourceGenerators` 包。配套特性和生成辅助随包提供。构建后可在 IDE 的生成源文件中查看输出和诊断。
 
-## Core 生成器
-
-- [枚举扩展](./enum-generator.md)：生成枚举判断和转换辅助。
-- [Priority](./priority-generator.md)：为普通 partial 类型实现 IPrioritized。
-
-## 其他生成器
-
-- [配置 Schema](./schema-config-generator.md)
-- [CQRS 注册表](./cqrs-handler-registry-generator.md)
-- [Godot 项目元数据](./godot-project-generator.md)
-- [节点获取](./get-node-generator.md)
-- [节点信号绑定](./bind-node-signal-generator.md)
-- [场景注册](./auto-scene-generator.md)
-- [导出集合注册](./auto-register-exported-collections-generator.md)
-
-依赖关系在组合根显式装配，普通业务对象使用构造注入。日志使用标准 ILogger&lt;T&gt;。可运行采用方式见 [最小应用](../getting-started/quick-start.md) 与 [Godot 示例](../tutorials/godot-integration.md)。
+| 包后缀 | 功能 |
+| --- | --- |
+| `Core.SourceGenerators` | [枚举扩展](../source-generators/enum-generator.md) · [优先级](../source-generators/priority-generator.md) |
+| `Game.SourceGenerators` | [配置类型与表](../source-generators/schema-config-generator.md) |
+| `Cqrs.SourceGenerators` | [处理器注册表](../source-generators/cqrs-handler-registry-generator.md) |
+| `Godot.SourceGenerators` | [项目元数据](../source-generators/godot-project-generator.md) · [节点查找](../source-generators/get-node-generator.md) · [信号绑定](../source-generators/bind-node-signal-generator.md) · [场景辅助](../source-generators/auto-scene-generator.md) · [集合注册](../source-generators/auto-register-exported-collections-generator.md) |

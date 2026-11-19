@@ -1,11 +1,10 @@
 ---
-title: 运行环境
+title: "宿主环境"
+description: "把路径、平台和运行环境传给需要它们的服务。"
 ---
 
-# 运行环境
+# 宿主环境 {#overview}
 
-环境信息由宿主提供，并通过明确的类型化参数进入组合根。
+在 .NET Host 中从 `IHostEnvironment` 获取环境与内容根。在 Godot 中由宿主解析资源位置和用户数据目录，再向适配器传入路径或专用路径服务。
 
-采用标准 .NET Host 时可使用 IHostEnvironment。Godot 应用由宿主获取资源根、用户数据目录、平台与窗口信息，再向需要的适配器传入对应值或小型路径服务。
-
-领域对象不读取环境字典，也不通过环境对象取服务。启动配置见 [应用配置](./configuration.md)，实例服务的装配见 [依赖注入](./ioc.md)。
+把环境解析集中在组合根。参见[应用配置](../core/configuration.md)和[Godot 存储](../godot/storage.md)。

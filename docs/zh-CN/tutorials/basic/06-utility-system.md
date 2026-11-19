@@ -1,9 +1,12 @@
 ---
-title: 基础设施与通用能力
+title: "装配依赖"
+description: "在 MinimalApp 的组合根注册订单服务。"
 ---
 
-# 基础设施与通用能力
+# 装配依赖 {#overview}
 
-纯计算可直接使用函数；资源、存储及外部访问使用普通服务。生命周期工作通过 AddComponent 显式登记，名称不决定启动顺序。
+打开 `OrderArchitecture`，观察服务如何登记和解析。等待初始化完成后再调用应用入口，最后等待架构关闭。
 
 <<< ../../../../Samples/MinimalApp/OrderArchitecture.cs
+
+下一步：[选择下一步](../../tutorials/basic/07-summary.md)。

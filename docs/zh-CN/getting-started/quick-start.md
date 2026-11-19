@@ -1,25 +1,26 @@
 ---
-title: 快速开始
+title: "快速开始"
+description: "运行最小 C# 示例，观察标准 DI 与 Architecture 的接入。"
 ---
 
-# 快速开始
+# 快速开始 {#overview}
 
-先运行仓库中可编译的最小应用，观察标准 DI 与可选 Architecture 的两种接入方式。
+在仓库根目录运行以下命令。构建所需 SDK 见[环境](../getting-started/installation.md#requirements)。
 
 ```bash
 dotnet run --project Samples/MinimalApp -c Release
 ```
 
-## 应用入口
+输出先显示独立服务的问候日志，再记录架构启动与示例订单的处理。
+
+## 运行入口 {#program}
 
 <<< ../../../Samples/MinimalApp/Program.cs
 
-## 服务与装配
+## 注册业务服务 {#services}
 
-<<< ../../../Samples/MinimalApp/OrderService.cs
+`OrderArchitecture` 在 `ConfigureServices` 登记服务。宿主完成启动后调用服务，退出时等待 `DestroyAsync` 完成。
 
 <<< ../../../Samples/MinimalApp/OrderArchitecture.cs
 
-服务通过构造函数声明依赖。组合根注册并取得服务；普通服务不需要角色、上下文或生命周期接口。需要首载和停止的组件显式登记，完成后等待 provider 或 Architecture 的异步释放。
-
-独立能力见 [Core](../core/index.md)，游戏采用见 [Godot 完整教程](../tutorials/godot-complete-project.md)，推荐组织方式见 [进阶游戏教程](../tutorials/godot-advanced-project.md)。
+在自己的项目中，按[安装指南](../getting-started/installation.md)添加 Core，再把业务类和构造函数依赖登记到组合根。接入引擎时，继续[运行 Godot 示例](../tutorials/godot-integration.md)。

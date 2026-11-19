@@ -1,177 +1,249 @@
-/**
- * Customize default theme styling by overriding CSS variables:
- * https://github.com/vuejs/vitepress/blob/main/src/client/theme-default/styles/vars.css
+/* Copyright (c) 2025-2026 GeWuYou
+ * SPDX-License-Identifier: Apache-2.0
  */
 
-/**
- * Colors
- *
- * Each colors have exact same color scale system with 3 levels of solid
- * colors with different brightness, and 1 soft color.
- *
- * - `XXX-1`: The most solid color used mainly for colored text. It must
- *   satisfy the contrast ratio against when used on top of `XXX-soft`.
- *
- * - `XXX-2`: The color used mainly for hover state of the button.
- *
- * - `XXX-3`: The color for solid background, such as bg color of the button.
- *   It must satisfy the contrast ratio with pure white (#ffffff) text on
- *   top of it.
- *
- * - `XXX-soft`: The color used for subtle background such as custom container
- *   or badges. It must satisfy the contrast ratio when putting `XXX-1` colors
- *   on top of it.
- *
- *   The soft color must be semi transparent alpha channel. This is crucial
- *   because it allows adding multiple "soft" colors on top of each other
- *   to create an accent, such as when having inline code block inside
- *   custom containers.
- *
- * - `default`: The color used purely for subtle indication without any
- *   special meanings attached to it such as bg color for menu hover state.
- *
- * - `brand`: Used for primary brand colors, such as link text, button with
- *   brand theme, etc.
- *
- * - `tip`: Used to indicate useful information. The default theme uses the
- *   brand color for this by default.
- *
- * - `warning`: Used to indicate warning to the users. Used in custom
- *   container, badges, etc.
- *
- * - `danger`: Used to show error, or dangerous message to the users. Used
- *   in custom container, badges, etc.
- * -------------------------------------------------------------------------- */
-
 :root {
-  --vp-c-default-1: var(--vp-c-gray-1);
-  --vp-c-default-2: var(--vp-c-gray-2);
-  --vp-c-default-3: var(--vp-c-gray-3);
-  --vp-c-default-soft: var(--vp-c-gray-soft);
-
-  /*--vp-c-brand-1: var(--vp-c-indigo-1);*/
-  /*--vp-c-brand-2: var(--vp-c-indigo-2);*/
-  --vp-c-brand-1: #1e40af;        /* 深蓝：文字 / active */
-  --vp-c-brand-2: #2563eb;        /* 蓝：hover */
-  
-  --vp-c-brand-3: var(--vp-c-indigo-3);
-  --vp-c-brand-soft: var(--vp-c-indigo-soft);
-
-  --vp-c-tip-1: var(--vp-c-brand-1);
-  --vp-c-tip-2: var(--vp-c-brand-2);
-  --vp-c-tip-3: var(--vp-c-brand-3);
-  --vp-c-tip-soft: var(--vp-c-brand-soft);
-
-  --vp-c-warning-1: var(--vp-c-yellow-1);
-  --vp-c-warning-2: var(--vp-c-yellow-2);
-  --vp-c-warning-3: var(--vp-c-yellow-3);
-  --vp-c-warning-soft: var(--vp-c-yellow-soft);
-
-  --vp-c-danger-1: var(--vp-c-red-1);
-  --vp-c-danger-2: var(--vp-c-red-2);
-  --vp-c-danger-3: var(--vp-c-red-3);
-  --vp-c-danger-soft: var(--vp-c-red-soft);
+  --vp-font-family-base: Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --vp-font-family-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  --vp-c-brand-1: #1d46b9;
+  --vp-c-brand-2: #214bc4;
+  --vp-c-brand-3: #193ba8;
+  --vp-c-brand-soft: rgba(45, 89, 216, 0.12);
+  --vp-button-brand-bg: #193ba8;
+  --vp-button-brand-hover-bg: #15358e;
+  --docs-border: #dbe2f1;
+  --docs-panel: #f5f7fc;
 }
 
-/**
- * Component: Button
- * -------------------------------------------------------------------------- */
-
-:root {
-  --vp-button-brand-border: transparent;
-  --vp-button-brand-text: var(--vp-c-white);
-  --vp-button-brand-bg: var(--vp-c-brand-3);
-  --vp-button-brand-hover-border: transparent;
-  --vp-button-brand-hover-text: var(--vp-c-white);
-  --vp-button-brand-hover-bg: var(--vp-c-brand-2);
-  --vp-button-brand-active-border: transparent;
-  --vp-button-brand-active-text: var(--vp-c-white);
-  --vp-button-brand-active-bg: var(--vp-c-brand-1);
+.dark {
+  --vp-c-brand-1: #a8beff;
+  --vp-c-brand-2: #bfd0ff;
+  --vp-c-brand-3: #4d6dd4;
+  --vp-c-brand-soft: rgba(128, 161, 255, 0.17);
+  --vp-button-brand-bg: #3051bc;
+  --vp-button-brand-hover-bg: #3a5bcd;
+  --docs-border: #343d55;
+  --docs-panel: #202636;
 }
 
-/**
- * Component: Home
- * -------------------------------------------------------------------------- */
-
-:root {
-  --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: -webkit-linear-gradient(
-          120deg,
-          #bd34fe 30%,
-          #41d1ff
-  );
-
-  --vp-home-hero-image-background-image: linear-gradient(
-          -45deg,
-          #bd34fe 50%,
-          #47caff 50%
-  );
-  --vp-home-hero-image-filter: blur(44px);
+.VPDoc .content .content-container {
+  max-width: 760px;
 }
 
-@media (min-width: 640px) {
-  :root {
-    --vp-home-hero-image-filter: blur(56px);
+.vp-doc p, .vp-doc li {
+  line-height: 1.75;
+}
+
+html[lang="zh-CN"] .vp-doc p, html[lang="zh-CN"] .vp-doc li {
+  line-height: 1.85;
+}
+
+.vp-doc h2 {
+  margin-top: 40px;
+  padding-top: 20px;
+}
+
+.docs-home {
+  width: min(1140px, calc(100% - 56px));
+  margin: 0 auto;
+}
+
+.docs-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(32px, 6vw, 80px);
+  padding: clamp(56px, 8vw, 112px) 0;
+}
+
+.docs-wordmark {
+  color: var(--vp-c-brand-1);
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.docs-hero h1, .docs-not-found h1 {
+  font-size: clamp(36px, 5.2vw, 66px);
+  letter-spacing: -0.04em;
+  line-height: 1.12;
+  font-weight: 750;
+  text-wrap: balance;
+}
+
+.docs-lede {
+  margin: 20px 0 26px;
+  max-width: 43ch;
+  font-size: clamp(16px, 2vw, 19px);
+  line-height: 1.65;
+  color: var(--vp-c-text-2);
+}
+
+.docs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.docs-primary, .docs-secondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--docs-border);
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.docs-primary {
+  color: #fff;
+  background: var(--vp-button-brand-bg);
+  border-color: transparent;
+}
+
+.docs-primary:hover {
+  background: var(--vp-button-brand-hover-bg);
+}
+
+.docs-secondary:hover {
+  color: var(--vp-c-brand-1);
+  background: var(--docs-panel);
+}
+
+.docs-example {
+  min-width: 0;
+  background: var(--docs-panel);
+  border: 1px solid var(--docs-border);
+  border-radius: 12px;
+}
+
+.docs-example-title {
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--docs-border);
+  font: 600 13px/1.4 var(--vp-font-family-mono);
+  color: var(--vp-c-text-2);
+}
+
+.docs-example div[class*="language-"] {
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.docs-example div.language-bash {
+  border-top: 1px solid var(--docs-border);
+}
+
+.docs-example div[class*="language-"] pre {
+  padding: 16px;
+}
+
+.docs-example div[class*="language-"] code {
+  font-size: 13px;
+}
+
+.docs-tasks {
+  border-top: 1px solid var(--docs-border);
+  padding: 32px 0 64px;
+}
+
+.docs-tasks h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.docs-task-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+}
+
+.docs-task-list a {
+  display: block;
+  min-height: 100%;
+  padding: 18px;
+  border: 1px solid var(--docs-border);
+  border-radius: 8px;
+}
+
+.docs-task-list a:hover {
+  border-color: var(--vp-c-brand-1);
+  background: var(--docs-panel);
+}
+
+.docs-task-list h3 {
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+.docs-task-list p, .docs-not-found > p {
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.docs-home a:focus-visible, .docs-not-found a:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 3px;
+}
+
+.docs-not-found {
+  width: min(680px, calc(100% - 44px));
+  margin: 90px auto;
+}
+
+.docs-not-found > p {
+  margin: 14px 0 20px;
+}
+
+@media (max-width: 880px) {
+  .docs-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .docs-task-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 960px) {
-  :root {
-    --vp-home-hero-image-filter: blur(68px);
+@media (max-width: 560px) {
+  .docs-home {
+    width: calc(100% - 36px);
+  }
+
+  .docs-task-list {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
-/**
- * Component: Custom Block
- * -------------------------------------------------------------------------- */
-
-:root {
-  --vp-custom-block-tip-border: transparent;
-  --vp-custom-block-tip-text: var(--vp-c-text-1);
-  --vp-custom-block-tip-bg: var(--vp-c-brand-soft);
-  --vp-custom-block-tip-code-bg: var(--vp-c-brand-soft);
+.docs-locale {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding-inline: 12px;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
 }
 
-/**
- * Component: Navigation
- * -------------------------------------------------------------------------- */
+.docs-locale:hover {
+  color: var(--vp-c-brand-1);
+}
 
-@media (min-width: 768px) and (max-width: 1279px) {
-  /* Keep the search entry visible on medium desktop widths where nav links are the tightest. */
-  .VPNavBarSearch {
-    flex: 0 0 auto;
-    padding-left: 16px;
-  }
+.docs-locale-mobile {
+  width: 100%;
+  border-block-end: 1px solid var(--vp-c-divider);
+  padding-inline: 0;
+}
 
-  .VPNavBarSearch .VPNavBarSearchButton {
-    min-width: 0;
-    padding: 8px 10px;
-  }
-
-  .VPNavBarSearch .keys {
+@media (max-width: 767px) {
+  .VPNavBar .docs-locale {
     display: none;
-  }
-
-  .VPNavBarMenu {
-    min-width: 0;
-  }
-
-  .VPNavBarMenu .VPNavBarMenuLink,
-  .VPNavBarMenu .VPFlyout .button {
-    padding-left: 10px;
-    padding-right: 10px;
-    font-size: 13px;
-  }
-}
-
-@media (min-width: 1280px) {
-  /* Reserve stable room for the search button before appearance and social actions appear. */
-  .VPNavBarSearch {
-    min-width: 176px;
-  }
-
-  .VPNavBarSearch .VPNavBarSearchButton {
-    justify-content: space-between;
-    min-width: 176px;
   }
 }

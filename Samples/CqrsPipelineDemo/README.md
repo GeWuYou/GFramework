@@ -1,9 +1,21 @@
-# CQRS 开放泛型管道示例
+# CQRS Pipeline Demo
 
-标准 DI 的 Scoped runtime、开放泛型行为、Scoped 依赖与生成处理器注册表共同运行。示例在退出调用方 scope 后验证依赖已释放。
+[简体中文](#简体中文) · [English](#english)
+
+## 简体中文
+
+用生成注册表、开放泛型行为和 scoped 依赖分发请求，释放调用方作用域后输出 CQRS_PIPELINE_PASS。
+
+[查看教程](https://gewuyou.github.io/GFramework/zh-CN/core/cqrs.html)
+
+## English
+
+Dispatch a request through a generated registry and open-generic behaviors with a scoped dependency. The sample prints CQRS_PIPELINE_PASS after the caller scope releases its dependency.
+
+[Read the walkthrough](https://gewuyou.github.io/GFramework/core/cqrs.html)
+
+## 运行 · Run
 
 ```bash
 dotnet run --project Samples/CqrsPipelineDemo -c Release
 ```
-
-成功输出 `CQRS_PIPELINE_PASS`。不使用 Architecture，不隐式创建 scope；普通应用仍可直接调用业务服务。采用说明见 [CQRS 运行时](../../docs/zh-CN/core/cqrs.md)。

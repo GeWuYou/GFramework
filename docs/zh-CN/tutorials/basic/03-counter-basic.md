@@ -1,9 +1,12 @@
 ---
-title: 直接服务调用
+title: "记录订单状态"
+description: "观察普通 C# 服务如何持有数据。"
 ---
 
-# 直接服务调用
+# 记录订单状态 {#overview}
 
-简单用例通过普通方法完成；从构造函数可以看出服务依赖。容器只在应用入口使用。
+`OrderService` 持有订单编号，`Register` 把编号加入集合。
 
 <<< ../../../../Samples/MinimalApp/OrderService.cs
+
+下一步：[定义领域规则](../../tutorials/basic/04-model-refactor.md)。
