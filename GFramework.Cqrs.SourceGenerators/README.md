@@ -4,22 +4,23 @@
 
 ## 简体中文
 
-在包含处理器的消费项目中生成 CQRS 注册表。构建后用 CqrsRegistration.CreateRegistry() 取得注册表并交给运行时的 DI 登记。
+为声明处理器的项目生成 CQRS 注册表。在同一个项目中安装 `GFramework.Cqrs` 和 `GFramework.Cqrs.SourceGenerators`。运行时包提供生成所需的注册表类型，并带入处理器契约 `GFramework.Cqrs.Abstractions`。
 
-在处理器项目中使用 `GFramework.Cqrs.Abstractions` 定义处理器，并添加 `GFramework.Cqrs.SourceGenerators`。在应用宿主中用 `GFramework.Cqrs` 注册并分发这些处理器。
+宿主与处理器在同一个项目时，在组合根调用生成的 `CqrsRegistration.CreateRegistry()`。处理器放在独立库时，由库内的公开方法调用生成的工厂并注册处理器，再由宿主调用该方法。
 
-[查看使用说明](https://gewuyou.github.io/GFramework/zh-CN/source-generators/cqrs-handler-registry-generator.html)
+[查看安装和注册示例](https://gewuyou.github.io/GFramework/zh-CN/source-generators/cqrs-handler-registry-generator.html)
 
 ## English
 
-Generate a CQRS registry in the project containing handlers. After the build, call CqrsRegistration.CreateRegistry() and pass the result to the runtime's DI registration.
+Generate a CQRS registry in the assembly that declares the handlers. Install `GFramework.Cqrs` and `GFramework.Cqrs.SourceGenerators` in that same project. The runtime package supplies the registry types and brings in the handler contracts from `GFramework.Cqrs.Abstractions`.
 
-Define handlers against `GFramework.Cqrs.Abstractions` and add `GFramework.Cqrs.SourceGenerators` to the handler project. Use `GFramework.Cqrs` in the application host to register those handlers and dispatch messages to them.
+Call the generated `CqrsRegistration.CreateRegistry()` in the composition root when the host and handlers share a project. For a separate handler library, add a public method in the library that invokes the generated factory and registers its handlers, then call that method from the host.
 
-[Read the guide](https://gewuyou.github.io/GFramework/source-generators/cqrs-handler-registry-generator.html)
+[See installation and registration examples](https://gewuyou.github.io/GFramework/source-generators/cqrs-handler-registry-generator.html)
 
 ## 安装 · Install
 
 ```bash
+dotnet add package GeWuYou.GFramework.Cqrs
 dotnet add package GeWuYou.GFramework.Cqrs.SourceGenerators
 ```

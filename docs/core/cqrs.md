@@ -15,7 +15,7 @@ Install `GeWuYou.GFramework.Cqrs` and call `AddCqrsRuntime` in the composition r
 | Notify multiple handlers | `PublishAsync` |
 | Read multiple asynchronous results | `CreateStream` |
 
-Use a generated registry for known handlers. For assemblies discovered at runtime, use `AddCqrsHandlersFromAssembly`. Pass the caller's cancellation token.
+To [generate a registry](../source-generators/cqrs-handler-registry-generator.md#install), install the runtime and source generator in the project that declares the handlers. For assemblies discovered at runtime, use `AddCqrsHandlersFromAssembly`. Pass the caller's cancellation token.
 
 ## Pipelines and scopes {#pipeline}
 

@@ -15,7 +15,7 @@ description: "注册处理器，通过统一入口分发消息并组装管道行
 | 通知多个处理器 | `PublishAsync` |
 | 读取多个异步结果 | `CreateStream` |
 
-使用生成的 registry 登记已知处理器；对运行时才取得的程序集，使用 `AddCqrsHandlersFromAssembly`。传入调用方的取消令牌。
+需要[生成注册表](../source-generators/cqrs-handler-registry-generator.md#install)时，在声明处理器的项目中同时安装运行时和源码生成器。对运行时才取得的程序集，使用 `AddCqrsHandlersFromAssembly`。传入调用方的取消令牌。
 
 ## 管道与作用域 {#pipeline}
 
