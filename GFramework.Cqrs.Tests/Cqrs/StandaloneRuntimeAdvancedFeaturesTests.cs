@@ -169,7 +169,7 @@ internal sealed class StandaloneRuntimeAdvancedFeaturesTests
         var stopwatch = Stopwatch.StartNew();
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await _context!.SendRequestAsync(new TestCircuitBreakerRequest { ShouldFail = false })
-                .ConfigureAwait(false));
+                .ConfigureAwait(false)).ConfigureAwait(false);
         stopwatch.Stop();
 
         // 验证快速失败（应该在很短时间内完成）
@@ -219,7 +219,7 @@ internal sealed class StandaloneRuntimeAdvancedFeaturesTests
         await _context!.SendRequestAsync(requests[0]).ConfigureAwait(false);
 
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await _context!.SendRequestAsync(requests[1]).ConfigureAwait(false));
+            await _context!.SendRequestAsync(requests[1]).ConfigureAwait(false)).ConfigureAwait(false);
 
         // 验证回滚机制被触发
         Assert.That(sagaData.CompletedSteps, Is.EqualTo([1])); // 只有第一步完成
