@@ -65,7 +65,7 @@ jobs:
       # Secrets can be introduced in documentation as well as source code.
       - name: TruffleHog OSS
         if: github.event_name == 'pull_request'
-        uses: trufflesecurity/trufflehog@v3.99.9
+        uses: trufflesecurity/trufflehog@v3.100.1
         with:
           path: .
           base: ${{ github.event.pull_request.base.sha }}
