@@ -105,7 +105,8 @@ public sealed class AsyncKeyLockManagerTests
         await handle.DisposeAsync().ConfigureAwait(false);
 
         // Assert - 应该能再次获取锁
-        await using var handle2 = await manager.AcquireLockAsync("test-key").ConfigureAwait(false);
+        var handle2 = await manager.AcquireLockAsync("test-key").ConfigureAwait(false);
+        await using var handle2Scope = handle2.ConfigureAwait(false);
         Assert.That(handle2, Is.Not.Null);
     }
 
@@ -213,7 +214,8 @@ public sealed class AsyncKeyLockManagerTests
         // Act
         await using (await manager.AcquireLockAsync("key1").ConfigureAwait(false))
         {
-            await using var handle2 = await manager.AcquireLockAsync("key2").ConfigureAwait(false);
+            var handle2 = await manager.AcquireLockAsync("key2").ConfigureAwait(false);
+            await using var handle2Scope = handle2.ConfigureAwait(false);
             var stats = manager.GetStatistics();
 
             // Assert
@@ -233,7 +235,8 @@ public sealed class AsyncKeyLockManagerTests
 
         // Act
         await using var handle1 = await manager.AcquireLockAsync("key1").ConfigureAwait(false);
-        await using var handle2 = await manager.AcquireLockAsync("key2").ConfigureAwait(false);
+        var handle2 = await manager.AcquireLockAsync("key2").ConfigureAwait(false);
+        await using var handle2Scope = handle2.ConfigureAwait(false);
 
         var activeLocks = manager.GetActiveLocks();
 
