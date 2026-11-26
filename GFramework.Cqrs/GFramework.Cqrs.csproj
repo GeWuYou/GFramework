@@ -25,7 +25,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.15"/>
         <!-- Logger&lt;T&gt; 位于 Microsoft.Extensions.Logging 包；开放泛型 ILogger&lt;&gt; 注册需要该实现类型 -->
         <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.14"/>
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15"/>
     </ItemGroup>
 
     <!-- Package the module guide named by PackageReadmeFile. -->
